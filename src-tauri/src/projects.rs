@@ -354,6 +354,8 @@ pub fn open_project(app: AppHandle, id: String, editor: bool) -> Result<(), Stri
     project.last_opened = Some(chrono::Utc::now().to_rfc3339());
     write_projects(&app, &projects)?;
 
+    let _ = crate::refresh_tray_menu(app.clone());
+
     if let Some(state) = app.try_state::<ActiveProcesses>() {
         state.0.lock().unwrap().insert(id.clone(), child);
     }

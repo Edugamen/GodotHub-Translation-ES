@@ -31,7 +31,6 @@ interface Props {
   onOpenProperties?: () => void
   onGitAction?: (action: 'terminal' | 'pull' | 'push' | 'fetch' | 'log') => void
   onShowGitSidebar?: () => void
-  onOpened?: () => void
   draggable?: boolean
   isDragging?: boolean
   selected?: boolean
@@ -69,7 +68,6 @@ export const ProjectCard = memo(function ProjectCard({
   onGitAction: _onGitAction,
   onShowGitSidebar,
   gitStatus,
-  onOpened,
   draggable,
   isDragging,
   selected,
@@ -462,10 +460,11 @@ export const ProjectCard = memo(function ProjectCard({
                   whileTap={versionInstalled ? { scale: 0.96 } : undefined}
                   disabled={!versionInstalled}
                   onClick={() =>
-                    api
-                      .openProject(project.id, true)
-                      .then(() => onOpened?.())
-                      .catch((e) => alert(e))
+                    window.dispatchEvent(
+                      new CustomEvent('app:open-project', {
+                        detail: project.id,
+                      }),
+                    )
                   }
                   className="focus-ring cursor-pointer shrink-0 flex items-center justify-center gap-1.5 px-8 py-3 rounded-lg bg-accent hover:bg-accent-bright disabled:bg-raised disabled:text-muted disabled:cursor-not-allowed text-sm font-medium text-white transition-colors"
                 >
@@ -571,10 +570,11 @@ export const ProjectCard = memo(function ProjectCard({
         label: 'Open Project',
         icon: IconPlay,
         onClick: () =>
-          api
-            .openProject(project.id, true)
-            .then(() => onOpened?.())
-            .catch((e) => alert(e)),
+          window.dispatchEvent(
+            new CustomEvent('app:open-project', {
+              detail: project.id,
+            }),
+          ),
         disabled: !versionInstalled,
       },
       {

@@ -9,6 +9,7 @@ import {
   IconDownload,
   IconTrash,
   IconPencil,
+  IconSearch,
   IconX,
   IconRefresh,
   IconImport,
@@ -164,6 +165,10 @@ export function VersionsView() {
   >({})
   const [visibleGroups, setVisibleGroups] = useState(5)
   const [filters, setFilters] = useState<VersionFilters>(loadVersionFilters)
+  const [query, setQuery] = useState('')
+  const [editingTag, setEditingTag] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState('')
+  const editInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     try {
@@ -223,14 +228,67 @@ export function VersionsView() {
   }, [])
 
   const startEditing = (tag: string, current: string | null | undefined) => {
-    const name = prompt('Rename version', current ?? tag)
-    if (name !== null && name.trim()) {
-      rename(tag, name.trim())
-    }
+    setEditingTag(tag)
+    setEditValue(current ?? tag)
+    requestAnimationFrame(() => editInputRef.current?.focus())
   }
+
+  const commitEdit = () => {
+    if (editingTag && editValue.trim()) {
+      rename(editingTag, editValue.trim())
+    }
+    setEditingTag(null)
+    setEditValue('')
+  }
+
+  const cancelEdit = () => {
+    setEditingTag(null)
+    setEditValue('')
+  }
+
+  const isSearching = query.trim().length > 0
+
+  const filteredInstalled = isSearching
+    ? installed.filter(
+        (v) =>
+          v.tag.toLowerCase().includes(query.toLowerCase()) ||
+          (v.custom_name &&
+            v.custom_name.toLowerCase().includes(query.toLowerCase())),
+      )
+    : installed
+
+  const filteredAvailable = isSearching
+    ? available
+        .map((r) => ({
+          ...r,
+          assets: r.assets.filter(() =>
+            r.tag.toLowerCase().includes(query.toLowerCase()),
+          ),
+        }))
+        .filter((r) => r.assets.length > 0)
+    : available
 
   return (
     <div className="p-10 pt-15 max-w-8xl mx-auto">
+      {/* Search bar — filters both installed and available versions */}
+      <div className="relative w-64 mb-6">
+        <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted/50 pointer-events-none" />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search versions…"
+          className="w-full pl-9 pr-9 py-2 rounded-lg border border-line bg-surface text-sm text-ink placeholder:text-muted/50 outline-none transition-all focus:border-accent focus:ring-1 focus:ring-accent/30"
+        />
+        {query && (
+          <button
+            onClick={() => setQuery('')}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted/50 hover:text-ink transition-colors cursor-pointer"
+          >
+            <IconX className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
       <section>
         <div className="flex items-center justify-between">
           <h2 className="font-body font-semibold text-3xl tracking-tight">
@@ -273,7 +331,7 @@ export function VersionsView() {
           Engines available to bind to a project.
         </p>
 
-        {installed.length === 0 ? (
+        {installed.length === 0 && !isSearching ? (
           <div className="border border-dashed border-line rounded-2xl py-24 flex flex-col items-center gap-4 text-center mb-5">
             <div className="w-12 h-12 rounded-xl bg-raised border border-line flex items-center justify-center">
               <IconDownload className="w-5 h-5 text-muted" />
@@ -283,9 +341,16 @@ export function VersionsView() {
               drop your existing version folder here.
             </p>
           </div>
+        ) : filteredInstalled.length === 0 && isSearching ? (
+          <div className="border border-dashed border-line rounded-2xl py-16 flex flex-col items-center gap-4 text-center mb-5">
+            <IconSearch className="w-5 h-5 text-muted" />
+            <p className="text-sm text-muted max-w-xs leading-relaxed">
+              No installed versions match <strong>"{query}"</strong>.
+            </p>
+          </div>
         ) : (
           <div className="flex flex-col gap-3 mb-5">
-            {installed.map((v) => (
+            {filteredInstalled.map((v) => (
               <ScrollReveal key={v.tag} delay={0.03}>
               <div
                 onContextMenu={(e) => {
@@ -295,28 +360,55 @@ export function VersionsView() {
                 className="flex items-center justify-between border border-line rounded-xl px-5 py-4 bg-surface hover:border-accent-dim transition-all duration-200"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <VersionBadge
-                    tag={v.tag}
-                    state="installed"
-                    customName={v.custom_name}
-                  />
-                  {v.is_mono && (
-                    <span className="text-xs px-2 py-1 rounded-md bg-accent/10 text-accent-bright border border-accent-dim/40 shrink-0">
-                      Mono
-                    </span>
+                  {editingTag === v.tag ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        ref={editInputRef}
+                        type="text"
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') commitEdit()
+                          if (e.key === 'Escape') cancelEdit()
+                        }}
+                        onBlur={commitEdit}
+                        className="focus-ring w-44 bg-raised border border-accent rounded-lg px-3 py-1.5 text-sm font-mono text-ink outline-none"
+                      />
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={commitEdit}
+                        className="focus-ring cursor-pointer p-1.5 rounded-lg text-accent hover:bg-accent/10 transition-colors"
+                        aria-label="Save name"
+                      >
+                        <IconPencil className="w-3.5 h-3.5" />
+                      </motion.button>
+                    </div>
+                  ) : (
+                    <>
+                      <VersionBadge
+                        tag={v.tag}
+                        state="installed"
+                        customName={v.custom_name}
+                      />
+                      {v.is_mono && (
+                        <span className="text-xs px-2 py-1 rounded-md bg-accent/10 text-accent-bright border border-accent-dim/40 shrink-0">
+                          Mono
+                        </span>
+                      )}
+                      <Tooltip content="Rename this version">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            startEditing(v.tag, v.custom_name)
+                          }}
+                          aria-label="Rename version"
+                          className="icon-wiggle focus-ring cursor-pointer p-1.5 rounded-lg text-muted/60 hover:text-ink hover:bg-raised transition-colors shrink-0"
+                        >
+                          <IconPencil className="w-3.5 h-3.5" />
+                        </button>
+                      </Tooltip>
+                    </>
                   )}
-                  <Tooltip content="Rename this version">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        startEditing(v.tag, v.custom_name)
-                      }}
-                      aria-label="Rename version"
-                      className="icon-wiggle focus-ring cursor-pointer p-1.5 rounded-lg text-muted/60 hover:text-ink hover:bg-raised transition-colors shrink-0"
-                    >
-                      <IconPencil className="w-3.5 h-3.5" />
-                    </button>
-                  </Tooltip>
                 </div>
                 <motion.button
                   whileHover={{ y: -1 }}
@@ -400,10 +492,32 @@ export function VersionsView() {
               Retry
             </motion.button>
           </div>
+        ) : isSearching && filteredAvailable.length === 0 ? (
+          <p className="text-sm text-muted">Fetching releases…</p>
+        ) : availableError ? (
+          <div className="border border-dashed border-danger/50 rounded-2xl py-24 flex flex-col items-center gap-4 text-center px-6">
+            <div className="w-12 h-12 rounded-xl bg-danger/10 border border-danger/30 flex items-center justify-center">
+              <IconX className="w-5 h-5 text-danger" />
+            </div>
+            <p className="text-sm text-danger">
+              Couldn't fetch available versions.
+            </p>
+            <p className="text-xs text-muted font-mono break-all max-w-md">
+              {availableError}
+            </p>
+            <motion.button
+              whileHover={{ y: -1 }}
+              whileTap={{ scale: 0.96 }}
+              onClick={() => refreshAvailable()}
+              className="focus-ring px-4 py-2 rounded-lg border border-line hover:border-accent-dim hover:bg-raised text-sm font-medium transition-colors"
+            >
+              Retry
+            </motion.button>
+          </div>
         ) : (
           (() => {
             const groupEntries = Object.entries(
-              available
+              filteredAvailable
                 .flatMap((r) => {
                   const isStable = r.tag.toLowerCase().includes('stable')
                   if (

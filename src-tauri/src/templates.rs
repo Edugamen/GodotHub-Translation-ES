@@ -147,6 +147,11 @@ fn list_files_recursive(base: &Path, dir: &Path, entries: &mut Vec<TemplateFileE
     for entry in fs::read_dir(dir).map_err(|e| e.to_string())? {
         let entry = entry.map_err(|e| e.to_string())?;
         let path = entry.path();
+        let name = entry.file_name();
+        // Skip internal metadata file
+        if name == "template.json" {
+            continue;
+        }
         let rel = path
             .strip_prefix(base)
             .map_err(|_| "Path error".to_string())?;

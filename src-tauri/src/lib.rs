@@ -58,8 +58,9 @@ fn build_tray_menu(app: &tauri::AppHandle<tauri::Wry>) -> Result<Menu<tauri::Wry
     });
     let recent = recent.into_iter().take(count).collect::<Vec<_>>();
 
-    if recent.is_empty() {
-        Menu::with_items(app, &[&show_item, &sep1, &quit_item])
+    let recent_submenu = if recent.is_empty() {
+        let no_recent_item = MenuItem::with_id(app, "no_recent", "No recent projects", false, None::<&str>)?;
+        Submenu::with_items(app, "Open Recent", true, &[&no_recent_item as &dyn IsMenuItem<_>])?
     } else {
         let mut recent_items = Vec::new();
         for p in &recent {
@@ -75,16 +76,17 @@ fn build_tray_menu(app: &tauri::AppHandle<tauri::Wry>) -> Result<Menu<tauri::Wry
             .iter()
             .map(|item| item as &dyn IsMenuItem<_>)
             .collect();
-        let recent_submenu = Submenu::with_items(app, "Open Recent", true, &recent_refs)?;
-        let mut menu_items: Vec<&dyn IsMenuItem<_>> = vec![
-            &show_item as &dyn IsMenuItem<_>,
-            &sep1 as &dyn IsMenuItem<_>,
-        ];
-        menu_items.push(&recent_submenu as &dyn IsMenuItem<_>);
-        menu_items.push(&sep2 as &dyn IsMenuItem<_>);
-        menu_items.push(&quit_item as &dyn IsMenuItem<_>);
-        Menu::with_items(app, &menu_items)
-    }
+        Submenu::with_items(app, "Open Recent", true, &recent_refs)?
+    };
+
+    let mut menu_items: Vec<&dyn IsMenuItem<_>> = vec![
+        &show_item as &dyn IsMenuItem<_>,
+        &sep1 as &dyn IsMenuItem<_>,
+    ];
+    menu_items.push(&recent_submenu as &dyn IsMenuItem<_>);
+    menu_items.push(&sep2 as &dyn IsMenuItem<_>);
+    menu_items.push(&quit_item as &dyn IsMenuItem<_>);
+    Menu::with_items(app, &menu_items)
 }
 
 #[tauri::command]
@@ -168,6 +170,7 @@ pub fn run() {
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "show" => show_main_window(app),
                     "quit" => app.exit(0),
+                    "no_recent" => {}
                     id => {
                         let _ = projects::open_project(
                             app.clone(),

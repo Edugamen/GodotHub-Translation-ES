@@ -444,8 +444,10 @@ const [bugReportOpen, setBugReportOpen] = useState(false)
       }
       try {
         await api.openProject(projectId, true)
-      } catch (_err) {
+        refreshProjects()
+      } catch (e) {
         setLaunchingProject(null)
+        alert(String(e))
       }
     }
     const handleSwitchWorkspace = (e: Event) => {

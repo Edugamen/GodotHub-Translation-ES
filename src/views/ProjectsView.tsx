@@ -43,11 +43,10 @@ import {
   IconPin,
   IconSearch,
   IconX,
-  IconFilter,
-  IconArrowUpDown,
   IconTags,
   IconRefresh,
   IconChevronDown,
+  IconArrowUpDown,
 } from '../components/Icons'
 import {
   comparatorFor,
@@ -177,8 +176,8 @@ export function ProjectsView({
   const [activeId, setActiveId] = useState<string | null>(null)
   const [overContainer, setOverContainer] = useState<string | null>(null)
   const [query, setQuery] = useState('')
-  const [categoryFilter, setCategoryFilter] = useState('')
-  const [sortBy, setSortBy] = useState<ProjectSortOption>('custom')
+  const [sortBy, setSortBy] = useState<ProjectSortOption>('categories')
+
   const [scanning, setScanning] = useState(false)
   const [importing, setImporting] = useState(false)
   const [dialogMinimized, setDialogMinimized] = useState(false)
@@ -193,7 +192,7 @@ export function ProjectsView({
     },
   )
   const [propertiesProject, setPropertiesProject] = useState<Project | null>(null)
-  const [sizeCache, setSizeCache] = useState<Record<string, number>>({})
+
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const lastClickedIdRef = useRef<string | null>(null)
   const [confirmBatchRemove, setConfirmBatchRemove] = useState(false)
@@ -306,9 +305,7 @@ export function ProjectsView({
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const isSearching = query.trim().length > 0
-  const isFiltering = categoryFilter !== ''
-  const dragDisabled = isSearching || isFiltering
+
 
   const allVisibleIdsRef = useRef<string[]>([])
 
@@ -349,6 +346,10 @@ export function ProjectsView({
     return () => window.removeEventListener('keydown', handler)
   }, [activeId, handleClearSelection])
 
+  const isSearching = query.trim().length > 0
+  const isSortingCategories = sortBy === 'categories'
+  const dragDisabled = isSearching || !isSortingCategories
+
   const availableCategories = useMemo(
     () => [...categories.map((c) => c.name), UNCATEGORIZED],
     [categories],
@@ -356,78 +357,42 @@ export function ProjectsView({
 
   const filteredProjects = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return projects.filter((p) => {
-      if (
-        q &&
-        !p.name.toLowerCase().includes(q) &&
-        !p.path.toLowerCase().includes(q)
-      )
-        return false
-      if (categoryFilter === UNCATEGORIZED && p.category) return false
-      if (
-        categoryFilter &&
-        categoryFilter !== UNCATEGORIZED &&
-        p.category !== categoryFilter
-      )
-        return false
-      return true
-    })
-  }, [projects, query, categoryFilter])
+    if (!q) return projects
+    return projects.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.path.toLowerCase().includes(q),
+    )
+  }, [projects, query])
 
-  useEffect(() => {
-    if (sortBy !== 'size_desc' && sortBy !== 'size_asc') return
-    const paths = filteredProjects
-      .filter((p) => sizeCache[p.path] === undefined)
-      .map((p) => p.path)
-    if (paths.length === 0) return
-    Promise.allSettled(paths.map((path) => api.getProjectSize(path)))
-      .then((results) => {
-        const updates: Record<string, number> = {}
-        results.forEach((r, i) => {
-          if (r.status === 'fulfilled') {
-            updates[paths[i]] = r.value.total_size
-          }
-        })
-        if (Object.keys(updates).length > 0) {
-          setSizeCache((prev) => ({ ...prev, ...updates }))
-        }
-      })
-      .catch(() => {})
-  }, [sortBy, filteredProjects])
+  const cmp = comparatorFor(sortBy)
 
-  const projectsWithSize = useMemo(
-    () => filteredProjects.map((p) => ({
-      ...p,
-      __cached_size: sizeCache[p.path] ?? 0,
-    })),
-    [filteredProjects, sizeCache],
+  const sortProjects = useCallback(
+    (list: Project[]) => {
+      if (cmp) return [...list].sort(cmp)
+      return [...list].sort((a, b) => a.sort_order - b.sort_order)
+    },
+    [cmp],
   )
 
   const pinned = useMemo(() => {
-    const list = projectsWithSize.filter((p) => p.pinned)
-    const cmp = comparatorFor(sortBy)
-    return cmp
-      ? [...list].sort(cmp)
-      : [...list].sort((a, b) => a.sort_order - b.sort_order)
-  }, [projectsWithSize, sortBy])
+    return sortProjects(filteredProjects.filter((p) => p.pinned))
+  }, [filteredProjects, sortProjects])
+
+  const showCategories = sortBy === 'categories'
 
   const categorySections = useMemo(() => {
+    if (!showCategories) return []
     const groups = new Map<string, Project[]>()
     for (const key of availableCategories) groups.set(key, [])
-    for (const p of projectsWithSize) {
+    for (const p of filteredProjects) {
       if (p.pinned) continue
       const key = p.category ?? UNCATEGORIZED
       if (!groups.has(key)) groups.set(key, [])
       groups.get(key)!.push(p)
     }
-    const cmp = comparatorFor(sortBy)
     for (const [key, list] of groups) {
-      groups.set(
-        key,
-        cmp
-          ? [...list].sort(cmp)
-          : [...list].sort((a, b) => a.sort_order - b.sort_order),
-      )
+      groups.set(key, sortProjects(list))
     }
     const keys = [...groups.keys()].filter((k) => k !== UNCATEGORIZED)
     keys.push(UNCATEGORIZED)
@@ -436,15 +401,11 @@ export function ProjectsView({
       label: key === UNCATEGORIZED ? 'Uncategorized' : key,
       items: groups.get(key)!,
     }))
-  }, [filteredProjects, sortBy, availableCategories])
+  }, [filteredProjects, availableCategories, showCategories, sortProjects])
 
   const flatList = useMemo(() => {
-    const list = projectsWithSize.filter((p) => !p.pinned)
-    const cmp = comparatorFor(sortBy)
-    return cmp
-      ? [...list].sort(cmp)
-      : [...list].sort((a, b) => a.sort_order - b.sort_order)
-  }, [projectsWithSize, sortBy])
+    return sortProjects(filteredProjects.filter((p) => !p.pinned))
+  }, [filteredProjects, sortProjects])
 
   const versionWarningMap = useMemo(() => {
     const map: Record<string, 'not_found' | 'major_mismatch' | null> = {}
@@ -473,13 +434,13 @@ export function ProjectsView({
     const map: Record<string, string[]> = {
       __pinned__: pinned.map((p) => p.id),
     }
-    if (categoriesEnabled) {
+    if (showCategories && categoriesEnabled) {
       for (const s of categorySections) map[s.key] = s.items.map((p) => p.id)
     } else {
       map.__flat__ = flatList.map((p) => p.id)
     }
     return map
-  }, [pinned, categorySections, flatList, categoriesEnabled])
+  }, [pinned, categorySections, flatList, categoriesEnabled, showCategories])
 
   const [containers, setContainers] = useState<Record<string, string[]>>(
     () => sourceContainers,
@@ -588,7 +549,6 @@ export function ProjectsView({
       setContainers((prev) => ({ ...prev, [activeContainer]: finalItems }))
     }
 
-    setSortBy('custom')
     const kind = kindOfZone(activeContainer)
     if (kind === 'category') {
       const dragged = projectsById.get(id)
@@ -791,7 +751,6 @@ export function ProjectsView({
                     onGitAction={(action) => handleGitAction(entry.id, action)}
                     onOpenProperties={() => setPropertiesProject(entry)}
                     onShowGitSidebar={() => onShowGitSidebar?.(entry, gitStatusMap[entry.path] ?? null)}
-                    onOpened={refresh}
                     draggable={!dragDisabled}
                     selected={selectedIds.has(entry.id)}
                     onToggleSelect={() => toggleSelect(entry.id)}
@@ -816,8 +775,8 @@ export function ProjectsView({
             PROJECTS
           </h2>
           <p className="text-xs text-muted">
-            In Library: {projects.length}
-            {(isSearching || isFiltering) && (
+            {projects.length} project{projects.length === 1 ? '' : 's'}
+            {isSearching && (
               <> · Showing {filteredProjects.length}</>
             )}
           </p>
@@ -939,40 +898,16 @@ export function ProjectsView({
             )}
           </div>
 
-          {categoriesEnabled && (
-            <div className="flex items-center gap-1.5 shrink-0">
-              <IconFilter
-                fill="none"
-                className="w-3.5 h-3.5 text-muted shrink-0"
-              />
-              <Dropdown
-                className="w-44"
-                value={categoryFilter}
-                onChange={setCategoryFilter}
-                emptyLabel="All Categories"
-                options={availableCategories.map((c) => {
-                  const cat =
-                    c === UNCATEGORIZED
-                      ? null
-                      : categories.find((cat) => cat.name === c)
-                  return {
-                    value: c,
-                    label: c === UNCATEGORIZED ? 'Uncategorized' : c,
-                    dotColor: cat?.color,
-                  }
-                })}
-              />
-            </div>
-          )}
-
           <div className="flex items-center gap-1.5 shrink-0">
             <IconArrowUpDown className="w-3.5 h-3.5 text-muted shrink-0" />
             <Dropdown
-              className="w-48"
+              className="w-44"
               value={sortBy}
-              onChange={(v) => setSortBy((v || 'custom') as ProjectSortOption)}
-              emptyLabel="Custom order"
-              options={SORT_OPTIONS}
+              onChange={(v) => setSortBy((v || 'categories') as ProjectSortOption)}
+              emptyLabel="Sort…"
+              options={SORT_OPTIONS.filter(
+                (opt) => categoriesEnabled || opt.value !== 'categories',
+              )}
             />
           </div>
         </div>
@@ -1003,9 +938,7 @@ export function ProjectsView({
             <IconSearch fill="none" className="w-5 h-5 text-muted" />
           </div>
           <p className="text-sm text-muted max-w-xs leading-relaxed">
-            {isSearching
-              ? `No projects match "${query.trim()}".`
-              : 'No projects match the current filter.'}
+            No projects match &ldquo;{query.trim()}&rdquo;.
           </p>
         </div>
       ) : (
@@ -1081,7 +1014,6 @@ export function ProjectsView({
                                 onGitAction={(action) => handleGitAction(entry.id, action)}
                                 onOpenProperties={() => setPropertiesProject(entry)}
                                 onShowGitSidebar={() => onShowGitSidebar?.(entry, gitStatusMap[entry.path] ?? null)}
-                                onOpened={refresh}
                                 draggable={!dragDisabled}
                                 selected={selectedIds.has(entry.id)}
                                 onToggleSelect={() => toggleSelect(entry.id)}
@@ -1099,7 +1031,7 @@ export function ProjectsView({
               )
             })()}
 
-            {categoriesEnabled ? (
+            {showCategories && categoriesEnabled ? (
               (activeId ? categorySections : categorySections.filter(({ items }) => items.length > 0))
                 .map(({ key, label }) => {
                 const ids = containers[key] ?? []

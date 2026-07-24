@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { api } from '../lib/api'
 import { useSettings } from '../hooks/useSettings'
 import type { ProjectTemplate, TemplateSyncResult } from '../types'
-import { IconCopy, IconTrash, IconAlertTriangle, IconRefresh, IconExternalLink } from '../components/Icons'
+import { IconCopy, IconTrash, IconAlertTriangle, IconRefresh, IconExternalLink, IconSearch, IconX } from '../components/Icons'
 import { Tooltip } from '../components/ui/Tooltip'
 import { TemplatePreviewModal } from '../components/modals/TemplatePreviewModal'
 import { useTaskTray } from '../hooks/useTaskTray'
@@ -19,6 +19,7 @@ export function TemplatesView() {
   const [syncMessage, setSyncMessage] = useState<string | null>(null)
   const [syncResult, setSyncResult] = useState<TemplateSyncResult | null>(null)
   const [previewTemplate, setPreviewTemplate] = useState<ProjectTemplate | null>(null)
+  const [query, setQuery] = useState('')
   const { registerTask, updateTask, unregisterTask } = useTaskTray()
 
   const load = async () => {
@@ -106,19 +107,52 @@ export function TemplatesView() {
     }
   }
 
-  const user = templates
+  const isSearching = query.trim().length > 0
+  const filteredTemplates = isSearching
+    ? templates.filter(
+        (t) =>
+          t.name.toLowerCase().includes(query.toLowerCase()) ||
+          (t.description &&
+            t.description.toLowerCase().includes(query.toLowerCase())),
+      )
+    : templates
+
+  const user = filteredTemplates
 
   return (
     <div className="p-10 pt-15 max-w-8xl mx-auto">
       <div className="mb-8">
-        <h2 className="font-body font-semibold text-3xl tracking-tight">
-          TEMPLATES
-        </h2>
-        <p className="text-xs text-muted mt-1">
-          {templates.length > 0
-            ? `${templates.length} template${templates.length !== 1 ? 's' : ''} available`
-            : 'No templates saved yet.'}
-        </p>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="font-body font-semibold text-3xl tracking-tight">
+              TEMPLATES
+            </h2>
+            <p className="text-xs text-muted mt-1">
+              {templates.length > 0
+                ? `${templates.length} template${templates.length !== 1 ? 's' : ''} available${isSearching ? ` · Showing ${filteredTemplates.length}` : ''}`
+                : 'No templates saved yet.'}
+            </p>
+          </div>
+          {/* Search bar */}
+          <div className="relative w-64 shrink-0">
+            <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted/50 pointer-events-none" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search templates…"
+              className="w-full pl-9 pr-9 py-2 rounded-lg border border-line bg-surface text-sm text-ink placeholder:text-muted/50 outline-none transition-all focus:border-accent focus:ring-1 focus:ring-accent/30"
+            />
+            {query && (
+              <button
+                onClick={() => setQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted/50 hover:text-ink transition-colors cursor-pointer"
+              >
+                <IconX className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
         <div className="flex items-center gap-3 mt-4">
           <Tooltip
             content={!settings.template_scan_dir ? 'Set a template scan directory in Settings → Storage first' : 'Sync from directory'}
@@ -168,6 +202,13 @@ export function TemplatesView() {
           <p className="text-sm text-muted max-w-xs leading-relaxed">
             No templates yet. Right-click a project or open its "More" menu and
             select <strong>Save as Template</strong> to create one.
+          </p>
+        </div>
+      ) : filteredTemplates.length === 0 ? (
+        <div className="border border-dashed border-line rounded-2xl py-24 flex flex-col items-center gap-4 text-center">
+          <IconSearch className="w-5 h-5 text-muted" />
+          <p className="text-sm text-muted max-w-xs leading-relaxed">
+            No templates match <strong>"{query}"</strong>.
           </p>
         </div>
       ) : (
