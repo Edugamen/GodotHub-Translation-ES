@@ -358,10 +358,12 @@ export const ProjectCard = memo(function ProjectCard({
             </div>
             <div className="flex items-center gap-3.5 min-w-0">
               {draggable && (
-                <IconGrip
+                <span
                   {...dragHandleProps}
-                  className="w-4 h-4 text-muted/30 group-hover:text-muted/70 shrink-0 opacity-0 group-hover:opacity-100 scale-50 group-hover:scale-100 transition-all duration-200 ease-out touch-none cursor-grab active:cursor-grabbing"
-                />
+                  className="inline-flex touch-none cursor-grab active:cursor-grabbing"
+                >
+                  <IconGrip className="w-4 h-4 text-muted/30 group-hover:text-muted/70 shrink-0 opacity-0 group-hover:opacity-100 scale-50 group-hover:scale-100 transition-all duration-200 ease-out" />
+                </span>
               )}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">

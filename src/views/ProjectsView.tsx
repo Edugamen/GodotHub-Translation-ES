@@ -481,10 +481,12 @@ export function ProjectsView({
     return map
   }, [pinned, categorySections, flatList, categoriesEnabled])
 
-  const [containers, setContainers] = useState<Record<string, string[]>>({})
+  const [containers, setContainers] = useState<Record<string, string[]>>(
+    () => sourceContainers,
+  )
   useEffect(() => {
     if (!activeId) setContainers(sourceContainers)
-  }, [sourceContainers, activeId])
+  }, [sourceContainers])
 
   useMemo(() => {
     const ids: string[] = []
@@ -1025,6 +1027,11 @@ export function ProjectsView({
           }}
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
+          onDragCancel={() => {
+            setActiveId(null)
+            setOverContainer(null)
+            setContainers(sourceContainers)
+          }}
         >
           <div className="flex flex-col gap-8">
             {(containers.__pinned__?.length ?? 0) > 0 && (() => {

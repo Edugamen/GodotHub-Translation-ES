@@ -98,11 +98,13 @@ function SortableCategoryItem({
           : 'border-line'
       }`}
     >
-      <IconGrip
+      <span
         {...attributes}
         {...listeners}
-        className="w-3.5 h-3.5 text-muted/50 shrink-0 cursor-grab active:cursor-grabbing touch-none"
-      />
+        className="inline-flex touch-none cursor-grab active:cursor-grabbing"
+      >
+        <IconGrip className="w-3.5 h-3.5 text-muted/50 shrink-0" />
+      </span>
       {editing ? (
         <>
           <div className="flex-1 flex flex-col gap-2">
