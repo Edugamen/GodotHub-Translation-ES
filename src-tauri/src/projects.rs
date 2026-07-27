@@ -371,7 +371,12 @@ pub fn open_project(app: AppHandle, id: String, editor: bool) -> Result<(), Stri
 
     let settings = crate::settings::read_settings(&app);
     if settings.close_on_project_open {
-        if settings.minimize_to_tray {
+        #[cfg(target_os = "macos")]
+        let keep_alive = true;
+        #[cfg(not(target_os = "macos"))]
+        let keep_alive = settings.minimize_to_tray;
+
+        if keep_alive {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.hide();
             }

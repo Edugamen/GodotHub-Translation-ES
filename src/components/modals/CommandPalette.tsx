@@ -19,6 +19,7 @@ import {
 } from '../Icons'
 import { getWorkspaceIcon } from '../../lib/workspaceIcons'
 import { formatLastOpened } from '../../lib/lastOpened'
+import { isMac } from '../../lib/platform'
 import type { Project, InstalledGodotVersion, Workspace } from '../../types'
 
 interface CommandItem {
@@ -204,7 +205,8 @@ export interface SettingSearchEntry {
   tab: string
 }
 
-export const SETTINGS_SEARCH_ITEMS: SettingSearchEntry[] = [
+export const SETTINGS_SEARCH_ITEMS: SettingSearchEntry[] = (
+  [
   { key: 'project_scan_dirs', label: 'Project scan folders', tab: 'storage' },
   { key: 'version_scan_dirs', label: 'Version scan folders', tab: 'storage' },
   { key: 'default_project_location', label: 'Default project location', tab: 'storage' },
@@ -238,7 +240,8 @@ export const SETTINGS_SEARCH_ITEMS: SettingSearchEntry[] = [
   { key: 'export_settings', label: 'Export settings to JSON', tab: 'advanced' },
   { key: 'import_settings', label: 'Import settings from JSON', tab: 'advanced' },
   { key: 'check_updates', label: 'Check for updates', tab: 'advanced' },
-]
+  ] as SettingSearchEntry[]
+).filter((item) => !(isMac && item.key === 'minimize_to_tray'))
 
 interface Props {
   onClose: () => void

@@ -197,9 +197,16 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
-                if window.label() == "main"
-                    && settings::read_settings(window.app_handle()).minimize_to_tray
-                {
+                if window.label() != "main" {
+                    return;
+                }
+
+                #[cfg(target_os = "macos")]
+                let keep_alive = true;
+                #[cfg(not(target_os = "macos"))]
+                let keep_alive = settings::read_settings(window.app_handle()).minimize_to_tray;
+
+                if keep_alive {
                     api.prevent_close();
                     let _ = window.hide();
                 }
@@ -299,6 +306,12 @@ pub fn run() {
             refresh_tray_menu,
             pick_folder,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|_app, _event| {
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Reopen { .. } = _event {
+                show_main_window(_app);
+            }
+        });
 }
