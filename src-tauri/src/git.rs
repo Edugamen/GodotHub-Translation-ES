@@ -215,37 +215,61 @@ fn get_git_status_for_path(path: &str) -> GitStatus {
         };
     }
 
-    let branch = cmd()
-        .args(["-C", path, "branch", "--show-current"])
+    // Use a single git command to get both branch and status info
+    // `git status --porcelain --branch` outputs branch info on the first line (## ...)
+    // followed by changed files. This halves the number of git.exe processes.
+    let output = cmd()
+        .args(["-C", path, "status", "--porcelain", "--branch"])
         .output()
-        .ok()
-        .and_then(|out| {
-            if out.status.success() {
-                let name = String::from_utf8_lossy(&out.stdout).trim().to_string();
-                if name.is_empty() {
-                    None
-                } else {
-                    Some(name)
+        .ok();
+
+    match output {
+        Some(out) => {
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            let mut branch: Option<String> = None;
+            let mut has_uncommitted = false;
+
+            for (i, line) in stdout.lines().enumerate() {
+                let trimmed = line.trim();
+                if trimmed.is_empty() {
+                    continue;
                 }
-            } else {
-                None
+                if i == 0 && trimmed.starts_with("## ") {
+                    // Parse branch from lines like:
+                    //   ## main
+                    //   ## main...origin/main [ahead 1]
+                    //   ## HEAD (no branch)
+                    let branch_info = &trimmed[3..];
+                    if !branch_info.starts_with("HEAD (no branch)") && !branch_info.is_empty() {
+                        // Extract just the local branch name before "..." or " ["
+                        let name = branch_info
+                            .split("...")
+                            .next()
+                            .unwrap_or(branch_info)
+                            .split('[')
+                            .next()
+                            .unwrap_or(branch_info)
+                            .trim();
+                        if !name.is_empty() {
+                            branch = Some(name.to_string());
+                        }
+                    }
+                } else {
+                    has_uncommitted = true;
+                }
             }
-        });
 
-    let has_uncommitted = cmd()
-        .args(["-C", path, "status", "--porcelain"])
-        .output()
-        .ok()
-        .map(|out| {
-            let text = String::from_utf8_lossy(&out.stdout);
-            !text.trim().is_empty()
-        })
-        .unwrap_or(false);
-
-    GitStatus {
-        branch,
-        has_uncommitted,
-        is_repo: true,
+            GitStatus {
+                branch,
+                has_uncommitted,
+                is_repo: true,
+            }
+        }
+        None => GitStatus {
+            branch: None,
+            has_uncommitted: false,
+            is_repo: true,
+        },
     }
 }
 
@@ -256,16 +280,23 @@ pub fn get_git_status(path: String) -> GitStatus {
 
 #[tauri::command]
 pub async fn batch_git_status(paths: Vec<String>) -> HashMap<String, GitStatus> {
+    const MAX_CONCURRENT: usize = 10;
     tokio::task::spawn_blocking(move || {
         let results = std::sync::Mutex::new(HashMap::with_capacity(paths.len()));
-        std::thread::scope(|s| {
-            for p in paths {
-                s.spawn(|| {
-                    let status = get_git_status_for_path(&p);
-                    results.lock().unwrap().insert(p, status);
-                });
-            }
-        });
+
+        // Process projects in chunks to avoid spawning too many concurrent git.exe processes
+        // This prevents resource exhaustion on Windows when there are many projects.
+        for chunk in paths.chunks(MAX_CONCURRENT) {
+            std::thread::scope(|s| {
+                for p in chunk {
+                    s.spawn(|| {
+                        let status = get_git_status_for_path(p);
+                        results.lock().unwrap().insert(p.clone(), status);
+                    });
+                }
+            });
+        }
+
         results.into_inner().unwrap()
     })
     .await

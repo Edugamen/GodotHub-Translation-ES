@@ -52,22 +52,9 @@ function installErrorCapture() {
   window.addEventListener('unhandledrejection', unhandledRejectionHandler)
 }
 
-function uninstallErrorCapture() {
-  if (origConsoleError) {
-    console.error = origConsoleError
-    origConsoleError = null
-  }
-  if (origWindowOnError) {
-    window.onerror = origWindowOnError
-    origWindowOnError = null
-  }
-  if (unhandledRejectionHandler) {
-    window.removeEventListener('unhandledrejection', unhandledRejectionHandler)
-    unhandledRejectionHandler = null
-  }
-  capturedErrors = []
-  captureInstalled = false
-}
+// Install error capture at module load time so errors are captured
+// from app startup, not just when the modal opens.
+installErrorCapture()
 
 async function getGPUInfo(): Promise<string> {
   try {
@@ -135,7 +122,6 @@ export function BugReportModal({ onClose }: Props) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    installErrorCapture()
     let cancelled = false
     setLoading(true)
     buildReport().then((r) => {
@@ -146,7 +132,8 @@ export function BugReportModal({ onClose }: Props) {
     })
     return () => {
       cancelled = true
-      uninstallErrorCapture()
+      // Don't uninstall the capture — we want errors to persist
+      // across modal sessions so users can always see them.
     }
   }, [])
 

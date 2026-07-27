@@ -58,6 +58,7 @@ import { useGodotVersionsContext } from '../hooks/godotVersionsContext'
 
 const UNCATEGORIZED = '__uncategorized__'
 const COLLAPSED_CATS_KEY = 'godothub_collapsed_categories'
+const SORT_BY_KEY = 'godothub_projects_sort_by'
 
 type ZoneKind = 'category' | 'pinned' | 'flat'
 
@@ -176,12 +177,21 @@ export function ProjectsView({
   const [activeId, setActiveId] = useState<string | null>(null)
   const [overContainer, setOverContainer] = useState<string | null>(null)
   const [query, setQuery] = useState('')
-  const [sortBy, setSortBy] = useState<ProjectSortOption>('categories')
+  const [sortBy, setSortBy] = useState<ProjectSortOption>(
+    () => {
+      try {
+        const raw = localStorage.getItem(SORT_BY_KEY)
+        if (raw) return raw as ProjectSortOption
+      } catch {}
+      return 'categories'
+    },
+  )
 
   const [scanning, setScanning] = useState(false)
   const [importing, setImporting] = useState(false)
   const [dialogMinimized, setDialogMinimized] = useState(false)
   const [gitStatusMap, setGitStatusMap] = useState<Record<string, GitStatus>>({})
+  const fetchingGitRef = useRef(false)
   const [collapsedCats, setCollapsedCats] = useState<Record<string, boolean>>(
     () => {
       try {
@@ -463,6 +473,12 @@ export function ProjectsView({
     } catch {}
   }, [collapsedCats])
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(SORT_BY_KEY, sortBy)
+    } catch {}
+  }, [sortBy])
+
   const draggedProject = activeId ? (projectsById.get(activeId) ?? null) : null
   const canDropInZone = (kind: ZoneKind) =>
     draggedProject
@@ -567,12 +583,18 @@ export function ProjectsView({
 
 
   const fetchGitStatuses = useCallback(async () => {
+    // Prevent overlapping calls — if git is slow (network drives, SSH, etc.),
+    // don't pile up more requests on top of the current one.
+    if (fetchingGitRef.current) return
     if (projects.length === 0) return
+    fetchingGitRef.current = true
     try {
       const paths = projects.map((p) => p.path)
       const statuses = await api.batchGitStatus(paths)
       setGitStatusMap(statuses)
     } catch {
+    } finally {
+      fetchingGitRef.current = false
     }
   }, [projects])
 

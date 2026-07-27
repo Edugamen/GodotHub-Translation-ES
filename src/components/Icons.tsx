@@ -62,6 +62,7 @@ import {
   faSpinner,
   faCircleCheck,
   faCircleXmark,
+  faStar,
 } from '@fortawesome/free-solid-svg-icons'
 
 interface IconProps extends Omit<React.SVGProps<SVGSVGElement>, 'ref'> {
@@ -139,3 +140,4 @@ export const IconBell = solid(faBell)
 export const IconSpinner = solid(faSpinner)
 export const IconCircleCheck = solid(faCircleCheck)
 export const IconCircleX = solid(faCircleXmark)
+export const IconStar = solid(faStar)
