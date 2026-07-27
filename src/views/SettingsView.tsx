@@ -9,6 +9,7 @@ import { ConfirmDialog } from '../components/modals/ConfirmDialog'
 import { IconSun, IconMoon, IconHeart, IconRocket, IconBug } from '../components/Icons'
 import { api } from '../lib/api'
 import { applyTheme } from '../lib/colors'
+import { isMac } from '../lib/platform'
 import {
   applyRadius,
   applyDensity,
@@ -901,8 +902,9 @@ export function SettingsView({
                       Close application on project open
                     </span>
                     <p className="text-[11px] text-muted mt-1 leading-relaxed">
-                      Quits GodotHub automatically as soon as a project is
-                      launched in Godot.
+                      {isMac
+                        ? 'Hides GodotHub automatically as soon as a project is launched in Godot. It keeps running in the Dock.'
+                        : 'Quits GodotHub automatically as soon as a project is launched in Godot.'}
                     </p>
                   </div>
                   <Toggle
@@ -914,29 +916,31 @@ export function SettingsView({
                   />
                 </label>
 
-                <label className="flex items-center justify-between gap-4 pt-5 border-t border-line">
-                  <div>
-                    <span className="text-xs font-medium text-muted block">
-                      Minimize to system tray on closing app
-                    </span>
-                    <p className="text-[11px] text-muted mt-1 leading-relaxed">
-                      Keeps GodotHub running in the system tray instead of
-                      quitting when you close the window. Use the tray icon to
-                      reopen or quit.
-                    </p>
-                  </div>
-                  <Toggle
-                    checked={current.minimize_to_tray}
-                    onChange={(checked) =>
-                      setField('minimize_to_tray', checked)
-                    }
-                    label="Minimize to system tray on closing app"
-                  />
-                </label>
+                {!isMac && (
+                  <label className="flex items-center justify-between gap-4 pt-5 border-t border-line">
+                    <div>
+                      <span className="text-xs font-medium text-muted block">
+                        Minimize to system tray on closing app
+                      </span>
+                      <p className="text-[11px] text-muted mt-1 leading-relaxed">
+                        Keeps GodotHub running in the system tray instead of
+                        quitting when you close the window. Use the tray icon to
+                        reopen or quit.
+                      </p>
+                    </div>
+                    <Toggle
+                      checked={current.minimize_to_tray}
+                      onChange={(checked) =>
+                        setField('minimize_to_tray', checked)
+                      }
+                      label="Minimize to system tray on closing app"
+                    />
+                  </label>
+                )}
 
                 <AnimatePresence initial={false}>
                   {current.close_on_project_open &&
-                    current.minimize_to_tray && (
+                    (isMac || current.minimize_to_tray) && (
                       <motion.label
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
@@ -949,9 +953,9 @@ export function SettingsView({
                             Reopen after closing Godot
                           </span>
                           <p className="text-[11px] text-muted mt-1 leading-relaxed">
-                            Brings GodotHub back out of the system tray
-                            automatically once the Godot editor for that project
-                            is closed.
+                            {isMac
+                              ? 'Brings GodotHub back automatically once the Godot editor for that project is closed.'
+                              : 'Brings GodotHub back out of the system tray automatically once the Godot editor for that project is closed.'}
                           </p>
                         </div>
                         <Toggle
