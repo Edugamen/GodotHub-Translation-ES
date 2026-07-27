@@ -259,6 +259,25 @@ GodotHub is available as a desktop application for:
 
 > [⬇️ Download the latest release](https://github.com/RykoTheDev/godothub/releases/latest)
 
+#### macOS: "GodotHub is damaged and can't be opened"
+
+GodotHub is code-signed, but it is **not notarized** — notarization requires a paid
+Apple Developer account. macOS therefore blocks the app the first time you open it.
+This is expected, and it takes one step to get past.
+
+Drag GodotHub to your Applications folder, then run:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/GodotHub.app
+```
+
+Prefer not to use the terminal? Open the app once and let macOS refuse, then go to
+**System Settings → Privacy & Security**, scroll down, and click **Open Anyway**.
+(On macOS 15 and newer, right-clicking → Open no longer bypasses this.)
+
+You only need to do this once per installed version. Updates applied through the
+app's built-in updater are not affected.
+
 ### Build from Source
 
 #### Prerequisites
