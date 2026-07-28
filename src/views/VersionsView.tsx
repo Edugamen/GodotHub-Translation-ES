@@ -17,6 +17,7 @@ import {
   IconPause,
   IconPlay,
   IconExternalLink,
+  IconRocket,
 } from '../components/Icons'
 import { ScrollReveal } from '../components/ui/ScrollReveal'
 import { useGodotVersionsContext } from '../hooks/godotVersionsContext'
@@ -410,18 +411,32 @@ export function VersionsView() {
                     </>
                   )}
                 </div>
-                <motion.button
-                  whileHover={{ y: -1 }}
-                  whileTap={{ scale: 0.96 }}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    remove(v.tag)
-                  }}
-                  className="icon-wiggle cursor-pointer focus-ring flex items-center gap-2 px-3.5 py-2 rounded-lg border border-line text-muted hover:text-danger hover:border-danger/50 text-sm transition-colors shrink-0"
-                >
-                  <IconTrash className="w-3.5 h-3.5" />
-                  Uninstall
-                </motion.button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <motion.button
+                    whileHover={{ y: -1 }}
+                    whileTap={{ scale: 0.96 }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      api.openGodotVersion(v.tag).catch(() => {})
+                    }}
+                    className="icon-wiggle cursor-pointer focus-ring flex items-center gap-2 px-3.5 py-2 rounded-lg border border-line text-muted hover:text-mint hover:border-mint/50 text-sm transition-colors shrink-0"
+                  >
+                    <IconRocket className="w-3.5 h-3.5" />
+                    Open
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ y: -1 }}
+                    whileTap={{ scale: 0.96 }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      remove(v.tag)
+                    }}
+                    className="icon-wiggle cursor-pointer focus-ring flex items-center gap-2 px-3.5 py-2 rounded-lg border border-line text-muted hover:text-danger hover:border-danger/50 text-sm transition-colors shrink-0"
+                  >
+                    <IconTrash className="w-3.5 h-3.5" />
+                    Uninstall
+                  </motion.button>
+                </div>
               </div>
               </ScrollReveal>
             ))}
@@ -787,6 +802,13 @@ export function VersionsView() {
         label: 'Rename',
         icon: IconPencil,
         onClick: () => startEditing(tag, version?.custom_name),
+      },
+      {
+        label: 'Open Editor',
+        icon: IconRocket,
+        onClick: () => {
+          if (tag) api.openGodotVersion(tag).catch(() => {})
+        },
       },
       {
         label: 'Open Install Folder',

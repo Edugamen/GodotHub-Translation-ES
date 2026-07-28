@@ -232,6 +232,7 @@ pub fn run() {
             godot_versions::list_installed_godot_versions,
             godot_versions::rename_godot_version,
             godot_versions::delete_godot_version,
+            godot_versions::open_godot_version,
             godot_versions::import_version_zip,
             projects::list_projects,
             projects::create_project,

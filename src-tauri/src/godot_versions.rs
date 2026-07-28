@@ -668,6 +668,24 @@ pub fn rename_godot_version(
 }
 
 #[tauri::command]
+pub fn open_godot_version(app: AppHandle, tag: String) -> Result<(), String> {
+    let list = read_registry(&app);
+    let version = list
+        .iter()
+        .find(|v| v.tag == tag)
+        .ok_or("Version not found")?;
+    let exe_path = &version.executable_path;
+    let path = std::path::PathBuf::from(exe_path);
+    if !path.exists() {
+        return Err("Executable no longer exists at that path".into());
+    }
+    std::process::Command::new(path)
+        .spawn()
+        .map_err(|e| format!("Failed to launch editor: {e}"))?;
+    Ok(())
+}
+
+#[tauri::command]
 pub fn delete_godot_version(app: AppHandle, tag: String) -> Result<(), String> {
     let mut list = read_registry(&app);
     let idx = list

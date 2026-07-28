@@ -47,6 +47,8 @@ export const api = {
     invoke<InstalledGodotVersion>('rename_godot_version', { tag, customName }),
   deleteGodotVersion: (tag: string) =>
     invoke<void>('delete_godot_version', { tag }),
+  openGodotVersion: (tag: string) =>
+    invoke<void>('open_godot_version', { tag }),
 
   listProjects: () => invoke<Project[]>('list_projects'),
   createProject: (name: string, location: string, godotVersion: string, iconPath?: string | null, templateId?: string | null, category?: string | null) =>

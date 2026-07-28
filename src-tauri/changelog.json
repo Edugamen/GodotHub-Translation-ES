@@ -346,5 +346,21 @@
       }
     ],
     "created_at": 1784658817
+  },
+  {
+    "id": "78960fd9-e2bf-442e-9876-20822433e267",
+    "version": "v1.1.5",
+    "date": "2026-07-28",
+    "notes": [
+      {
+        "category": "fix",
+        "text": "Bug: Defaults to .NET Version When Not Using .NET and Dropdown  in Project Card was Bugged"
+      },
+      {
+        "category": "add",
+        "text": "'Open' Button alongside the 'Uninstall Button' in the Version Card to open the Godot Launcher of that version directly"
+      }
+    ],
+    "created_at": 1785245589
   }
 ]
