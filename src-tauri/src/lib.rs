@@ -167,12 +167,18 @@ pub fn run() {
             )));
 
             let tray_menu = build_tray_menu(app.handle())?;
+
+            #[cfg(target_os = "macos")]
+            let tray_icon = tauri::include_image!("./icons/trayTemplate.png");
+            #[cfg(not(target_os = "macos"))]
+            let tray_icon = app
+                .default_window_icon()
+                .cloned()
+                .expect("no default window icon set");
+
             let tray = TrayIconBuilder::new()
-                .icon(
-                    app.default_window_icon()
-                        .cloned()
-                        .expect("no default window icon set"),
-                )
+                .icon(tray_icon)
+                .icon_as_template(cfg!(target_os = "macos"))
                 .menu(&tray_menu)
                 .show_menu_on_left_click(false)
                 .tooltip("GodotHub")
