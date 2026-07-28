@@ -9,6 +9,7 @@ import { SettingsView } from './views/SettingsView'
 import { ChangelogView } from './views/ChangelogView'
 import { TemplatesView } from './views/TemplatesView'
 import { OnboardingView } from './views/OnboardingView'
+import { AssetStoreView } from './views/AssetStoreView'
 import { useSettings } from './hooks/useSettings'
 import { useWorkspaces } from './hooks/useWorkspaces'
 import { useProjectsContext } from './hooks/projectsContext'
@@ -44,6 +45,7 @@ import {
   IconRefresh,
   IconX,
   IconPlay,
+  IconStore,
 } from './components/Icons'
 import './index.css'
 import {
@@ -52,12 +54,13 @@ import {
 } from './hooks/godotVersionsContext'
 import { TaskTrayProvider } from './hooks/useTaskTray'
 
-type Tab = 'projects' | 'versions' | 'news' | 'templates' | 'settings' | 'changelog'
+type Tab = 'projects' | 'versions' | 'news' | 'templates' | 'asset-store' | 'settings' | 'changelog'
 
 const NAV_ITEMS: { tab: Tab; label: string; icon: typeof IconLayoutGrid }[] = [
   { tab: 'projects', label: 'Projects', icon: IconLayoutGrid },
   { tab: 'versions', label: 'Versions', icon: IconLayoutList },
   { tab: 'templates', label: 'Templates', icon: IconCopy },
+  { tab: 'asset-store', label: 'Asset Store', icon: IconStore },
   { tab: 'news', label: 'News', icon: IconNews },
 ]
 
@@ -421,6 +424,7 @@ const [bugReportOpen, setBugReportOpen] = useState(false)
         'versions',
         'news',
         'templates',
+        'asset-store',
         'settings',
         'changelog',
       ]
@@ -525,7 +529,7 @@ const [bugReportOpen, setBugReportOpen] = useState(false)
       onNewProject: requestNewProject,
       onOpenSettings: () => setTab('settings'),
       onSwitchTab: (i: number) => {
-        const tabs: Tab[] = ['projects', 'versions', 'news', 'templates']
+        const tabs: Tab[] = ['projects', 'versions', 'news', 'templates', 'asset-store']
         if (tabs[i]) setTab(tabs[i])
       },
       onCommandPalette: () => setCommandPaletteOpen((o) => !o),
@@ -569,16 +573,24 @@ const [bugReportOpen, setBugReportOpen] = useState(false)
           >
             {NAV_ITEMS.map(({ tab: t, label, icon: Icon }) => {
               const active = tab === t
+              const isAssetStore = t === 'asset-store'
               const btn = (
                 <button
                   key={t}
                   onClick={() => setTab(t)}
                   aria-label={label}
-                  className={`focus-ring cursor-pointer icon-wiggle relative flex items-center gap-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  className={`focus-ring cursor-pointer icon-wiggle relative flex items-center gap-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
                     collapsed
                       ? 'w-11 h-11 justify-center px-0'
                       : 'w-full pl-4 pr-3'
-                  } ${active ? 'text-ink' : 'text-muted hover:text-ink hover:bg-raised/60'}`}
+                  } ${isAssetStore
+                    ? active
+                      ? 'text-ink border border-dashed border-amber/40 bg-amber/[0.04]'
+                      : 'text-muted hover:text-ink hover:bg-amber/[0.04] border border-dashed border-transparent hover:border-amber/25'
+                    : active
+                      ? 'text-ink'
+                      : 'text-muted hover:text-ink hover:bg-raised/60'
+                  }`}
                 >
                   {active && (
                     <motion.span
@@ -592,13 +604,22 @@ const [bugReportOpen, setBugReportOpen] = useState(false)
                     />
                   )}
                   <Icon
-                    className={`relative w-4 h-4 shrink-0 ${active ? 'text-accent-bright' : ''}`}
+                    className={`relative w-4 h-4 shrink-0 ${active ? 'text-accent-bright' : isAssetStore ? 'text-amber/70' : ''}`}
                   />
-                  {!collapsed && <span className="relative">{label}</span>}
+                  {!collapsed && (
+                    <>
+                      <span className="relative">{label}</span>
+                      {isAssetStore && (
+                        <span className="relative ml-auto text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-amber/10 text-amber/70 border border-amber/20">
+                          Soon
+                        </span>
+                      )}
+                    </>
+                  )}
                 </button>
               )
               return collapsed ? (
-                <Tooltip key={t} content={label} side="right">
+                <Tooltip key={t} content={`${label} (Coming soon)`} side="right">
                   {btn}
                 </Tooltip>
               ) : (
@@ -715,6 +736,10 @@ const [bugReportOpen, setBugReportOpen] = useState(false)
               ) : tab === 'templates' ? (
                 <ViewErrorBoundary name="Templates">
                   <TemplatesView />
+                </ViewErrorBoundary>
+              ) : tab === 'asset-store' ? (
+                <ViewErrorBoundary name="Asset Store">
+                  <AssetStoreView />
                 </ViewErrorBoundary>
               ) : tab === 'changelog' ? (
                 <ViewErrorBoundary name="Changelog">
