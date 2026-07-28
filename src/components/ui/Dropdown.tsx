@@ -7,6 +7,8 @@ export interface DropdownOption {
   label: string
   dotClassName?: string
   dotColor?: string
+  /** Optional badge shown inside the dropdown item (e.g. "Mono") */
+  badge?: string
 }
 
 interface Props {
@@ -54,6 +56,7 @@ export function Dropdown({
 
   const dir = openUp !== undefined ? openUp : computedOpenUp
 
+  // When multiple options share the same value (before migration), use the first match
   const selected = options.find((o) => o.value === value)
 
   return (
@@ -76,9 +79,16 @@ export function Dropdown({
               className={`w-2 h-2 rounded-full shrink-0 ${selected?.dotClassName ?? 'bg-line'}`}
             />
           )}
-          <span className="truncate font-mono">
-            {selected ? selected.label : emptyLabel}
-          </span>
+          <span className="flex items-center gap-2 min-w-0">
+              <span className="truncate font-mono">
+                {selected ? selected.label : emptyLabel}
+              </span>
+              {selected?.badge && (
+                <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-md bg-accent/10 text-accent-bright border border-accent-dim/40 font-semibold">
+                  {selected.badge}
+                </span>
+              )}
+            </span>
         </span>
         <IconChevronDown
           className={`w-3.5 h-3.5 text-muted shrink-0 transition-transform duration-200 ${open ? 'rotate-180 text-accent' : ''}`}
@@ -109,9 +119,9 @@ export function Dropdown({
               <span className="w-2 h-2 rounded-full bg-line" />
               {emptyLabel}
             </button>
-            {options.map((o) => (
+            {options.map((o, idx) => (
               <button
-                key={o.value}
+                key={`${o.value}__${idx}`}
                 type="button"
                 onClick={() => {
                   onChange(o.value)
@@ -133,7 +143,14 @@ export function Dropdown({
                   className={`w-2 h-2 rounded-full shrink-0 ${o.dotClassName ?? 'bg-line'}`}
                 />
               )}
-                {o.label}
+              <span className="flex items-center gap-2 min-w-0">
+                  <span className="truncate">{o.label}</span>
+                  {o.badge && (
+                    <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-md bg-accent/10 text-accent-bright border border-accent-dim/40 font-semibold">
+                      {o.badge}
+                    </span>
+                  )}
+                </span>
               </button>
             ))}
           </motion.div>

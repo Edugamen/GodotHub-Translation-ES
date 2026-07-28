@@ -1209,15 +1209,16 @@ export function ProjectsView({
             </Tooltip>
 
             <Dropdown
-              className="w-36"
+              className="w-44"
               value=""
               onChange={(tag) => tag && handleBatchVersionChange(tag)}
               emptyLabel="Set version…"
               openUp
               options={installed.map((v) => ({
                 value: v.tag,
-                label: v.custom_name || v.tag,
+                label: v.custom_name || v.version,
                 dotClassName: 'bg-mint',
+                badge: v.is_mono ? 'Mono' : undefined,
               }))}
             />
 

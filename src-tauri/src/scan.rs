@@ -223,7 +223,7 @@ pub fn scan_for_versions_blocking(
         }
 
         let raw_version = probe_version(&exe_path);
-        let tag = if raw_version.is_empty() {
+        let base_tag = if raw_version.is_empty() {
             exe_path
                 .file_stem()
                 .map(|s| s.to_string_lossy().to_string())
@@ -232,6 +232,11 @@ pub fn scan_for_versions_blocking(
             normalize_tag(&raw_version)
         };
         let is_mono = exe_str.to_lowercase().contains("mono");
+        let tag = if is_mono && !base_tag.ends_with("-mono") {
+            format!("{}-mono", base_tag)
+        } else {
+            base_tag
+        };
 
         if existing
             .iter()
@@ -321,7 +326,7 @@ fn import_version_blocking(
         }
 
         let raw_version = probe_version(&exe_path);
-        let tag = if raw_version.is_empty() {
+        let base_tag = if raw_version.is_empty() {
             exe_path
                 .file_stem()
                 .map(|s| s.to_string_lossy().to_string())
@@ -330,6 +335,11 @@ fn import_version_blocking(
             normalize_tag(&raw_version)
         };
         let is_mono = exe_str.to_lowercase().contains("mono");
+        let tag = if is_mono && !base_tag.ends_with("-mono") {
+            format!("{}-mono", base_tag)
+        } else {
+            base_tag
+        };
 
         if existing
             .iter()

@@ -443,13 +443,14 @@ export const ProjectCard = memo(function ProjectCard({
                 })()}
 
                 <Dropdown
-                  className="w-40 shrink-0"
+                  className="w-48 shrink-0"
                   value={project.godot_version}
                   onChange={onVersionChange}
                   options={installedVersions.map((v) => ({
                     value: v.tag,
-                    label: v.custom_name || v.tag,
+                    label: v.custom_name || v.version,
                     dotClassName: 'bg-mint',
+                    badge: v.is_mono ? 'Mono' : undefined,
                   }))}
                 />
               </div>

@@ -95,7 +95,7 @@ export function ChangelogEntryModal({ entry, onClose, onSave }: Props) {
                 value={version}
                 onChange={(e) => setVersion(e.target.value)}
                 className="focus-ring bg-raised border border-line rounded-lg px-3.5 py-2.5 text-sm focus:border-accent-dim transition-colors"
-                placeholder="v1.1.0"
+                placeholder="v1.1.5"
               />
             </div>
             <div className="flex flex-col gap-2 flex-1">

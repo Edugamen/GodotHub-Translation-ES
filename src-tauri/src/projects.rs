@@ -227,7 +227,12 @@ pub fn register_project(
     if godot_version.is_empty() {
         if let Some(required) = detect_required_version(&path) {
             let installed = crate::godot_versions::read_registry(&app);
-            if let Some(v) = installed.iter().find(|v| version_matches(&required, v)) {
+            // Prefer standard (non-mono) version when auto-binding
+            if let Some(v) = installed
+                .iter()
+                .filter(|v| version_matches(&required, v))
+                .min_by_key(|v| if v.is_mono { 1 } else { 0 })
+            {
                 godot_version = v.tag.clone();
             }
         }

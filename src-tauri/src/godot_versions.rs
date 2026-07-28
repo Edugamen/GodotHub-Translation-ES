@@ -534,11 +534,16 @@ async fn run_download(app: AppHandle, key: String) {
             .unwrap_or(&job2.tag)
             .trim_start_matches('v')
             .to_string();
+        let is_mono = job2.asset_name.to_lowercase().contains("mono");
         let installed = InstalledGodotVersion {
-            tag: job2.tag.clone(),
+            tag: if is_mono {
+                format!("{}-mono", job2.tag)
+            } else {
+                job2.tag.clone()
+            },
             version: version_number,
             executable_path: exe_path.to_string_lossy().to_string(),
-            is_mono: job2.asset_name.to_lowercase().contains("mono"),
+            is_mono,
             installed_at: chrono::Utc::now().to_rfc3339(),
             custom_name: None,
             install_root: Some(target_dir.to_string_lossy().to_string()),
@@ -597,8 +602,49 @@ pub fn find_executable(dir: &Path) -> Option<PathBuf> {
     None
 }
 
+pub fn migrate_mono_tags(app: &AppHandle) {
+    let mut list = read_registry(app);
+    let mut changed = false;
+    for v in list.iter_mut() {
+        if v.is_mono && !v.tag.ends_with("-mono") {
+            v.tag = format!("{}-mono", v.tag);
+            changed = true;
+        }
+    }
+    if changed {
+        let _ = write_registry(app, &list);
+    }
+
+    // Always migrate project references (handles crash recovery too):
+    // if a mono version's tag was changed, update any projects that referenced
+    // the old tag — but only if no standard version still uses the old tag
+    // (otherwise it's ambiguous which version the project meant).
+    let mut projects = crate::projects::read_projects(app);
+    let mut project_changed = false;
+    for v in &list {
+        if !v.is_mono || !v.tag.ends_with("-mono") {
+            continue;
+        }
+        let base = v.tag.trim_end_matches("-mono");
+        let has_standard_still = list.iter().any(|other| !other.is_mono && other.tag == base);
+        if has_standard_still {
+            continue; // Ambiguous — can't safely migrate
+        }
+        for p in projects.iter_mut() {
+            if p.godot_version == base {
+                p.godot_version = v.tag.clone();
+                project_changed = true;
+            }
+        }
+    }
+    if project_changed {
+        let _ = crate::projects::write_projects(app, &projects);
+    }
+}
+
 #[tauri::command]
 pub fn list_installed_godot_versions(app: AppHandle) -> Result<Vec<InstalledGodotVersion>, String> {
+    migrate_mono_tags(&app);
     Ok(prune_missing(&app))
 }
 
