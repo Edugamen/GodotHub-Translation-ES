@@ -99,6 +99,18 @@
 
 ---
 
+## Support
+
+If you find GodotHub useful and want to support its development, consider donating on Patreon:
+
+<p align="center">
+  <a href="https://patreon.com/TheRyko">
+    <img src="https://img.shields.io/badge/Patreon-FF424D?style=for-the-badge&logo=patreon&logoColor=white" alt="Patreon" height="40">
+  </a>
+</p>
+
+---
+
 ## Features
 
 ### Project Management
@@ -392,6 +404,10 @@ This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) f
 | [Font Awesome](https://fontawesome.com) | The icon library we use throughout the app. |
 
 And every open-source library that makes GodotHub possible (see `package.json` and `Cargo.toml` for the full list).
+
+---
+
+> 🤖 **AI Notice:** Some parts of this codebase have been restructured and small bugs have been fixed with the assistance of AI. All changes are reviewed and tested before being merged. If you notice anything unusual, feel free to [open an issue](https://github.com/RykoTheDev/godothub/issues).
 
 ---
 
