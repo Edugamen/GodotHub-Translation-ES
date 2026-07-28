@@ -167,7 +167,7 @@ export function VersionsView() {
   const [visibleGroups, setVisibleGroups] = useState(5)
   const [filters, setFilters] = useState<VersionFilters>(loadVersionFilters)
   const [query, setQuery] = useState('')
-  const [rateLimit, setRateLimit] = useState<{
+  const [_rateLimit, setRateLimit] = useState<{
     remaining: number
     limit: number
     reset_at: number
@@ -472,23 +472,6 @@ export function VersionsView() {
               Pulled from Godot's official release builds.
             </p>
           </div>
-          {rateLimit && (
-            <span
-              className={`text-[10px] font-mono px-2.5 py-1 rounded-md border transition-colors ${
-                rateLimit.used_token
-                  ? 'border-mint/30 text-mint bg-mint/5'
-                  : rateLimit.remaining < 10
-                    ? 'border-danger/30 text-danger bg-danger/5'
-                    : 'border-line text-muted bg-surface/60'
-              }`}
-              title={rateLimit.used_token
-                ? 'Using GitHub token - 5,000 req/hr'
-                : 'No token - 60 req/hr (unauthenticated)'
-              }
-            >
-              API: {rateLimit.remaining}/{rateLimit.limit}
-            </span>
-          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-3 mb-5 px-3.5 py-2.5 rounded-lg bg-raised border border-line">
