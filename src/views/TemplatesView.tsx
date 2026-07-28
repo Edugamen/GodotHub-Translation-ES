@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { api } from '../lib/api'
 import { useSettings } from '../hooks/useSettings'
+import { useWorkspaces } from '../hooks/useWorkspaces'
 import type { ProjectTemplate, TemplateSyncResult } from '../types'
 import { IconCopy, IconTrash, IconAlertTriangle, IconRefresh, IconExternalLink, IconSearch, IconX } from '../components/Icons'
 import { Tooltip } from '../components/ui/Tooltip'
@@ -10,6 +11,7 @@ import { useTaskTray } from '../hooks/useTaskTray'
 
 export function TemplatesView() {
   const { settings } = useSettings()
+  const { activeId } = useWorkspaces()
   const [templates, setTemplates] = useState<ProjectTemplate[]>([])
   const [loaded, setLoaded] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
@@ -31,7 +33,7 @@ export function TemplatesView() {
 
   useEffect(() => {
     load()
-  }, [])
+  }, [activeId])
 
   const handleSync = async () => {
     setDialogMinimized(false)
@@ -120,7 +122,7 @@ export function TemplatesView() {
   const user = filteredTemplates
 
   return (
-    <div className="p-10 pt-15 max-w-8xl mx-auto">
+    <div className="p-10 pt-6 max-w-8xl mx-auto">
       <div className="mb-8">
         <div className="flex items-center justify-between gap-4">
           <div>

@@ -142,11 +142,11 @@ pub fn run() {
                 }
 
                 if s.auto_watch_project_dirs && !s.project_scan_dirs.is_empty() {
-                    let dirs: Vec<std::path::PathBuf> = s.project_scan_dirs.iter().map(|d| std::path::PathBuf::from(d)).collect();
+                    let dirs: Vec<std::path::PathBuf> = s.project_scan_dirs.iter().map(std::path::PathBuf::from).collect();
                     watcher::start_project_watchers(handle.clone(), dirs, s.scan_depth, 2000);
                 }
                 if s.auto_watch_version_dirs && !s.version_scan_dirs.is_empty() {
-                    let dirs: Vec<std::path::PathBuf> = s.version_scan_dirs.iter().map(|d| std::path::PathBuf::from(d)).collect();
+                    let dirs: Vec<std::path::PathBuf> = s.version_scan_dirs.iter().map(std::path::PathBuf::from).collect();
                     watcher::start_version_watchers(handle.clone(), dirs, s.scan_depth, 2000);
                 }
                 if s.auto_watch_template_dir {
@@ -233,6 +233,8 @@ pub fn run() {
             godot_versions::rename_godot_version,
             godot_versions::delete_godot_version,
             godot_versions::open_godot_version,
+            godot_versions::test_github_token,
+            godot_versions::get_github_rate_limit,
             godot_versions::import_version_zip,
             projects::list_projects,
             projects::create_project,
@@ -259,8 +261,6 @@ pub fn run() {
             settings::update_settings,
             settings::reset_settings,
             settings::reset_app_data,
-            settings::export_settings,
-            settings::import_settings,
             workspace::list_workspaces,
             workspace::create_workspace,
             workspace::switch_workspace,

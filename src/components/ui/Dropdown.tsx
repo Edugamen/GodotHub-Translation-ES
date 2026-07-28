@@ -56,7 +56,6 @@ export function Dropdown({
 
   const dir = openUp !== undefined ? openUp : computedOpenUp
 
-  // When multiple options share the same value (before migration), use the first match
   const selected = options.find((o) => o.value === value)
 
   return (

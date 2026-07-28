@@ -21,14 +21,20 @@ export function applyReducedMotion(enabled: boolean) {
   document.documentElement.classList.toggle('reduce-motion', enabled)
 }
 
+export function applyScrollbars(enabled: boolean) {
+  document.documentElement.classList.toggle('hide-scrollbars', !enabled)
+}
+
 export function applyAppearance(settings: {
   corner_radius: number
   ui_density: number
   font_scale: number
   reduce_motion: boolean
+  show_scrollbars: boolean
 }) {
   applyRadius(settings.corner_radius)
   applyDensity(settings.ui_density)
   applyFontScale(settings.font_scale)
   applyReducedMotion(settings.reduce_motion)
+  applyScrollbars(settings.show_scrollbars)
 }

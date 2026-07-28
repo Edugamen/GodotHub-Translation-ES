@@ -1,12 +1,11 @@
 use crate::models::*;
 use std::fs;
 use std::path::{Path, PathBuf};
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 use uuid::Uuid;
 
 fn templates_root(app: &AppHandle) -> PathBuf {
-    let base = app.path().app_data_dir().expect("no app data dir");
-    let dir = base.join("templates");
+    let dir = crate::workspace::active_workspace_dir(app).join("templates");
     if !dir.exists() {
         let _ = fs::create_dir_all(&dir);
     }
@@ -148,7 +147,6 @@ fn list_files_recursive(base: &Path, dir: &Path, entries: &mut Vec<TemplateFileE
         let entry = entry.map_err(|e| e.to_string())?;
         let path = entry.path();
         let name = entry.file_name();
-        // Skip internal metadata file
         if name == "template.json" {
             continue;
         }

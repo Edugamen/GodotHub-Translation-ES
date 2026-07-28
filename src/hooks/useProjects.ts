@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { listen } from '@tauri-apps/api/event'
 import { api } from '../lib/api'
+import { useWorkspaces } from './useWorkspaces'
 import type { Project } from '../types'
 
 export function useProjects() {
+  const { activeId } = useWorkspaces()
   const [projects, setProjects] = useState<Project[]>([])
   const [loaded, setLoaded] = useState(false)
 
@@ -47,7 +49,7 @@ export function useProjects() {
     return () => {
       unlisten.then((f) => f())
     }
-  }, [refresh])
+  }, [refresh, activeId])
 
   const remove = useCallback(
     async (id: string, deleteFiles: boolean) => {

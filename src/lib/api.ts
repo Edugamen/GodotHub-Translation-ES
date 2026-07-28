@@ -49,6 +49,10 @@ export const api = {
     invoke<void>('delete_godot_version', { tag }),
   openGodotVersion: (tag: string) =>
     invoke<void>('open_godot_version', { tag }),
+  testGithubToken: () =>
+    invoke<{ remaining: number; limit: number; reset_at: number; used_token: boolean }>('test_github_token'),
+  getGithubRateLimit: () =>
+    invoke<{ remaining: number; limit: number; reset_at: number; used_token: boolean }>('get_github_rate_limit'),
 
   listProjects: () => invoke<Project[]>('list_projects'),
   createProject: (name: string, location: string, godotVersion: string, iconPath?: string | null, templateId?: string | null, category?: string | null) =>
@@ -171,8 +175,6 @@ export const api = {
     invoke<AppSettings>('update_settings', { settings }),
   resetSettings: () => invoke<AppSettings>('reset_settings'),
   resetAppData: () => invoke<void>('reset_app_data'),
-  exportSettings: () => invoke<string>('export_settings'),
-  importSettings: () => invoke<AppSettings>('import_settings'),
   scanForProjects: (dirs: string[], depth: number) =>
     invoke<Project[]>('scan_for_projects', { dirs, depth }),
   scanForVersions: (dirs: string[], depth: number) =>

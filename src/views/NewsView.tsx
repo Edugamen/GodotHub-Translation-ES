@@ -80,7 +80,7 @@ export function NewsView() {
     useNews()
 
   return (
-    <div className="p-10 pt-15 max-w-8xl mx-auto">
+    <div className="p-10 pt-6 max-w-8xl mx-auto">
       <section>
         <div className="flex items-start justify-between gap-4 mb-5">
           <div>

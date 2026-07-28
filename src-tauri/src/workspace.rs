@@ -59,6 +59,17 @@ pub fn read_state(app: &AppHandle) -> WorkspacesState {
             let _ = fs::rename(&src, &dst);
         }
     }
+
+    let versions_src = base.join("godot-versions.json");
+    let versions_dst = dir.join("godot-versions.json");
+    if versions_src.exists() && !versions_dst.exists() {
+        let _ = fs::rename(&versions_src, &versions_dst);
+    }
+    let templates_src = base.join("templates");
+    let templates_dst = dir.join("templates");
+    if templates_src.exists() && !templates_dst.exists() {
+        let _ = fs::rename(&templates_src, &templates_dst);
+    }
     let workspace = Workspace {
         id: id.clone(),
         name: "Default".to_string(),

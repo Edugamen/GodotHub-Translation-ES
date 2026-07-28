@@ -145,7 +145,6 @@ export function TaskTray() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  // Auto-close when all tasks are gone
   useEffect(() => {
     if (open && tasks.length === 0) {
       const t = setTimeout(() => setOpen(false), 2000)
@@ -161,7 +160,6 @@ export function TaskTray() {
     [tasks],
   )
 
-  // Build tooltip text: preview of active tasks
   const tooltipContent = useMemo(() => {
     if (activeCount === 0) return 'No active tasks'
     const labels = tasks

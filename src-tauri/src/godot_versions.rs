@@ -1,6 +1,7 @@
 use crate::models::*;
 use crate::settings;
 use futures_util::StreamExt;
+use serde::Serialize;
 use std::collections::{HashMap, VecDeque};
 use std::fs;
 use std::io::Write;
@@ -26,11 +27,11 @@ pub fn versions_dir(app: &AppHandle) -> PathBuf {
 }
 
 fn registry_file(app: &AppHandle) -> PathBuf {
-    let base = app.path().app_data_dir().expect("no app data dir");
-    if !base.exists() {
-        let _ = fs::create_dir_all(&base);
+    let dir = crate::workspace::active_workspace_dir(app);
+    if !dir.exists() {
+        let _ = fs::create_dir_all(&dir);
     }
-    base.join("godot-versions.json")
+    dir.join("godot-versions.json")
 }
 
 pub fn read_registry(app: &AppHandle) -> Vec<InstalledGodotVersion> {
@@ -76,18 +77,13 @@ struct ReleasesCache {
     releases: Vec<GodotRelease>,
 }
 
-const CACHE_TTL_SECS: i64 = 600;
+const CACHE_TTL_SECS: i64 = 3600; // 1 hour
 
-fn read_releases_cache(app: &AppHandle) -> Option<Vec<GodotRelease>> {
+fn read_cache_allow_stale(app: &AppHandle) -> Option<(Vec<GodotRelease>, i64)> {
     let file = releases_cache_file(app);
     let raw = fs::read_to_string(&file).ok()?;
     let cache: ReleasesCache = serde_json::from_str(&raw).ok()?;
-    let now = chrono::Utc::now().timestamp();
-    if now - cache.fetched_at < CACHE_TTL_SECS {
-        Some(dedupe_releases(cache.releases))
-    } else {
-        None
-    }
+    Some((dedupe_releases(cache.releases), cache.fetched_at))
 }
 
 fn write_releases_cache(app: &AppHandle, releases: &[GodotRelease]) {
@@ -128,14 +124,29 @@ fn platform_asset_matcher(name: &str) -> bool {
 
 #[tauri::command]
 pub async fn fetch_available_godot_versions(app: AppHandle) -> Result<Vec<GodotRelease>, String> {
-    if let Some(cached) = read_releases_cache(&app) {
+    if let Some((cached, fetched_at)) = read_cache_allow_stale(&app) {
+        let now = chrono::Utc::now().timestamp();
+        if now - fetched_at >= CACHE_TTL_SECS {
+            let app_clone = app.clone();
+            tauri::async_runtime::spawn(async move {
+                let _ = refresh_releases_cache(app_clone).await;
+            });
+        }
         return Ok(cached);
     }
 
-    let client = reqwest::Client::builder()
-        .user_agent("godot-hub")
-        .build()
-        .map_err(|e| e.to_string())?;
+    refresh_releases_cache(app).await
+}
+
+async fn refresh_releases_cache(app: AppHandle) -> Result<Vec<GodotRelease>, String> {
+    let settings = crate::settings::read_settings(&app);
+    let token = settings.github_token.filter(|t| !t.trim().is_empty());
+
+    let mut client_builder = reqwest::Client::builder().user_agent("godot-hub");
+    if token.is_some() {
+        client_builder = client_builder.user_agent("godot-hub/1.0");
+    }
+    let client = client_builder.build().map_err(|e| e.to_string())?;
 
     let mut releases: Vec<GodotRelease> = vec![];
     let mut page = 1;
@@ -144,7 +155,11 @@ pub async fn fetch_available_godot_versions(app: AppHandle) -> Result<Vec<GodotR
             "https://api.github.com/repos/godotengine/godot-builds/releases?per_page=100&page={}",
             page
         );
-        let resp = client.get(&url).send().await.map_err(|e| e.to_string())?;
+        let mut req = client.get(&url);
+        if let Some(ref t) = token {
+            req = req.header("Authorization", format!("Bearer {}", t));
+        }
+        let resp = req.send().await.map_err(|e| e.to_string())?;
         if !resp.status().is_success() {
             let status = resp.status();
             let remaining = resp
@@ -217,7 +232,7 @@ pub async fn fetch_available_godot_versions(app: AppHandle) -> Result<Vec<GodotR
             }
         }
 
-        if hit_floor || page_len < 100 || page >= 10 {
+        if hit_floor || page_len < 100 || page >= 5 {
             break;
         }
         page += 1;
@@ -615,10 +630,6 @@ pub fn migrate_mono_tags(app: &AppHandle) {
         let _ = write_registry(app, &list);
     }
 
-    // Always migrate project references (handles crash recovery too):
-    // if a mono version's tag was changed, update any projects that referenced
-    // the old tag — but only if no standard version still uses the old tag
-    // (otherwise it's ambiguous which version the project meant).
     let mut projects = crate::projects::read_projects(app);
     let mut project_changed = false;
     for v in &list {
@@ -628,7 +639,7 @@ pub fn migrate_mono_tags(app: &AppHandle) {
         let base = v.tag.trim_end_matches("-mono");
         let has_standard_still = list.iter().any(|other| !other.is_mono && other.tag == base);
         if has_standard_still {
-            continue; // Ambiguous — can't safely migrate
+            continue;
         }
         for p in projects.iter_mut() {
             if p.godot_version == base {
@@ -737,6 +748,68 @@ pub fn delete_godot_version(app: AppHandle, tag: String) -> Result<(), String> {
 
     let _ = fs::remove_file(&exe_path);
     Ok(())
+}
+
+#[derive(Clone, Serialize)]
+pub struct RateLimitInfo {
+    pub remaining: u64,
+    pub limit: u64,
+    pub reset_at: i64,
+    pub used_token: bool,
+}
+
+#[tauri::command]
+pub async fn test_github_token(app: AppHandle) -> Result<RateLimitInfo, String> {
+    let settings = crate::settings::read_settings(&app);
+    let token = settings.github_token.filter(|t| !t.trim().is_empty());
+
+    let client = reqwest::Client::builder()
+        .user_agent("godot-hub/1.0")
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let mut req = client.get("https://api.github.com/rate_limit");
+    if let Some(ref t) = token {
+        req = req.header("Authorization", format!("Bearer {}", t));
+    }
+    let resp = req.send().await.map_err(|e| e.to_string())?;
+    if !resp.status().is_success() {
+        let status = resp.status();
+        return Err(format!("GitHub API returned {}. Check that your token is valid.", status));
+    }
+
+    let remaining: u64 = resp
+        .headers()
+        .get("x-ratelimit-remaining")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0);
+
+    let limit: u64 = resp
+        .headers()
+        .get("x-ratelimit-limit")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(60);
+
+    let reset_at: i64 = resp
+        .headers()
+        .get("x-ratelimit-reset")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0);
+
+    Ok(RateLimitInfo {
+        remaining,
+        limit,
+        reset_at,
+        used_token: token.is_some(),
+    })
+}
+
+#[tauri::command]
+pub async fn get_github_rate_limit(app: AppHandle) -> Result<RateLimitInfo, String> {
+    test_github_token(app).await
 }
 
 #[tauri::command]

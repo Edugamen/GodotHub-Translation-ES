@@ -167,6 +167,12 @@ export function VersionsView() {
   const [visibleGroups, setVisibleGroups] = useState(5)
   const [filters, setFilters] = useState<VersionFilters>(loadVersionFilters)
   const [query, setQuery] = useState('')
+  const [rateLimit, setRateLimit] = useState<{
+    remaining: number
+    limit: number
+    reset_at: number
+    used_token: boolean
+  } | null>(null)
   const [editingTag, setEditingTag] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
   const editInputRef = useRef<HTMLInputElement>(null)
@@ -176,6 +182,18 @@ export function VersionsView() {
       localStorage.setItem(VERSION_FILTERS_KEY, JSON.stringify(filters))
     } catch {}
   }, [filters])
+
+  useEffect(() => {
+    const fetchRateLimit = async () => {
+      try {
+        const info = await api.getGithubRateLimit()
+        setRateLimit(info)
+      } catch {}
+    }
+    fetchRateLimit()
+    const interval = setInterval(fetchRateLimit, 60000)
+    return () => clearInterval(interval)
+  }, [])
 
   const handleImportVersion = async (folder?: string) => {
     const dir = folder ?? (await api.pickFolder())
@@ -270,26 +288,7 @@ export function VersionsView() {
     : available
 
   return (
-    <div className="p-10 pt-15 max-w-8xl mx-auto">
-      {/* Search bar — filters both installed and available versions */}
-      <div className="relative w-64 mb-6">
-        <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted/50 pointer-events-none" />
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search versions…"
-          className="w-full pl-9 pr-9 py-2 rounded-lg border border-line bg-surface text-sm text-ink placeholder:text-muted/50 outline-none transition-all focus:border-accent focus:ring-1 focus:ring-accent/30"
-        />
-        {query && (
-          <button
-            onClick={() => setQuery('')}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted/50 hover:text-ink transition-colors cursor-pointer"
-          >
-            <IconX className="w-3.5 h-3.5" />
-          </button>
-        )}
-      </div>
+    <div className="p-10 pt-6 max-w-8xl mx-auto">
       <section>
         <div className="flex items-center justify-between">
           <h2 className="font-body font-semibold text-3xl tracking-tight">
@@ -331,6 +330,25 @@ export function VersionsView() {
         <p className="text-xs text-muted mb-5 mt-[-3px]">
           Engines available to bind to a project.
         </p>
+
+        <div className="relative w-64 mb-5">
+          <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted/50 pointer-events-none" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search versions…"
+            className="w-full pl-9 pr-9 py-2 rounded-lg border border-line bg-surface text-sm text-ink placeholder:text-muted/50 outline-none transition-all focus:border-accent focus:ring-1 focus:ring-accent/30"
+          />
+          {query && (
+            <button
+              onClick={() => setQuery('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted/50 hover:text-ink transition-colors cursor-pointer"
+            >
+              <IconX className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
 
         {installed.length === 0 && !isSearching ? (
           <div className="border border-dashed border-line rounded-2xl py-24 flex flex-col items-center gap-4 text-center mb-5">
@@ -445,12 +463,33 @@ export function VersionsView() {
       </section>
 
       <section>
-        <h2 className="font-body font-semibold text-3xl tracking-tight">
-          AVAILABLE VERSIONS
-        </h2>
-        <p className="text-xs text-muted mb-3">
-          Pulled from Godot's official release builds.
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-body font-semibold text-3xl tracking-tight">
+              AVAILABLE VERSIONS
+            </h2>
+            <p className="text-xs text-muted mb-3">
+              Pulled from Godot's official release builds.
+            </p>
+          </div>
+          {rateLimit && (
+            <span
+              className={`text-[10px] font-mono px-2.5 py-1 rounded-md border transition-colors ${
+                rateLimit.used_token
+                  ? 'border-mint/30 text-mint bg-mint/5'
+                  : rateLimit.remaining < 10
+                    ? 'border-danger/30 text-danger bg-danger/5'
+                    : 'border-line text-muted bg-surface/60'
+              }`}
+              title={rateLimit.used_token
+                ? 'Using GitHub token - 5,000 req/hr'
+                : 'No token - 60 req/hr (unauthenticated)'
+              }
+            >
+              API: {rateLimit.remaining}/{rateLimit.limit}
+            </span>
+          )}
+        </div>
 
         <div className="flex flex-wrap items-center gap-3 mb-5 px-3.5 py-2.5 rounded-lg bg-raised border border-line">
           <FilterDropdown

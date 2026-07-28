@@ -194,7 +194,7 @@ export function Tooltip({ content, children, side: sideProp, className, maxWidth
               top: position.y,
             }}
           >
-            {/* Arrow pointer — seamless bg-surface diamond, no border so it blends into the tooltip body */}
+            {/* Arrow pointer -> seamless bg-surface diamond, no border so it blends into the tooltip body */}
             <div
               className="absolute z-[-1] w-2.5 h-2.5 rotate-45 bg-surface"
               style={{
@@ -206,7 +206,7 @@ export function Tooltip({ content, children, side: sideProp, className, maxWidth
             />
             {/* Tooltip body */}
             <div
-              className="relative overflow-hidden px-3.5 py-2 rounded-xl border border-line/80 bg-surface/96 text-xs text-ink font-medium shadow-2xl shadow-black/60 backdrop-blur-[12px]"
+              className="relative overflow-hidden px-3.5 py-2 rounded-xl border border-line/80 bg-surface/96 text-xs text-ink font-medium shadow-2xl shadow-black/60 backdrop-blur-12px"
               style={{
                 maxWidth: effectiveMaxWidth,
                 wordBreak: 'break-word',
@@ -231,7 +231,7 @@ export function Tooltip({ content, children, side: sideProp, className, maxWidth
                   }}
                 />
               )}
-              <span className="relative z-[1]">{content}</span>
+              <span className="relative z-1">{content}</span>
             </div>
           </motion.div>
         )}

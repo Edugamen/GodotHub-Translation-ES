@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { listen } from '@tauri-apps/api/event'
 import { api } from '../lib/api'
+import { useWorkspaces } from './useWorkspaces'
 import type {
   DownloadProgress,
   GodotRelease,
@@ -15,6 +16,7 @@ const keyOf = (tag: string, assetName: string) =>
   assetName.toLowerCase().includes('mono') ? `${tag}-mono` : tag
 
 export function useGodotVersions() {
+  const { activeId } = useWorkspaces()
   const [installed, setInstalled] = useState<InstalledGodotVersion[]>([])
   const [available, setAvailable] = useState<GodotRelease[]>([])
   const [loadingAvailable, setLoadingAvailable] = useState(false)
@@ -49,6 +51,8 @@ export function useGodotVersions() {
     })
 
   useEffect(() => {
+    refreshInstalled()
+
     const interval = setInterval(() => {
       if (document.visibilityState === 'visible') {
         refreshInstalled()
@@ -66,10 +70,9 @@ export function useGodotVersions() {
       clearInterval(interval)
       document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [])
+  }, [refreshInstalled, activeId])
 
   useEffect(() => {
-    refreshInstalled()
     refreshAvailable()
 
     const unlistenScan = listen<[number, number]>(
@@ -131,7 +134,7 @@ export function useGodotVersions() {
       unlistenComplete.then((f) => f())
       unlistenScan.then((f) => f())
     }
-  }, [refreshInstalled, refreshAvailable])
+  }, [refreshInstalled, refreshAvailable, activeId])
 
   const download = useCallback(
     async (tag: string, assetName: string, url: string) => {

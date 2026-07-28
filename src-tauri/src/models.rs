@@ -159,6 +159,8 @@ pub struct AppSettings {
     #[serde(default)]
     pub external_editor_path: Option<String>,
     #[serde(default)]
+    pub github_token: Option<String>,
+    #[serde(default)]
     pub template_scan_dir: Option<String>,
     #[serde(default = "default_tooltip_delay")]
     pub tooltip_delay: u32,
@@ -170,6 +172,16 @@ pub struct AppSettings {
     pub auto_watch_template_dir: bool,
     #[serde(default = "default_tray_recent_projects_count")]
     pub tray_recent_projects_count: u32,
+    #[serde(default = "default_true")]
+    pub show_support_button: bool,
+    #[serde(default = "default_true")]
+    pub show_star_button: bool,
+    #[serde(default = "default_true")]
+    pub show_scrollbars: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 fn default_tray_recent_projects_count() -> u32 {
@@ -318,10 +330,14 @@ impl Default for AppSettings {
 tooltip_delay: default_tooltip_delay(),
             tray_recent_projects_count: default_tray_recent_projects_count(),
             external_editor_path: None,
+            github_token: None,
             template_scan_dir: None,
             auto_watch_project_dirs: default_watch_projects(),
             auto_watch_version_dirs: default_watch_versions(),
             auto_watch_template_dir: default_watch_templates(),
+            show_support_button: true,
+            show_star_button: true,
+            show_scrollbars: true,
         }
     }
 }

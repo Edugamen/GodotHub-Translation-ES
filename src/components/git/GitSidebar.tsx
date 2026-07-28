@@ -250,7 +250,6 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
     return () => { cancelled = true }
   }, [project.path])
 
-  // Check for existing merge conflicts on mount
   useEffect(() => {
     if (!isRepo) return
     let cancelled = false
@@ -296,7 +295,6 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
     } catch (e) {
       const errStr = String(e)
       const lower = errStr.toLowerCase()
-      // Check for merge conflicts first to avoid UI flash
       if (lower.includes('merge conflict') || lower.includes('merge conflicts detected')) {
         const conflictFiles = await api.gitMergeConflictFiles(project.path).catch(() => [])
         if (conflictFiles.length > 0) {
@@ -1133,7 +1131,6 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
             projectPath={project.path}
             onClose={() => setShowMergeConflicts(false)}
             onAllResolved={async () => {
-              // All conflicts staged — close dialog and let user commit via the existing commit flow
               setShowMergeConflicts(false)
               setMergeActive(false)
               await refreshAll()

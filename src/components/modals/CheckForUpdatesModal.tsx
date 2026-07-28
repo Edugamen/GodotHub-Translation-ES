@@ -54,7 +54,6 @@ export function CheckForUpdatesModal({ onClose, mode = 'manual' }: Props) {
           },
         })
       } else if (mode === 'background') {
-        // Silent close - no update found
         onCloseRef.current()
         return
       } else {
@@ -62,7 +61,6 @@ export function CheckForUpdatesModal({ onClose, mode = 'manual' }: Props) {
       }
     } catch (e) {
       if (mode === 'background') {
-        // Silent close on error during background check
         onCloseRef.current()
         return
       }

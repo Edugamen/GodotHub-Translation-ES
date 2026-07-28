@@ -37,12 +37,16 @@ const DEFAULTS: AppSettings = {
   auto_scan_on_startup: true,
   command_palette_keybind: 'p',
   external_editor_path: null,
+  github_token: null,
   template_scan_dir: null,
   auto_watch_project_dirs: true,
   auto_watch_version_dirs: true,
   auto_watch_template_dir: true,
   tooltip_delay: 350,
   tray_recent_projects_count: 5,
+  show_support_button: true,
+  show_star_button: true,
+  show_scrollbars: true,
 }
 
 interface SettingsContextValue {
@@ -60,12 +64,17 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
+    let cancelled = false
     api.getSettings().then((s) => {
+      if (cancelled) return
       setSettings(s)
       applyTheme(s.accent_color, s.background_color, s.theme_mode)
       applyAppearance(s)
       setLoaded(true)
     })
+    return () => {
+      cancelled = true
+    }
   }, [activeId])
 
   const update = async (next: AppSettings) => {

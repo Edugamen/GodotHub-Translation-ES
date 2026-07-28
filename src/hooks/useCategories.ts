@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../lib/api'
+import { useWorkspaces } from './useWorkspaces'
 import type { Category } from '../types'
 
 export function useCategories() {
+  const { activeId } = useWorkspaces()
   const [categories, setCategories] = useState<Category[]>([])
   const [loaded, setLoaded] = useState(false)
 
@@ -23,7 +25,7 @@ export function useCategories() {
 
   useEffect(() => {
     refresh()
-  }, [refresh])
+  }, [refresh, activeId])
 
   const create = useCallback(
     async (name: string, color?: string) => {

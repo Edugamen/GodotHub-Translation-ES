@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import type { Category, InstalledGodotVersion, ProjectTemplate } from '../../types'
 import { api } from '../../lib/api'
@@ -44,6 +44,32 @@ export function CreateProjectModal({
   const [templates, setTemplates] = useState<ProjectTemplate[]>([])
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+
+  const projectNamePlaceholder = useMemo(() => {
+    const names = [
+      'My Awesome Game',
+      'Untitled Masterpiece',
+      'Project Nebula',
+      'Game of the Year',
+      'Probably Nothing',
+      'Friday Night Project',
+      'Yet Another Platformer',
+      'The Next Big Thing',
+      'workspace_simulator',
+      'Definitely Not Flappy Bird',
+      'Super Secret Project',
+      'Roguelike #4',
+      'Ctrl+S Adventure',
+      'Pixels & Dreams',
+      'v0.0.1 - The Beginning',
+      'Procrastination.exe',
+      'Rapid Unplanned Disassembly',
+      'Another One Bites the Dust',
+      'Jam Entry 2026',
+      'Open World Survival Thing',
+    ]
+    return names[Math.floor(Math.random() * names.length)]
+  }, [])
 
   useEffect(() => {
     api.listTemplates().then(setTemplates).catch(() => {})
@@ -112,7 +138,7 @@ export function CreateProjectModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="focus-ring bg-raised border border-line rounded-lg px-3.5 py-2.5 text-sm focus:border-accent-dim transition-colors"
-              placeholder="My Awesome Game"
+              placeholder={projectNamePlaceholder}
             />
           </div>
 

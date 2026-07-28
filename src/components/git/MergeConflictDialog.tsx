@@ -112,7 +112,7 @@ export function MergeConflictDialog({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/70 flex items-center justify-center z-[150] p-4"
+        className="fixed inset-0 bg-black/70 flex items-center justify-center z-150 p-4"
         onClick={onClose}
       >
         <motion.div
@@ -154,7 +154,7 @@ export function MergeConflictDialog({
                 {allResolved && (
                   <span className="text-xs text-mint font-medium flex items-center gap-1">
                     <IconCheckCircle className="w-3.5 h-3.5" />
-                    All resolved — ready to commit!
+                    All resolved -{'>'} ready to commit!
                   </span>
                 )}
               </div>
@@ -270,7 +270,7 @@ export function MergeConflictDialog({
                             onClick={() => handleMarkManual(file.path)}
                             disabled={resolving === file.path}
                             className="focus-ring cursor-pointer px-2 py-1.5 rounded-lg bg-base hover:bg-raised border border-line text-muted hover:text-ink disabled:opacity-40 disabled:cursor-not-allowed text-[10px] font-medium transition-colors"
-                            title="I've edited this file manually — stage it as resolved"
+                            title="I've edited this file manually. Stage it as resolved"
                           >
                             Mark fixed
                           </button>

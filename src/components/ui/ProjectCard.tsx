@@ -354,7 +354,7 @@ export const ProjectCard = memo(function ProjectCard({
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-3.5 min-w-0">
+            <div className={`flex items-center gap-3.5 min-w-0${onToggleSelect && !draggable ? ' pl-8' : ''}`}>
               {draggable && (
                 <span
                   {...dragHandleProps}
@@ -365,7 +365,7 @@ export const ProjectCard = memo(function ProjectCard({
               )}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
-                  <h3 className="font-display font-medium text-lg truncate">
+                  <h3 className="font-display font-medium ml-1 text-xl truncate">
                     {displayName}
                   </h3>
                   <button
@@ -393,7 +393,7 @@ export const ProjectCard = memo(function ProjectCard({
               </div>
             </div>
             <div className="flex items-center gap-2.5 flex-wrap justify-between">
-              <div className="flex items-center gap-2.5 flex-wrap min-w-0">
+              <div className="flex items-center gap-2.5 ml-8 flex-wrap min-w-0">
                 {lastOpenedLabel && (
                   <Tooltip content={`Last opened ${lastOpenedLabel}`}>
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-raised border border-line font-mono text-[11px] text-muted shrink-0">

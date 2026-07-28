@@ -91,12 +91,9 @@ export function TaskTrayProvider({ children }: { children: ReactNode }) {
     [clearTimer],
   )
 
-  // Listen to Tauri events for scan/download progress
   useEffect(() => {
     const unlistens: Promise<() => void>[] = []
 
-    // Project scan progress — only show when actively scanning (current < total)
-    // Watcher re-scans can fire instantly with (0,0) when nothing new found
     unlistens.push(
       listen<[number, number]>('project-scan-progress', (e) => {
         const [current, total] = e.payload
@@ -110,14 +107,12 @@ export function TaskTrayProvider({ children }: { children: ReactNode }) {
             status: 'running',
           })
         } else if (total > 0) {
-          // Only mark completed if there was actually something to scan
           updateTask('scan-projects', { status: 'completed', progress: { current, total } })
           scheduleRemoval('scan-projects')
         }
       }),
     )
 
-    // Version scan progress — same logic
     unlistens.push(
       listen<[number, number]>('version-scan-progress', (e) => {
         const [current, total] = e.payload

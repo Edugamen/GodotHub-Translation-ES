@@ -237,9 +237,10 @@ export const SETTINGS_SEARCH_ITEMS: SettingSearchEntry[] = (
   { key: 'setup_wizard', label: 'Run setup wizard', tab: 'advanced' },
   { key: 'reset_settings', label: 'Reset settings to default', tab: 'advanced' },
   { key: 'delete_app_data', label: 'Delete app data', tab: 'advanced' },
-  { key: 'export_settings', label: 'Export settings to JSON', tab: 'advanced' },
-  { key: 'import_settings', label: 'Import settings from JSON', tab: 'advanced' },
   { key: 'check_updates', label: 'Check for updates', tab: 'advanced' },
+  { key: 'show_support_button', label: 'Show support button in titlebar', tab: 'advanced' },
+  { key: 'show_star_button', label: 'Show star button in titlebar', tab: 'advanced' },
+  { key: 'show_scrollbars', label: 'Show scrollbar', tab: 'appearance' },
   ] as SettingSearchEntry[]
 ).filter((item) => !(isMac && item.key === 'minimize_to_tray'))
 

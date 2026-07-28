@@ -227,7 +227,6 @@ pub fn register_project(
     if godot_version.is_empty() {
         if let Some(required) = detect_required_version(&path) {
             let installed = crate::godot_versions::read_registry(&app);
-            // Prefer standard (non-mono) version when auto-binding
             if let Some(v) = installed
                 .iter()
                 .filter(|v| version_matches(&required, v))
@@ -458,7 +457,29 @@ pub fn open_project_folder(path: String) -> Result<(), String> {
     let result = std::process::Command::new("open").arg(&dir).spawn();
 
     #[cfg(all(unix, not(target_os = "macos")))]
-    let result = std::process::Command::new("xdg-open").arg(&dir).spawn();
+    let result = std::process::Command::new("xdg-open")
+        .arg(&dir)
+        .spawn()
+        .or_else(|_| {
+            std::process::Command::new("gio")
+                .args(["open", &path])
+                .spawn()
+        })
+        .or_else(|_| {
+            std::process::Command::new("nautilus")
+                .arg(&path)
+                .spawn()
+        })
+        .or_else(|_| {
+            std::process::Command::new("dolphin")
+                .arg(&path)
+                .spawn()
+        })
+        .or_else(|_| {
+            std::process::Command::new("thunar")
+                .arg(&path)
+                .spawn()
+        });
 
     result.map(|_| ()).map_err(|e| e.to_string())
 }
@@ -476,14 +497,14 @@ pub fn open_in_editor(app: AppHandle, path: String) -> Result<(), String> {
             let result = std::process::Command::new(editor_path.trim())
                 .arg(&dir)
                 .spawn();
-            if let Ok(_) = result {
+            if result.is_ok() {
                 return Ok(());
             }
         }
     }
 
     for editor in &["code", "rider", "idea", "code-insiders", "codium", "zed"] {
-        if let Ok(_) = std::process::Command::new(editor).arg(&dir).spawn() {
+        if std::process::Command::new(editor).arg(&dir).spawn().is_ok() {
             return Ok(());
         }
     }
@@ -498,10 +519,10 @@ pub fn open_in_editor(app: AppHandle, path: String) -> Result<(), String> {
         ];
         for exe_path in &common_paths {
             let p = std::path::Path::new(exe_path);
-            if p.exists() {
-                if let Ok(_) = std::process::Command::new(p).arg(&dir).spawn() {
-                    return Ok(());
-                }
+            if p.exists()
+                && std::process::Command::new(p).arg(&dir).spawn().is_ok()
+            {
+                return Ok(());
             }
         }
     }
@@ -867,7 +888,7 @@ pub async fn get_project_size(path: String) -> Result<ProjectSizeInfo, String> {
             });
         }
 
-        cat_vec.sort_by(|a, b| b.size.cmp(&a.size));
+        cat_vec.sort_by_key(|a| std::cmp::Reverse(a.size));
 
         let result = Ok(ProjectSizeInfo {
             total_size,

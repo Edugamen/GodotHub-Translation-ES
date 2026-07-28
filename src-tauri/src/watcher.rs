@@ -191,9 +191,9 @@ pub fn start_project_watchers(app: AppHandle, dirs: Vec<PathBuf>, depth: u32, de
         Arc::new(move |a: AppHandle| {
             let dirs: Vec<String> = a
                 .try_state::<ActiveWatchers>()
-                .and_then(|_| {
+                .map(|_| {
                     let s = crate::settings::read_settings(&a);
-                    Some(s.project_scan_dirs.clone())
+                    s.project_scan_dirs.clone()
                 })
                 .unwrap_or_default();
             if !dirs.is_empty() {
@@ -227,9 +227,9 @@ pub fn start_version_watchers(app: AppHandle, dirs: Vec<PathBuf>, depth: u32, de
         Arc::new(move |a: AppHandle| {
             let dirs: Vec<String> = a
                 .try_state::<ActiveWatchers>()
-                .and_then(|_| {
+                .map(|_| {
                     let s = crate::settings::read_settings(&a);
-                    Some(s.version_scan_dirs.clone())
+                    s.version_scan_dirs.clone()
                 })
                 .unwrap_or_default();
             if !dirs.is_empty() {
@@ -262,11 +262,11 @@ pub fn restart_watchers(app: AppHandle) -> Result<(), String> {
     let s = crate::settings::read_settings(&app);
 
     if s.auto_watch_project_dirs && !s.project_scan_dirs.is_empty() {
-        let dirs: Vec<PathBuf> = s.project_scan_dirs.iter().map(|d| PathBuf::from(d)).collect();
+        let dirs: Vec<PathBuf> = s.project_scan_dirs.iter().map(PathBuf::from).collect();
         start_project_watchers(app.clone(), dirs, s.scan_depth, 2000);
     }
     if s.auto_watch_version_dirs && !s.version_scan_dirs.is_empty() {
-        let dirs: Vec<PathBuf> = s.version_scan_dirs.iter().map(|d| PathBuf::from(d)).collect();
+        let dirs: Vec<PathBuf> = s.version_scan_dirs.iter().map(PathBuf::from).collect();
         start_version_watchers(app.clone(), dirs, s.scan_depth, 2000);
     }
     if s.auto_watch_template_dir {

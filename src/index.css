@@ -29,23 +29,51 @@ body {
   user-select: none;
 }
 
+input::placeholder,
+textarea::placeholder {
+  color: color-mix(in srgb, var(--color-muted) 30%, transparent);
+}
+
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-  display: none;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: var(--color-line);
   border-radius: 999px;
   border: 2px solid transparent;
   background-clip: padding-box;
+  transition: background 0.2s ease;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-overlay);
+  background: var(--color-accent-dim);
   background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:active {
+  background: var(--color-accent);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line) transparent;
+}
+
+.hide-scrollbars::-webkit-scrollbar,
+.hide-scrollbars *::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbars,
+.hide-scrollbars * {
+  scrollbar-width: none;
 }
 
 .reduce-motion,

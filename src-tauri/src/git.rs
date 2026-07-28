@@ -215,9 +215,6 @@ fn get_git_status_for_path(path: &str) -> GitStatus {
         };
     }
 
-    // Use a single git command to get both branch and status info
-    // `git status --porcelain --branch` outputs branch info on the first line (## ...)
-    // followed by changed files. This halves the number of git.exe processes.
     let output = cmd()
         .args(["-C", path, "status", "--porcelain", "--branch"])
         .output()
@@ -235,13 +232,8 @@ fn get_git_status_for_path(path: &str) -> GitStatus {
                     continue;
                 }
                 if i == 0 && trimmed.starts_with("## ") {
-                    // Parse branch from lines like:
-                    //   ## main
-                    //   ## main...origin/main [ahead 1]
-                    //   ## HEAD (no branch)
                     let branch_info = &trimmed[3..];
                     if !branch_info.starts_with("HEAD (no branch)") && !branch_info.is_empty() {
-                        // Extract just the local branch name before "..." or " ["
                         let name = branch_info
                             .split("...")
                             .next()
@@ -284,8 +276,6 @@ pub async fn batch_git_status(paths: Vec<String>) -> HashMap<String, GitStatus> 
     tokio::task::spawn_blocking(move || {
         let results = std::sync::Mutex::new(HashMap::with_capacity(paths.len()));
 
-        // Process projects in chunks to avoid spawning too many concurrent git.exe processes
-        // This prevents resource exhaustion on Windows when there are many projects.
         for chunk in paths.chunks(MAX_CONCURRENT) {
             std::thread::scope(|s| {
                 for p in chunk {
@@ -335,19 +325,50 @@ pub fn open_terminal(path: String) -> Result<(), String> {
 
     #[cfg(all(unix, not(target_os = "macos")))]
     {
-        let terminals = ["x-terminal-emulator", "gnome-terminal", "konsole", "xfce4-terminal", "xterm"];
         let mut spawned = false;
-        for term in &terminals {
-            if Command::new(term)
-                .arg("--working-directory")
-                .arg(&path)
-                .spawn()
-                .is_ok()
-            {
-                spawned = true;
-                break;
+
+        if let Ok(term) = std::env::var("TERMINAL") {
+            if !term.is_empty() {
+                spawned = Command::new(&term)
+                    .arg("--working-directory")
+                    .arg(&path)
+                    .spawn()
+                    .is_ok();
             }
         }
+
+        if !spawned {
+            let terminals: [(&str, &[&str]); 6] = [
+                ("gnome-terminal", &["--working-directory", ""]),
+                ("kgx", &["--working-directory", ""]),
+                ("ptyxis", &["--working-directory", ""]),
+                ("konsole", &["--workdir", ""]),
+                ("xfce4-terminal", &["--working-directory", ""]),
+                ("x-terminal-emulator", &["--working-directory", ""]),
+            ];
+
+            for &(term, args) in &terminals {
+                if args.len() == 2 {
+                    let replaced: Vec<&str> = vec![args[0], &path];
+                    if Command::new(term).args(&replaced).spawn().is_ok() {
+                        spawned = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if !spawned {
+            spawned = Command::new("xterm")
+                .args(["-e", &format!("cd '{}' && exec bash", path.replace('\'', "'\\''"))])
+                .spawn()
+                .is_ok();
+        }
+
+        if !spawned {
+            Command::new("xdg-open").arg(&path).spawn().ok();
+        }
+
         if !spawned {
             return Err("Could not find a terminal emulator".into());
         }
@@ -1055,17 +1076,17 @@ pub fn git_file_diff(path: String, file_path: String) -> Result<GitDiffResult, S
             if line.starts_with('+') {
                 hunk.lines.push(GitDiffLine {
                     kind: "add".into(),
-                    content: line[1..].to_string(),
+                    content: line.strip_prefix('+').unwrap().to_string(),
                 });
             } else if line.starts_with('-') {
                 hunk.lines.push(GitDiffLine {
                     kind: "delete".into(),
-                    content: line[1..].to_string(),
+                    content: line.strip_prefix('-').unwrap().to_string(),
                 });
             } else if line.starts_with(' ') {
                 hunk.lines.push(GitDiffLine {
                     kind: "context".into(),
-                    content: line[1..].to_string(),
+                    content: line.strip_prefix(' ').unwrap().to_string(),
                 });
             }
         }
@@ -1122,7 +1143,7 @@ pub fn clone_repo(url: String, dest: String) -> Result<String, String> {
     let folder_name = url
         .trim_end_matches(".git")
         .split('/')
-        .last()
+        .next_back()
         .unwrap_or("repo");
 
     let clone_target = dest_path.join(folder_name);
@@ -1242,7 +1263,6 @@ pub fn git_resolve_conflict_manual(path: String, file_path: String) -> Result<()
         return Err("Not a git repository".into());
     }
 
-    // Just stage the file as-is, assuming the user edited it manually
     let add = cmd()
         .args(["-C", &path, "add", &file_path])
         .output()

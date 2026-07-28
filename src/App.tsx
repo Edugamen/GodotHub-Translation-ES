@@ -378,7 +378,6 @@ const [bugReportOpen, setBugReportOpen] = useState(false)
           setUpdatesModalOpen(true)
         }
       } catch {
-        // Silently ignore background check failures
       }
     })()
     return () => { cancelled = true }
@@ -553,6 +552,9 @@ const [bugReportOpen, setBugReportOpen] = useState(false)
 
   return (
     <div className="h-screen w-screen flex flex-col bg-base text-ink font-body">
+      <div className="shrink-0">
+        <TitleBar />
+      </div>
       <div className="relative flex-1 flex min-h-0">
         <aside
           className={`group relative border-r border-line flex flex-col p-4 gap-1 bg-surface/40 transition-[width] duration-200 ease-out ${
@@ -560,8 +562,6 @@ const [bugReportOpen, setBugReportOpen] = useState(false)
           }`}
           style={{
             width: displayWidth,
-            paddingTop: 'calc(2.5rem + 1rem)',
-            marginTop: '-0.5rem',
           }}
         >
           <nav
@@ -723,7 +723,6 @@ const [bugReportOpen, setBugReportOpen] = useState(false)
               ) : (
                 <ViewErrorBoundary name="Settings">
                   <SettingsView
-                    key={activeId}
                     highlightSetting={highlightSetting}
                     onHighlightDone={() => setHighlightSetting(null)}
                   />
@@ -767,11 +766,7 @@ const [bugReportOpen, setBugReportOpen] = useState(false)
         </AnimatePresence>
       </div>
 
-      <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none">
-        <div className="pointer-events-auto">
-          <TitleBar />
-        </div>
-      </div>
+
 
       {splashPhase !== 'done' && <SplashScreen phase={splashPhase} />}
 

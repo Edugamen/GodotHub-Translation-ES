@@ -344,6 +344,8 @@ export function SettingsView({
   const { settings, update, resetToDefaults, loaded } = useSettings()
   const [current, setCurrent] = useState<AppSettings | null>(null)
   const [scanMessage, setScanMessage] = useState<string | null>(null)
+  const [tokenTestState, setTokenTestState] = useState<'idle' | 'testing' | 'success' | 'warning' | 'error'>('idle')
+  const [tokenTestMsg, setTokenTestMsg] = useState<string | null>(null)
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [confirmingReset, setConfirmingReset] = useState(false)
   const [confirmingWipe, setConfirmingWipe] = useState(false)
@@ -369,6 +371,7 @@ export function SettingsView({
     return 76
   })
 
+  const tokenTestTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const savedIndicatorTimeout = useRef<ReturnType<typeof setTimeout> | null>(
     null,
@@ -404,8 +407,6 @@ export function SettingsView({
       categories_enabled: { tab: 'behavior', section: 'behavior-projects' },
       workspaces_enabled: { tab: 'behavior', section: 'behavior-projects' },
       check_updates: { tab: 'advanced', section: 'advanced-updates' },
-      export_settings: { tab: 'advanced', section: 'advanced-export' },
-      import_settings: { tab: 'advanced', section: 'advanced-export' },
       tooltip_delay: { tab: 'behavior', section: 'behavior-projects' },
       tray_recent_projects_count: { tab: 'behavior', section: 'behavior' },
       command_palette_keybind: { tab: 'behavior', section: 'behavior' },
@@ -418,10 +419,13 @@ export function SettingsView({
       ui_density: { tab: 'appearance', section: 'appearance' },
       font_scale: { tab: 'appearance', section: 'appearance' },
       reduce_motion: { tab: 'appearance', section: 'appearance' },
+      show_scrollbars: { tab: 'appearance', section: 'appearance' },
       sidebar_width: { tab: 'appearance', section: 'appearance' },
       setup_wizard: { tab: 'advanced', section: 'advanced-setup' },
       reset_settings: { tab: 'advanced', section: 'advanced-reset' },
       delete_app_data: { tab: 'advanced', section: 'advanced-delete' },
+      show_support_button: { tab: 'advanced', section: 'advanced-support' },
+      show_star_button: { tab: 'advanced', section: 'advanced-support' },
     }
 
     const info = sectionMap[highlightSetting]
@@ -448,8 +452,12 @@ export function SettingsView({
     return () => clearTimeout(t)
   }, [highlightSetting])
 
+  const prevSettingsRef = useRef(settings)
+
   useEffect(() => {
-    if (loaded && current === null) {
+    if (!loaded) return
+    if (current === null || settings !== prevSettingsRef.current) {
+      prevSettingsRef.current = settings
       const projectDirs =
         settings.default_project_location &&
         !settings.project_scan_dirs.includes(settings.default_project_location)
@@ -671,7 +679,6 @@ export function SettingsView({
                       onClick={() => {
                         setSettingsSearchQuery('')
                         setTab(item.tab as SettingsTab)
-                        // Dispatch to highlight the setting
                         window.dispatchEvent(
                           new CustomEvent('app:open-setting', { detail: item.key }),
                         )
@@ -1465,6 +1472,24 @@ export function SettingsView({
                   />
                 </label>
 
+                <label className="flex items-center justify-between gap-4">
+                  <div>
+                    <span className="text-xs font-medium text-muted block">
+                      Show scrollbar
+                    </span>
+                    <p className="text-[11px] text-muted mt-1 leading-relaxed">
+                      Hides the scrollbar across the entire app when toggled off. You can still scroll with keyboard, trackpad, or mouse wheel.
+                    </p>
+                  </div>
+                  <Toggle
+                    checked={current.show_scrollbars}
+                    onChange={(checked) => {
+                      setField('show_scrollbars', checked)
+                    }}
+                    label="Show scrollbar"
+                  />
+                </label>
+
                 <div className="pt-5 border-t border-line flex flex-col gap-5">
                   <div className="flex flex-col gap-2.5">
                     <div className="flex items-center justify-between gap-4">
@@ -1549,6 +1574,108 @@ export function SettingsView({
             transition={{ duration: 0.12 }}
             className="flex flex-col gap-6"
           >
+            <SectionCard
+              title="GitHub API Token"
+              description="Optionally set a GitHub personal access token to increase the API rate limit from 60 to 5,000 requests per hour when fetching available Godot versions. No scopes/permissions needed."
+            >
+              <div className="flex flex-col gap-2.5">
+                <div className="relative">
+                  <input
+                    type="password"
+                    value={current.github_token ?? ''}
+                    onChange={(e) =>
+                      setField('github_token', e.target.value || null)
+                    }
+                    placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                    className="focus-ring w-full bg-raised border border-line rounded-lg px-3.5 py-2.5 text-sm font-mono focus:border-accent-dim transition-colors pr-20"
+                  />
+                  <motion.button
+                    whileHover={{ y: -1 }}
+                    whileTap={{ scale: 0.96 }}
+                    onClick={async () => {
+                      if (tokenTestTimeout.current) clearTimeout(tokenTestTimeout.current)
+                      try {
+                        setTokenTestState('testing')
+                        const info = await api.testGithubToken()
+                        const mins = Math.max(1, Math.round((info.reset_at - Date.now() / 1000) / 60))
+                        const status = info.used_token
+                          ? `${info.remaining}/${info.limit} (resets ~${mins}min)`
+                          : `${info.remaining}/${info.limit}`
+                        setTokenTestState(info.remaining > 0 ? 'success' : 'warning')
+                        setTokenTestMsg(`Token valid! Rate limit: ${status}`)
+                      } catch (e) {
+                        setTokenTestState('error')
+                        setTokenTestMsg(`Test failed: ${e}`)
+                      }
+                      tokenTestTimeout.current = setTimeout(() => {
+                        setTokenTestState('idle')
+                        setTokenTestMsg(null)
+                      }, 5000)
+                    }}
+                    className="focus-ring cursor-pointer absolute right-1.5 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-md bg-raised border border-line text-xs font-medium text-muted hover:text-ink hover:border-accent-dim transition-colors"
+                  >
+                    {tokenTestState === 'testing' ? 'Testing…' : 'Test'}
+                  </motion.button>
+                </div>
+                {tokenTestMsg && (
+                  <span className={`text-[11px] ${
+                    tokenTestState === 'success' ? 'text-mint' :
+                    tokenTestState === 'warning' ? 'text-amber' :
+                    tokenTestState === 'error' ? 'text-danger' :
+                    'text-muted'
+                  }`}>
+                    {tokenTestMsg}
+                  </span>
+                )}
+                <p className="text-[11px] text-muted leading-relaxed">
+                  Create a token at{' '}
+                  <a
+                    href="https://github.com/settings/tokens"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-accent hover:text-accent-bright underline underline-offset-2"
+                  >
+                    github.com/settings/tokens
+                  </a>
+                  . You only need to check the{' '}
+                  <code className="text-[10px] px-1 py-0.5 rounded bg-raised border border-line">public_repo</code>{' '}
+                  scope if you want private repo access, otherwise leave all
+                  scopes unchecked. No sensitive permissions required.
+                </p>
+              </div>
+            </SectionCard>
+
+            <div data-section-id="advanced-support" className="rounded-xl border border-line bg-surface/60 p-6 flex items-center justify-between gap-6">
+              <div className="min-w-0">
+                <h3 className="font-display font-semibold">Titlebar Buttons</h3>
+                <p className="text-xs text-muted mt-1.5 leading-relaxed">
+                  Show or hide the "Support" and "Star on GitHub" buttons in the titlebar.
+                </p>
+              </div>
+              <div className="flex items-center gap-4 shrink-0">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Toggle
+                    checked={current.show_support_button}
+                    onChange={(checked) =>
+                      setField('show_support_button', checked)
+                    }
+                    label="Show support button"
+                  />
+                  <span className="text-xs text-muted whitespace-nowrap">Support Dev</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Toggle
+                    checked={current.show_star_button}
+                    onChange={(checked) =>
+                      setField('show_star_button', checked)
+                    }
+                    label="Show star button"
+                  />
+                  <span className="text-xs text-muted whitespace-nowrap">Star</span>
+                </label>
+              </div>
+            </div>
+
             <div data-section-id="advanced-setup">
             <div className="rounded-xl border border-line bg-surface/60 p-6 flex items-center justify-between gap-6">
               <div className="min-w-0">
@@ -1594,90 +1721,6 @@ export function SettingsView({
               >
                 Reset
               </motion.button>
-            </div>
-            </div>
-
-            <div data-section-id="advanced-export">
-            <div className="rounded-xl border border-line bg-surface/60 p-6 flex items-center justify-between gap-6">
-              <div className="min-w-0">
-                <h3 className="font-display font-semibold">
-                  Export / Import Settings
-                </h3>
-                <p className="text-xs text-muted mt-1.5 leading-relaxed">
-                  Save your current settings as a JSON file to back them up or
-                  transfer them to another machine. Importing replaces all
-                  current settings with those from the file.
-                </p>
-              </div>
-              <div className="flex gap-2.5 shrink-0">
-                <motion.button
-                  whileHover={{ y: -1 }}
-                  whileTap={{ scale: 0.96 }}
-                  onClick={async () => {
-                    try {
-                      await api.exportSettings()
-                      setSaveState('saved')
-                      if (savedIndicatorTimeout.current)
-                        clearTimeout(savedIndicatorTimeout.current)
-                      savedIndicatorTimeout.current = setTimeout(
-                        () => setSaveState('idle'),
-                        1500,
-                      )
-                    } catch (e) {
-                      if (String(e) !== 'Export cancelled') {
-                        alert(String(e))
-                      }
-                    }
-                  }}
-                  className="focus-ring cursor-pointer px-4 py-2.5 rounded-lg border border-line hover:border-accent-dim hover:bg-raised text-sm font-medium transition-colors"
-                >
-                  Export
-                </motion.button>
-                <motion.button
-                  whileHover={{ y: -1 }}
-                  whileTap={{ scale: 0.96 }}
-                  onClick={async () => {
-                    try {
-                      const result = await api.importSettings()
-                      setCurrent({
-                        ...result,
-                        project_scan_dirs:
-                          result.default_project_location &&
-                          !result.project_scan_dirs.includes(
-                            result.default_project_location,
-                          )
-                            ? [
-                                ...result.project_scan_dirs,
-                                result.default_project_location,
-                              ]
-                            : result.project_scan_dirs,
-                        version_scan_dirs:
-                          result.download_dir &&
-                          !result.version_scan_dirs.includes(result.download_dir)
-                            ? [
-                                ...result.version_scan_dirs,
-                                result.download_dir,
-                              ]
-                            : result.version_scan_dirs,
-                      })
-                      setSaveState('saved')
-                      if (savedIndicatorTimeout.current)
-                        clearTimeout(savedIndicatorTimeout.current)
-                      savedIndicatorTimeout.current = setTimeout(
-                        () => setSaveState('idle'),
-                        1500,
-                      )
-                    } catch (e) {
-                      if (String(e) !== 'Import cancelled') {
-                        alert(String(e))
-                      }
-                    }
-                  }}
-                  className="focus-ring cursor-pointer px-4 py-2.5 rounded-lg border border-line hover:border-accent-dim hover:bg-raised text-sm font-medium transition-colors"
-                >
-                  Import
-                </motion.button>
-              </div>
             </div>
             </div>
 

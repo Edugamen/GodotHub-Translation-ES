@@ -583,8 +583,6 @@ export function ProjectsView({
 
 
   const fetchGitStatuses = useCallback(async () => {
-    // Prevent overlapping calls — if git is slow (network drives, SSH, etc.),
-    // don't pile up more requests on top of the current one.
     if (fetchingGitRef.current) return
     if (projects.length === 0) return
     fetchingGitRef.current = true
@@ -790,7 +788,7 @@ export function ProjectsView({
   }
 
   return (
-    <div className="p-10 pt-15 max-w-8xl mx-auto">
+    <div className="p-10 pt-6 max-w-8xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="font-body font-semibold text-3xl tracking-tight">

@@ -200,10 +200,14 @@ export interface AppSettings {
   auto_scan_on_startup: boolean
   command_palette_keybind: string
   external_editor_path: string | null
+  github_token: string | null
   template_scan_dir: string | null
   auto_watch_project_dirs: boolean
   auto_watch_version_dirs: boolean
   auto_watch_template_dir: boolean
   tooltip_delay: number
   tray_recent_projects_count: number
+  show_support_button: boolean
+  show_star_button: boolean
+  show_scrollbars: boolean
 }
