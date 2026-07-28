@@ -5,7 +5,7 @@ import { useSettings } from '../../hooks/useSettings'
 interface TooltipProps {
   content: string
   children: React.ReactNode
-  side?: 'top' | 'bottom' | 'right'
+  side?: 'top' | 'bottom' | 'left' | 'right'
   className?: string
   maxWidth?: number
   delay?: number
@@ -13,8 +13,7 @@ interface TooltipProps {
 
 const MAX_TOOLTIP_WIDTH = 320
 const VIEWPORT_PADDING = 14
-const CURSOR_GAP = 12
-const FOLLOW_SMOOTHING = 0.18
+const GAP = 10
 const DEFAULT_DELAY = 350
 
 export function Tooltip({ content, children, side: sideProp, className, maxWidth = MAX_TOOLTIP_WIDTH, delay: delayProp }: TooltipProps) {
@@ -23,49 +22,59 @@ export function Tooltip({ content, children, side: sideProp, className, maxWidth
   const [show, setShow] = useState(false)
   const [shimmerDone, setShimmerDone] = useState(false)
   const [position, setPosition] = useState({ x: 0, y: 0 })
-  const mousePosRef = useRef({ x: 0, y: 0 })
+  const [arrowSide, setArrowSide] = useState<'top' | 'bottom' | 'left' | 'right'>('bottom')
+  const triggerRef = useRef<HTMLDivElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const animationFrameRef = useRef<number>(0)
-  const currentPosRef = useRef({ x: 0, y: 0 })
-  const targetPosRef = useRef({ x: 0, y: 0 })
-  const sideRef = useRef<'top' | 'bottom' | 'right'>('bottom')
+  const sizeKnownRef = useRef(false)
 
-  const pickSide = useCallback((mx: number, my: number, tw: number, th: number) => {
-    if (sideProp) return sideProp
+  const pickSideAndCalc = useCallback((rect: DOMRect, tw: number, th: number) => {
+    const spaceRight = window.innerWidth - rect.right - VIEWPORT_PADDING - GAP
+    const spaceLeft = rect.left - VIEWPORT_PADDING - GAP
+    const spaceBelow = window.innerHeight - rect.bottom - VIEWPORT_PADDING - GAP
+    const spaceAbove = rect.top - VIEWPORT_PADDING - GAP
 
-    const spaceRight = window.innerWidth - mx - VIEWPORT_PADDING - CURSOR_GAP
-    const spaceBelow = window.innerHeight - my - VIEWPORT_PADDING - CURSOR_GAP
-    const spaceAbove = my - VIEWPORT_PADDING - CURSOR_GAP
+    const sides = (() => {
+      if (sideProp) return [sideProp]
 
-    if (spaceRight >= tw + CURSOR_GAP && spaceRight > spaceBelow && spaceRight > spaceAbove) {
-      return 'right' as const
-    }
-    if (spaceBelow >= th + CURSOR_GAP || spaceBelow >= spaceAbove) {
-      return 'bottom' as const
-    }
-    return 'top' as const
-  }, [sideProp])
+      const candidates: { side: 'top' | 'bottom' | 'left' | 'right'; space: number }[] = []
+      if (spaceBelow >= th + GAP) candidates.push({ side: 'bottom', space: spaceBelow })
+      if (spaceAbove >= th + GAP) candidates.push({ side: 'top', space: spaceAbove })
+      if (spaceRight >= tw + GAP) candidates.push({ side: 'right', space: spaceRight })
+      if (spaceLeft >= tw + GAP) candidates.push({ side: 'left', space: spaceLeft })
 
-  const calcTarget = useCallback((mx: number, my: number) => {
-    if (!tooltipRef.current) return { x: mx, y: my }
-    const th = tooltipRef.current.offsetHeight
-    const tw = tooltipRef.current.offsetWidth
-    const side = pickSide(mx, my, tw, th)
-    sideRef.current = side
+      if (candidates.length > 0) {
+        candidates.sort((a, b) => b.space - a.space)
+        return [candidates[0].side]
+      }
+
+      const allSides: { side: 'top' | 'bottom' | 'left' | 'right'; space: number }[] = [
+        { side: 'bottom', space: spaceBelow },
+        { side: 'top', space: spaceAbove },
+        { side: 'right', space: spaceRight },
+        { side: 'left', space: spaceLeft },
+      ]
+      allSides.sort((a, b) => b.space - a.space)
+      return [allSides[0].side]
+    })()
+
+    const side = sides[0]
 
     let x: number
     let y: number
 
     if (side === 'right') {
-      x = mx + CURSOR_GAP
-      y = my - th / 2
+      x = rect.right + GAP
+      y = rect.top + rect.height / 2 - th / 2
+    } else if (side === 'left') {
+      x = rect.left - tw - GAP
+      y = rect.top + rect.height / 2 - th / 2
     } else if (side === 'top') {
-      x = mx - tw / 2
-      y = my - th - CURSOR_GAP
+      x = rect.left + rect.width / 2 - tw / 2
+      y = rect.top - th - GAP
     } else {
-      x = mx - tw / 2
-      y = my + CURSOR_GAP
+      x = rect.left + rect.width / 2 - tw / 2
+      y = rect.bottom + GAP
     }
 
     const maxX = window.innerWidth - tw - VIEWPORT_PADDING
@@ -73,98 +82,111 @@ export function Tooltip({ content, children, side: sideProp, className, maxWidth
     x = Math.max(VIEWPORT_PADDING, Math.min(x, maxX))
     y = Math.max(VIEWPORT_PADDING, Math.min(y, maxY))
 
-    return { x, y }
-  }, [pickSide])
-
-  const startLerp = useCallback(() => {
-    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current)
-
-    const tick = () => {
-      const cp = currentPosRef.current
-      const tp = targetPosRef.current
-
-      const dx = tp.x - cp.x
-      const dy = tp.y - cp.y
-      const dist = Math.sqrt(dx * dx + dy * dy)
-
-      if (dist < 0.5) {
-        currentPosRef.current = { ...tp }
-        setPosition({ ...tp })
-        animationFrameRef.current = 0
-        return
-      }
-
-      const ease = Math.min(FOLLOW_SMOOTHING * (dist / 30 + 0.6), 0.45)
-      currentPosRef.current = {
-        x: cp.x + dx * ease,
-        y: cp.y + dy * ease,
-      }
-      setPosition({ ...currentPosRef.current })
-      animationFrameRef.current = requestAnimationFrame(tick)
-    }
-
-    animationFrameRef.current = requestAnimationFrame(tick)
-  }, [])
-
-  const updateTarget = useCallback(() => {
-    const target = calcTarget(mousePosRef.current.x, mousePosRef.current.y)
-    targetPosRef.current = target
-    if (!animationFrameRef.current) startLerp()
-  }, [calcTarget, startLerp])
-
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    const dx = e.clientX - mousePosRef.current.x
-    const dy = e.clientY - mousePosRef.current.y
-    if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return
-    mousePosRef.current = { x: e.clientX, y: e.clientY }
-    if (!show) return
-    updateTarget()
-  }, [show, updateTarget])
+    return { x, y, side }
+  }, [sideProp])
 
   const handleMouseEnter = useCallback(() => {
     timeoutRef.current = setTimeout(() => {
-      mousePosRef.current = { ...mousePosRef.current }
-      currentPosRef.current = { x: mousePosRef.current.x, y: mousePosRef.current.y }
-      setPosition({ x: mousePosRef.current.x, y: mousePosRef.current.y })
+      const rect = triggerRef.current?.getBoundingClientRect()
+      if (!rect) return
+      sizeKnownRef.current = false
+
+      setPosition({ x: rect.left, y: rect.top })
       setShow(true)
+
       requestAnimationFrame(() => {
-        updateTarget()
+        if (!tooltipRef.current) return
+        const tw = tooltipRef.current.offsetWidth
+        const th = tooltipRef.current.offsetHeight
+        const result = pickSideAndCalc(rect, tw, th)
+        setPosition({ x: result.x, y: result.y })
+        setArrowSide(result.side)
+        sizeKnownRef.current = true
       })
     }, delay)
-  }, [updateTarget, delay])
+  }, [pickSideAndCalc, delay])
 
   const handleMouseLeave = useCallback(() => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current)
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current)
-      animationFrameRef.current = 0
-    }
     setShimmerDone(false)
     setShow(false)
+    sizeKnownRef.current = false
   }, [])
 
   useEffect(() => {
     if (!show) return
-    const handler = () => updateTarget()
+    const handler = () => {
+      if (!triggerRef.current || !tooltipRef.current || !sizeKnownRef.current) return
+      const rect = triggerRef.current.getBoundingClientRect()
+      const tw = tooltipRef.current.offsetWidth
+      const th = tooltipRef.current.offsetHeight
+      const result = pickSideAndCalc(rect, tw, th)
+      setPosition({ x: result.x, y: result.y })
+      setArrowSide(result.side)
+    }
     window.addEventListener('scroll', handler, true)
     window.addEventListener('resize', handler)
     return () => {
       window.removeEventListener('scroll', handler, true)
       window.removeEventListener('resize', handler)
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
-        animationFrameRef.current = 0
-      }
     }
-  }, [show, updateTarget])
+  }, [show, pickSideAndCalc])
 
   const effectiveMaxWidth = Math.min(maxWidth, window.innerWidth - VIEWPORT_PADDING * 2)
-  const arrowSide = sideRef.current
+
+  const getArrowStyle = () => {
+    const base: React.CSSProperties = {
+      position: 'absolute',
+      width: 10,
+      height: 10,
+      transform: 'rotate(45deg)',
+      background: 'var(--color-surface, #1e2028)',
+      zIndex: -1,
+    }
+    if (arrowSide === 'top') {
+      base.bottom = -5
+      base.left = '50%'
+      base.marginLeft = -5
+    } else if (arrowSide === 'bottom') {
+      base.top = -5
+      base.left = '50%'
+      base.marginLeft = -5
+    } else if (arrowSide === 'left') {
+      base.right = -5
+      base.top = '50%'
+      base.marginTop = -5
+    } else {
+      base.left = -5
+      base.top = '50%'
+      base.marginTop = -5
+    }
+    return base
+  }
+
+  const getExitTransform = () => {
+    const offset = 8
+    switch (arrowSide) {
+      case 'top': return { y: offset }
+      case 'bottom': return { y: -offset }
+      case 'left': return { x: offset }
+      case 'right': return { x: -offset }
+    }
+  }
+
+  const getInitialTransform = () => {
+    const offset = 10
+    switch (arrowSide) {
+      case 'top': return { y: offset }
+      case 'bottom': return { y: -offset }
+      case 'left': return { x: offset }
+      case 'right': return { x: -offset }
+    }
+  }
 
   return (
     <div
+      ref={triggerRef}
       onMouseEnter={handleMouseEnter}
-      onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       className={className}
     >
@@ -177,15 +199,13 @@ export function Tooltip({ content, children, side: sideProp, className, maxWidth
             initial={{
               opacity: 0,
               scale: 0.85,
-              [arrowSide === 'top' ? 'y' : arrowSide === 'bottom' ? 'y' : 'x']:
-                arrowSide === 'top' ? 10 : arrowSide === 'bottom' ? -10 : -8,
+              ...getInitialTransform(),
             }}
             animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
             exit={{
               opacity: 0,
               scale: 0.85,
-              [arrowSide === 'top' ? 'y' : arrowSide === 'bottom' ? 'y' : 'x']:
-                arrowSide === 'top' ? 8 : arrowSide === 'bottom' ? -8 : -6,
+              ...getExitTransform(),
             }}
             transition={{ type: 'spring', stiffness: 500, damping: 28, mass: 0.8 }}
             className="fixed z-999 pointer-events-none"
@@ -194,16 +214,12 @@ export function Tooltip({ content, children, side: sideProp, className, maxWidth
               top: position.y,
             }}
           >
-            {/* Arrow pointer -> seamless bg-surface diamond, no border so it blends into the tooltip body */}
+            {/* Arrow pointer */}
             <div
-              className="absolute z-[-1] w-2.5 h-2.5 rotate-45 bg-surface"
-              style={{
-                [arrowSide === 'top' ? 'bottom' : arrowSide === 'bottom' ? 'top' : 'left']: -5,
-                [arrowSide === 'top' || arrowSide === 'bottom' ? 'left' : 'top']: '50%',
-                marginLeft: arrowSide !== 'right' ? -5 : undefined,
-                marginTop: arrowSide === 'right' ? -5 : undefined,
-              }}
+              className="absolute z-[-1]"
+              style={getArrowStyle()}
             />
+
             {/* Tooltip body */}
             <div
               className="relative overflow-hidden px-3.5 py-2 rounded-xl border border-line/80 bg-surface/96 text-xs text-ink font-medium shadow-2xl shadow-black/60 backdrop-blur-12px"

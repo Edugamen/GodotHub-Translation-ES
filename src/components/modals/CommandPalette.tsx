@@ -241,6 +241,7 @@ export const SETTINGS_SEARCH_ITEMS: SettingSearchEntry[] = (
   { key: 'show_support_button', label: 'Show support button in titlebar', tab: 'advanced' },
   { key: 'show_star_button', label: 'Show star button in titlebar', tab: 'advanced' },
   { key: 'show_scrollbars', label: 'Show scrollbar', tab: 'appearance' },
+  { key: 'project_icon_opacity', label: 'Project icon opacity', tab: 'appearance' },
   ] as SettingSearchEntry[]
 ).filter((item) => !(isMac && item.key === 'minimize_to_tray'))
 

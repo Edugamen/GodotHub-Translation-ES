@@ -20,7 +20,9 @@ export function VersionBadge({ tag, state = 'available', customName }: Props) {
       {customName ? (
         <>
           {customName}
-          <span className="text-muted">({tag || 'unbound'})</span>
+          {customName !== tag && (
+            <span className="text-muted">({tag || 'unbound'})</span>
+          )}
         </>
       ) : (
         tag || 'unbound'

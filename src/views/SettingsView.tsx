@@ -15,6 +15,7 @@ import {
   applyDensity,
   applyFontScale,
   applyReducedMotion,
+  applyProjectIconOpacity,
 } from '../lib/appearance'
 import { SETTINGS_SEARCH_ITEMS } from '../components/modals/CommandPalette'
 import { IconSearch, IconX, IconRefresh } from '../components/Icons'
@@ -25,6 +26,7 @@ const DEFAULT_BG = '#15171c'
 const DEFAULT_RADIUS = 5
 const DEFAULT_DENSITY = 1.05
 const DEFAULT_FONT_SCALE = 1.0
+const DEFAULT_PROJECT_ICON_OPACITY = 14
 
 const SAVE_DEBOUNCE_MS = 350
 
@@ -420,6 +422,7 @@ export function SettingsView({
       font_scale: { tab: 'appearance', section: 'appearance' },
       reduce_motion: { tab: 'appearance', section: 'appearance' },
       show_scrollbars: { tab: 'appearance', section: 'appearance' },
+      project_icon_opacity: { tab: 'appearance', section: 'appearance' },
       sidebar_width: { tab: 'appearance', section: 'appearance' },
       setup_wizard: { tab: 'advanced', section: 'advanced-setup' },
       reset_settings: { tab: 'advanced', section: 'advanced-reset' },
@@ -581,12 +584,14 @@ export function SettingsView({
       font_scale: DEFAULT_FONT_SCALE,
       reduce_motion: false,
       theme_mode: 'dark',
+      project_icon_opacity: DEFAULT_PROJECT_ICON_OPACITY,
     })
     previewTheme(DEFAULT_ACCENT, DEFAULT_BG, 'dark')
     applyRadius(DEFAULT_RADIUS)
     applyDensity(DEFAULT_DENSITY)
     applyFontScale(DEFAULT_FONT_SCALE)
     applyReducedMotion(false)
+    applyProjectIconOpacity(DEFAULT_PROJECT_ICON_OPACITY)
   }
 
   const resetAllSettings = async () => {
@@ -1488,6 +1493,33 @@ export function SettingsView({
                     }}
                     label="Show scrollbar"
                   />
+                </label>
+
+                <label className="flex flex-col gap-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-muted">
+                      Project icon opacity
+                    </span>
+                    <span className="text-xs font-mono text-ink bg-raised px-2 py-0.5 rounded-md">
+                      {current.project_icon_opacity}%
+                    </span>
+                  </div>
+                  <Slider
+                    min={0}
+                    max={50}
+                    step={1}
+                    value={current.project_icon_opacity}
+                    label="Project icon opacity"
+                    onChange={(v) => {
+                      setField('project_icon_opacity', v)
+                      applyProjectIconOpacity(v)
+                    }}
+                  />
+                  <p className="text-[11px] text-muted leading-relaxed">
+                    Controls the background icon opacity on project cards.
+                    Lower values make the icon more subtle, higher values make
+                    it more visible.
+                  </p>
                 </label>
 
                 <div className="pt-5 border-t border-line flex flex-col gap-5">

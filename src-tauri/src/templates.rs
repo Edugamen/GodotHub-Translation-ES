@@ -127,7 +127,7 @@ pub fn delete_template(app: AppHandle, template_id: String) -> Result<(), String
     if !dir.exists() {
         return Err("Template not found".into());
     }
-    fs::remove_dir_all(&dir).map_err(|e| e.to_string())
+    trash::delete_all(&dir).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -194,7 +194,7 @@ fn read_all_templates(app: &AppHandle) -> Vec<ProjectTemplate> {
 
 fn delete_template_dir(app: &AppHandle, id: &str) {
     let dir = template_dir(app, id);
-    let _ = fs::remove_dir_all(&dir);
+    let _ = trash::delete_all(&dir);
 }
 
 #[tauri::command]

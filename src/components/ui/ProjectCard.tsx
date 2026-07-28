@@ -177,9 +177,9 @@ export const ProjectCard = memo(function ProjectCard({
 
       {confirmAction === 'delete' && (
         <ConfirmDialog
-          title="Delete project files?"
-          description={`This permanently deletes "${displayName}" and everything inside it from disk. This can't be undone.`}
-          confirmLabel="Delete permanently"
+          title="Move to Trash?"
+          description={`"${displayName}" and everything inside it will be moved to your system's Trash / Recycle Bin. You can restore it later if needed.`}
+          confirmLabel="Move to Trash"
           variant="danger"
           onConfirm={() => {
             onDelete()
@@ -322,14 +322,15 @@ export const ProjectCard = memo(function ProjectCard({
               </Tooltip>
             )}
 
-            <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl">
+            <div className="pointer-events-none absolute inset-0 overflow-clip rounded-xl">
               {icon ? (
                 <img
                   src={icon}
                   alt=""
                   aria-hidden="true"
-                  className="select-none absolute -left-6 top-1/2 -translate-y-1/2 -rotate-6 group-hover:rotate-0 h-35 w-35 object-contain opacity-[0.14] grayscale group-hover:grayscale-0 contrast-125 transition-all duration-300 ease-out will-change-transform"
+                  className="select-none absolute -left-6 top-1/2 -translate-y-1/2 -rotate-6 group-hover:rotate-0 h-35 w-35 object-contain grayscale group-hover:grayscale-0 contrast-125 transition-all duration-300 ease-out will-change-transform"
                   style={{
+                    opacity: 'var(--project-icon-opacity, 0.14)',
                     maskImage:
                       'linear-gradient(to right, black 35%, transparent 90%)',
                     WebkitMaskImage:
@@ -343,7 +344,7 @@ export const ProjectCard = memo(function ProjectCard({
                   style={{
                     fontSize: '72px',
                     lineHeight: 1,
-                    opacity: 0.14,
+                    opacity: 'var(--project-icon-opacity, 0.14)',
                     maskImage:
                       'linear-gradient(to right, black 35%, transparent 90%)',
                     WebkitMaskImage:
@@ -448,7 +449,7 @@ export const ProjectCard = memo(function ProjectCard({
                   onChange={onVersionChange}
                   options={installedVersions.map((v) => ({
                     value: v.tag,
-                    label: v.custom_name || v.version,
+                    label: v.custom_name || v.version || v.tag,
                     dotClassName: 'bg-mint',
                     badge: v.is_mono ? 'Mono' : undefined,
                   }))}

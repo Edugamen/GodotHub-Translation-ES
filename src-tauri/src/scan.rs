@@ -223,14 +223,23 @@ pub fn scan_for_versions_blocking(
         }
 
         let raw_version = probe_version(&exe_path);
+
         let base_tag = if raw_version.is_empty() {
-            exe_path
-                .file_stem()
-                .map(|s| s.to_string_lossy().to_string())
+            let fname = exe_path
+                .file_name()
+                .and_then(|s| s.to_str())
+                .unwrap_or("");
+            godot_versions::parse_godot_tag_from_filename(fname)
+                .or_else(|| {
+                    exe_path
+                        .file_stem()
+                        .map(|s| s.to_string_lossy().to_string())
+                })
                 .unwrap_or_else(|| "unknown".into())
         } else {
             normalize_tag(&raw_version)
         };
+
         let is_mono = exe_str.to_lowercase().contains("mono");
         let tag = if is_mono && !base_tag.ends_with("-mono") {
             format!("{}-mono", base_tag)
@@ -246,9 +255,16 @@ pub fn scan_for_versions_blocking(
             continue;
         }
 
+        let version = if raw_version.is_empty() {
+            let v = tag.trim_end_matches("-mono");
+            v.split('-').next().unwrap_or(v).trim_start_matches('v').to_string()
+        } else {
+            raw_version
+        };
+
         let installed = InstalledGodotVersion {
             tag,
-            version: raw_version,
+            version,
             executable_path: exe_str,
             is_mono,
             installed_at: chrono::Utc::now().to_rfc3339(),
@@ -326,14 +342,23 @@ fn import_version_blocking(
         }
 
         let raw_version = probe_version(&exe_path);
+
         let base_tag = if raw_version.is_empty() {
-            exe_path
-                .file_stem()
-                .map(|s| s.to_string_lossy().to_string())
+            let fname = exe_path
+                .file_name()
+                .and_then(|s| s.to_str())
+                .unwrap_or("");
+            godot_versions::parse_godot_tag_from_filename(fname)
+                .or_else(|| {
+                    exe_path
+                        .file_stem()
+                        .map(|s| s.to_string_lossy().to_string())
+                })
                 .unwrap_or_else(|| "unknown".into())
         } else {
             normalize_tag(&raw_version)
         };
+
         let is_mono = exe_str.to_lowercase().contains("mono");
         let tag = if is_mono && !base_tag.ends_with("-mono") {
             format!("{}-mono", base_tag)
@@ -349,9 +374,16 @@ fn import_version_blocking(
             continue;
         }
 
+        let version = if raw_version.is_empty() {
+            let v = tag.trim_end_matches("-mono");
+            v.split('-').next().unwrap_or(v).trim_start_matches('v').to_string()
+        } else {
+            raw_version
+        };
+
         let installed = InstalledGodotVersion {
             tag,
-            version: raw_version,
+            version,
             executable_path: exe_str,
             is_mono,
             installed_at: chrono::Utc::now().to_rfc3339(),

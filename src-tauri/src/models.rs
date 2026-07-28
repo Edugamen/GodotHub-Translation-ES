@@ -178,6 +178,12 @@ pub struct AppSettings {
     pub show_star_button: bool,
     #[serde(default = "default_true")]
     pub show_scrollbars: bool,
+    #[serde(default = "default_project_icon_opacity")]
+    pub project_icon_opacity: u32,
+}
+
+fn default_project_icon_opacity() -> u32 {
+    14
 }
 
 fn default_true() -> bool {
@@ -338,6 +344,7 @@ tooltip_delay: default_tooltip_delay(),
             show_support_button: true,
             show_star_button: true,
             show_scrollbars: true,
+            project_icon_opacity: 14,
         }
     }
 }

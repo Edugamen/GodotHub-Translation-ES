@@ -210,4 +210,5 @@ export interface AppSettings {
   show_support_button: boolean
   show_star_button: boolean
   show_scrollbars: boolean
+  project_icon_opacity: number
 }

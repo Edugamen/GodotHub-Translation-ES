@@ -47,6 +47,7 @@ const DEFAULTS: AppSettings = {
   show_support_button: true,
   show_star_button: true,
   show_scrollbars: true,
+  project_icon_opacity: 14,
 }
 
 interface SettingsContextValue {

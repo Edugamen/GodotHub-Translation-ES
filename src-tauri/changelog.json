@@ -422,5 +422,25 @@
       }
     ],
     "created_at": 1785245589
+  },
+  {
+    "id": "bb23f26c-73dc-4ec7-b24f-e8cc7ed1ee65",
+    "version": "v1.2",
+    "date": "2026-07-29",
+    "notes": [
+      {
+        "category": "fix",
+        "text": "Now You can drag the App on Setup Wizard Screen"
+      },
+      {
+        "category": "fix",
+        "text": "Changed overflow-clip from overflow-hidden in Project Card for Icons to fix clipping bugs in some Mac Devices"
+      },
+      {
+        "category": "add",
+        "text": "Opacity slider in Settings -> Appearance for Icons in Project Cards"
+      }
+    ],
+    "created_at": 1785270388
   }
 ]

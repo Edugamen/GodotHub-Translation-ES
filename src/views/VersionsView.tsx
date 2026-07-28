@@ -21,6 +21,7 @@ import {
 } from '../components/Icons'
 import { ScrollReveal } from '../components/ui/ScrollReveal'
 import { useGodotVersionsContext } from '../hooks/godotVersionsContext'
+import { ConfirmDialog } from '../components/modals/ConfirmDialog'
 
 function versionCore(raw: string): string {
   const parts = raw
@@ -167,6 +168,7 @@ export function VersionsView() {
   const [visibleGroups, setVisibleGroups] = useState(5)
   const [filters, setFilters] = useState<VersionFilters>(loadVersionFilters)
   const [query, setQuery] = useState('')
+  const [confirmUninstallTag, setConfirmUninstallTag] = useState<string | null>(null)
   const [_rateLimit, setRateLimit] = useState<{
     remaining: number
     limit: number
@@ -253,8 +255,9 @@ export function VersionsView() {
   }
 
   const commitEdit = () => {
-    if (editingTag && editValue.trim()) {
-      rename(editingTag, editValue.trim())
+    if (editingTag) {
+      const trimmed = editValue.trim()
+      rename(editingTag, trimmed || null)
     }
     setEditingTag(null)
     setEditValue('')
@@ -441,13 +444,12 @@ export function VersionsView() {
                   >
                     <IconRocket className="w-3.5 h-3.5" />
                     Open
-                  </motion.button>
-                  <motion.button
+                  </motion.button>                    <motion.button
                     whileHover={{ y: -1 }}
                     whileTap={{ scale: 0.96 }}
                     onClick={(e) => {
                       e.stopPropagation()
-                      remove(v.tag)
+                      setConfirmUninstallTag(v.tag)
                     }}
                     className="icon-wiggle cursor-pointer focus-ring flex items-center gap-2 px-3.5 py-2 rounded-lg border border-line text-muted hover:text-danger hover:border-danger/50 text-sm transition-colors shrink-0"
                   >
@@ -805,6 +807,22 @@ export function VersionsView() {
       )}
 
       <AnimatePresence>
+        {confirmUninstallTag && (
+          <ConfirmDialog
+            title="Uninstall version?"
+            description={`"${confirmUninstallTag}" and its files will be moved to your system's Trash / Recycle Bin. You can reinstall it later if needed.`}
+            confirmLabel="Uninstall"
+            variant="danger"
+            onConfirm={() => {
+              remove(confirmUninstallTag)
+              setConfirmUninstallTag(null)
+            }}
+            onCancel={() => setConfirmUninstallTag(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {contextMenu && (
           <ContextMenu
             position={{ x: contextMenu.x, y: contextMenu.y }}
@@ -847,7 +865,7 @@ export function VersionsView() {
         label: 'Uninstall',
         icon: IconTrash,
         variant: 'danger',
-        onClick: () => remove(tag),
+        onClick: () => setConfirmUninstallTag(tag),
       },
     ]
   }

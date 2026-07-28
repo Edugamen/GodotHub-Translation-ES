@@ -10,6 +10,39 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use tauri::{AppHandle, Emitter, Manager};
 
+pub fn parse_godot_tag_from_filename(filename: &str) -> Option<String> {
+    let lower = filename.to_lowercase();
+
+    let stem = filename
+        .strip_suffix(".exe.zip")
+        .or_else(|| filename.strip_suffix(".exe"))
+        .or_else(|| filename.strip_suffix(".zip"))
+        .unwrap_or(filename);
+
+    let after_prefix = stem
+        .strip_prefix("Godot_v")
+        .or_else(|| stem.strip_prefix("godot_v"))
+        .or_else(|| stem.strip_prefix("GodotSharp_v"))?;
+
+    let version_part = after_prefix.split('_').next()?;
+
+    let clean = version_part.trim_start_matches('v');
+
+    if clean.is_empty() {
+        return None;
+    }
+
+    let is_mono = lower.contains("mono");
+
+    let tag = if is_mono {
+        format!("{}-mono", clean)
+    } else {
+        clean.to_string()
+    };
+
+    Some(tag)
+}
+
 pub fn versions_dir(app: &AppHandle) -> PathBuf {
     let s = settings::read_settings(app);
     let dir = match s.download_dir {
@@ -709,7 +742,7 @@ pub fn delete_godot_version(app: AppHandle, tag: String) -> Result<(), String> {
     if let Some(root) = &removed.install_root {
         let root_path = PathBuf::from(root);
         if root_path.is_dir() {
-            let _ = fs::remove_dir_all(&root_path);
+            let _ = trash::delete_all([&root_path]);
         }
         return Ok(());
     }
@@ -722,7 +755,7 @@ pub fn delete_godot_version(app: AppHandle, tag: String) -> Result<(), String> {
             .ok()
             .and_then(|p| p.components().next())
         {
-            let _ = fs::remove_dir_all(managed.join(version_folder));
+            let _ = trash::delete_all([managed.join(version_folder)]);
             return Ok(());
         }
     }
@@ -733,7 +766,7 @@ pub fn delete_godot_version(app: AppHandle, tag: String) -> Result<(), String> {
             .ancestors()
             .find(|p| p.extension().map(|e| e == "app").unwrap_or(false))
         {
-            let _ = fs::remove_dir_all(bundle);
+            let _ = trash::delete_all([bundle]);
             return Ok(());
         }
     }
@@ -742,11 +775,11 @@ pub fn delete_godot_version(app: AppHandle, tag: String) -> Result<(), String> {
     {
         if let Some(stem) = exe_path.file_stem().and_then(|s| s.to_str()) {
             let console_name = format!("{}_console.exe", stem);
-            let _ = fs::remove_file(exe_path.with_file_name(console_name));
+            let _ = trash::delete(&exe_path.with_file_name(console_name));
         }
     }
 
-    let _ = fs::remove_file(&exe_path);
+    let _ = trash::delete(&exe_path);
     Ok(())
 }
 
@@ -829,14 +862,34 @@ pub async fn import_version_zip(
         return Err("File must be a .zip archive".into());
     }
 
-    let stem = zip_path
-        .file_stem()
+    let zip_name = zip_path
+        .file_name()
         .and_then(|s| s.to_str())
-        .unwrap_or("unknown")
+        .unwrap_or("")
         .to_string();
-    let key = stem.clone();
 
-    let target_dir = versions_dir(&app).join(&key);
+    let (tag, is_mono) = match parse_godot_tag_from_filename(&zip_name) {
+        Some(clean) => {
+            let detected_mono = clean.ends_with("-mono");
+            (clean, detected_mono)
+        }
+        None => {
+            let stem = zip_path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("unknown")
+                .to_string();
+            let detected_mono = stem.to_lowercase().contains("mono");
+            let tag = if detected_mono && !stem.ends_with("-mono") {
+                format!("{}-mono", stem)
+            } else {
+                stem
+            };
+            (tag, detected_mono)
+        }
+    };
+
+    let target_dir = versions_dir(&app).join(&tag);
     if target_dir.exists() {
         return Err("A version with this name already exists".into());
     }
@@ -849,10 +902,10 @@ pub async fn import_version_zip(
     let exe_path = find_executable(&target_dir)
         .ok_or_else(|| "No Godot executable found in the archive".to_string())?;
 
-    let version_number = stem
+    let version_number = tag
         .split('-')
         .next()
-        .unwrap_or(&stem)
+        .unwrap_or(&tag)
         .trim_start_matches('v')
         .to_string();
 
@@ -866,10 +919,8 @@ pub async fn import_version_zip(
         }
     }
 
-    let is_mono = stem.to_lowercase().contains("mono");
-
     let installed = InstalledGodotVersion {
-        tag: key.clone(),
+        tag: tag.clone(),
         version: version_number,
         executable_path: exe_path.to_string_lossy().to_string(),
         is_mono,
@@ -881,7 +932,7 @@ pub async fn import_version_zip(
     register_version(&app, installed.clone())?;
     crate::projects::rebind_projects_to_version(&app, &installed);
 
-    let _ = app.emit("godot-download-complete", &key);
+    let _ = app.emit("godot-download-complete", &tag);
 
     Ok(installed)
 }

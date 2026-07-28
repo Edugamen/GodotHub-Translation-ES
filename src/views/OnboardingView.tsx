@@ -231,8 +231,10 @@ export function OnboardingView({ settings, onComplete }: Props) {
   }
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-base text-ink font-body">
-      <div className="flex-1 flex flex-col items-center justify-center px-8 py-16 overflow-y-auto">
+    <div className="h-screen w-screen flex flex-col bg-base text-ink font-body select-none">
+      {/* Draggable region so the window can be moved during setup (no TitleBar is shown) */}
+      <div data-tauri-drag-region className="h-10 shrink-0" />
+      <div className="flex-1 flex flex-col items-center justify-center px-8 py-12 overflow-y-auto">
         <div className="flex items-center gap-2 mb-12">
           {STEPS.map((s, i) => (
             <div

@@ -263,17 +263,23 @@ pub fn import_project(
 }
 
 #[tauri::command]
-pub fn remove_project(app: AppHandle, id: String, delete_files: bool) -> Result<(), String> {
+pub async fn remove_project(app: AppHandle, id: String, delete_files: bool) -> Result<(), String> {
     let mut projects = read_projects(&app);
     let idx = projects
         .iter()
         .position(|p| p.id == id)
         .ok_or("Project not found")?;
     let project = projects.remove(idx);
+    write_projects(&app, &projects)?;
+
     if delete_files {
-        let _ = fs::remove_dir_all(&project.path);
+        let path = project.path.clone();
+        tokio::task::spawn_blocking(move || {
+            let _ = trash::delete_all([&path]);
+        });
     }
-    write_projects(&app, &projects)
+
+    Ok(())
 }
 
 #[tauri::command]

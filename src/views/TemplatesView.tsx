@@ -313,7 +313,7 @@ export function TemplatesView() {
                   <IconAlertTriangle className="w-5 h-5 text-danger" />
                 </div>
                 <div>
-                  <h4 className="font-display font-semibold text-base">
+                  <h4 className="font-display font-semibold text-muted">
                     Delete Template?
                   </h4>
                   <p className="text-xs text-muted mt-0.5">

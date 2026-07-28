@@ -25,16 +25,26 @@ export function applyScrollbars(enabled: boolean) {
   document.documentElement.classList.toggle('hide-scrollbars', !enabled)
 }
 
+export function applyProjectIconOpacity(opacity: number) {
+  const clamped = Math.max(0, Math.min(100, opacity))
+  document.documentElement.style.setProperty(
+    '--project-icon-opacity',
+    String(clamped / 100),
+  )
+}
+
 export function applyAppearance(settings: {
   corner_radius: number
   ui_density: number
   font_scale: number
   reduce_motion: boolean
   show_scrollbars: boolean
+  project_icon_opacity: number
 }) {
   applyRadius(settings.corner_radius)
   applyDensity(settings.ui_density)
   applyFontScale(settings.font_scale)
   applyReducedMotion(settings.reduce_motion)
   applyScrollbars(settings.show_scrollbars)
+  applyProjectIconOpacity(settings.project_icon_opacity)
 }

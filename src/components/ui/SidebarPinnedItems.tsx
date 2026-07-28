@@ -72,7 +72,7 @@ function SidebarProjectItem({
   return (
     <div
       key={project.id}
-      className="group/card relative flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-raised/40 transition-colors min-w-0 overflow-hidden"
+      className="group/card relative flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-raised/40 transition-colors min-w-0 overflow-clip"
     >
       {icon ? (
         <img
