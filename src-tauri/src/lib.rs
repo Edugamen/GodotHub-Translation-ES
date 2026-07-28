@@ -110,6 +110,15 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_prevent_default::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(
+                    tauri_plugin_window_state::StateFlags::SIZE
+                        | tauri_plugin_window_state::StateFlags::POSITION
+                        | tauri_plugin_window_state::StateFlags::MAXIMIZED,
+                )
+                .build(),
+        )
         .setup(|app| {
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
@@ -192,6 +201,8 @@ pub fn run() {
                 .build(app)?;
 
             app.state::<TrayState>().0.lock().unwrap().replace(tray);
+
+            show_main_window(app.handle());
 
             Ok(())
         })
