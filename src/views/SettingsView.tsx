@@ -9,7 +9,7 @@ import { ConfirmDialog } from '../components/modals/ConfirmDialog'
 import { IconSun, IconMoon, IconHeart, IconRocket, IconBug } from '../components/Icons'
 import { api } from '../lib/api'
 import { applyTheme } from '../lib/colors'
-import { isMac } from '../lib/platform'
+import { isMac, isWindows } from '../lib/platform'
 import {
   applyRadius,
   applyDensity,
@@ -400,6 +400,7 @@ export function SettingsView({
       download_dir: { tab: 'storage', section: 'storage-folders' },
       scan_depth: { tab: 'storage', section: 'storage-folders' },
       download_concurrency: { tab: 'storage', section: 'storage-folders' },
+      launch_with_console: { tab: 'behavior', section: 'behavior' },
       close_on_project_open: { tab: 'behavior', section: 'behavior' },
       minimize_to_tray: { tab: 'behavior', section: 'behavior' },
       reopen_after_godot_closes: { tab: 'behavior', section: 'behavior' },              auto_scan_on_startup: { tab: 'behavior', section: 'behavior-projects' },
@@ -909,6 +910,26 @@ export function SettingsView({
             >
               <div className="flex flex-col gap-5">
                 <label className="flex items-center justify-between gap-4">
+                  <div>
+                    <span className="text-xs font-medium text-muted block">
+                      Launch Godot with console
+                    </span>
+                    <p className="text-[11px] text-muted mt-1 leading-relaxed">
+                      {isWindows
+                        ? 'Shows engine output, print() calls and errors in a console window, using the console executable Godot ships alongside the editor. Only available for versions that include one.'
+                        : 'Launches Godot in your terminal emulator so engine output is visible. While in console mode the running indicator and Stop button are approximate.'}
+                    </p>
+                  </div>
+                  <Toggle
+                    checked={current.launch_with_console}
+                    onChange={(checked) =>
+                      setField('launch_with_console', checked)
+                    }
+                    label="Launch Godot with console"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between gap-4 pt-5 border-t border-line">
                   <div>
                     <span className="text-xs font-medium text-muted block">
                       Close application on project open

@@ -270,6 +270,7 @@ pub fn scan_for_versions_blocking(
             installed_at: chrono::Utc::now().to_rfc3339(),
             custom_name: None,
             install_root: None,
+            supports_console: false,
         };
 
         if godot_versions::register_version(&app, installed.clone())? {
@@ -389,6 +390,7 @@ fn import_version_blocking(
             installed_at: chrono::Utc::now().to_rfc3339(),
             custom_name: None,
             install_root: None,
+            supports_console: false,
         };
 
         match godot_versions::register_version(&app, installed.clone()) {

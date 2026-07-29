@@ -11,6 +11,8 @@ pub struct InstalledGodotVersion {
     pub custom_name: Option<String>,
     #[serde(default)]
     pub install_root: Option<String>,
+    #[serde(default)]
+    pub supports_console: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -136,6 +138,8 @@ pub struct AppSettings {
     pub reduce_motion: bool,
     #[serde(default = "default_theme_mode")]
     pub theme_mode: String,
+    #[serde(default)]
+    pub launch_with_console: bool,
     #[serde(default)]
     pub close_on_project_open: bool,
     #[serde(default)]
@@ -321,6 +325,7 @@ impl Default for AppSettings {
             corner_radius: default_corner_radius(),
             ui_density: default_ui_density(),
             font_scale: default_font_scale(),
+            launch_with_console: false,
             reduce_motion: false,
             theme_mode: default_theme_mode(),
             close_on_project_open: false,

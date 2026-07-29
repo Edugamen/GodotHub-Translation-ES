@@ -436,7 +436,11 @@ const [bugReportOpen, setBugReportOpen] = useState(false)
       setHighlightSetting(settingKey)
     }
     const handleOpenProject = async (e: Event) => {
-      const projectId = (e as CustomEvent).detail as string
+      const detail = (e as CustomEvent).detail as
+        | string
+        | { id: string; console?: boolean }
+      const projectId = typeof detail === 'string' ? detail : detail.id
+      const withConsole = typeof detail === 'string' ? undefined : detail.console
       const proj = projectsRef.current.find((p) => p.id === projectId)
       if (proj) {
         setLaunchingProject({
@@ -446,7 +450,7 @@ const [bugReportOpen, setBugReportOpen] = useState(false)
         })
       }
       try {
-        await api.openProject(projectId, true)
+        await api.openProject(projectId, true, withConsole)
         refreshProjects()
       } catch (e) {
         setLaunchingProject(null)

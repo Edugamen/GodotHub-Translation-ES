@@ -18,7 +18,9 @@ import {
   IconPlay,
   IconExternalLink,
   IconRocket,
+  IconTerminal,
 } from '../components/Icons'
+import { SplitButton } from '../components/ui/SplitButton'
 import { ScrollReveal } from '../components/ui/ScrollReveal'
 import { useGodotVersionsContext } from '../hooks/godotVersionsContext'
 import { ConfirmDialog } from '../components/modals/ConfirmDialog'
@@ -154,6 +156,7 @@ export function VersionsView() {
     scanProgress,
   } = useGodotVersionsContext()
   const { settings } = useSettings()
+  const launchWithConsole = settings.launch_with_console
   const [contextMenu, setContextMenu] = useState<{
     x: number
     y: number
@@ -433,18 +436,39 @@ export function VersionsView() {
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <SplitButton
+                      variant="outline"
+                      label="Open"
+                      icon={IconRocket}
+                      menuLabel="More editor launch options"
+                      onClick={() => api.openGodotVersion(v.tag).catch(() => {})}
+                      items={[
+                        {
+                          label: 'Open Editor',
+                          icon: IconRocket,
+                          badge:
+                            v.supports_console && launchWithConsole
+                              ? undefined
+                              : 'Default',
+                          onClick: () =>
+                            api.openGodotVersion(v.tag, false).catch(() => {}),
+                        },
+                        ...(v.supports_console
+                          ? [
+                              {
+                                label: 'Open with Console',
+                                icon: IconTerminal,
+                                badge: launchWithConsole ? 'Default' : undefined,
+                                onClick: () =>
+                                  api.openGodotVersion(v.tag, true).catch(() => {}),
+                              },
+                            ]
+                          : []),
+                      ]}
+                    />
+                  </div>
                   <motion.button
-                    whileHover={{ y: -1 }}
-                    whileTap={{ scale: 0.96 }}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      api.openGodotVersion(v.tag).catch(() => {})
-                    }}
-                    className="icon-wiggle cursor-pointer focus-ring flex items-center gap-2 px-3.5 py-2 rounded-lg border border-line text-muted hover:text-mint hover:border-mint/50 text-sm transition-colors shrink-0"
-                  >
-                    <IconRocket className="w-3.5 h-3.5" />
-                    Open
-                  </motion.button>                    <motion.button
                     whileHover={{ y: -1 }}
                     whileTap={{ scale: 0.96 }}
                     onClick={(e) => {
@@ -850,6 +874,17 @@ export function VersionsView() {
           if (tag) api.openGodotVersion(tag).catch(() => {})
         },
       },
+      ...(version?.supports_console
+        ? [
+            {
+              label: 'Open Editor with Console',
+              icon: IconTerminal,
+              onClick: () => {
+                if (tag) api.openGodotVersion(tag, true).catch(() => {})
+              },
+            },
+          ]
+        : []),
       {
         label: 'Open Install Folder',
         icon: IconExternalLink,

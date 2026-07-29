@@ -761,6 +761,7 @@ export function ProjectsView({
                     installedVersions={installed}
                     categories={categories}
                     categoriesEnabled={categoriesEnabled}
+                    launchWithConsole={settings.launch_with_console}
                     onRemove={() => remove(entry.id, false)}
                     onDelete={() => remove(entry.id, true)}
                     onVersionChange={(tag) => updateVersion(entry.id, tag)}
@@ -1024,6 +1025,7 @@ export function ProjectsView({
                                 installedVersions={installed}
                                 categories={categories}
                                 categoriesEnabled={categoriesEnabled}
+                                launchWithConsole={settings.launch_with_console}
                                 onRemove={() => remove(entry.id, false)}
                                 onDelete={() => remove(entry.id, true)}
                                 onVersionChange={(tag) => updateVersion(entry.id, tag)}
@@ -1144,6 +1146,7 @@ export function ProjectsView({
                 installedVersions={installed}
                 categories={categories}
                 categoriesEnabled={categoriesEnabled}
+                launchWithConsole={settings.launch_with_console}
                 onRemove={() => {}}
                 onDelete={() => {}}
                 onVersionChange={() => {}}

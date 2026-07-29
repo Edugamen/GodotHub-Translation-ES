@@ -26,6 +26,7 @@ const DEFAULTS: AppSettings = {
   font_scale: 1.0,
   reduce_motion: false,
   theme_mode: 'dark',
+  launch_with_console: false,
   close_on_project_open: false,
   minimize_to_tray: false,
   reopen_after_godot_closes: false,
