@@ -99,19 +99,18 @@
 
 ---
 
-## Support
-
-If you find GodotHub useful and want to support its development, consider donating on Patreon:
+<p align="center">
+  <a href="https://discord.com/invite/nA7dus32Yv/">
+    <img src="/assets/discord-banner.png" alt="Discord" height="50">
+  </a>
+</p>
 
 <p align="center">
   <a href="https://patreon.com/TheRyko">
-    <img src="https://img.shields.io/badge/Patreon-FF424D?style=for-the-badge&logo=patreon&logoColor=white" alt="Patreon" height="40">
-  </a>
-  &nbsp;&nbsp;
-  <a href="https://discord.com/XRVTf9ArSv">
-    <img src="https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord" height="40">
+    <img src="/assets/patreon-banner.png" alt="Patreon" height="40">
   </a>
 </p>
+
 
 ---
 
