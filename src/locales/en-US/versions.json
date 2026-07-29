@@ -6,6 +6,8 @@
   "unstable": "Unstable",
   "rename": "Rename",
   "open_editor": "Open Editor",
+  "open_editor_with_console": "Open Editor with Console",
+  "more_editor_launch_options": "More editor launch options",
   "open_install_folder": "Open Install Folder",
   "uninstall": "Uninstall",
   "type": "Type",

@@ -8,6 +8,7 @@ mod projects;
 mod scan;
 mod settings;
 mod templates;
+mod terminal;
 mod watcher;
 mod workspace;
 
@@ -191,6 +192,7 @@ pub fn run() {
                             app.clone(),
                             id.to_string(),
                             true,
+                            None,
                         );
                     }
                 })

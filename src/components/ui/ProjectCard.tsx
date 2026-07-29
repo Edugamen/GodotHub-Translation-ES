@@ -11,7 +11,8 @@ import {
   type ContextMenuSection,
 } from './ContextMenu'
 import { Tooltip } from './Tooltip'
-import { IconGrip, IconMore, IconPin, IconPlay, IconTrash, IconClock, IconExternalLink, IconCode, IconGitBranch, IconX, IconTags, IconCopy, IconHardDrive, IconAlertTriangle, IconCheckCircle } from '../Icons'
+import { SplitButton } from './SplitButton'
+import { IconGrip, IconMore, IconPin, IconPlay, IconTrash, IconClock, IconExternalLink, IconCode, IconGitBranch, IconX, IconTags, IconCopy, IconHardDrive, IconAlertTriangle, IconCheckCircle, IconTerminal } from '../Icons'
 import {
   formatLastOpened,
   type LastOpenedTimeFormat,
@@ -23,6 +24,7 @@ interface Props {
   installedVersions: InstalledGodotVersion[]
   categories: Category[]
   categoriesEnabled?: boolean
+  launchWithConsole?: boolean
   onRemove: () => void
   onDelete: () => void
   onVersionChange: (tag: string) => void
@@ -80,14 +82,18 @@ export const ProjectCard = memo(function ProjectCard({
   lastOpenedTimeFormat = '12h',
   lastOpenedDateFormat = 'DD-MM-YYYY',
   categoriesEnabled = true,
+  launchWithConsole = false,
 }: Props) {
   const { t } = useTranslation('common')
   const [icon, setIcon] = useState<string | null>(() => getCachedProjectIcon(project.path))
   const [settingsName, setSettingsName] = useState<string | null>(() => getCachedProjectName(project.path))
   const displayName = settingsName ?? project.name
-  const versionInstalled = installedVersions.some(
+  const boundVersion = installedVersions.find(
     (v) => v.tag === project.godot_version,
   )
+  const versionInstalled = Boolean(boundVersion)
+  const supportsConsole = boundVersion?.supports_console ?? false
+  const consoleIsDefault = supportsConsole && launchWithConsole
   const [confirmAction, setConfirmAction] = useState<
     'remove' | 'delete' | null
   >(null)
@@ -132,6 +138,13 @@ export const ProjectCard = memo(function ProjectCard({
 
   const openFolder = () =>
     api.openProjectFolder(project.path).catch((e) => alert(e))
+
+  const launchProject = (withConsole?: boolean) =>
+    window.dispatchEvent(
+      new CustomEvent('app:open-project', {
+        detail: { id: project.id, console: withConsole },
+      }),
+    )
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -458,22 +471,36 @@ export const ProjectCard = memo(function ProjectCard({
               </div>
 
               <div className="flex items-center gap-2.5 shrink-0 ml-auto">
-                <motion.button
-                  whileHover={versionInstalled ? { y: -1 } : undefined}
-                  whileTap={versionInstalled ? { scale: 0.96 } : undefined}
+                <SplitButton
+                  label={t('open_project')}
+                  icon={IconPlay}
                   disabled={!versionInstalled}
-                  onClick={() =>
-                    window.dispatchEvent(
-                      new CustomEvent('app:open-project', {
-                        detail: project.id,
-                      }),
-                    )
-                  }
-                  className="focus-ring cursor-pointer shrink-0 flex items-center justify-center gap-1.5 px-8 py-3 rounded-lg bg-accent hover:bg-accent-bright disabled:bg-raised disabled:text-muted disabled:cursor-not-allowed text-sm font-medium text-white transition-colors"
-                >
-                  <IconPlay className="w-3 h-3" />
-                  {t('open_project')}
-                </motion.button>
+                  menuLabel={t('more_launch_options')}
+                  onClick={() => launchProject()}
+                  items={[
+                    {
+                      label: t('open_project'),
+                      icon: IconPlay,
+                      badge: consoleIsDefault
+                        ? undefined
+                        : t('launch_default_badge'),
+                      onClick: () => launchProject(false),
+                    },
+                    ...(supportsConsole
+                      ? [
+                          {
+                            label: t('open_with_console'),
+                            icon: IconTerminal,
+                            badge: consoleIsDefault
+                              ? t('launch_default_badge')
+                              : undefined,
+                            onClick: () => launchProject(true),
+                          },
+                        ]
+                      : []),
+                  ]}
+                />
+
                 <div ref={cardMoreRef} className="relative">
                   <button
                     onClick={() => {
@@ -572,14 +599,19 @@ export const ProjectCard = memo(function ProjectCard({
       {
         label: t('open_project'),
         icon: IconPlay,
-        onClick: () =>
-          window.dispatchEvent(
-            new CustomEvent('app:open-project', {
-              detail: project.id,
-            }),
-          ),
+        onClick: () => launchProject(),
         disabled: !versionInstalled,
       },
+      ...(supportsConsole
+        ? [
+            {
+              label: t('open_with_console'),
+              icon: IconTerminal,
+              onClick: () => launchProject(true),
+              disabled: !versionInstalled,
+            },
+          ]
+        : []),
       {
         label: t('open_folder'),
         icon: IconExternalLink,

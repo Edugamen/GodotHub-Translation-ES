@@ -6,6 +6,8 @@
   "unstable": "不稳定版",
   "rename": "重命名",
   "open_editor": "打开编辑器",
+  "open_editor_with_console": "打开编辑器并显示控制台",
+  "more_editor_launch_options": "更多编辑器启动选项",
   "open_install_folder": "打开安装文件夹",
   "uninstall": "卸载",
   "type": "类型",
