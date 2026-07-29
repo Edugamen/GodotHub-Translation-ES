@@ -107,6 +107,10 @@ If you find GodotHub useful and want to support its development, consider donati
   <a href="https://patreon.com/TheRyko">
     <img src="https://img.shields.io/badge/Patreon-FF424D?style=for-the-badge&logo=patreon&logoColor=white" alt="Patreon" height="40">
   </a>
+  &nbsp;&nbsp;
+  <a href="https://discord.com/XRVTf9ArSv">
+    <img src="https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord" height="40">
+  </a>
 </p>
 
 ---
