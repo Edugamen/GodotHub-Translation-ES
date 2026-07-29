@@ -100,13 +100,13 @@
 ---
 
 <p align="center">
-  <a href="https://discord.com/invite/nA7dus32Yv/">
+  <a href="https://discord.com/invite/nA7dus32Yv/" target="_blank" rel="noopener noreferrer">
     <img src="/assets/discord-banner.png" alt="Discord">
   </a>
 </p>
 
 <p align="center">
-  <a href="https://patreon.com/TheRyko">
+  <a href="https://patreon.com/TheRyko" target="_blank" rel="noopener noreferrer">
     <img src="/assets/patreon-banner.png" alt="Patreon">
   </a>
 </p>
