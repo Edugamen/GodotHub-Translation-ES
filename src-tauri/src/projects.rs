@@ -4,7 +4,7 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command};
+use std::process::Child;
 use tauri::{AppHandle, Emitter, Manager};
 use uuid::Uuid;
 
@@ -12,7 +12,28 @@ use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 use std::time::SystemTime;
 
-pub struct ActiveProcesses(pub Mutex<HashMap<String, Child>>);
+pub enum TrackedHandle {
+    Child(Child),
+    #[cfg(unix)]
+    Pid(u32),
+}
+
+pub struct TrackedProcess {
+    pub handle: TrackedHandle,
+    pub kill_tree: bool,
+}
+
+impl TrackedProcess {
+    fn is_running(&mut self) -> bool {
+        match &mut self.handle {
+            TrackedHandle::Child(child) => matches!(child.try_wait(), Ok(None)),
+            #[cfg(unix)]
+            TrackedHandle::Pid(pid) => crate::terminal::process_is_alive(*pid),
+        }
+    }
+}
+
+pub struct ActiveProcesses(pub Mutex<HashMap<String, TrackedProcess>>);
 
 const DEFAULT_ICON_SVG: &[u8] = include_bytes!("../icon.svg");
 
@@ -329,7 +350,12 @@ pub fn reorder_projects(app: AppHandle, ordered_ids: Vec<String>) -> Result<(), 
 }
 
 #[tauri::command]
-pub fn open_project(app: AppHandle, id: String, editor: bool) -> Result<(), String> {
+pub fn open_project(
+    app: AppHandle,
+    id: String,
+    editor: bool,
+    console: Option<bool>,
+) -> Result<(), String> {
     let mut projects = read_projects(&app);
     let project = projects
         .iter_mut()
@@ -348,18 +374,30 @@ pub fn open_project(app: AppHandle, id: String, editor: bool) -> Result<(), Stri
         .find(|v| v.tag == project.godot_version)
         .ok_or("Bound Godot version is not installed")?;
 
-    let mut cmd = Command::new(&version.executable_path);
-    cmd.arg("--path").arg(&project.path);
+    let mut args = vec!["--path".to_string(), project.path.clone()];
     if editor {
-        cmd.arg("-e");
+        args.push("-e".to_string());
     }
-    if !project.launch_arguments.is_empty() {
-        for arg in project.launch_arguments.split_whitespace() {
-            cmd.arg(arg);
-        }
-    }
+    args.extend(
+        project
+            .launch_arguments
+            .split_whitespace()
+            .map(str::to_string),
+    );
 
-    let child = cmd.spawn().map_err(|e| e.to_string())?;
+    let settings = settings::read_settings(&app);
+    let use_console = console.unwrap_or(settings.launch_with_console);
+
+    let launched = crate::godot_versions::spawn_editor(
+        &app,
+        Path::new(&version.executable_path),
+        &args,
+        &project_name,
+        use_console,
+    )?;
+    #[cfg(unix)]
+    let pid_file = launched.pid_file.clone();
+    let kill_tree = launched.kill_tree;
 
     project.last_opened = Some(chrono::Utc::now().to_rfc3339());
     write_projects(&app, &projects)?;
@@ -367,7 +405,13 @@ pub fn open_project(app: AppHandle, id: String, editor: bool) -> Result<(), Stri
     let _ = crate::refresh_tray_menu(app.clone());
 
     if let Some(state) = app.try_state::<ActiveProcesses>() {
-        state.0.lock().unwrap().insert(id.clone(), child);
+        state.0.lock().unwrap().insert(
+            id.clone(),
+            TrackedProcess {
+                handle: TrackedHandle::Child(launched.child),
+                kill_tree,
+            },
+        );
     }
 
     let _ = app.emit(
@@ -379,7 +423,8 @@ pub fn open_project(app: AppHandle, id: String, editor: bool) -> Result<(), Stri
         }),
     );
 
-    let settings = crate::settings::read_settings(&app);
+    let mut reopen_when_closed = false;
+
     if settings.close_on_project_open {
         #[cfg(target_os = "macos")]
         let keep_alive = true;
@@ -390,40 +435,26 @@ pub fn open_project(app: AppHandle, id: String, editor: bool) -> Result<(), Stri
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.hide();
             }
-
-            if settings.reopen_after_godot_closes {
-                let app_handle = app.clone();
-                let pid = id.clone();
-                std::thread::spawn(move || {
-                    if let Some(state) = app_handle.try_state::<ActiveProcesses>() {
-                        if let Some(mut child) = state.0.lock().unwrap().remove(&pid) {
-                            let _ = child.wait();
-                        }
-                    }
-                    if let Some(window) = app_handle.get_webview_window("main") {
-                        let _ = window.show();
-                        let _ = window.set_focus();
-                    }
-                });
-            }
+            reopen_when_closed = settings.reopen_after_godot_closes;
         } else {
             app.exit(0);
         }
     }
 
     let app_clone = app.clone();
-    let pid = id.clone();
+    let watched = id.clone();
     std::thread::spawn(move || {
-        std::thread::sleep(std::time::Duration::from_secs(2));
-        if let Some(state) = app_clone.try_state::<ActiveProcesses>() {
-            if let Some(mut child) = state.0.lock().unwrap().remove(&pid) {
-                let _ = child.wait();
-                let _ = app_clone.emit(
-                    "project:exited",
-                    serde_json::json!({
-                        "id": pid,
-                    }),
-                );
+        #[cfg(unix)]
+        if let Some(file) = pid_file {
+            adopt_terminal_pid(&app_clone, &watched, &file);
+        }
+
+        wait_until_exited(&app_clone, &watched);
+
+        if reopen_when_closed {
+            if let Some(window) = app_clone.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
             }
         }
     });
@@ -431,22 +462,106 @@ pub fn open_project(app: AppHandle, id: String, editor: bool) -> Result<(), Stri
     Ok(())
 }
 
+#[cfg(unix)]
+fn adopt_terminal_pid(app: &AppHandle, id: &str, pid_file: &Path) {
+    const ATTEMPTS: u32 = 200;
+
+    for _ in 0..ATTEMPTS {
+        if let Some(pid) = crate::terminal::read_pid_file(pid_file) {
+            let _ = fs::remove_file(pid_file);
+
+            let replaced = {
+                let Some(state) = app.try_state::<ActiveProcesses>() else {
+                    return;
+                };
+                let mut active = state.0.lock().unwrap();
+                active
+                    .get_mut(id)
+                    .map(|tracked| std::mem::replace(&mut tracked.handle, TrackedHandle::Pid(pid)))
+            };
+
+            if let Some(TrackedHandle::Child(mut launcher)) = replaced {
+                let _ = launcher.wait();
+            }
+            return;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+}
+
+fn wait_until_exited(app: &AppHandle, id: &str) {
+    const POLL: std::time::Duration = std::time::Duration::from_millis(500);
+
+    loop {
+        let Some(state) = app.try_state::<ActiveProcesses>() else {
+            return;
+        };
+
+        let exited = {
+            let mut active = state.0.lock().unwrap();
+            let running = match active.get_mut(id) {
+                Some(tracked) => tracked.is_running(),
+                None => return,
+            };
+            if !running {
+                active.remove(id);
+            }
+            !running
+        };
+
+        if exited {
+            let _ = app.emit("project:exited", serde_json::json!({ "id": id }));
+            return;
+        }
+
+        std::thread::sleep(POLL);
+    }
+}
+
+fn kill_tracked(tracked: &mut TrackedProcess) -> Result<(), String> {
+    match &mut tracked.handle {
+        TrackedHandle::Child(child) => {
+            if tracked.kill_tree {
+                #[cfg(target_os = "windows")]
+                {
+                    use std::os::windows::process::CommandExt;
+
+                    return std::process::Command::new("taskkill")
+                        .args(["/PID", &child.id().to_string(), "/T", "/F"])
+                        .creation_flags(crate::terminal::CREATE_NO_WINDOW)
+                        .status()
+                        .map(|_| ())
+                        .map_err(|e| format!("Failed to kill process: {e}"));
+                }
+            }
+
+            child
+                .kill()
+                .map_err(|e| format!("Failed to kill process: {e}"))?;
+            child.wait().ok();
+            Ok(())
+        }
+        #[cfg(unix)]
+        TrackedHandle::Pid(pid) => crate::terminal::terminate_process(*pid),
+    }
+}
+
 #[tauri::command]
 pub fn stop_project(app: AppHandle, id: String) -> Result<(), String> {
-    if let Some(state) = app.try_state::<ActiveProcesses>() {
-        if let Some(mut child) = state.0.lock().unwrap().remove(&id) {
-            child.kill().map_err(|e| format!("Failed to kill process: {e}"))?;
-            child.wait().ok();
-            let _ = app.emit(
-                "project:exited",
-                serde_json::json!({
-                    "id": id,
-                }),
-            );
-            return Ok(());
-        }
-    }
-    Err("No running process found for this project".into())
+    let state = app
+        .try_state::<ActiveProcesses>()
+        .ok_or("No running process found for this project")?;
+
+    let mut tracked = {
+        let mut active = state.0.lock().unwrap();
+        active
+            .remove(&id)
+            .ok_or("No running process found for this project")?
+    };
+
+    kill_tracked(&mut tracked)?;
+    let _ = app.emit("project:exited", serde_json::json!({ "id": id }));
+    Ok(())
 }
 
 #[tauri::command]

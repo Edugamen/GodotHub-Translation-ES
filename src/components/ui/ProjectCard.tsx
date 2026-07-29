@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Category, GitStatus, InstalledGodotVersion, Project } from '../../types'
 import { api, getCachedProjectIcon, getCachedProjectName } from '../../lib/api'
@@ -10,7 +11,8 @@ import {
   type ContextMenuSection,
 } from './ContextMenu'
 import { Tooltip } from './Tooltip'
-import { IconGrip, IconMore, IconPin, IconPlay, IconTrash, IconClock, IconExternalLink, IconCode, IconGitBranch, IconX, IconTags, IconCopy, IconHardDrive, IconAlertTriangle, IconCheckCircle } from '../Icons'
+import { SplitButton } from './SplitButton'
+import { IconGrip, IconMore, IconPin, IconPlay, IconTrash, IconClock, IconExternalLink, IconCode, IconGitBranch, IconX, IconTags, IconCopy, IconHardDrive, IconAlertTriangle, IconCheckCircle, IconTerminal } from '../Icons'
 import {
   formatLastOpened,
   type LastOpenedTimeFormat,
@@ -22,6 +24,7 @@ interface Props {
   installedVersions: InstalledGodotVersion[]
   categories: Category[]
   categoriesEnabled?: boolean
+  launchWithConsole?: boolean
   onRemove: () => void
   onDelete: () => void
   onVersionChange: (tag: string) => void
@@ -79,13 +82,18 @@ export const ProjectCard = memo(function ProjectCard({
   lastOpenedTimeFormat = '12h',
   lastOpenedDateFormat = 'DD-MM-YYYY',
   categoriesEnabled = true,
+  launchWithConsole = false,
 }: Props) {
+  const { t } = useTranslation('common')
   const [icon, setIcon] = useState<string | null>(() => getCachedProjectIcon(project.path))
   const [settingsName, setSettingsName] = useState<string | null>(() => getCachedProjectName(project.path))
   const displayName = settingsName ?? project.name
-  const versionInstalled = installedVersions.some(
+  const boundVersion = installedVersions.find(
     (v) => v.tag === project.godot_version,
   )
+  const versionInstalled = Boolean(boundVersion)
+  const supportsConsole = boundVersion?.supports_console ?? false
+  const consoleIsDefault = supportsConsole && launchWithConsole
   const [confirmAction, setConfirmAction] = useState<
     'remove' | 'delete' | null
   >(null)
@@ -131,6 +139,13 @@ export const ProjectCard = memo(function ProjectCard({
   const openFolder = () =>
     api.openProjectFolder(project.path).catch((e) => alert(e))
 
+  const launchProject = (withConsole?: boolean) =>
+    window.dispatchEvent(
+      new CustomEvent('app:open-project', {
+        detail: { id: project.id, console: withConsole },
+      }),
+    )
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (cardMoreRef.current && !cardMoreRef.current.contains(e.target as Node)) {
@@ -164,9 +179,9 @@ export const ProjectCard = memo(function ProjectCard({
     <>
       {confirmAction === 'remove' && (
         <ConfirmDialog
-          title="Remove from library?"
-          description={`"${displayName}" will be removed from GodotHub's list. Its files stay on disk untouched, you can import it again anytime.`}
-          confirmLabel="Remove"
+          title={t('project_remove_title')}
+          description={t('project_remove_desc', { name: displayName })}
+          confirmLabel={t('project_remove_confirm')}
           onConfirm={() => {
             onRemove()
             setConfirmAction(null)
@@ -177,9 +192,9 @@ export const ProjectCard = memo(function ProjectCard({
 
       {confirmAction === 'delete' && (
         <ConfirmDialog
-          title="Move to Trash?"
-          description={`"${displayName}" and everything inside it will be moved to your system's Trash / Recycle Bin. You can restore it later if needed.`}
-          confirmLabel="Move to Trash"
+          title={t('project_delete_title')}
+          description={t('project_delete_desc', { name: displayName })}
+          confirmLabel={t('project_delete_confirm')}
           variant="danger"
           onConfirm={() => {
             onDelete()
@@ -207,17 +222,16 @@ export const ProjectCard = memo(function ProjectCard({
             >
               <div>
                 <h4 className="font-display font-semibold text-base">
-                  Save as Template
+                  {t('project_save_template_title')}
                 </h4>
                 <p className="text-xs text-muted mt-1">
-                  Copy "{displayName}" to your templates library so you can
-                  reuse its structure in new projects.
+                  {t('project_save_template_desc', { name: displayName })}
                 </p>
               </div>
 
               <div className="flex flex-col gap-2">
                 <label className="text-xs font-medium text-muted">
-                  Template Name
+                  {t('project_template_name_label')}
                 </label>
                 <input
                   value={templateName}
@@ -230,14 +244,14 @@ export const ProjectCard = memo(function ProjectCard({
 
               <div className="flex flex-col gap-2">
                 <label className="text-xs font-medium text-muted">
-                  Description{' '}
-                  <span className="text-muted/60 font-normal">(optional)</span>
+                  {t('project_template_desc_label')}{' '}
+                  <span className="text-muted/60 font-normal">{t('project_template_desc_sublabel')}</span>
                 </label>
                 <textarea
                   value={templateDesc}
                   onChange={(e) => setTemplateDesc(e.target.value)}
                   className="focus-ring bg-raised border border-line rounded-lg px-3.5 py-2.5 text-sm focus:border-accent-dim transition-colors resize-none"
-                  placeholder="What's in this template?"
+                  placeholder={t('project_template_desc_placeholder')}
                   rows={2}
                 />
               </div>
@@ -249,7 +263,7 @@ export const ProjectCard = memo(function ProjectCard({
                   onClick={() => setTemplateSaveOpen(false)}
                   className="focus-ring cursor-pointer px-4 py-2.5 rounded-lg text-sm text-muted hover:text-ink hover:bg-raised transition-colors"
                 >
-                  Cancel
+                  {t('cancel')}
                 </motion.button>
                 <motion.button
                   whileHover={templateBusy ? undefined : { y: -1 }}
@@ -258,7 +272,7 @@ export const ProjectCard = memo(function ProjectCard({
                   disabled={templateBusy || !templateName.trim()}
                   className="focus-ring cursor-pointer px-4 py-2.5 rounded-lg bg-accent hover:bg-accent-bright disabled:opacity-50 text-sm font-medium text-white transition-colors"
                 >
-                  {templateBusy ? 'Saving…' : 'Save Template'}
+                  {templateBusy ? t('project_saving_template') : t('project_save_template_btn')}
                 </motion.button>
               </div>
             </motion.div>
@@ -299,7 +313,7 @@ export const ProjectCard = memo(function ProjectCard({
                       ? 'bg-accent border-accent text-white scale-100 opacity-100'
                       : 'border-muted/40 bg-black/20 opacity-0 group-hover:opacity-100 group-hover:scale-100 scale-75 hover:border-accent/60'
                   }`}
-                  aria-label={selected ? 'Deselect project' : 'Select project'}
+                  aria-label={selected ? t('project_deselect_aria') : t('project_select_aria')}
                 >
                   {selected && <IconCheckCircle className="w-3.5 h-3.5" fill="currentColor" />}
                 </button>
@@ -311,8 +325,8 @@ export const ProjectCard = memo(function ProjectCard({
               <Tooltip
                 content={
                   versionWarning === 'not_found'
-                    ? `Godot ${project.godot_version} is not installed. Select a version from the dropdown before opening.`
-                    : `Godot ${project.godot_version} may have compatibility issues. No matching installed version found.`
+                    ? t('project_version_warning_not_found', { version: project.godot_version })
+                    : t('project_version_warning_mismatch', { version: project.godot_version })
                 }
                 side="top"
               >
@@ -371,7 +385,7 @@ export const ProjectCard = memo(function ProjectCard({
                   </h3>
                   <button
                     onClick={onTogglePin}
-                    aria-label={project.pinned ? 'Unpin project' : 'Pin project'}
+                    aria-label={project.pinned ? t('project_unpin_aria') : t('project_pin_aria')}
                     className={`icon-wiggle focus-ring cursor-pointer shrink-0 p-1 rounded-md transition-colors ${
                       project.pinned
                         ? 'text-accent-bright opacity-100'
@@ -396,7 +410,7 @@ export const ProjectCard = memo(function ProjectCard({
             <div className="flex items-center gap-2.5 flex-wrap justify-between">
               <div className="flex items-center gap-2.5 ml-8 flex-wrap min-w-0">
                 {lastOpenedLabel && (
-                  <Tooltip content={`Last opened ${lastOpenedLabel}`}>
+                  <Tooltip content={t('project_last_opened_tooltip', { label: lastOpenedLabel })}>
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-raised border border-line font-mono text-[11px] text-muted shrink-0">
                       <IconClock className="w-3 h-3" />
                       {lastOpenedLabel}
@@ -407,8 +421,8 @@ export const ProjectCard = memo(function ProjectCard({
                   <Tooltip
                     content={
                       gitStatus.has_uncommitted
-                        ? `${gitStatus.branch ?? 'HEAD'} has uncommitted changes (click for details)`
-                        : `${gitStatus.branch ?? 'HEAD'} > clean (click for details)`
+                        ? t('project_git_dirty_tooltip', { branch: gitStatus.branch ?? 'HEAD' })
+                        : t('project_git_clean_tooltip', { branch: gitStatus.branch ?? 'HEAD' })
                     }
                   >
                     <button
@@ -438,7 +452,7 @@ export const ProjectCard = memo(function ProjectCard({
                         className="w-1.5 h-1.5 rounded-full shrink-0 ring-1 ring-black/10"
                         style={{ backgroundColor: catColor }}
                       />
-                      {project.category ?? 'Uncategorized'}
+                      {project.category ?? t('uncategorized')}
                     </span>
                   )
                 })()}
@@ -457,22 +471,36 @@ export const ProjectCard = memo(function ProjectCard({
               </div>
 
               <div className="flex items-center gap-2.5 shrink-0 ml-auto">
-                <motion.button
-                  whileHover={versionInstalled ? { y: -1 } : undefined}
-                  whileTap={versionInstalled ? { scale: 0.96 } : undefined}
+                <SplitButton
+                  label={t('open_project')}
+                  icon={IconPlay}
                   disabled={!versionInstalled}
-                  onClick={() =>
-                    window.dispatchEvent(
-                      new CustomEvent('app:open-project', {
-                        detail: project.id,
-                      }),
-                    )
-                  }
-                  className="focus-ring cursor-pointer shrink-0 flex items-center justify-center gap-1.5 px-8 py-3 rounded-lg bg-accent hover:bg-accent-bright disabled:bg-raised disabled:text-muted disabled:cursor-not-allowed text-sm font-medium text-white transition-colors"
-                >
-                  <IconPlay className="w-3 h-3" />
-                  Open Project
-                </motion.button>
+                  menuLabel={t('more_launch_options')}
+                  onClick={() => launchProject()}
+                  items={[
+                    {
+                      label: t('open_project'),
+                      icon: IconPlay,
+                      badge: consoleIsDefault
+                        ? undefined
+                        : t('launch_default_badge'),
+                      onClick: () => launchProject(false),
+                    },
+                    ...(supportsConsole
+                      ? [
+                          {
+                            label: t('open_with_console'),
+                            icon: IconTerminal,
+                            badge: consoleIsDefault
+                              ? t('launch_default_badge')
+                              : undefined,
+                            onClick: () => launchProject(true),
+                          },
+                        ]
+                      : []),
+                  ]}
+                />
+
                 <div ref={cardMoreRef} className="relative">
                   <button
                     onClick={() => {
@@ -483,7 +511,7 @@ export const ProjectCard = memo(function ProjectCard({
                       setCardMoreOpen((prev) => !prev)
                     }}
                     className="focus-ring cursor-pointer p-2.5 rounded-lg border border-line text-muted hover:text-ink hover:border-accent-dim hover:bg-raised transition-colors"
-                    aria-label="More actions"
+                    aria-label={t('project_more_aria')}
                   >
                     <IconMore className="w-4 h-4" />
                   </button>
@@ -502,7 +530,7 @@ export const ProjectCard = memo(function ProjectCard({
                           className="w-full flex items-center cursor-pointer gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-ink hover:bg-raised transition-colors"
                         >
                           <IconHardDrive className="w-3.5 h-3.5 text-muted" />
-                          Project Size
+                          {t('project_card_project_size')}
                         </button>
                         <div className="h-px bg-line my-1" />
                         <button
@@ -511,7 +539,7 @@ export const ProjectCard = memo(function ProjectCard({
                           className="w-full flex items-center cursor-pointer gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-ink hover:bg-raised transition-colors"
                         >
                           <IconCopy className="w-3.5 h-3.5 text-muted" />
-                          Save as Template
+                          {t('project_card_save_template')}
                         </button>
                         <div className="h-px bg-line my-1" />
                         <button
@@ -520,7 +548,7 @@ export const ProjectCard = memo(function ProjectCard({
                           className="w-full flex items-center cursor-pointer gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-ink hover:bg-raised transition-colors"
                         >
                           <IconX className="w-3.5 h-3.5 text-muted" />
-                          Remove from Library
+                          {t('project_card_remove_library')}
                         </button>
                         <button
                           type="button"
@@ -528,7 +556,7 @@ export const ProjectCard = memo(function ProjectCard({
                           className="w-full flex items-center cursor-pointer gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-danger hover:bg-danger/10 transition-colors"
                         >
                           <IconTrash className="w-3.5 h-3.5" />
-                          Delete Files
+                          {t('project_card_delete_files')}
                         </button>
                       </motion.div>
                     )}
@@ -569,44 +597,49 @@ export const ProjectCard = memo(function ProjectCard({
   function buildContextMenuItems(): ContextMenuSection[] {
     return [
       {
-        label: 'Open Project',
+        label: t('open_project'),
         icon: IconPlay,
-        onClick: () =>
-          window.dispatchEvent(
-            new CustomEvent('app:open-project', {
-              detail: project.id,
-            }),
-          ),
+        onClick: () => launchProject(),
         disabled: !versionInstalled,
       },
+      ...(supportsConsole
+        ? [
+            {
+              label: t('open_with_console'),
+              icon: IconTerminal,
+              onClick: () => launchProject(true),
+              disabled: !versionInstalled,
+            },
+          ]
+        : []),
       {
-        label: 'Open Folder',
+        label: t('open_folder'),
         icon: IconExternalLink,
         onClick: openFolder,
       },
       {
-        label: 'Open in IDE',
+        label: t('open_in_ide'),
         icon: IconCode,
         onClick: () => api.openInEditor(project.path).catch((e) => alert(e)),
       },
       { type: 'separator' },
       {
-        label: 'Pinning',
+        label: t('pinning'),
         icon: IconPin,
         children: [
           {
-            label: project.pinned ? 'Unpin from Library' : 'Pin to Library',
+            label: project.pinned ? t('project_unpin_from_library') : t('project_pin_to_library'),
             icon: IconPin,
             onClick: onTogglePin,
           },
         ],
       },
       {
-        label: 'Category',
+        label: t('category'),
         icon: IconTags,
         children: [
           {
-            label: 'None',
+            label: t('none'),
             onClick: () => onCategoryChange(''),
             icon: IconX,
           },
@@ -623,17 +656,17 @@ export const ProjectCard = memo(function ProjectCard({
         ],
       },
       {
-        label: 'Project Size',
+        label: t('project_size'),
         icon: IconHardDrive,
         onClick: () => onOpenProperties?.(),
       },
       {
-        label: 'Launch Arguments…',
+        label: t('launch_arguments'),
         icon: IconCode,
         onClick: () => setShowLaunchArgs(true),
       },
       {
-        label: 'Save as Template',
+        label: t('save_as_template'),
         icon: IconCopy,
         onClick: () => setTemplateSaveOpen(true),
       },
@@ -641,7 +674,7 @@ export const ProjectCard = memo(function ProjectCard({
         ? [
             { type: 'separator' as const },
             {
-              label: 'Git',
+              label: t('git'),
               icon: IconGitBranch,
               onClick: () => onShowGitSidebar?.(),
             },
@@ -649,12 +682,12 @@ export const ProjectCard = memo(function ProjectCard({
         : []),
       { type: 'separator' },
       {
-        label: 'Remove from Library',
+        label: t('remove_from_library'),
         icon: IconX,
         onClick: () => setConfirmAction('remove'),
       },
       {
-        label: 'Delete Files',
+        label: t('delete_files'),
         icon: IconTrash,
         variant: 'danger',
         onClick: () => setConfirmAction('delete'),

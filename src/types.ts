@@ -6,6 +6,7 @@ export interface InstalledGodotVersion {
   installed_at: string
   custom_name?: string | null
   install_root?: string | null
+  supports_console?: boolean
 }
 
 export interface GodotReleaseAsset {
@@ -189,6 +190,7 @@ export interface AppSettings {
   font_scale: number
   reduce_motion: boolean
   theme_mode: 'dark' | 'light'
+  launch_with_console: boolean
   close_on_project_open: boolean
   minimize_to_tray: boolean
   reopen_after_godot_closes: boolean
@@ -211,4 +213,5 @@ export interface AppSettings {
   show_star_button: boolean
   show_scrollbars: boolean
   project_icon_opacity: number
+  language: string
 }
