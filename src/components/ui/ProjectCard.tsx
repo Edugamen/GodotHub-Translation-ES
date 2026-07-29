@@ -336,7 +336,7 @@ export const ProjectCard = memo(function ProjectCard({
               </Tooltip>
             )}
 
-            <div className="pointer-events-none absolute inset-0 overflow-clip rounded-xl">
+            <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl islolate">
               {icon ? (
                 <img
                   src={icon}
