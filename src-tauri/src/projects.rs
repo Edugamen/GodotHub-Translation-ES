@@ -80,10 +80,24 @@ fn next_sort_order(projects: &[Project], category: &Option<String>) -> i64 {
 #[tauri::command]
 pub fn list_projects(app: AppHandle) -> Vec<Project> {
     let projects = read_projects(&app);
-    let (kept, removed): (Vec<Project>, Vec<Project>) = projects
+    let (mut kept, removed): (Vec<Project>, Vec<Project>) = projects
         .into_iter()
         .partition(|p| Path::new(&p.path).join("project.godot").exists());
-    if !removed.is_empty() {
+
+    // Resolve tags from project.godot for projects that don't have them stored yet
+    // (e.g. projects added before the tags feature existed).
+    let mut tags_changed = false;
+    for p in kept.iter_mut() {
+        if p.tags.is_empty() {
+            let disk_tags = resolve_project_tags(&p.path);
+            if !disk_tags.is_empty() {
+                p.tags = disk_tags;
+                tags_changed = true;
+            }
+        }
+    }
+
+    if !removed.is_empty() || tags_changed {
         let _ = write_projects(&app, &kept);
     }
     kept
@@ -171,10 +185,12 @@ pub fn create_project(
 
     let mut projects = read_projects(&app);
     let effective_category = category.as_ref().and_then(|c| if c.trim().is_empty() { None } else { Some(c.clone()) });
+    let project_path = project_dir.to_string_lossy().to_string();
+    let tags = resolve_project_tags(&project_path);
     let project = Project {
         id: Uuid::new_v4().to_string(),
         name,
-        path: project_dir.to_string_lossy().to_string(),
+        path: project_path,
         godot_version,
         created_at: chrono::Utc::now().to_rfc3339(),
         last_opened: None,
@@ -182,6 +198,7 @@ pub fn create_project(
         pinned: false,
         sort_order: next_sort_order(&projects, &effective_category),
         launch_arguments: String::new(),
+        tags,
     };
 
     projects.push(project.clone());
@@ -257,6 +274,7 @@ pub fn register_project(
             }
         }
     }
+    let tags = resolve_project_tags(&path);
     let project = Project {
         id: Uuid::new_v4().to_string(),
         name,
@@ -268,6 +286,7 @@ pub fn register_project(
         category,
         pinned: false,
         launch_arguments: String::new(),
+        tags,
     };
     projects.push(project.clone());
     write_projects(&app, &projects)?;
@@ -772,6 +791,88 @@ fn resolve_project_icon(project_path: &str) -> Option<(Vec<u8>, &'static str)> {
         }
     }
     None
+}
+
+#[tauri::command]
+pub fn write_project_tags(
+    app: AppHandle,
+    id: String,
+    path: String,
+    tags: Vec<String>,
+) -> Result<Project, String> {
+    let godot_file = PathBuf::from(&path).join("project.godot");
+    let content = fs::read_to_string(&godot_file).map_err(|e| e.to_string())?;
+    let mut lines: Vec<String> = content.lines().map(|l| l.to_string()).collect();
+
+    if tags.is_empty() {
+        lines.retain(|l| !l.trim().starts_with("config/tags="));
+    } else {
+        let tag_line = format!(
+            "config/tags=PackedStringArray({})",
+            tags.iter()
+                .map(|t| format!("\"{}\"", t))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+
+        let mut found = false;
+        for line in lines.iter_mut() {
+            if line.trim().starts_with("config/tags=") {
+                *line = tag_line.clone();
+                found = true;
+                break;
+            }
+        }
+
+        if !found {
+            if let Some(idx) = lines.iter().position(|l| l.trim() == "[application]") {
+                lines.insert(idx + 1, tag_line.clone());
+            } else {
+                lines.push(String::new());
+                lines.push("[application]".to_string());
+                lines.push(tag_line.clone());
+            }
+        }
+    }
+
+    fs::write(&godot_file, lines.join("\n")).map_err(|e| e.to_string())?;
+
+    let mut projects = read_projects(&app);
+    let project = projects
+        .iter_mut()
+        .find(|p| p.id == id)
+        .ok_or("Project not found")?;
+    project.tags = tags;
+    let updated = project.clone();
+    write_projects(&app, &projects)?;
+    Ok(updated)
+}
+
+pub(crate) fn resolve_project_tags(project_path: &str) -> Vec<String> {
+    let godot_file = PathBuf::from(project_path).join("project.godot");
+    let content = match fs::read_to_string(&godot_file) {
+        Ok(c) => c,
+        Err(_) => return vec![],
+    };
+    for line in content.lines() {
+        let line = line.trim();
+        if let Some(rest) = line.strip_prefix("config/tags=") {
+            if let Some(inner) = rest
+                .strip_prefix("PackedStringArray(")
+                .and_then(|s| s.strip_suffix(')'))
+            {
+                let tags: Vec<String> = inner
+                    .split(',')
+                    .filter_map(|t| {
+                        let t = t.trim().trim_matches('"');
+                        if t.is_empty() { None } else { Some(t.to_string()) }
+                    })
+                    .collect();
+                return tags;
+            }
+        }
+    }
+    vec![]
 }
 
 pub(crate) fn resolve_project_name(project_path: &str) -> Option<String> {

@@ -259,6 +259,7 @@ pub fn run() {
             projects::validate_godot_folder,
             projects::stop_project,
             projects::pick_file,
+            projects::write_project_tags,
             categories::list_categories,
             categories::create_category,
             categories::update_category,

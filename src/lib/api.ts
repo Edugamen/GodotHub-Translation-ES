@@ -65,6 +65,8 @@ export const api = {
     invoke<Project>('update_project', { id, updates }),
   reorderProjects: (orderedIds: string[]) =>
     invoke<void>('reorder_projects', { orderedIds }),
+  saveProjectTags: (id: string, path: string, tags: string[]) =>
+    invoke<Project>('write_project_tags', { id, path, tags }),
   openProject: (id: string, editor: boolean, withConsole?: boolean) =>
     invoke<void>('open_project', { id, editor, console: withConsole ?? null }),
   stopProject: (id: string) =>

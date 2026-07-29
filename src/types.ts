@@ -52,6 +52,7 @@ export interface Project {
   pinned: boolean
   sort_order: number
   launch_arguments: string
+  tags: string[]
 }
 
 export interface ProjectUpdate {
@@ -60,6 +61,7 @@ export interface ProjectUpdate {
   category?: string
   pinned?: boolean
   launch_arguments?: string
+  tags?: string[]
 }
 
 export interface GitStatus {

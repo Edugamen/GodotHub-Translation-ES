@@ -58,6 +58,8 @@ pub struct Project {
     pub sort_order: i64,
     #[serde(default)]
     pub launch_arguments: String,
+    #[serde(default)]
+    pub tags: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -102,6 +104,8 @@ pub struct ProjectUpdate {
     pub pinned: Option<bool>,
     #[serde(default)]
     pub launch_arguments: Option<String>,
+    #[serde(default)]
+    pub tags: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

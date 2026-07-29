@@ -47,6 +47,21 @@ interface Props {
   dragHandleProps?: Record<string, unknown>
 }
 
+const TAG_COLORS = [
+  '#457ff2', '#f28b45', '#45c97f', '#e74c8a', '#a855f7',
+  '#22d3ee', '#f59e0b', '#ef4444', '#10b981', '#6366f1',
+  '#ec4899', '#14b8a6', '#f97316', '#8b5cf6', '#06b6d4',
+  '#84cc16', '#d946ef', '#0ea5e9', '#eab308', '#3b82f6',
+]
+
+function tagColor(tag: string): string {
+  let hash = 0
+  for (let i = 0; i < tag.length; i++) {
+    hash = tag.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  return TAG_COLORS[Math.abs(hash) % TAG_COLORS.length]
+}
+
 function getInitials(name: string): string {
   const words = name
     .trim()
@@ -379,24 +394,46 @@ export const ProjectCard = memo(function ProjectCard({
                 </span>
               )}
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center">
+                  <span
+                    className="overflow-hidden inline-flex items-center transition-all duration-150 max-w-0 group-hover:max-w-[22px] mr-0 group-hover:mr-1.5"
+                    style={{ transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }}
+                  >
+                    <button
+                      onClick={onTogglePin}
+                      aria-label={project.pinned ? t('project_unpin_aria') : t('project_pin_aria')}
+                      className={`icon-wiggle focus-ring cursor-pointer shrink-0 p-1 rounded-md transition-colors ${
+                        project.pinned
+                          ? 'text-accent-bright opacity-100'
+                          : 'text-muted/40 opacity-0 group-hover:opacity-100 hover:text-muted hover:bg-raised'
+                      }`}
+                    >
+                      <IconPin
+                        className="w-3.5 h-3.5"
+                        fill={project.pinned ? 'currentColor' : 'none'}
+                      />
+                    </button>
+                  </span>
                   <h3 className="font-display font-medium ml-1 text-xl truncate">
                     {displayName}
                   </h3>
-                  <button
-                    onClick={onTogglePin}
-                    aria-label={project.pinned ? t('project_unpin_aria') : t('project_pin_aria')}
-                    className={`icon-wiggle focus-ring cursor-pointer shrink-0 p-1 rounded-md transition-colors ${
-                      project.pinned
-                        ? 'text-accent-bright opacity-100'
-                        : 'text-muted/40 opacity-0 group-hover:opacity-100 hover:text-muted hover:bg-raised'
-                    }`}
-                  >
-                    <IconPin
-                      className="w-3.5 h-3.5"
-                      fill={project.pinned ? 'currentColor' : 'none'}
-                    />
-                  </button>
+                  <div className="flex items-center gap-1.5 shrink-0 ml-1.5 overflow-x-auto scrollbar-none max-w-[320px]">
+                    {project.tags.map((tag) => {
+                      const color = tagColor(tag)
+                      return (
+                        <span
+                          key={tag}
+                          className="inline-flex items-center px-2 py-0.5 rounded-full font-mono text-[10px] font-medium tracking-tight shrink-0"
+                          style={{
+                            backgroundColor: `${color}18`,
+                            color: color,
+                          }}
+                        >
+                          {tag}
+                        </span>
+                      )
+                    })}
+                  </div>
                 </div>
                   <button
                     type="button"
