@@ -16,7 +16,7 @@ interface Props {
   items: SplitButtonItem[]
   variant?: 'accent' | 'outline'
   disabled?: boolean
-  menuLabel?: string
+  menuLabel: string
   className?: string
 }
 
@@ -44,7 +44,7 @@ export function SplitButton({
   items,
   variant = 'accent',
   disabled = false,
-  menuLabel = 'More launch options',
+  menuLabel,
   className = '',
 }: Props) {
   const [open, setOpen] = useState(false)
