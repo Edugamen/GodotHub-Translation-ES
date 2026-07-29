@@ -378,7 +378,7 @@ pub fn open_terminal(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn git_log(path: String) -> Result<(), String> {
+pub fn git_log(_app: tauri::AppHandle, path: String) -> Result<(), String> {
     let dir = PathBuf::from(&path);
     if !dir.exists() {
         return Err("Path does not exist".into());
@@ -418,7 +418,7 @@ pub fn git_log(path: String) -> Result<(), String> {
             "#!/bin/sh\ncd '{}' && git log --oneline --graph -25 --all\nexec sh\n",
             path.replace('\'', "'\\''")
         );
-        crate::terminal::spawn_shell_script_in_terminal(&script)?;
+        crate::terminal::spawn_shell_script_in_terminal(&_app, &script)?;
     }
 
     Ok(())

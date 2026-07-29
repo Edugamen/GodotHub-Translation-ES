@@ -726,47 +726,71 @@ pub fn rename_godot_version(
     Ok(updated)
 }
 
+pub struct LaunchedEditor {
+    pub child: std::process::Child,
+    pub kill_tree: bool,
+    #[cfg(unix)]
+    pub pid_file: Option<PathBuf>,
+}
+
 pub fn spawn_editor(
+    app: &AppHandle,
     exe: &Path,
     args: &[String],
     title: &str,
     use_console: bool,
-) -> Result<(std::process::Child, bool), String> {
+) -> Result<LaunchedEditor, String> {
     if !use_console {
         return spawn_plain(exe, args);
     }
 
-    spawn_with_console(exe, args, title)
+    spawn_with_console(app, exe, args, title)
 }
 
-fn spawn_plain(exe: &Path, args: &[String]) -> Result<(std::process::Child, bool), String> {
+fn spawn_plain(exe: &Path, args: &[String]) -> Result<LaunchedEditor, String> {
     std::process::Command::new(exe)
         .args(args)
         .spawn()
-        .map(|child| (child, false))
+        .map(|child| LaunchedEditor {
+            child,
+            kill_tree: false,
+            #[cfg(unix)]
+            pid_file: None,
+        })
         .map_err(|e| format!("Failed to launch editor: {e}"))
 }
 
 #[cfg(target_os = "windows")]
 fn spawn_with_console(
+    _app: &AppHandle,
     exe: &Path,
     args: &[String],
     title: &str,
-) -> Result<(std::process::Child, bool), String> {
+) -> Result<LaunchedEditor, String> {
     match console_executable_for(exe) {
         Some(wrapper) => crate::terminal::spawn_program_in_console(&wrapper, args, title)
-            .map(|child| (child, true)),
+            .map(|child| LaunchedEditor {
+                child,
+                kill_tree: true,
+            }),
         None => spawn_plain(exe, args),
     }
 }
 
 #[cfg(unix)]
 fn spawn_with_console(
+    app: &AppHandle,
     exe: &Path,
     args: &[String],
     _title: &str,
-) -> Result<(std::process::Child, bool), String> {
-    crate::terminal::spawn_program_in_terminal(exe, args).map(|child| (child, false))
+) -> Result<LaunchedEditor, String> {
+    crate::terminal::spawn_program_in_terminal(app, exe, args).map(|(child, pid_file)| {
+        LaunchedEditor {
+            child,
+            kill_tree: false,
+            pid_file: Some(pid_file),
+        }
+    })
 }
 
 #[tauri::command]
@@ -787,7 +811,7 @@ pub fn open_godot_version(app: AppHandle, tag: String, console: Option<bool>) ->
         .clone()
         .unwrap_or_else(|| version.tag.clone());
 
-    spawn_editor(&path, &[], &title, use_console)?;
+    spawn_editor(&app, &path, &[], &title, use_console)?;
     Ok(())
 }
 
