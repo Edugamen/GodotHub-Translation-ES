@@ -290,276 +290,280 @@ export const ProjectCard = memo(function ProjectCard({
           e.preventDefault()
           setContextMenu({ x: e.clientX, y: e.clientY })
         }}
-        className={`group relative border p-3 rounded-xl bg-surface transition-all duration-200 ${isDragging
-          ? 'opacity-40 border-line scale-[1.02] shadow-lg shadow-black/30'
-          : selected
-            ? 'border-accent ring-1 ring-accent/30 bg-accent/5'
-            : draggable
-              ? 'border-line hover:border-accent-dim hover:shadow-sm hover:shadow-black/10'
-              : 'border-line hover:border-accent-dim'
-          }`}
+        className={`group relative border p-3 rounded-xl bg-surface transition-all duration-200 ${
+          isDragging
+            ? 'opacity-40 border-line scale-[1.02] shadow-lg shadow-black/30'
+            : selected
+              ? 'border-accent ring-1 ring-accent/30 bg-accent/5'
+              : draggable
+                ? 'border-line hover:border-accent-dim hover:shadow-sm hover:shadow-black/10'
+                : 'border-line hover:border-accent-dim'
+        }`}
       >
-        {/* Selection checkbox */}
-        {onToggleSelect && (
-          <div className="absolute top-2.5 left-2.5 z-10">
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onToggleSelect()
-              }}
-              className={`focus-ring cursor-pointer w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-150 ${selected
-                ? 'bg-accent border-accent text-white scale-100 opacity-100'
-                : 'border-muted/40 bg-black/20 opacity-0 group-hover:opacity-100 group-hover:scale-100 scale-75 hover:border-accent/60'
-                }`}
-              aria-label={selected ? t('project_deselect_aria') : t('project_select_aria')}
-            >
-              {selected && <IconCheckCircle className="w-3.5 h-3.5" fill="currentColor" />}
-            </button>
-          </div>
-        )}
-
-        {/* Version warning indicator */}
-        {versionWarning && (
-          <Tooltip
-            content={
-              versionWarning === 'not_found'
-                ? t('project_version_warning_not_found', { version: project.godot_version })
-                : t('project_version_warning_mismatch', { version: project.godot_version })
-            }
-            side="top"
-          >
-            <div className="absolute top-2.5 right-2.5 z-10">
-              <IconAlertTriangle className="w-4 h-4 text-amber" />
-            </div>
-          </Tooltip>
-        )}
-
-        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl isolate">
-          {icon ? (
-            <img
-              src={icon}
-              alt=""
-              aria-hidden="true"
-              className="select-none absolute -left-6 top-1/2 -translate-y-1/2 -rotate-6 group-hover:rotate-0 h-35 w-35 object-contain grayscale group-hover:grayscale-0 contrast-125 transition-all duration-300 ease-out will-change-transform"
-              style={{
-                opacity: 'var(--project-icon-opacity, 0.14)',
-                maskImage:
-                  'linear-gradient(to right, black 35%, transparent 90%)',
-                WebkitMaskImage:
-                  'linear-gradient(to right, black 35%, transparent 90%)',
-              }}
-            />
-          ) : (
-            <span
-              aria-hidden="true"
-              className="select-none absolute -left-3 top-1/2 -translate-y-1/2 -rotate-6 group-hover:rotate-0 font-display font-black text-muted group-hover:text-accent-bright transition-all duration-300 ease-out will-change-transform"
-              style={{
-                fontSize: '72px',
-                lineHeight: 1,
-                opacity: 'var(--project-icon-opacity, 0.14)',
-                maskImage:
-                  'linear-gradient(to right, black 35%, transparent 90%)',
-                WebkitMaskImage:
-                  'linear-gradient(to right, black 35%, transparent 90%)',
-              }}
-            >
-              {getInitials(displayName)}
-            </span>
-          )}
-        </div>
-        <div className={`flex items-center gap-3.5 min-w-0${onToggleSelect && !draggable ? ' pl-8' : ''}`}>
-          {draggable && (
-            <span
-              {...dragHandleProps}
-              className="inline-flex touch-none cursor-grab active:cursor-grabbing"
-            >
-              <IconGrip className="w-4 h-4 text-muted/30 group-hover:text-muted/70 shrink-0 opacity-0 group-hover:opacity-100 scale-50 group-hover:scale-100 transition-all duration-200 ease-out" />
-            </span>
-          )}
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              <h3 className="font-display font-medium ml-1 text-xl truncate">
-                {displayName}
-              </h3>
-              <button
-                onClick={onTogglePin}
-                aria-label={project.pinned ? t('project_unpin_aria') : t('project_pin_aria')}
-                className={`icon-wiggle focus-ring cursor-pointer shrink-0 p-1 rounded-md transition-colors ${project.pinned
-                  ? 'text-accent-bright opacity-100'
-                  : 'text-muted/40 opacity-0 group-hover:opacity-100 hover:text-muted hover:bg-raised'
-                  }`}
-              >
-                <IconPin
-                  className="w-3.5 h-3.5"
-                  fill={project.pinned ? 'currentColor' : 'none'}
-                />
-              </button>
-            </div>
-            <button
-              type="button"
-              onClick={openFolder}
-              className="text-[11px] px-3 py-1.5 mb-1 bg-base rounded-md text-muted font-mono truncate block w-fit text-left hover:text-accent-bright cursor-pointer transition-colors"
-            >
-              {project.path}
-            </button>
-          </div>
-        </div>
-        <div className="flex items-center gap-2.5 flex-wrap justify-between">
-          <div className="flex items-center gap-2.5 ml-8 flex-wrap min-w-0">
-            {lastOpenedLabel && (
-              <Tooltip content={t('project_last_opened_tooltip', { label: lastOpenedLabel })}>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-raised border border-line font-mono text-[11px] text-muted shrink-0">
-                  <IconClock className="w-3 h-3" />
-                  {lastOpenedLabel}
-                </span>
-              </Tooltip>
-            )}
-            {gitStatus?.is_repo && (
-              <Tooltip
-                content={
-                  gitStatus.has_uncommitted
-                    ? t('project_git_dirty_tooltip', { branch: gitStatus.branch ?? 'HEAD' })
-                    : t('project_git_clean_tooltip', { branch: gitStatus.branch ?? 'HEAD' })
-                }
-              >
+            {/* Selection checkbox */}
+            {onToggleSelect && (
+              <div className="absolute top-2.5 left-2.5 z-10">
                 <button
-                  type="button"
                   onClick={(e) => {
                     e.stopPropagation()
-                    onShowGitSidebar?.()
+                    onToggleSelect()
                   }}
-                  className={`focus-ring cursor-pointer inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-mono text-[11px] border shrink-0 transition-colors hover:border-accent-dim ${gitStatus.has_uncommitted
-                    ? 'bg-amber/10 border-amber/30 text-amber'
-                    : 'bg-raised border-line text-muted'
-                    }`}
+                  className={`focus-ring cursor-pointer w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-150 ${
+                    selected
+                      ? 'bg-accent border-accent text-white scale-100 opacity-100'
+                      : 'border-muted/40 bg-black/20 opacity-0 group-hover:opacity-100 group-hover:scale-100 scale-75 hover:border-accent/60'
+                  }`}
+                  aria-label={selected ? t('project_deselect_aria') : t('project_select_aria')}
                 >
-                  <IconGitBranch className="w-3 h-3" />
-                  {gitStatus.branch ?? 'HEAD'}
-                  {gitStatus.has_uncommitted && <span className="w-1.5 h-1.5 rounded-full bg-amber ml-0.5" />}
+                  {selected && <IconCheckCircle className="w-3.5 h-3.5" fill="currentColor" />}
                 </button>
+              </div>
+            )}
+
+            {/* Version warning indicator */}
+            {versionWarning && (
+              <Tooltip
+                content={
+                  versionWarning === 'not_found'
+                    ? t('project_version_warning_not_found', { version: project.godot_version })
+                    : t('project_version_warning_mismatch', { version: project.godot_version })
+                }
+                side="top"
+              >
+                <div className="absolute top-2.5 right-2.5 z-10">
+                  <IconAlertTriangle className="w-4 h-4 text-amber" />
+                </div>
               </Tooltip>
             )}
-            {project.pinned && categoriesEnabled && (() => {
-              const cat = categories.find((c) => c.name === project.category)
-              const catColor = cat?.color ?? '#949ba4'
-              return (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-raised border border-line font-mono text-[11px] text-muted shrink-0">
-                  <span
-                    className="w-1.5 h-1.5 rounded-full shrink-0 ring-1 ring-black/10"
-                    style={{ backgroundColor: catColor }}
-                  />
-                  {project.category ?? t('uncategorized')}
+
+            <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl isolate">
+              {icon ? (
+                <img
+                  src={icon}
+                  alt=""
+                  aria-hidden="true"
+                  className="select-none absolute -left-6 top-1/2 -translate-y-1/2 -rotate-6 group-hover:rotate-0 h-35 w-35 object-contain grayscale group-hover:grayscale-0 contrast-125 transition-all duration-300 ease-out will-change-transform"
+                  style={{
+                    opacity: 'var(--project-icon-opacity, 0.14)',
+                    maskImage:
+                      'linear-gradient(to right, black 35%, transparent 90%)',
+                    WebkitMaskImage:
+                      'linear-gradient(to right, black 35%, transparent 90%)',
+                  }}
+                />
+              ) : (
+                <span
+                  aria-hidden="true"
+                  className="select-none absolute -left-3 top-1/2 -translate-y-1/2 -rotate-6 group-hover:rotate-0 font-display font-black text-muted group-hover:text-accent-bright transition-all duration-300 ease-out will-change-transform"
+                  style={{
+                    fontSize: '72px',
+                    lineHeight: 1,
+                    opacity: 'var(--project-icon-opacity, 0.14)',
+                    maskImage:
+                      'linear-gradient(to right, black 35%, transparent 90%)',
+                    WebkitMaskImage:
+                      'linear-gradient(to right, black 35%, transparent 90%)',
+                  }}
+                >
+                  {getInitials(displayName)}
                 </span>
-              )
-            })()}
-
-            <Dropdown
-              className="w-48 shrink-0"
-              value={project.godot_version}
-              onChange={onVersionChange}
-              options={installedVersions.map((v) => ({
-                value: v.tag,
-                label: v.custom_name || v.version || v.tag,
-                dotClassName: 'bg-mint',
-                badge: v.is_mono ? 'Mono' : undefined,
-              }))}
-            />
-          </div>
-
-          <div className="flex items-center gap-2.5 shrink-0 ml-auto">
-            <SplitButton
-              label={t('open_project')}
-              icon={IconPlay}
-              disabled={!versionInstalled}
-              menuLabel={t('more_launch_options')}
-              onClick={() => launchProject()}
-              items={[
-                {
-                  label: t('open_project'),
-                  icon: IconPlay,
-                  badge: consoleIsDefault
-                    ? undefined
-                    : t('launch_default_badge'),
-                  onClick: () => launchProject(false),
-                },
-                ...(supportsConsole
-                  ? [
-                    {
-                      label: t('open_with_console'),
-                      icon: IconTerminal,
-                      badge: consoleIsDefault
-                        ? t('launch_default_badge')
-                        : undefined,
-                      onClick: () => launchProject(true),
-                    },
-                  ]
-                  : []),
-              ]}
-            />
-
-            <div ref={cardMoreRef} className="relative">
-              <button
-                onClick={() => {
-                  const btnRect = cardMoreRef.current?.getBoundingClientRect()
-                  if (btnRect) {
-                    setCardMoreUp(window.innerHeight - btnRect.bottom < 210)
-                  }
-                  setCardMoreOpen((prev) => !prev)
-                }}
-                className="focus-ring cursor-pointer p-2.5 rounded-lg border border-line text-muted hover:text-ink hover:border-accent-dim hover:bg-raised transition-colors"
-                aria-label={t('project_more_aria')}
-              >
-                <IconMore className="w-4 h-4" />
-              </button>
-              <AnimatePresence>
-                {cardMoreOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: cardMoreUp ? 4 : -4, scale: 0.96 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: cardMoreUp ? 4 : -4, scale: 0.96 }}
-                    transition={{ duration: 0.12, ease: 'easeOut' }}
-                    className={`absolute right-0 z-30 ${cardMoreUp ? 'bottom-full mb-1 origin-bottom' : 'mt-1 origin-top'} min-w-50 rounded-xl border border-line bg-surface shadow-2xl shadow-black/40 p-1.5`}
+              )}
+            </div>
+            <div className={`flex items-center gap-3.5 min-w-0${onToggleSelect && !draggable ? ' pl-8' : ''}`}>
+              {draggable && (
+                <span
+                  {...dragHandleProps}
+                  className="inline-flex touch-none cursor-grab active:cursor-grabbing"
+                >
+                  <IconGrip className="w-4 h-4 text-muted/30 group-hover:text-muted/70 shrink-0 opacity-0 group-hover:opacity-100 scale-50 group-hover:scale-100 transition-all duration-200 ease-out" />
+                </span>
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <h3 className="font-display font-medium ml-1 text-xl truncate">
+                    {displayName}
+                  </h3>
+                  <button
+                    onClick={onTogglePin}
+                    aria-label={project.pinned ? t('project_unpin_aria') : t('project_pin_aria')}
+                    className={`icon-wiggle focus-ring cursor-pointer shrink-0 p-1 rounded-md transition-colors ${
+                      project.pinned
+                        ? 'text-accent-bright opacity-100'
+                        : 'text-muted/40 opacity-0 group-hover:opacity-100 hover:text-muted hover:bg-raised'
+                    }`}
+                  >
+                    <IconPin
+                      className="w-3.5 h-3.5"
+                      fill={project.pinned ? 'currentColor' : 'none'}
+                    />
+                  </button>
+                </div>
+                  <button
+                    type="button"
+                    onClick={openFolder}
+                    className="text-[11px] px-3 py-1.5 mb-1 bg-base rounded-md text-muted font-mono truncate block w-fit text-left hover:text-accent-bright cursor-pointer transition-colors"
+                  >
+                    {project.path}
+                  </button>
+              </div>
+            </div>
+            <div className="flex items-center gap-2.5 flex-wrap justify-between">
+              <div className="flex items-center gap-2.5 ml-8 flex-wrap min-w-0">
+                {lastOpenedLabel && (
+                  <Tooltip content={t('project_last_opened_tooltip', { label: lastOpenedLabel })}>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-raised border border-line font-mono text-[11px] text-muted shrink-0">
+                      <IconClock className="w-3 h-3" />
+                      {lastOpenedLabel}
+                    </span>
+                  </Tooltip>
+                )}
+                {gitStatus?.is_repo && (
+                  <Tooltip
+                    content={
+                      gitStatus.has_uncommitted
+                        ? t('project_git_dirty_tooltip', { branch: gitStatus.branch ?? 'HEAD' })
+                        : t('project_git_clean_tooltip', { branch: gitStatus.branch ?? 'HEAD' })
+                    }
                   >
                     <button
                       type="button"
-                      onClick={() => { setCardMoreOpen(false); onOpenProperties?.() }}
-                      className="w-full flex items-center cursor-pointer gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-ink hover:bg-raised transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onShowGitSidebar?.()
+                      }}
+                      className={`focus-ring cursor-pointer inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-mono text-[11px] border shrink-0 transition-colors hover:border-accent-dim ${
+                        gitStatus.has_uncommitted
+                          ? 'bg-amber/10 border-amber/30 text-amber'
+                          : 'bg-raised border-line text-muted'
+                      }`}
                     >
-                      <IconHardDrive className="w-3.5 h-3.5 text-muted" />
-                      {t('project_card_project_size')}
+                      <IconGitBranch className="w-3 h-3" />
+                      {gitStatus.branch ?? 'HEAD'}
+                      {gitStatus.has_uncommitted && <span className="w-1.5 h-1.5 rounded-full bg-amber ml-0.5" />}
                     </button>
-                    <div className="h-px bg-line my-1" />
-                    <button
-                      type="button"
-                      onClick={() => { setCardMoreOpen(false); setTemplateSaveOpen(true) }}
-                      className="w-full flex items-center cursor-pointer gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-ink hover:bg-raised transition-colors"
-                    >
-                      <IconCopy className="w-3.5 h-3.5 text-muted" />
-                      {t('project_card_save_template')}
-                    </button>
-                    <div className="h-px bg-line my-1" />
-                    <button
-                      type="button"
-                      onClick={() => { setCardMoreOpen(false); setConfirmAction('remove') }}
-                      className="w-full flex items-center cursor-pointer gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-ink hover:bg-raised transition-colors"
-                    >
-                      <IconX className="w-3.5 h-3.5 text-muted" />
-                      {t('project_card_remove_library')}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setCardMoreOpen(false); setConfirmAction('delete') }}
-                      className="w-full flex items-center cursor-pointer gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-danger hover:bg-danger/10 transition-colors"
-                    >
-                      <IconTrash className="w-3.5 h-3.5" />
-                      {t('project_card_delete_files')}
-                    </button>
-                  </motion.div>
+                  </Tooltip>
                 )}
-              </AnimatePresence>
+                {project.pinned && categoriesEnabled && (() => {
+                  const cat = categories.find((c) => c.name === project.category)
+                  const catColor = cat?.color ?? '#949ba4'
+                  return (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-raised border border-line font-mono text-[11px] text-muted shrink-0">
+                      <span
+                        className="w-1.5 h-1.5 rounded-full shrink-0 ring-1 ring-black/10"
+                        style={{ backgroundColor: catColor }}
+                      />
+                      {project.category ?? t('uncategorized')}
+                    </span>
+                  )
+                })()}
+
+                <Dropdown
+                  className="w-48 shrink-0"
+                  value={project.godot_version}
+                  onChange={onVersionChange}
+                  options={installedVersions.map((v) => ({
+                    value: v.tag,
+                    label: v.custom_name || v.version || v.tag,
+                    dotClassName: 'bg-mint',
+                    badge: v.is_mono ? 'Mono' : undefined,
+                  }))}
+                />
+              </div>
+
+              <div className="flex items-center gap-2.5 shrink-0 ml-auto">
+                <SplitButton
+                  label={t('open_project')}
+                  icon={IconPlay}
+                  disabled={!versionInstalled}
+                  menuLabel={t('more_launch_options')}
+                  onClick={() => launchProject()}
+                  items={[
+                    {
+                      label: t('open_project'),
+                      icon: IconPlay,
+                      badge: consoleIsDefault
+                        ? undefined
+                        : t('launch_default_badge'),
+                      onClick: () => launchProject(false),
+                    },
+                    ...(supportsConsole
+                      ? [
+                          {
+                            label: t('open_with_console'),
+                            icon: IconTerminal,
+                            badge: consoleIsDefault
+                              ? t('launch_default_badge')
+                              : undefined,
+                            onClick: () => launchProject(true),
+                          },
+                        ]
+                      : []),
+                  ]}
+                />
+
+                <div ref={cardMoreRef} className="relative">
+                  <button
+                    onClick={() => {
+                      const btnRect = cardMoreRef.current?.getBoundingClientRect()
+                      if (btnRect) {
+                        setCardMoreUp(window.innerHeight - btnRect.bottom < 210)
+                      }
+                      setCardMoreOpen((prev) => !prev)
+                    }}
+                    className="focus-ring cursor-pointer p-2.5 rounded-lg border border-line text-muted hover:text-ink hover:border-accent-dim hover:bg-raised transition-colors"
+                    aria-label={t('project_more_aria')}
+                  >
+                    <IconMore className="w-4 h-4" />
+                  </button>
+                  <AnimatePresence>
+                    {cardMoreOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: cardMoreUp ? 4 : -4, scale: 0.96 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: cardMoreUp ? 4 : -4, scale: 0.96 }}
+                        transition={{ duration: 0.12, ease: 'easeOut' }}
+                        className={`absolute right-0 z-30 ${cardMoreUp ? 'bottom-full mb-1 origin-bottom' : 'mt-1 origin-top'} min-w-50 rounded-xl border border-line bg-surface shadow-2xl shadow-black/40 p-1.5`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => { setCardMoreOpen(false); onOpenProperties?.() }}
+                          className="w-full flex items-center cursor-pointer gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-ink hover:bg-raised transition-colors"
+                        >
+                          <IconHardDrive className="w-3.5 h-3.5 text-muted" />
+                          {t('project_card_project_size')}
+                        </button>
+                        <div className="h-px bg-line my-1" />
+                        <button
+                          type="button"
+                          onClick={() => { setCardMoreOpen(false); setTemplateSaveOpen(true) }}
+                          className="w-full flex items-center cursor-pointer gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-ink hover:bg-raised transition-colors"
+                        >
+                          <IconCopy className="w-3.5 h-3.5 text-muted" />
+                          {t('project_card_save_template')}
+                        </button>
+                        <div className="h-px bg-line my-1" />
+                        <button
+                          type="button"
+                          onClick={() => { setCardMoreOpen(false); setConfirmAction('remove') }}
+                          className="w-full flex items-center cursor-pointer gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-ink hover:bg-raised transition-colors"
+                        >
+                          <IconX className="w-3.5 h-3.5 text-muted" />
+                          {t('project_card_remove_library')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setCardMoreOpen(false); setConfirmAction('delete') }}
+                          className="w-full flex items-center cursor-pointer gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-danger hover:bg-danger/10 transition-colors"
+                        >
+                          <IconTrash className="w-3.5 h-3.5" />
+                          {t('project_card_delete_files')}
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
       </div>
 
       {dialogs}
@@ -600,13 +604,13 @@ export const ProjectCard = memo(function ProjectCard({
       },
       ...(supportsConsole
         ? [
-          {
-            label: t('open_with_console'),
-            icon: IconTerminal,
-            onClick: () => launchProject(true),
-            disabled: !versionInstalled,
-          },
-        ]
+            {
+              label: t('open_with_console'),
+              icon: IconTerminal,
+              onClick: () => launchProject(true),
+              disabled: !versionInstalled,
+            },
+          ]
         : []),
       {
         label: t('open_folder'),
@@ -641,13 +645,13 @@ export const ProjectCard = memo(function ProjectCard({
           },
           ...(categories.length > 0
             ? [
-              { type: 'separator' as const },
-              ...categories.map((cat) => ({
-                label: cat.name,
-                onClick: () => onCategoryChange(cat.name),
-                icon: IconTags,
-              })),
-            ]
+                { type: 'separator' as const },
+                ...categories.map((cat) => ({
+                  label: cat.name,
+                  onClick: () => onCategoryChange(cat.name),
+                  icon: IconTags,
+                })),
+              ]
             : []),
         ],
       },
@@ -668,13 +672,13 @@ export const ProjectCard = memo(function ProjectCard({
       },
       ...(gitStatus?.is_repo
         ? [
-          { type: 'separator' as const },
-          {
-            label: t('git'),
-            icon: IconGitBranch,
-            onClick: () => onShowGitSidebar?.(),
-          },
-        ]
+            { type: 'separator' as const },
+            {
+              label: t('git'),
+              icon: IconGitBranch,
+              onClick: () => onShowGitSidebar?.(),
+            },
+          ]
         : []),
       { type: 'separator' },
       {
