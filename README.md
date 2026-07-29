@@ -101,13 +101,13 @@
 
 <p align="center">
   <a href="https://discord.com/invite/nA7dus32Yv/">
-    <img src="/assets/discord-banner.png" alt="Discord" height="50">
+    <img src="/assets/discord-banner.png" alt="Discord">
   </a>
 </p>
 
 <p align="center">
   <a href="https://patreon.com/TheRyko">
-    <img src="/assets/patreon-banner.png" alt="Patreon" height="40">
+    <img src="/assets/patreon-banner.png" alt="Patreon">
   </a>
 </p>
 
