@@ -149,7 +149,23 @@ pub async fn scan_for_projects(
     dirs: Vec<String>,
     depth: u32,
 ) -> Result<Vec<Project>, String> {
-    tokio::task::spawn_blocking(move || scan_for_projects_blocking(app, dirs, depth))
+    tokio::task::spawn_blocking(move || {
+        let result = scan_for_projects_blocking(app.clone(), dirs, depth, false)?;
+        Ok(result.added)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Full scan that also returns which previously-dismissed paths were found.
+/// The dismissed paths are NOT automatically re-added — the frontend can decide.
+#[tauri::command]
+pub async fn scan_for_projects_with_info(
+    app: AppHandle,
+    dirs: Vec<String>,
+    depth: u32,
+) -> Result<ScanProjectsResult, String> {
+    tokio::task::spawn_blocking(move || scan_for_projects_blocking(app, dirs, depth, true))
         .await
         .map_err(|e| e.to_string())?
 }
@@ -158,22 +174,37 @@ pub fn scan_for_projects_blocking(
     app: AppHandle,
     dirs: Vec<String>,
     depth: u32,
-) -> Result<Vec<Project>, String> {
+    include_dismissed: bool,
+) -> Result<ScanProjectsResult, String> {
     let existing = projects::list_projects(app.clone());
     let existing_paths: Vec<String> = existing.iter().map(|p| p.path.clone()).collect();
     let max_depth = depth as usize;
+
+    let dismissed = crate::settings::read_settings(&app).dismissed_project_paths;
 
     let found_dirs = collect_matching_paths(&dirs, max_depth, |path| {
         path.is_file()
             && path.file_name().map(|n| n == "project.godot").unwrap_or(false)
     });
 
+    let mut found_dismissed: Vec<String> = vec![];
+
     let new_dirs: Vec<PathBuf> = found_dirs
         .into_iter()
         .filter(|d| {
-            d.parent()
-                .map(|p| !existing_paths.contains(&p.to_string_lossy().to_string()))
-                .unwrap_or(false)
+            let parent_path = d.parent()
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_default();
+            if existing_paths.contains(&parent_path) {
+                return false;
+            }
+            if dismissed.contains(&parent_path) {
+                if include_dismissed {
+                    found_dismissed.push(parent_path);
+                }
+                return false;
+            }
+            true
         })
         .collect();
 
@@ -194,7 +225,7 @@ pub fn scan_for_projects_blocking(
         }
         let _ = app.emit("project-scan-progress", (added.len(), total));
     }
-    Ok(added)
+    Ok(ScanProjectsResult { added, found_dismissed })
 }
 
 // ---------------------------------------------------------------------------

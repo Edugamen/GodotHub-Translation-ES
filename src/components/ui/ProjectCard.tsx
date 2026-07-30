@@ -32,6 +32,8 @@ interface Props {
   onTogglePin: () => void
   onLaunchArgsChange?: (args: string) => void
   onOpenProperties?: () => void
+  onManageTags?: () => void
+  onTagsSaved?: () => void
   onGitAction?: (action: 'terminal' | 'pull' | 'push' | 'fetch' | 'log') => void
   onShowGitSidebar?: () => void
   draggable?: boolean
@@ -83,6 +85,8 @@ export const ProjectCard = memo(function ProjectCard({
   onTogglePin,
   onLaunchArgsChange,
   onOpenProperties,
+  onManageTags,
+  onTagsSaved,
   onGitAction: _onGitAction,
   onShowGitSidebar,
   gitStatus,
@@ -124,6 +128,16 @@ export const ProjectCard = memo(function ProjectCard({
   const [cardMoreOpen, setCardMoreOpen] = useState(false)
   const [cardMoreUp, setCardMoreUp] = useState(false)
   const cardMoreRef = useRef<HTMLDivElement>(null)
+
+  // Inline tag editing
+  const [editingTagIndex, setEditingTagIndex] = useState<number | null>(null)
+  const [editTagValue, setEditTagValue] = useState('')
+  const [addingTag, setAddingTag] = useState(false)
+  const [newTagValue, setNewTagValue] = useState('')
+  const [savingTags, setSavingTags] = useState(false)
+  const [tagsExpanded, setTagsExpanded] = useState(false)
+  const editInputRef = useRef<HTMLInputElement>(null)
+  const addInputRef = useRef<HTMLInputElement>(null)
 
   const lastOpenedLabel = formatLastOpened(
     project.last_opened,
@@ -188,6 +202,52 @@ export const ProjectCard = memo(function ProjectCard({
     } finally {
       setTemplateBusy(false)
     }
+  }
+
+  const saveTags = async (newTags: string[]) => {
+    setSavingTags(true)
+    try {
+      await api.saveProjectTags(project.id, project.path, newTags)
+      onTagsSaved?.()
+    } catch (e) {
+      console.error('Failed to save tags:', e)
+    } finally {
+      setSavingTags(false)
+    }
+  }
+
+  const handleAddTag = () => {
+    const trimmed = newTagValue.trim()
+    if (!trimmed || savingTags) return
+    const newTags = [...project.tags, trimmed]
+    setAddingTag(false)
+    setNewTagValue('')
+    saveTags(newTags)
+  }
+
+  const handleRemoveTag = (index: number) => {
+    if (savingTags) return
+    const newTags = project.tags.filter((_, i) => i !== index)
+    if (editingTagIndex === index) {
+      setEditingTagIndex(null)
+      setEditTagValue('')
+    }
+    saveTags(newTags)
+  }
+
+  const handleRenameTag = (index: number) => {
+    if (editingTagIndex !== index) return
+    const trimmed = editTagValue.trim()
+    const current = project.tags[index]
+    if (!trimmed || trimmed === current || savingTags) {
+      setEditingTagIndex(null)
+      setEditTagValue('')
+      return
+    }
+    const newTags = project.tags.map((t, i) => (i === index ? trimmed : t))
+    setEditingTagIndex(null)
+    setEditTagValue('')
+    saveTags(newTags)
   }
 
   const dialogs = (
@@ -394,7 +454,7 @@ export const ProjectCard = memo(function ProjectCard({
                 </span>
               )}
               <div className="min-w-0 flex-1">
-                <div className="flex items-center">
+                <div className="flex items-center flex-wrap gap-x-1.5 gap-y-0.5">
                   <span
                     className="overflow-hidden inline-flex items-center transition-all duration-150 max-w-0 group-hover:max-w-[22px] mr-0 group-hover:mr-1.5"
                     style={{ transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }}
@@ -414,26 +474,138 @@ export const ProjectCard = memo(function ProjectCard({
                       />
                     </button>
                   </span>
-                  <h3 className="font-display font-medium ml-1 text-xl truncate">
+                  <h3 className="font-display font-medium ml-1 text-xl truncate min-w-0">
                     {displayName}
                   </h3>
-                  <div className="flex items-center gap-1.5 shrink-0 ml-1.5 overflow-x-auto scrollbar-none max-w-[320px]">
-                    {project.tags.map((tag) => {
-                      const color = tagColor(tag)
-                      return (
-                        <span
-                          key={tag}
-                          className="inline-flex items-center px-2 py-0.5 rounded-full font-mono text-[10px] font-medium tracking-tight shrink-0"
-                          style={{
-                            backgroundColor: `${color}18`,
-                            color: color,
-                          }}
+                  {/* Tags inline with title - max 2 visible */}
+                  {(project.tags.length > 0 || addingTag) && (
+                    <>
+                      {project.tags.slice(0, tagsExpanded ? project.tags.length : 2).map((tag, index) => {
+                        const color = tagColor(tag)
+                        const isEditing = editingTagIndex === index
+                        return (
+                          <span
+                            key={`${tag}-${index}`}
+                            className="group/tag inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full font-mono text-[10px] font-medium tracking-tight shrink-0 transition-all duration-100"
+                            style={{
+                              backgroundColor: `${color}18`,
+                              color: color,
+                            }}
+                          >
+                            {isEditing ? (
+                              <input
+                                ref={editInputRef}
+                                type="text"
+                                value={editTagValue}
+                                onChange={(e) => setEditTagValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                  e.stopPropagation()
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault()
+                                    handleRenameTag(index)
+                                  }
+                                  if (e.key === 'Escape') {
+                                    setEditingTagIndex(null)
+                                    setEditTagValue('')
+                                  }
+                                }}
+                                onBlur={() => handleRenameTag(index)}
+                                className="w-16 bg-transparent outline-none text-[10px] font-mono font-medium"
+                                style={{ color }}
+                                autoFocus
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            ) : (
+                              <span
+                                className="cursor-pointer"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setEditingTagIndex(index)
+                                  setEditTagValue(tag)
+                                }}
+                                title={t('tag_rename_hint')}
+                              >
+                                {tag}
+                              </span>
+                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleRemoveTag(index)
+                              }}
+                              className="focus-ring cursor-pointer opacity-0 group-hover/tag:opacity-100 w-0 group-hover/tag:w-3 h-3 overflow-hidden rounded-full flex items-center justify-center transition-all duration-100 hover:text-danger shrink-0"
+                              aria-label={t('tag_remove_aria', { tag })}
+                            >
+                              <IconX className="w-2.5 h-2.5 shrink-0" />
+                            </button>
+                          </span>
+                        )
+                      })}
+                      {!tagsExpanded && project.tags.length > 2 && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setTagsExpanded(true) }}
+                          className="focus-ring cursor-pointer inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-mono font-medium tracking-tight text-muted/50 hover:text-accent-bright hover:bg-accent/10 transition-all shrink-0 border border-dashed border-line/30"
                         >
-                          {tag}
+                          +{project.tags.length - 2} more
+                        </button>
+                      )}
+                      {tagsExpanded && project.tags.length > 2 && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setTagsExpanded(false) }}
+                          className="focus-ring cursor-pointer inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-mono font-medium tracking-tight text-muted/50 hover:text-accent-bright hover:bg-accent/10 transition-all shrink-0"
+                        >
+                          Show less
+                        </button>
+                      )}
+                      {addingTag ? (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full font-mono text-[10px] font-medium tracking-tight shrink-0 bg-accent/10 border border-accent/30">
+                          <input
+                            ref={addInputRef}
+                            type="text"
+                            value={newTagValue}
+                            onChange={(e) => setNewTagValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              e.stopPropagation()
+                              if (e.key === 'Enter') {
+                                e.preventDefault()
+                                handleAddTag()
+                              }
+                              if (e.key === 'Escape') {
+                                setAddingTag(false)
+                                setNewTagValue('')
+                              }
+                            }}
+                            onBlur={() => {
+                              if (newTagValue.trim()) {
+                                handleAddTag()
+                              } else {
+                                setAddingTag(false)
+                              }
+                            }}
+                            className="w-16 bg-transparent outline-none text-[10px] font-mono font-medium text-accent-bright placeholder:text-accent/40"
+                            placeholder={t('add')}
+                            autoFocus
+                            onClick={(e) => e.stopPropagation()}
+                          />
                         </span>
-                      )
-                    })}
-                  </div>
+                      ) : (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setAddingTag(true)
+                            setNewTagValue('')
+                          }}
+                          className="focus-ring cursor-pointer inline-flex items-center justify-center w-4 h-4 rounded-full text-muted/40 opacity-0 group-hover:opacity-100 hover:text-accent-bright hover:bg-accent/10 transition-all shrink-0"
+                          aria-label={t('add_tag_aria')}
+                        >
+                          <IconX className="w-3 h-3 rotate-45" />
+                        </button>
+                      )}
+                      {savingTags && (
+                        <div className="w-3 h-3 rounded-full border-2 border-accent/30 border-t-accent animate-spin shrink-0" />
+                      )}
+                    </>
+                  )}
                 </div>
                   <button
                     type="button"
@@ -578,6 +750,14 @@ export const ProjectCard = memo(function ProjectCard({
                           <IconCopy className="w-3.5 h-3.5 text-muted" />
                           {t('project_card_save_template')}
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => { setCardMoreOpen(false); onManageTags?.() }}
+                          className="w-full flex items-center cursor-pointer gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-ink hover:bg-raised transition-colors"
+                        >
+                          <IconTags className="w-3.5 h-3.5 text-muted" />
+                          {t('manage_tags')}
+                        </button>
                         <div className="h-px bg-line my-1" />
                         <button
                           type="button"
@@ -701,6 +881,11 @@ export const ProjectCard = memo(function ProjectCard({
         label: t('launch_arguments'),
         icon: IconCode,
         onClick: () => setShowLaunchArgs(true),
+      },
+      {
+        label: t('manage_tags'),
+        icon: IconTags,
+        onClick: () => onManageTags?.(),
       },
       {
         label: t('save_as_template'),

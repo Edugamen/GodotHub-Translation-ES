@@ -36,6 +36,7 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_prevent_default::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(
@@ -166,8 +167,11 @@ pub fn run() {
             workspace::delete_workspace,
             // --- Scanning ---
             scan::scan_for_projects,
+            scan::scan_for_projects_with_info,
             scan::scan_for_versions,
             scan::import_version,
+            // --- Dismissed projects ---
+            projects::reintroduce_dismissed_projects,
             // --- News ---
             news::fetch_godot_news,
             // --- Templates ---

@@ -18,6 +18,7 @@ export function TitleBar() {
   const { settings } = useSettings()
   const showSupport = settings.show_support_button
   const showStar = settings.show_star_button
+  const useOsDec = settings.use_os_decorations
   const [appWindow, setAppWindow] = useState<TauriWindow | null>(null)
   const [isMaximized, setIsMaximized] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
@@ -50,6 +51,8 @@ export function TitleBar() {
       } catch {}
     }
   }
+
+  if (useOsDec) return null
 
   return (
     <div className="relative h-10 flex items-stretch bg-surface border-line border-b select-none shrink-0">
@@ -125,57 +128,30 @@ export function TitleBar() {
         {!isMac && (
           <>
             <div className="w-px h-5 self-center bg-line/40" />
-            <div className="flex items-stretch gap-1 px-3">
-              <motion.button
+            <div className="flex items-stretch">
+              <button
                 onClick={() => safe((w) => w.minimize())}
                 aria-label={t('minimize')}
-                className="w-6 cursor-pointer flex items-center justify-center text-muted hover:text-ink transition-colors shrink-0"
-                whileHover={{
-                  y: -2,
-                  scale: 1.1,
-                }}
-                transition={{
-                  type: 'spring',
-                  stiffness: 500,
-                  damping: 30,
-                }}
+                className="w-10 h-full cursor-pointer flex items-center justify-center text-muted hover:text-ink transition-colors shrink-0"
               >
-                <div className="w-4 h-4 bg-green-400 rounded-full" />
-              </motion.button>
+                <div className="w-4 h-4 bg-green-400 rounded-full hover:brightness-125 transition-all" />
+              </button>
 
-              <motion.button
+              <button
                 onClick={() => safe((w) => w.toggleMaximize())}
                 aria-label={isMaximized ? t('restore') : t('maximize')}
-                className="w-6 cursor-pointer flex items-center justify-center text-muted hover:text-ink transition-colors shrink-0"
-                whileHover={{
-                  y: -2,
-                  scale: 1.1,
-                }}
-                transition={{
-                  type: 'spring',
-                  stiffness: 500,
-                  damping: 30,
-                }}
+                className="w-10 h-full cursor-pointer flex items-center justify-center text-muted hover:text-ink transition-colors shrink-0"
               >
-                <div className="w-4 h-4 bg-amber rounded-full" />
-              </motion.button>
+                <div className="w-4 h-4 bg-amber rounded-full hover:brightness-125 transition-all" />
+              </button>
 
-              <motion.button
+              <button
                 onClick={() => safe((w) => w.close())}
                 aria-label={t('close')}
-                className="w-6 cursor-pointer flex items-center justify-center text-muted hover:text-white transition-colors shrink-0"
-                whileHover={{
-                  y: -2,
-                  scale: 1.1,
-                }}
-                transition={{
-                  type: 'spring',
-                  stiffness: 500,
-                  damping: 30,
-                }}
+                className="w-10 h-full cursor-pointer flex items-center justify-center text-muted hover:text-white transition-colors shrink-0"
               >
-                <div className="w-4 h-4 bg-red-400 rounded-full" />
-              </motion.button>
+                <div className="w-4 h-4 bg-red-400 rounded-full hover:brightness-125 transition-all" />
+              </button>
             </div>
           </>
         )}

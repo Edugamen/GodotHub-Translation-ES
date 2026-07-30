@@ -74,7 +74,7 @@ pub fn git_lines(working_dir: &str, args: &[&str]) -> AppResult<Vec<String>> {
 #[allow(dead_code)]
 pub fn open_in_os(path: &Path) -> AppResult<()> {
     let path_str = path.to_string_lossy();
-    let path_s: &str = &path_str;
+    let _path_s: &str = &path_str;
 
     #[cfg(target_os = "windows")]
     let result = Command::new("explorer").arg(path).spawn();
@@ -86,10 +86,10 @@ pub fn open_in_os(path: &Path) -> AppResult<()> {
     let result = Command::new("xdg-open")
         .arg(path)
         .spawn()
-        .or_else(|_| Command::new("gio").args(["open", path_s]).spawn())
-        .or_else(|_| Command::new("nautilus").arg(path_s).spawn())
-        .or_else(|_| Command::new("dolphin").arg(path_s).spawn())
-        .or_else(|_| Command::new("thunar").arg(path_s).spawn());
+        .or_else(|_| Command::new("gio").args(["open", _path_s]).spawn())
+        .or_else(|_| Command::new("nautilus").arg(_path_s).spawn())
+        .or_else(|_| Command::new("dolphin").arg(_path_s).spawn())
+        .or_else(|_| Command::new("thunar").arg(_path_s).spawn());
 
     result.map(|_| ()).map_err(|e| format!("Failed to open: {e}").into())
 }

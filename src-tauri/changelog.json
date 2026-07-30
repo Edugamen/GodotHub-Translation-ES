@@ -451,6 +451,14 @@
       {
         "category": "fix",
         "text": "PR by Zalyto: Icon Clipping in Project Card"
+      },
+      {
+        "category": "add",
+        "text": "Tags System: Syncs with Projects' project.godot file"
+      },
+      {
+        "category": "add",
+        "text": "OS Decoration Toggle in Settings -> Display"
       }
     ],
     "created_at": 1785270388

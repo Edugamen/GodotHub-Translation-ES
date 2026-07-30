@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
+import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import { listen } from '@tauri-apps/api/event'
 import { ProjectsView } from './views/ProjectsView'
 import { VersionsView } from './views/VersionsView'
@@ -105,6 +106,14 @@ function AppContent() {
   } | null>(null)
 
   const paletteKey = settings.command_palette_keybind || 'k'
+
+  // Sync window decorations when setting changes
+  useEffect(() => {
+    const w = getCurrentWindow()
+    w.setDecorations(settings.use_os_decorations).catch((e) =>
+      console.error('Failed to set window decorations:', e),
+    )
+  }, [settings.use_os_decorations])
 
   // --- Event listeners ---
 

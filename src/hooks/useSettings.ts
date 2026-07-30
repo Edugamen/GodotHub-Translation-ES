@@ -9,6 +9,7 @@ import {
 import { api } from '../lib/api'
 import { applyTheme } from '../lib/colors'
 import { applyAppearance } from '../lib/appearance'
+import { isLinux } from '../lib/platform'
 import { useWorkspaces } from './useWorkspaces'
 import i18n from 'i18next'
 import type { AppSettings } from '../types'
@@ -51,6 +52,7 @@ const DEFAULTS: AppSettings = {
   show_scrollbars: true,
   project_icon_opacity: 14,
   language: 'en-US',
+  use_os_decorations: isLinux,
 }
 
 interface SettingsContextValue {

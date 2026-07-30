@@ -201,6 +201,7 @@ pub fn start_project_watchers(app: AppHandle, dirs: Vec<PathBuf>, depth: u32, de
                     a.clone(),
                     dirs,
                     depth,
+                    false,
                 );
                 if let Err(e) = result {
                     eprintln!("[watcher] Project auto-scan failed: {e}");

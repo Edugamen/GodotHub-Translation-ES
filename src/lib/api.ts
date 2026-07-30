@@ -33,6 +33,7 @@ export const api = {
   pickFile: projectsApi.pickFile,
   getProjectIcon: projectsApi.getIcon,
   getProjectName: projectsApi.getName,
+  reintroduceDismissedProjects: projectsApi.reintroduceDismissed,
   clearProjectIconCache: projectsApi.clearIconCache,
   clearProjectNameCache: projectsApi.clearNameCache,
 
@@ -97,6 +98,7 @@ export const api = {
   resetSettings: settingsApi.reset,
   resetAppData: settingsApi.resetData,
   scanForProjects: settingsApi.scanForProjects,
+  scanForProjectsWithInfo: settingsApi.scanForProjectsWithInfo,
   refreshTrayMenu: settingsApi.refreshTrayMenu,
   restartWatchers: settingsApi.restartWatchers,
 

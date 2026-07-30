@@ -20,6 +20,7 @@ import {
 } from '../lib/appearance'
 import { SETTINGS_SEARCH_ITEMS } from '../components/modals/CommandPalette'
 import { IconSearch, IconX, IconRefresh } from '../components/Icons'
+import { relaunch } from '@tauri-apps/plugin-process'
 import type { AppSettings } from '../types'
 
 const DEFAULT_ACCENT = '#457ff2'
@@ -355,6 +356,7 @@ export function SettingsView({
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [confirmingReset, setConfirmingReset] = useState(false)
   const [confirmingWipe, setConfirmingWipe] = useState(false)
+  const [confirmingOsDec, setConfirmingOsDec] = useState<boolean | null>(null)
   const [tab, setTab] = useState<SettingsTab>('storage')
   const [settingsSearchQuery, setSettingsSearchQuery] = useState('')
 
@@ -1263,8 +1265,11 @@ export function SettingsView({
               </div>
 
               <div className="flex flex-col gap-2.5 pt-5 border-t border-line">
-                <span className="text-xs font-medium text-muted">
+                <span className="text-xs font-medium text-muted flex items-center gap-2">
                   {t('language_label')}
+                  <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber/15 text-amber border border-amber/30">
+                    Beta
+                  </span>
                 </span>
                 <div className="inline-flex self-start rounded-lg border border-line bg-raised p-1 gap-1">
                   {[
@@ -1293,6 +1298,22 @@ export function SettingsView({
                   })}
                 </div>
               </div>
+
+              <label className="flex items-center justify-between gap-4 pt-5 border-t border-line">
+                <div>
+                  <span className="text-xs font-medium text-muted block">
+                    {t('use_os_decorations')}
+                  </span>
+                  <p className="text-[11px] text-muted mt-1 leading-relaxed">
+                    {t('use_os_decorations_desc')}
+                  </p>
+                </div>
+                <Toggle
+                  checked={current.use_os_decorations}
+                  onChange={(checked) => setConfirmingOsDec(checked)}
+                  label={t('use_os_decorations')}
+                />
+              </label>
             </SectionCard>
             </div>
           </motion.div>
@@ -1838,6 +1859,22 @@ export function SettingsView({
             variant="danger"
             onConfirm={wipeAppData}
             onCancel={() => setConfirmingWipe(false)}
+          />
+        )}
+        {confirmingOsDec !== null && (
+          <ConfirmDialog
+            title={t('restart_required_title', { ns: 'common' })}
+            description={t('restart_required_desc', { ns: 'common' })}
+            confirmLabel={t('restart_now', { ns: 'common' })}
+            variant="default"
+            onConfirm={async () => {
+              if (!current) return
+              // Save directly (bypass debounce) and await before restarting
+              await update({ ...current, use_os_decorations: confirmingOsDec })
+              setConfirmingOsDec(null)
+              await relaunch()
+            }}
+            onCancel={() => setConfirmingOsDec(null)}
           />
         )}
       </AnimatePresence>

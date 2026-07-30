@@ -190,6 +190,10 @@ pub struct AppSettings {
     pub project_icon_opacity: u32,
     #[serde(default = "default_language")]
     pub language: String,
+    #[serde(default = "default_os_decorations")]
+    pub use_os_decorations: bool,
+    #[serde(default)]
+    pub dismissed_project_paths: Vec<String>,
 }
 
 fn default_language() -> String {
@@ -263,6 +267,16 @@ fn default_watch_templates() -> bool {
     true
 }
 
+#[cfg(target_os = "linux")]
+fn default_os_decorations() -> bool {
+    true
+}
+
+#[cfg(not(target_os = "linux"))]
+fn default_os_decorations() -> bool {
+    false
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Workspace {
     pub id: String,
@@ -321,6 +335,12 @@ pub struct GodotFolderPreview {
     pub icon: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScanProjectsResult {
+    pub added: Vec<Project>,
+    pub found_dismissed: Vec<String>,
+}
+
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
@@ -361,6 +381,8 @@ tooltip_delay: default_tooltip_delay(),
             show_scrollbars: true,
             project_icon_opacity: 14,
             language: default_language(),
+            use_os_decorations: default_os_decorations(),
+            dismissed_project_paths: vec![],
         }
     }
 }

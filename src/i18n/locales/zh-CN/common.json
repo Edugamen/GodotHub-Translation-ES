@@ -62,7 +62,7 @@
   "up_to_date": "已是最新",
   "downloading_update": "下载中…",
   "install_update": "安装",
-  "restart_later": "稍后重启",
+  "restart_now": "立即重启",
   "update_downloaded": "更新已下载！",
   "restart_to_apply": "重启 GodotHub 以应用更新。",
   "update_applied_desc": "更新已下载，将在下次重启 GodotHub 时应用。请关闭并重新打开应用以完成更新。",

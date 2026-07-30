@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import type { AppSettings, Project } from '../types'
+import type { AppSettings, Project, ScanResult } from '../types'
 
 export const settingsApi = {
   get: () => invoke<AppSettings>('get_settings'),
@@ -9,6 +9,8 @@ export const settingsApi = {
   resetData: () => invoke<void>('reset_app_data'),
   scanForProjects: (dirs: string[], depth: number) =>
     invoke<Project[]>('scan_for_projects', { dirs, depth }),
+  scanForProjectsWithInfo: (dirs: string[], depth: number) =>
+    invoke<ScanResult>('scan_for_projects_with_info', { dirs, depth }),
   refreshTrayMenu: () => invoke<void>('refresh_tray_menu'),
   restartWatchers: () => invoke<void>('restart_watchers'),
 }

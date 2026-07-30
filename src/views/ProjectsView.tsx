@@ -34,6 +34,7 @@ import { CloneRepoModal } from '../components/modals/CloneRepoModal'
 import { CategoryManagerModal } from '../components/modals/CategoryManagerModal'
 import { ConfirmDialog } from '../components/modals/ConfirmDialog'
 import { ProjectPropertiesModal } from '../components/modals/ProjectPropertiesModal'
+import { TagManagerModal } from '../components/modals/TagManagerModal'
 import { Dropdown } from '../components/ui/Dropdown'
 import { api } from '../lib/api'
 import {
@@ -205,6 +206,7 @@ export function ProjectsView({
     },
   )
   const [propertiesProject, setPropertiesProject] = useState<Project | null>(null)
+  const [tagManagerProject, setTagManagerProject] = useState<Project | null>(null)
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const lastClickedIdRef = useRef<string | null>(null)
@@ -216,6 +218,7 @@ export function ProjectsView({
   const undoBatchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [importDropdownOpen, setImportDropdownOpen] = useState(false)
   const importDropdownRef = useRef<HTMLDivElement>(null)
+  const [foundDismissed, setFoundDismissed] = useState<string[] | null>(null)
 
   const handleImport = async () => {
     const folder = await api.pickFolder()
@@ -252,15 +255,32 @@ export function ProjectsView({
     setScanning(true)
     try {
       if (settings.project_scan_dirs.length) {
-        await api.scanForProjects(
+        const result = await api.scanForProjectsWithInfo(
           settings.project_scan_dirs,
           settings.scan_depth,
         )
-        await refresh()
+        if (result.found_dismissed.length > 0) {
+          setFoundDismissed(result.found_dismissed)
+        }
+        if (result.added.length > 0) {
+          await refresh()
+        }
       }
     } finally {
       setScanning(false)
     }
+  }
+
+  const handleReaddDismissed = async () => {
+    if (!foundDismissed) return
+    const paths = foundDismissed
+    setFoundDismissed(null)
+    await api.reintroduceDismissedProjects(paths)
+    await refresh()
+  }
+
+  const handleSkipDismissed = () => {
+    setFoundDismissed(null)
   }
 
   const importRef = useRef(handleImport)
@@ -774,6 +794,8 @@ export function ProjectsView({
                     gitStatus={gitStatusMap[entry.path] ?? null}
                     onGitAction={(action) => handleGitAction(entry.id, action)}
                     onOpenProperties={() => setPropertiesProject(entry)}
+                    onManageTags={() => setTagManagerProject(entry)}
+                    onTagsSaved={() => refresh()}
                     onShowGitSidebar={() => onShowGitSidebar?.(entry, gitStatusMap[entry.path] ?? null)}
                     draggable={!dragDisabled}
                     selected={selectedIds.has(entry.id)}
@@ -1037,6 +1059,7 @@ export function ProjectsView({
                                 gitStatus={gitStatusMap[entry.path] ?? null}
                                 onGitAction={(action) => handleGitAction(entry.id, action)}
                                 onOpenProperties={() => setPropertiesProject(entry)}
+                                onManageTags={() => setTagManagerProject(entry)}
                                 onShowGitSidebar={() => onShowGitSidebar?.(entry, gitStatusMap[entry.path] ?? null)}
                                 draggable={!dragDisabled}
                                 selected={selectedIds.has(entry.id)}
@@ -1364,6 +1387,34 @@ export function ProjectsView({
       </AnimatePresence>
 
       <AnimatePresence>
+        {foundDismissed && (
+          <ConfirmDialog
+            title={t('found_dismissed_title', { count: foundDismissed.length })}
+            description={
+              <div className="flex flex-col gap-2">
+                <p>{t('found_dismissed_desc', { count: foundDismissed.length })}</p>
+                <ul className="flex flex-wrap gap-1.5 mt-1">
+                  {foundDismissed.map((p) => (
+                    <li
+                      key={p}
+                      className="text-xs px-2 py-1 rounded-md bg-raised border border-line/50 text-muted truncate max-w-48"
+                    >
+                      {p.split(/[\\/]/).pop()}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            }
+            confirmLabel={t('readd_all')}
+            cancelLabel={t('skip_all')}
+            variant="default"
+            onConfirm={handleReaddDismissed}
+            onCancel={handleSkipDismissed}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {cloneRepoOpen && (
           <CloneRepoModal
             defaultLocation={settings.default_project_location}
@@ -1391,6 +1442,16 @@ export function ProjectsView({
           <ProjectPropertiesModal
             project={propertiesProject}
             onClose={() => setPropertiesProject(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {tagManagerProject && (
+          <TagManagerModal
+            project={tagManagerProject}
+            onClose={() => setTagManagerProject(null)}
+            onSaved={() => refresh()}
           />
         )}
       </AnimatePresence>

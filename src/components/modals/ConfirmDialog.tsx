@@ -4,8 +4,9 @@ import { IconTrash } from '../Icons'
 
 interface Props {
   title: string
-  description: string
+  description: string | React.ReactNode
   confirmLabel: string
+  cancelLabel?: string
   variant?: 'default' | 'danger'
   onConfirm: () => void
   onCancel: () => void
@@ -18,6 +19,7 @@ export function ConfirmDialog({
   variant = 'default',
   onConfirm,
   onCancel,
+  cancelLabel,
 }: Props) {
   const { t } = useTranslation('common')
   return (
@@ -43,9 +45,9 @@ export function ConfirmDialog({
           )}
           <div>
             <h3 className="font-display font-semibold ">{title}</h3>
-            <p className="text-sm text-muted mt-2 leading-relaxed">
+            <div className="text-sm text-muted mt-2 leading-relaxed">
               {description}
-            </p>
+            </div>
           </div>
         </div>
 
@@ -56,7 +58,7 @@ export function ConfirmDialog({
             onClick={onCancel}
             className="focus-ring cursor-pointer px-4 py-2.5 rounded-lg text-sm text-muted hover:text-ink hover:bg-raised transition-colors"
           >
-            {t('cancel')}
+            {cancelLabel || t('cancel')}
           </motion.button>
           <motion.button
             whileHover={{ y: -1 }}

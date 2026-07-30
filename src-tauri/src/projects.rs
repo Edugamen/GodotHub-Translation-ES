@@ -309,6 +309,15 @@ pub async fn remove_project(app: AppHandle, id: String, delete_files: bool) -> R
     let project = projects.remove(idx);
     write_projects(&app, &projects)?;
 
+    // Track the removed path so scans don't re-add it
+    if !delete_files {
+        let mut s = crate::settings::read_settings(&app);
+        if !s.dismissed_project_paths.contains(&project.path) {
+            s.dismissed_project_paths.push(project.path.clone());
+            let _ = crate::settings::write_settings(&app, &s);
+        }
+    }
+
     if delete_files {
         let path = project.path.clone();
         tokio::task::spawn_blocking(move || {
@@ -317,6 +326,20 @@ pub async fn remove_project(app: AppHandle, id: String, delete_files: bool) -> R
     }
 
     Ok(())
+}
+
+#[tauri::command]
+pub fn reintroduce_dismissed_projects(app: AppHandle, paths: Vec<String>) -> Result<Vec<Project>, String> {
+    let mut s = crate::settings::read_settings(&app);
+    let mut added = vec![];
+    for path in &paths {
+        s.dismissed_project_paths.retain(|p| p != path);
+        if let Ok(p) = register_project(app.clone(), path.clone(), String::new(), None) {
+            added.push(p);
+        }
+    }
+    crate::settings::write_settings(&app, &s).map_err(|e| e.to_string())?;
+    Ok(added)
 }
 
 #[tauri::command]

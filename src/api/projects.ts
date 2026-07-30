@@ -52,6 +52,8 @@ export const projectsApi = {
     return invoke<string | null>('get_project_name', { path })
       .then((data) => { nameCache.set(path, data); return data })
   },
+  reintroduceDismissed: (paths: string[]) =>
+    invoke<Project[]>('reintroduce_dismissed_projects', { paths }),
   clearIconCache: () => { iconCache.clear() },
   clearNameCache: () => { nameCache.clear() },
 }

@@ -216,4 +216,10 @@ export interface AppSettings {
   show_scrollbars: boolean
   project_icon_opacity: number
   language: string
+  use_os_decorations: boolean
+}
+
+export interface ScanResult {
+  added: Project[]
+  found_dismissed: string[]
 }
