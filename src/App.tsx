@@ -130,11 +130,21 @@ function AppContent() {
       const dirs = settings.project_scan_dirs
       const depth = settings.scan_depth
       if (dirs.length > 0) {
-        api.scanForProjects(dirs, depth).catch(() => {})
+        api
+          .scanForProjects(dirs, depth)
+          .then((added) => {
+            if (added.length > 0) refreshProjects()
+          })
+          .catch(() => {})
       }
       const versionDirs = settings.version_scan_dirs
       if (versionDirs.length > 0) {
-        api.scanForVersions(versionDirs, depth).catch(() => {})
+        api
+          .scanForVersions(versionDirs, depth)
+          .then((added) => {
+            if (added.length > 0) refreshInstalled()
+          })
+          .catch(() => {})
       }
     }
   }, [])

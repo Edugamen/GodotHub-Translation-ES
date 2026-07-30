@@ -195,10 +195,10 @@ pub fn scan_for_projects_blocking(
             let parent_path = d.parent()
                 .map(|p| p.to_string_lossy().to_string())
                 .unwrap_or_default();
-            if existing_paths.contains(&parent_path) {
+            if projects::contains_path(&existing_paths, &parent_path) {
                 return false;
             }
-            if dismissed.contains(&parent_path) {
+            if projects::contains_path(&dismissed, &parent_path) {
                 if include_dismissed {
                     found_dismissed.push(parent_path);
                 }

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSettings } from '../hooks/useSettings'
+import { useProjectsContext } from '../hooks/projectsContext'
+import { useGodotVersionsContext } from '../hooks/godotVersionsContext'
 import { DirList } from '../components/ui/DirList'
 import { Toggle } from '../components/ui/Toggle'
 import { Slider } from '../components/ui/Slider'
@@ -349,6 +351,8 @@ export function SettingsView({
 }: SettingsViewProps = {}) {
   const { t, i18n } = useTranslation('settings')
   const { settings, update, resetToDefaults, loaded } = useSettings()
+  const { refresh: refreshProjects } = useProjectsContext()
+  const { refreshInstalled } = useGodotVersionsContext()
   const [current, setCurrent] = useState<AppSettings | null>(null)
   const [scanMessage, setScanMessage] = useState<string | null>(null)
   const [tokenTestState, setTokenTestState] = useState<'idle' | 'testing' | 'success' | 'warning' | 'error'>('idle')
@@ -547,6 +551,8 @@ export function SettingsView({
         ? api.scanForVersions(current.version_scan_dirs, current.scan_depth)
         : Promise.resolve([]),
     ])
+    if (projects.length > 0) await refreshProjects()
+    if (versions.length > 0) await refreshInstalled()
     setScanMessage(
       t('scan_result', { projects: projects.length, versions: versions.length })
     )
