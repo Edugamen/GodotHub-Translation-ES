@@ -181,5 +181,7 @@
   "report_bug_desc": "通过在 GitHub 上报告问题来帮助改进 GodotHub。",
   "token_help_desc": "在 github.com/settings/tokens 创建令牌。如果您需要私有仓库访问权限，只需勾选 public_repo 范围，否则保持所有范围不勾选。无需敏感权限。",
   "search_placeholder": "搜索设置…",
-  "language_label": "语言"
+  "language_label": "语言",
+  "use_os_decorations": "使用系统窗口装饰",
+  "use_os_decorations_desc": "使用操作系统的原生标题栏和窗口控件，而不是 GodotHub 的自定义标题栏。需要重启才能完全生效。"
 }

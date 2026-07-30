@@ -83,6 +83,10 @@ pub fn active_workspace_dir(app: &AppHandle) -> PathBuf {
     workspace_dir(app, &state.active_id)
 }
 
+pub fn active_workspace_id(app: &AppHandle) -> String {
+    read_state(app).active_id
+}
+
 #[tauri::command]
 pub fn list_workspaces(app: AppHandle) -> WorkspacesState {
     read_state(&app)
@@ -119,6 +123,7 @@ pub fn create_workspace(
     state.workspaces.push(workspace);
     state.active_id = id;
     write_state(&app, &state)?;
+    let _ = crate::watcher::restart_watchers(app);
     Ok(state)
 }
 
@@ -130,6 +135,7 @@ pub fn switch_workspace(app: AppHandle, id: String) -> Result<WorkspacesState, S
     }
     state.active_id = id;
     write_state(&app, &state)?;
+    let _ = crate::watcher::restart_watchers(app);
     Ok(state)
 }
 
@@ -170,10 +176,14 @@ pub fn delete_workspace(app: AppHandle, id: String) -> Result<WorkspacesState, S
     }
     let idx = state.workspaces.iter().position(|w| w.id == id).ok_or("Workspace not found")?;
     state.workspaces.remove(idx);
-    if state.active_id == id {
+    let switched = state.active_id == id;
+    if switched {
         state.active_id = state.workspaces[0].id.clone();
     }
     write_state(&app, &state)?;
     let _ = fs::remove_dir_all(workspaces_root(&app).join(&id));
+    if switched {
+        let _ = crate::watcher::restart_watchers(app);
+    }
     Ok(state)
 }
