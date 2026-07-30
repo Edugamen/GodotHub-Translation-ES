@@ -267,7 +267,7 @@ export function CommandPalette({
   activeWorkspaceId = '',
   paletteKey = 'k',
 }: Props) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common', 'settings'])
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -359,7 +359,7 @@ export function CommandPalette({
     for (const s of SETTINGS_SEARCH_ITEMS) {
       items.push({
         id: `setting:${s.key}`,
-        label: s.label || s.key.replace(/_/g, ' '),
+        label: t(`setting_${s.key}`, { ns: 'settings' }),
         sublabel: t('settings_label', { tab: s.tab.charAt(0).toUpperCase() + s.tab.slice(1) }),
         shortcut: navShortcuts.settings,
         icon: <IconGear className="w-4 h-4" />,
