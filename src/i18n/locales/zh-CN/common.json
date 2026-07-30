@@ -14,7 +14,7 @@
   "launch": "启动",
   "stop": "停止",
   "refresh": "刷新",
-  "quick_commands": "快捷命令",
+  "quick_commands": "命令面板",
   "dismiss": "关闭",
   "add_workspace": "添加工作区",
   "minimize": "最小化",

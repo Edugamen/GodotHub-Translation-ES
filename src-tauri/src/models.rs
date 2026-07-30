@@ -188,6 +188,12 @@ pub struct AppSettings {
     pub show_scrollbars: bool,
     #[serde(default = "default_project_icon_opacity")]
     pub project_icon_opacity: u32,
+    #[serde(default = "default_language")]
+    pub language: String,
+}
+
+fn default_language() -> String {
+    "en-US".to_string()
 }
 
 fn default_project_icon_opacity() -> u32 {
@@ -354,6 +360,7 @@ tooltip_delay: default_tooltip_delay(),
             show_star_button: true,
             show_scrollbars: true,
             project_icon_opacity: 14,
+            language: default_language(),
         }
     }
 }
