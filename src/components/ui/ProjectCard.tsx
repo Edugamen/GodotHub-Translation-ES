@@ -11,7 +11,7 @@ import {
   type ContextMenuSection,
 } from './ContextMenu'
 import { Tooltip } from './Tooltip'
-import { SplitButton } from './SplitButton'
+
 import { IconGrip, IconMore, IconPin, IconPlay, IconTrash, IconClock, IconExternalLink, IconCode, IconGitBranch, IconX, IconTags, IconCopy, IconHardDrive, IconAlertTriangle, IconCheckCircle, IconTerminal } from '../Icons'
 import {
   formatLastOpened,
@@ -112,7 +112,7 @@ export const ProjectCard = memo(function ProjectCard({
   )
   const versionInstalled = Boolean(boundVersion)
   const supportsConsole = boundVersion?.supports_console ?? false
-  const consoleIsDefault = supportsConsole && launchWithConsole
+  const [useConsole, setUseConsole] = useState(launchWithConsole && supportsConsole)
   const [confirmAction, setConfirmAction] = useState<
     'remove' | 'delete' | null
   >(null)
@@ -680,35 +680,42 @@ export const ProjectCard = memo(function ProjectCard({
               </div>
 
               <div className="flex items-center gap-2.5 shrink-0 ml-auto">
-                <SplitButton
-                  label={t('open_project')}
-                  icon={IconPlay}
+                {supportsConsole && (
+                  <Tooltip content={t('open_with_console')}>
+                    <motion.button
+                      whileTap={{ scale: 0.9 }}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setUseConsole(!useConsole)
+                      }}
+                      className={`focus-ring cursor-pointer p-2 rounded-lg border transition-colors ${
+                        useConsole
+                          ? 'bg-green-700/15 border-green-500/40 text-green-500'
+                          : 'border-line text-muted/50 hover:text-green-500 hover:border-green-500/50 hover:bg-green-500/10'
+                      }`}
+                      aria-label={t('open_with_console')}
+                      aria-pressed={useConsole}
+                    >
+                      <IconTerminal className="w-4 h-4" />
+                    </motion.button>
+                  </Tooltip>
+                )}
+                <motion.button
+                  whileHover={versionInstalled ? { y: -1 } : undefined}
+                  whileTap={versionInstalled ? { scale: 0.97 } : undefined}
+                  type="button"
                   disabled={!versionInstalled}
-                  menuLabel={t('more_launch_options')}
-                  onClick={() => launchProject()}
-                  items={[
-                    {
-                      label: t('open_project'),
-                      icon: IconPlay,
-                      badge: consoleIsDefault
-                        ? undefined
-                        : t('launch_default_badge'),
-                      onClick: () => launchProject(false),
-                    },
-                    ...(supportsConsole
-                      ? [
-                          {
-                            label: t('open_with_console'),
-                            icon: IconTerminal,
-                            badge: consoleIsDefault
-                              ? t('launch_default_badge')
-                              : undefined,
-                            onClick: () => launchProject(true),
-                          },
-                        ]
-                      : []),
-                  ]}
-                />
+                  onClick={() => launchProject(useConsole || undefined)}
+                  className={`focus-ring cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white transition-colors ${
+                    versionInstalled
+                      ? 'bg-accent hover:bg-accent-bright'
+                      : 'bg-raised text-muted/50 cursor-not-allowed'
+                  }`}
+                >
+                  <IconPlay className="w-3.5 h-3.5" />
+                  {t('open_project')}
+                </motion.button>
 
                 <div ref={cardMoreRef} className="relative">
                   <button
@@ -719,7 +726,7 @@ export const ProjectCard = memo(function ProjectCard({
                       }
                       setCardMoreOpen((prev) => !prev)
                     }}
-                    className="focus-ring cursor-pointer p-2.5 rounded-lg border border-line text-muted hover:text-ink hover:border-accent-dim hover:bg-raised transition-colors"
+                    className="focus-ring cursor-pointer p-2 rounded-lg border border-line text-muted hover:text-ink hover:border-accent-dim hover:bg-raised transition-colors"
                     aria-label={t('project_more_aria')}
                   >
                     <IconMore className="w-4 h-4" />
@@ -816,19 +823,9 @@ export const ProjectCard = memo(function ProjectCard({
       {
         label: t('open_project'),
         icon: IconPlay,
-        onClick: () => launchProject(),
+        onClick: () => launchProject(useConsole || undefined),
         disabled: !versionInstalled,
       },
-      ...(supportsConsole
-        ? [
-            {
-              label: t('open_with_console'),
-              icon: IconTerminal,
-              onClick: () => launchProject(true),
-              disabled: !versionInstalled,
-            },
-          ]
-        : []),
       {
         label: t('open_folder'),
         icon: IconExternalLink,

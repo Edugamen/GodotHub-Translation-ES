@@ -426,7 +426,7 @@
   {
     "id": "bb23f26c-73dc-4ec7-b24f-e8cc7ed1ee65",
     "version": "v1.2",
-    "date": "2026-07-29",
+    "date": "2026-08-01",
     "notes": [
       {
         "category": "fix",
@@ -459,6 +459,14 @@
       {
         "category": "add",
         "text": "OS Decoration Toggle in Settings -> Display"
+      },
+      {
+        "category": "add",
+        "text": "Open with Console Toggle in Projects Card & Installed Versions"
+      },
+      {
+        "category": "add",
+        "text": "Able to Open Versions themselves in Versions view"
       }
     ],
     "created_at": 1785270388

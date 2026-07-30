@@ -21,7 +21,7 @@ import {
   IconRocket,
   IconTerminal,
 } from '../components/Icons'
-import { SplitButton } from '../components/ui/SplitButton'
+
 import { ScrollReveal } from '../components/ui/ScrollReveal'
 import { useGodotVersionsContext } from '../hooks/godotVersionsContext'
 import { ConfirmDialog } from '../components/modals/ConfirmDialog'
@@ -158,7 +158,7 @@ export function VersionsView() {
     scanProgress,
   } = useGodotVersionsContext()
   const { settings } = useSettings()
-  const launchWithConsole = settings.launch_with_console
+  const [consoleToggles, setConsoleToggles] = useState<Record<string, boolean>>({})
   const [contextMenu, setContextMenu] = useState<{
     x: number
     y: number
@@ -437,40 +437,40 @@ export function VersionsView() {
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-                    <SplitButton
-                      variant="outline"
-                      label={t('open')}
-                      icon={IconRocket}
-                      menuLabel={t('more_editor_launch_options')}
-                      onClick={() => api.openGodotVersion(v.tag).catch(() => {})}
-                      items={[
-                        {
-                          label: t('open_editor'),
-                          icon: IconRocket,
-                          badge:
-                            v.supports_console && launchWithConsole
-                              ? undefined
-                              : t('launch_default_badge', { ns: 'common' }),
-                          onClick: () =>
-                            api.openGodotVersion(v.tag, false).catch(() => {}),
-                        },
-                        ...(v.supports_console
-                          ? [
-                              {
-                                label: t('open_with_console', { ns: 'common' }),
-                                icon: IconTerminal,
-                                badge: launchWithConsole
-                                  ? t('launch_default_badge', { ns: 'common' })
-                                  : undefined,
-                                onClick: () =>
-                                  api.openGodotVersion(v.tag, true).catch(() => {}),
-                              },
-                            ]
-                          : []),
-                      ]}
-                    />
-                  </div>
+                  {v.supports_console && (
+                    <Tooltip content={t('open_with_console', { ns: 'common' })}>
+                      <motion.button
+                        whileTap={{ scale: 0.9 }}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setConsoleToggles(prev => ({ ...prev, [v.tag]: !prev[v.tag] }))
+                        }}
+                        className={`focus-ring cursor-pointer p-2 rounded-lg border transition-colors ${
+                          consoleToggles[v.tag]
+                          ? 'bg-green-700/15 border-green-500/40 text-green-500'
+                          : 'border-line text-muted/50 hover:text-green-500 hover:border-green-500/50 hover:bg-green-500/10'
+                        }`}
+                        aria-label={t('open_with_console', { ns: 'common' })}
+                        aria-pressed={consoleToggles[v.tag] ?? false}
+                      >
+                        <IconTerminal className="w-4 h-4" />
+                      </motion.button>
+                    </Tooltip>
+                  )}
+                  <motion.button
+                    whileHover={{ y: -1 }}
+                    whileTap={{ scale: 0.96 }}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      api.openGodotVersion(v.tag, consoleToggles[v.tag] || undefined).catch(() => {})
+                    }}
+                    className="focus-ring cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-lg border border-line text-sm font-medium text-ink hover:bg-accent hover:text-white hover:border-accent transition-colors"
+                  >
+                    <IconRocket className="w-3.5 h-3.5" />
+                    {t('open')}
+                  </motion.button>
                   <motion.button
                     whileHover={{ y: -1 }}
                     whileTap={{ scale: 0.96 }}
