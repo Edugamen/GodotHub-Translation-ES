@@ -36,6 +36,7 @@ pub fn write_json<T: Serialize>(path: &Path, data: &T) -> AppResult<()> {
 }
 
 /// Ensure a directory exists, creating it (and parents) if needed.
+#[allow(dead_code)]
 pub fn ensure_dir(dir: &Path) -> AppResult<()> {
     if !dir.exists() {
         fs::create_dir_all(dir)?;

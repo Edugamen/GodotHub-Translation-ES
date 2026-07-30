@@ -64,15 +64,17 @@ pub fn output_stderr(output: &std::process::Output) -> String {
 }
 
 /// Parse lines from a git command's stdout, skipping empty lines.
+#[allow(dead_code)]
 pub fn git_lines(working_dir: &str, args: &[&str]) -> AppResult<Vec<String>> {
     let out = git_cmd(working_dir, args)?;
     Ok(out.lines().filter(|l| !l.is_empty()).map(String::from).collect())
 }
 
 /// Shell out to open a file/folder with the OS default application.
+#[allow(dead_code)]
 pub fn open_in_os(path: &Path) -> AppResult<()> {
     let path_str = path.to_string_lossy();
-    let _path_s: &str = &path_str;
+    let path_s: &str = &path_str;
 
     #[cfg(target_os = "windows")]
     let result = Command::new("explorer").arg(path).spawn();
