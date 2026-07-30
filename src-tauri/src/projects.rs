@@ -64,6 +64,39 @@ pub(crate) fn write_projects(app: &AppHandle, projects: &Vec<Project>) -> Result
     persist::write_json(&projects_file(app), projects).map_err(|e| e.to_string())
 }
 
+#[cfg(target_os = "linux")]
+fn case_fold(path: &str) -> String {
+    path.to_string()
+}
+
+#[cfg(not(target_os = "linux"))]
+fn case_fold(path: &str) -> String {
+    path.to_lowercase()
+}
+
+fn normalize_path(path: &str) -> String {
+    let trimmed = path.trim_end_matches(['/', '\\']);
+    case_fold(if trimmed.is_empty() { path } else { trimmed })
+}
+
+pub fn same_path(a: &str, b: &str) -> bool {
+    normalize_path(a) == normalize_path(b)
+}
+
+pub fn contains_path(paths: &[String], path: &str) -> bool {
+    let target = normalize_path(path);
+    paths.iter().any(|p| normalize_path(p) == target)
+}
+
+fn undismiss(app: &AppHandle, path: &str) {
+    let mut s = settings::read_settings(app);
+    let before = s.dismissed_project_paths.len();
+    s.dismissed_project_paths.retain(|p| !same_path(p, path));
+    if s.dismissed_project_paths.len() != before {
+        let _ = settings::write_settings(app, &s);
+    }
+}
+
 fn next_sort_order(projects: &[Project], category: &Option<String>) -> i64 {
     projects
         .iter()
@@ -200,6 +233,7 @@ pub fn create_project(
 
     projects.push(project.clone());
     write_projects(&app, &projects)?;
+    undismiss(&app, &project.path);
     Ok(project)
 }
 
@@ -255,7 +289,7 @@ pub fn register_project(
         .unwrap_or_else(|| "Untitled".into());
 
     let mut projects = read_projects(&app);
-    if projects.iter().any(|p| p.path == path) {
+    if projects.iter().any(|p| same_path(&p.path, &path)) {
         return Err("This project is already in your library".into());
     }
     let mut godot_version = godot_version;
@@ -296,7 +330,9 @@ pub fn import_project(
     path: String,
     godot_version: String,
 ) -> Result<Project, String> {
-    register_project(app, path, godot_version, None)
+    let project = register_project(app.clone(), path.clone(), godot_version, None)?;
+    undismiss(&app, &path);
+    Ok(project)
 }
 
 #[tauri::command]
@@ -312,7 +348,7 @@ pub async fn remove_project(app: AppHandle, id: String, delete_files: bool) -> R
     // Track the removed path so scans don't re-add it
     if !delete_files {
         let mut s = crate::settings::read_settings(&app);
-        if !s.dismissed_project_paths.contains(&project.path) {
+        if !contains_path(&s.dismissed_project_paths, &project.path) {
             s.dismissed_project_paths.push(project.path.clone());
             let _ = crate::settings::write_settings(&app, &s);
         }
@@ -333,7 +369,7 @@ pub fn reintroduce_dismissed_projects(app: AppHandle, paths: Vec<String>) -> Res
     let mut s = crate::settings::read_settings(&app);
     let mut added = vec![];
     for path in &paths {
-        s.dismissed_project_paths.retain(|p| p != path);
+        s.dismissed_project_paths.retain(|p| !same_path(p, path));
         if let Ok(p) = register_project(app.clone(), path.clone(), String::new(), None) {
             added.push(p);
         }
