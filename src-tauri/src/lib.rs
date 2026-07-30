@@ -49,23 +49,11 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
+            app.manage(watcher::ActiveWatchers(std::sync::Mutex::new(Vec::new())));
+
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 let s = settings::read_settings(&handle);
-                if !s.project_scan_dirs.is_empty() {
-                    drop(scan::scan_for_projects(
-                        handle.clone(),
-                        s.project_scan_dirs.clone(),
-                        s.scan_depth,
-                    ));
-                }
-                if !s.version_scan_dirs.is_empty() {
-                    drop(scan::scan_for_versions(
-                        handle.clone(),
-                        s.version_scan_dirs.clone(),
-                        s.scan_depth,
-                    ));
-                }
                 if s.template_scan_dir.is_some() {
                     let _ = templates::sync_templates_with_scan_dir(handle.clone());
                 }
@@ -88,7 +76,6 @@ pub fn run() {
                 }
             });
 
-            app.manage(watcher::ActiveWatchers(std::sync::Mutex::new(Vec::new())));
             app.manage(tray::TrayState(std::sync::Mutex::new(None)));
             app.manage(projects::ActiveProcesses(std::sync::Mutex::new(
                 std::collections::HashMap::new(),
