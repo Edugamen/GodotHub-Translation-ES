@@ -1,22 +1,22 @@
 mod categories;
 mod changelog;
+mod error;
 mod git;
+mod git_helpers;
 mod godot_versions;
 mod models;
 mod news;
+mod persist;
 mod projects;
 mod scan;
 mod settings;
 mod templates;
 mod terminal;
+mod tray;
 mod watcher;
 mod workspace;
 
-use tauri::menu::{IsMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
-use tauri::tray::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent};
 use tauri::{Manager, WindowEvent};
-
-struct TrayState(std::sync::Mutex<Option<TrayIcon>>);
 
 #[tauri::command]
 async fn pick_folder(app: tauri::AppHandle) -> Option<String> {
@@ -28,84 +28,11 @@ async fn pick_folder(app: tauri::AppHandle) -> Option<String> {
     rx.recv().ok().flatten().map(|p| p.to_string())
 }
 
-fn show_main_window(app: &tauri::AppHandle) {
-    if let Some(window) = app.get_webview_window("main") {
-        let _ = window.show();
-        let _ = window.set_focus();
-    }
-}
-
-fn build_tray_menu(app: &tauri::AppHandle<tauri::Wry>) -> Result<Menu<tauri::Wry>, tauri::Error> {
-    use crate::models::Project;
-
-    let show_item = MenuItem::with_id(app, "show", "Show GodotHub", true, None::<&str>)?;
-    let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-    let sep1 = PredefinedMenuItem::separator(app)?;
-    let sep2 = PredefinedMenuItem::separator(app)?;
-
-    let settings = crate::settings::read_settings(app);
-    let count = settings.tray_recent_projects_count as usize;
-
-    let projects = crate::projects::read_projects(app);
-    let mut recent: Vec<&Project> = projects
-        .iter()
-        .filter(|p| p.last_opened.is_some())
-        .collect();
-    recent.sort_by(|a, b| {
-        b.last_opened
-            .as_deref()
-            .unwrap()
-            .cmp(a.last_opened.as_deref().unwrap())
-    });
-    let recent = recent.into_iter().take(count).collect::<Vec<_>>();
-
-    let recent_submenu = if recent.is_empty() {
-        let no_recent_item = MenuItem::with_id(app, "no_recent", "No recent projects", false, None::<&str>)?;
-        Submenu::with_items(app, "Open Recent", true, &[&no_recent_item as &dyn IsMenuItem<_>])?
-    } else {
-        let mut recent_items = Vec::new();
-        for p in &recent {
-            let label = if p.name.len() > 48 {
-                format!("{}…", &p.name[..47])
-            } else {
-                p.name.clone()
-            };
-            let item = MenuItem::with_id(app, &p.id, &label, true, None::<&str>)?;
-            recent_items.push(item);
-        }
-        let recent_refs: Vec<&dyn IsMenuItem<_>> = recent_items
-            .iter()
-            .map(|item| item as &dyn IsMenuItem<_>)
-            .collect();
-        Submenu::with_items(app, "Open Recent", true, &recent_refs)?
-    };
-
-    let mut menu_items: Vec<&dyn IsMenuItem<_>> = vec![
-        &show_item as &dyn IsMenuItem<_>,
-        &sep1 as &dyn IsMenuItem<_>,
-    ];
-    menu_items.push(&recent_submenu as &dyn IsMenuItem<_>);
-    menu_items.push(&sep2 as &dyn IsMenuItem<_>);
-    menu_items.push(&quit_item as &dyn IsMenuItem<_>);
-    Menu::with_items(app, &menu_items)
-}
-
-#[tauri::command]
-fn refresh_tray_menu(app: tauri::AppHandle) -> Result<(), String> {
-    let state = app.state::<TrayState>();
-    let guard = state.0.lock().unwrap();
-    if let Some(ref tray) = *guard {
-        let new_menu = build_tray_menu(&app).map_err(|e| e.to_string())?;
-        tray.set_menu(Some(new_menu)).map_err(|e| e.to_string())?;
-    }
-    Ok(())
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            show_main_window(app);
+            tray::show_main_window(app);
         }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
@@ -161,56 +88,13 @@ pub fn run() {
             });
 
             app.manage(watcher::ActiveWatchers(std::sync::Mutex::new(Vec::new())));
-
-            app.manage(TrayState(std::sync::Mutex::new(None)));
+            app.manage(tray::TrayState(std::sync::Mutex::new(None)));
             app.manage(projects::ActiveProcesses(std::sync::Mutex::new(
                 std::collections::HashMap::new(),
             )));
 
-            let tray_menu = build_tray_menu(app.handle())?;
-
-            #[cfg(target_os = "macos")]
-            let tray_icon = tauri::include_image!("./icons/trayTemplate.png");
-            #[cfg(not(target_os = "macos"))]
-            let tray_icon = app
-                .default_window_icon()
-                .cloned()
-                .expect("no default window icon set");
-
-            let tray = TrayIconBuilder::new()
-                .icon(tray_icon)
-                .icon_as_template(cfg!(target_os = "macos"))
-                .menu(&tray_menu)
-                .show_menu_on_left_click(false)
-                .tooltip("GodotHub")
-                .on_menu_event(|app, event| match event.id.as_ref() {
-                    "show" => show_main_window(app),
-                    "quit" => app.exit(0),
-                    "no_recent" => {}
-                    id => {
-                        let _ = projects::open_project(
-                            app.clone(),
-                            id.to_string(),
-                            true,
-                            None,
-                        );
-                    }
-                })
-                .on_tray_icon_event(|tray, event| {
-                    if let TrayIconEvent::Click {
-                        button: MouseButton::Left,
-                        button_state: MouseButtonState::Up,
-                        ..
-                    } = event
-                    {
-                        show_main_window(tray.app_handle());
-                    }
-                })
-                .build(app)?;
-
-            app.state::<TrayState>().0.lock().unwrap().replace(tray);
-
-            show_main_window(app.handle());
+            tray::setup_tray(app.handle())?;
+            tray::show_main_window(app.handle());
 
             Ok(())
         })
@@ -232,6 +116,7 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            // --- Godot Versions ---
             godot_versions::fetch_available_godot_versions,
             godot_versions::download_godot_version,
             godot_versions::pause_download,
@@ -244,6 +129,7 @@ pub fn run() {
             godot_versions::test_github_token,
             godot_versions::get_github_rate_limit,
             godot_versions::import_version_zip,
+            // --- Projects ---
             projects::list_projects,
             projects::create_project,
             projects::import_project,
@@ -260,34 +146,42 @@ pub fn run() {
             projects::stop_project,
             projects::pick_file,
             projects::write_project_tags,
+            // --- Categories ---
             categories::list_categories,
             categories::create_category,
             categories::update_category,
             categories::rename_category,
             categories::delete_category,
             categories::reorder_categories,
+            // --- Settings ---
             settings::get_settings,
             settings::update_settings,
             settings::reset_settings,
             settings::reset_app_data,
+            // --- Workspaces ---
             workspace::list_workspaces,
             workspace::create_workspace,
             workspace::switch_workspace,
             workspace::update_workspace,
             workspace::delete_workspace,
+            // --- Scanning ---
             scan::scan_for_projects,
             scan::scan_for_versions,
-            news::fetch_godot_news,
             scan::import_version,
+            // --- News ---
+            news::fetch_godot_news,
+            // --- Templates ---
             templates::list_templates,
             templates::save_project_as_template,
             templates::delete_template,
             templates::sync_templates_with_scan_dir,
             templates::get_template_preview,
+            // --- Changelog ---
             changelog::list_changelog_entries,
             changelog::add_changelog_entry,
             changelog::update_changelog_entry,
             changelog::delete_changelog_entry,
+            // --- Git ---
             git::clone_repo,
             git::get_git_status,
             git::batch_git_status,
@@ -323,16 +217,17 @@ pub fn run() {
             git::git_resolve_conflict_manual,
             git::git_abort_merge,
             git::git_is_merging,
-            watcher::restart_watchers,
-            refresh_tray_menu,
+            // --- Tray & Misc ---
+            tray::refresh_tray_menu,
             pick_folder,
+            watcher::restart_watchers,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|_app, _event| {
             #[cfg(target_os = "macos")]
             if let tauri::RunEvent::Reopen { .. } = _event {
-                show_main_window(_app);
+                tray::show_main_window(_app);
             }
         });
 }

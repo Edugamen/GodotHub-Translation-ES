@@ -1,21 +1,9 @@
+use crate::git_helpers;
+use crate::terminal;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Command;
-
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
-
-#[cfg(target_os = "windows")]
-use crate::terminal::CREATE_NO_WINDOW;
-
-fn cmd() -> Command {
-    #[allow(unused_mut)]
-    let mut command = Command::new("git");
-    #[cfg(target_os = "windows")]
-    command.creation_flags(CREATE_NO_WINDOW);
-    command
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GitStatus {
@@ -24,11 +12,58 @@ pub struct GitStatus {
     pub is_repo: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitLogEntry {
+    pub hash: String,
+    pub message: String,
+    pub author: String,
+    pub date: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitBranchInfo {
+    pub name: String,
+    pub is_current: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitStashEntry {
+    pub index: usize,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitChangedFile {
+    pub path: String,
+    pub status: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitDiffResult {
+    pub hunks: Vec<GitDiffHunk>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitDiffHunk {
+    pub old_start: u32,
+    pub old_lines: u32,
+    pub new_start: u32,
+    pub new_lines: u32,
+    pub lines: Vec<GitDiffLine>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitDiffLine {
+    pub kind: String,
+    pub content: String,
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
 fn check_is_repo(path: &str) -> bool {
     let dir = PathBuf::from(path);
-    if dir.join(".git").exists() {
-        return true;
-    }
     let mut current = Some(dir.as_path());
     while let Some(p) = current {
         if p.join(".git").exists() {
@@ -55,7 +90,6 @@ fn friendly_git_error(stderr: &str, path: &str) -> String {
             stderr.trim()
         );
     }
-
     if lower.contains("permission denied")
         || (lower.contains("publickey") && lower.contains("authentication"))
     {
@@ -65,14 +99,12 @@ fn friendly_git_error(stderr: &str, path: &str) -> String {
                 "Your SSH key isn't set up correctly. To fix it:\n",
                 "  1. Generate a key: ssh-keygen -t ed25519\n",
                 "  2. Add it to your SSH agent: ssh-add ~/.ssh/id_ed25519\n",
-                "  3. Add the public key to your Git hosting account\n",
-                "     (e.g. GitHub Settings > SSH and GPG keys)\n\n",
+                "  3. Add the public key to your Git hosting account\n\n",
                 "Raw error:\n{}",
             ),
             stderr.trim()
         );
     }
-
     if lower.contains("could not read from remote")
         || lower.contains("repository not found")
     {
@@ -80,14 +112,12 @@ fn friendly_git_error(stderr: &str, path: &str) -> String {
             concat!(
                 "Remote repository not found.\n\n",
                 "The remote URL may be wrong or you don't have access.\n",
-                "Check the URL with:\n",
-                "  git remote -v\n\n",
+                "Check the URL with: git remote -v\n\n",
                 "Raw error:\n{}",
             ),
             stderr.trim()
         );
     }
-
     if lower.contains("authentication failed") {
         return format!(
             concat!(
@@ -100,50 +130,36 @@ fn friendly_git_error(stderr: &str, path: &str) -> String {
             stderr.trim()
         );
     }
-
     if lower.contains("connection refused") {
         return format!(
             concat!(
                 "Connection refused.\n\n",
-                "The remote server is not reachable. This could mean:\n",
-                "  - The server is down\n",
-                "  - You're behind a firewall\n",
-                "  - The port is wrong\n",
-                "  - You need a VPN or proxy\n\n",
+                "The remote server is not reachable.\n\n",
                 "Raw error:\n{}",
             ),
             stderr.trim()
         );
     }
-
     if lower.contains("could not resolve host") {
         return format!(
             concat!(
                 "Could not resolve hostname.\n\n",
-                "The remote server address couldn't be found. This usually means:\n",
-                "  - The URL is incorrect\n",
-                "  - You're offline\n",
-                "  - DNS is not working\n\n",
+                "The remote server address couldn't be found.\n\n",
                 "Raw error:\n{}",
             ),
             stderr.trim()
         );
     }
-
     if lower.contains("timed out") || lower.contains("timeout") {
         return format!(
             concat!(
                 "Connection timed out.\n\n",
-                "The server took too long to respond. This could mean:\n",
-                "  - You're offline or have a slow connection\n",
-                "  - The server is busy or down\n",
-                "  - A firewall is blocking the connection\n\n",
+                "The server took too long to respond.\n\n",
                 "Raw error:\n{}",
             ),
             stderr.trim()
         );
     }
-
     if lower.contains("merge conflict")
         || (lower.contains("conflict") && lower.contains("merge"))
         || lower.contains("automatic merge failed")
@@ -169,77 +185,79 @@ fn friendly_git_error(stderr: &str, path: &str) -> String {
             concat!(
                 "Merge conflicts detected.\n\n",
                 "There are conflicts that need to be resolved before the merge can complete.\n",
-                "Open a terminal in the project folder and use 'git status' to see them,\n",
-                "then edit the conflicted files and run 'git add' and 'git commit'.\n\n",
+                "Open a terminal in the project folder and use 'git status' to see them.\n\n",
                 "Raw error:\n{}",
             ),
             stderr.trim()
         );
     }
-
     if lower.contains("non-fast-forward") || lower.contains("[rejected]")
         || (lower.contains("failed to push") && lower.contains("fetch first"))
     {
         return format!(
             concat!(
                 "Push rejected, your local branch is behind the remote.\n\n",
-                "The remote branch has commits that you don't have locally yet.\n",
-                "To fix this, use the Pull button first to get the latest changes,\n",
-                "then try pushing again.\n\n",
-                "If you're sure you want to overwrite the remote (force push),\n",
-                "open a terminal and run:\n",
-                "  git push --force-with-lease\n\n",
+                "Use the Pull button first to get the latest changes, then try pushing again.\n\n",
                 "Raw error:\n{}",
             ),
             stderr.trim()
         );
     }
-
     format!(
         concat!(
             "Git operation failed.\n\n",
-            "This is a generic git error. Open a terminal in the project folder\n",
-            "and run the command manually to see the full details.\n\n",
             "Raw error:\n{}",
         ),
         stderr.trim()
     )
 }
 
+/// Run a git command that needs `friendly_git_error` parsing on failure.
+fn friendly_cmd(path: &str, args: &[&str]) -> Result<String, String> {
+    let output = git_helpers::git_raw(path, args).map_err(|e| e.to_string())?;
+    if !output.status.success() {
+        let stderr = git_helpers::output_stderr(&output);
+        return Err(friendly_git_error(&stderr, path));
+    }
+    Ok(git_helpers::output_stdout(&output).trim().to_string())
+}
+
+fn get_merge_conflict_files_for_path_internal(path: &str) -> Result<Vec<String>, String> {
+    if !check_is_repo(path) {
+        return Err("Not a git repository".into());
+    }
+    let stdout = git_helpers::git_cmd(path, ["diff", "--name-only", "--diff-filter=U"])
+        .map_err(|e| e.to_string())?;
+    Ok(stdout.lines().filter(|l| !l.trim().is_empty()).map(|l| l.trim().to_string()).collect())
+}
+
+// ---------------------------------------------------------------------------
+// Status (custom parsing)
+// ---------------------------------------------------------------------------
+
 fn get_git_status_for_path(path: &str) -> GitStatus {
     if !check_is_repo(path) {
-        return GitStatus {
-            branch: None,
-            has_uncommitted: false,
-            is_repo: false,
-        };
+        return GitStatus { branch: None, has_uncommitted: false, is_repo: false };
     }
 
-    let output = cmd()
-        .args(["-C", path, "status", "--porcelain", "--branch"])
-        .output()
-        .ok();
+    let output = git_helpers::git_raw(path, ["status", "--porcelain", "--branch"]).ok();
 
     match output {
         Some(out) => {
-            let stdout = String::from_utf8_lossy(&out.stdout);
+            let stdout = git_helpers::output_stdout(&out);
             let mut branch: Option<String> = None;
             let mut has_uncommitted = false;
 
             for (i, line) in stdout.lines().enumerate() {
                 let trimmed = line.trim();
-                if trimmed.is_empty() {
-                    continue;
-                }
+                if trimmed.is_empty() { continue; }
                 if i == 0 && trimmed.starts_with("## ") {
                     let branch_info = &trimmed[3..];
                     if !branch_info.starts_with("HEAD (no branch)") && !branch_info.is_empty() {
                         let name = branch_info
-                            .split("...")
-                            .next()
+                            .split("...").next()
                             .unwrap_or(branch_info)
-                            .split('[')
-                            .next()
+                            .split('[').next()
                             .unwrap_or(branch_info)
                             .trim();
                         if !name.is_empty() {
@@ -250,20 +268,15 @@ fn get_git_status_for_path(path: &str) -> GitStatus {
                     has_uncommitted = true;
                 }
             }
-
-            GitStatus {
-                branch,
-                has_uncommitted,
-                is_repo: true,
-            }
+            GitStatus { branch, has_uncommitted, is_repo: true }
         }
-        None => GitStatus {
-            branch: None,
-            has_uncommitted: false,
-            is_repo: true,
-        },
+        None => GitStatus { branch: None, has_uncommitted: false, is_repo: true },
     }
 }
+
+// ---------------------------------------------------------------------------
+// Commands
+// ---------------------------------------------------------------------------
 
 #[tauri::command]
 pub fn get_git_status(path: String) -> GitStatus {
@@ -275,23 +288,451 @@ pub async fn batch_git_status(paths: Vec<String>) -> HashMap<String, GitStatus> 
     const MAX_CONCURRENT: usize = 10;
     tokio::task::spawn_blocking(move || {
         let results = std::sync::Mutex::new(HashMap::with_capacity(paths.len()));
-
         for chunk in paths.chunks(MAX_CONCURRENT) {
             std::thread::scope(|s| {
                 for p in chunk {
                     s.spawn(|| {
-                        let status = get_git_status_for_path(p);
-                        results.lock().unwrap().insert(p.clone(), status);
+                        results.lock().unwrap().insert(p.clone(), get_git_status_for_path(p));
                     });
                 }
             });
         }
-
         results.into_inner().unwrap()
     })
     .await
     .unwrap_or_default()
 }
+
+#[tauri::command]
+pub fn git_pull(path: String) -> Result<String, String> {
+    if !check_is_repo(&path) {
+        return Err("Not a git repository".into());
+    }
+    friendly_cmd(&path, &["pull"])
+}
+
+#[tauri::command]
+pub fn git_push(path: String, force: Option<bool>) -> Result<String, String> {
+    if !check_is_repo(&path) {
+        return Err("Not a git repository".into());
+    }
+    let mut args = vec!["push"];
+    if force.unwrap_or(false) {
+        args.push("--force-with-lease");
+    }
+    friendly_cmd(&path, &args)
+}
+
+#[tauri::command]
+pub fn git_log_entries(path: String) -> Result<Vec<GitLogEntry>, String> {
+    if !check_is_repo(&path) {
+        return Err("Not a git repository".into());
+    }
+    let stdout = git_helpers::git_cmd(
+        &path,
+        ["log", "--oneline", "--max-count=25", "--format=%h|||%an|||%ar|||%s", "--all"],
+    )
+    .map_err(|e| e.to_string())?;
+
+    let entries: Vec<GitLogEntry> = stdout
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .filter_map(|line| {
+            let parts: Vec<&str> = line.splitn(4, "|||").collect();
+            if parts.len() < 4 { return None; }
+            Some(GitLogEntry {
+                hash: parts[0].to_string(),
+                author: parts[1].to_string(),
+                date: parts[2].to_string(),
+                message: parts[3].to_string(),
+            })
+        })
+        .collect();
+
+    Ok(entries)
+}
+
+#[tauri::command]
+pub fn git_remote_url(path: String) -> Result<String, String> {
+    if !check_is_repo(&path) {
+        return Err("Not a git repository".into());
+    }
+
+    let raw = git_helpers::git_cmd(&path, ["remote", "get-url", "origin"])
+        .map_err(|_| "No remote 'origin' configured".to_string())?;
+
+    if raw.is_empty() {
+        return Err("No remote 'origin' configured".into());
+    }
+
+    fn to_web_url(url: &str) -> String {
+        let url = url.trim_end_matches(".git").trim_end_matches('/');
+        if let Some(rest) = url.strip_prefix("git@") {
+            if let Some((host, path)) = rest.split_once(':') {
+                return format!("https://{}/{}", host, path.trim_start_matches('/'));
+            }
+        }
+        if url.starts_with("https://") || url.starts_with("http://") {
+            return url.to_string();
+        }
+        if let Some(rest) = url.strip_prefix("git://") {
+            return format!("https://{}", rest);
+        }
+        url.to_string()
+    }
+
+    Ok(to_web_url(&raw))
+}
+
+#[tauri::command]
+pub fn git_fetch(path: String) -> Result<String, String> {
+    if !check_is_repo(&path) {
+        return Err("Not a git repository".into());
+    }
+    git_helpers::git_cmd(&path, ["fetch"]).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn git_list_branches(path: String) -> Result<Vec<GitBranchInfo>, String> {
+    if !check_is_repo(&path) {
+        return Err("Not a git repository".into());
+    }
+    let stdout = git_helpers::git_cmd(&path, ["branch", "--format=%(refname:short)|||%(HEAD)"])
+        .map_err(|e| e.to_string())?;
+
+    let branches: Vec<GitBranchInfo> = stdout
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .filter_map(|line| {
+            let parts: Vec<&str> = line.splitn(2, "|||").collect();
+            if parts.len() < 2 { return None; }
+            Some(GitBranchInfo {
+                name: parts[0].to_string(),
+                is_current: parts[1].trim() == "*",
+            })
+        })
+        .collect();
+
+    Ok(branches)
+}
+
+#[tauri::command]
+pub fn git_switch_branch(path: String, name: String) -> Result<(), String> {
+    if !check_is_repo(&path) {
+        return Err("Not a git repository".into());
+    }
+    git_helpers::git_cmd(&path, ["switch", &name]).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn git_create_branch(path: String, name: String) -> Result<(), String> {
+    if !check_is_repo(&path) {
+        return Err("Not a git repository".into());
+    }
+    git_helpers::git_cmd(&path, ["branch", &name]).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn git_delete_branch(path: String, name: String) -> Result<(), String> {
+    if !check_is_repo(&path) {
+        return Err("Not a git repository".into());
+    }
+    git_helpers::git_cmd(&path, ["branch", "-d", &name]).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn git_stash_push(path: String) -> Result<String, String> {
+    if !check_is_repo(&path) {
+        return Err("Not a git repository".into());
+    }
+    git_helpers::git_cmd(&path, ["stash", "push", "--include-untracked"])
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn git_stash_list(path: String) -> Result<Vec<GitStashEntry>, String> {
+    if !check_is_repo(&path) {
+        return Err("Not a git repository".into());
+    }
+    let stdout = git_helpers::git_cmd(&path, ["stash", "list"])
+        .map_err(|e| e.to_string())?;
+
+    let stashes: Vec<GitStashEntry> = stdout
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .filter_map(|line| {
+            if let Some(rest) = line.strip_prefix("stash@{") {
+                let parts: Vec<&str> = rest.splitn(2, '}').collect();
+                if parts.len() == 2 {
+                    let index = parts[0].parse::<usize>().ok()?;
+                    let message = parts[1].trim_start_matches(": ").to_string();
+                    return Some(GitStashEntry { index, message });
+                }
+            }
+            None
+        })
+        .collect();
+
+    Ok(stashes)
+}
+
+#[tauri::command]
+pub fn git_stash_apply(path: String, index: usize) -> Result<(), String> {
+    if !check_is_repo(&path) {
+        return Err("Not a git repository".into());
+    }
+    git_helpers::git_cmd(&path, ["stash", "apply", &format!("stash@{{{}}}", index)])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn git_stash_drop(path: String, index: usize) -> Result<(), String> {
+    if !check_is_repo(&path) {
+        return Err("Not a git repository".into());
+    }
+    git_helpers::git_cmd(&path, ["stash", "drop", &format!("stash@{{{}}}", index)])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn git_changed_files(path: String) -> Result<Vec<GitChangedFile>, String> {
+    if !check_is_repo(&path) {
+        return Err("Not a git repository".into());
+    }
+    let stdout = git_helpers::git_cmd(&path, ["status", "--porcelain"])
+        .map_err(|e| e.to_string())?;
+
+    let files: Vec<GitChangedFile> = stdout
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .filter_map(|line| {
+            let status = line.get(..2)?.trim().to_string();
+            let file_path = line.get(3..)?.to_string();
+            if status.is_empty() && file_path.is_empty() { None }
+            else { Some(GitChangedFile { path: file_path, status }) }
+        })
+        .collect();
+
+    Ok(files)
+}
+
+#[tauri::command]
+pub fn git_discard_changes(path: String) -> Result<(), String> {
+    if !check_is_repo(&path) {
+        return Err("Not a git repository".into());
+    }
+    git_helpers::git_cmd(&path, ["restore", "."]).map_err(|e| e.to_string())?;
+    let _ = git_helpers::git_cmd(&path, ["clean", "-fd"]);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn git_init(path: String) -> Result<String, String> {
+    let dir = PathBuf::from(&path);
+    if !dir.exists() {
+        return Err("Path does not exist".into());
+    }
+    if check_is_repo(&path) {
+        return Err("Already a git repository".into());
+    }
+
+    let stdout = git_helpers::git_command()
+        .args(["init", &path])
+        .output()
+        .map_err(|e| format!("Failed to init git: {e}"))
+        .and_then(|out| {
+            if !out.status.success() {
+                let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
+                return Err(format!("Git init failed: {stderr}"));
+            }
+            Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())
+        })?;
+    Ok(stdout)
+}
+
+#[tauri::command]
+pub fn git_stage_file(path: String, file_path: String) -> Result<(), String> {
+    if !check_is_repo(&path) {
+        return Err("Not a git repository".into());
+    }
+    git_helpers::git_cmd(&path, ["add", &file_path]).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn git_unstage_file(path: String, file_path: String) -> Result<(), String> {
+    if !check_is_repo(&path) {
+        return Err("Not a git repository".into());
+    }
+    git_helpers::git_cmd(&path, ["restore", "--staged", &file_path]).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn git_commit(path: String, message: String, amend: bool) -> Result<String, String> {
+    if !check_is_repo(&path) {
+        return Err("Not a git repository".into());
+    }
+
+    let mut args = vec!["commit", "-m", &message];
+    if amend {
+        args.push("--amend");
+    }
+
+    let output = git_helpers::git_raw(&path, &args).map_err(|e| e.to_string())?;
+
+    if !output.status.success() {
+        let stderr = git_helpers::output_stderr(&output).trim().to_string();
+        let stdout = git_helpers::output_stdout(&output).trim().to_string();
+        let detail = if !stderr.is_empty() { stderr }
+                    else if !stdout.is_empty() { stdout }
+                    else { "Unknown error, run 'git commit' in a terminal for more details.".to_string() };
+        return Err(format!("Commit failed: {detail}"));
+    }
+
+    Ok(git_helpers::output_stdout(&output).trim().to_string())
+}
+
+#[tauri::command]
+pub fn git_set_remote(path: String, url: String) -> Result<(), String> {
+    if !check_is_repo(&path) {
+        return Err("Not a git repository".into());
+    }
+
+    let remotes = git_helpers::git_cmd(&path, ["remote"]).unwrap_or_default();
+    let has_origin = remotes.lines().any(|l| l.trim() == "origin");
+
+    let verb = if has_origin { "set-url" } else { "add" };
+    git_helpers::git_cmd(&path, ["remote", verb, "origin", &url]).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn git_remove_remote(path: String) -> Result<(), String> {
+    if !check_is_repo(&path) {
+        return Err("Not a git repository".into());
+    }
+    git_helpers::git_cmd(&path, ["remote", "remove", "origin"]).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn git_undo_commit(path: String) -> Result<(), String> {
+    if !check_is_repo(&path) {
+        return Err("Not a git repository".into());
+    }
+    git_helpers::git_cmd(&path, ["reset", "--soft", "HEAD~1"]).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn git_undo_pull(path: String) -> Result<(), String> {
+    if !check_is_repo(&path) {
+        return Err("Not a git repository".into());
+    }
+    git_helpers::git_cmd(&path, ["reset", "--keep", "ORIG_HEAD"]).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn git_abort_merge(path: String) -> Result<(), String> {
+    if !check_is_repo(&path) {
+        return Err("Not a git repository".into());
+    }
+    git_helpers::git_cmd(&path, ["merge", "--abort"]).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn git_is_merging(path: String) -> Result<bool, String> {
+    if !check_is_repo(&path) {
+        return Err("Not a git repository".into());
+    }
+
+    let git_dir = git_helpers::git_cmd(&path, ["rev-parse", "--git-dir"])
+        .map_err(|e| e.to_string())?;
+    let base = std::path::PathBuf::from(&path).join(&git_dir);
+
+    Ok(base.join("MERGE_HEAD").exists()
+        || base.join("rebase-merge").exists()
+        || base.join("rebase-apply").exists())
+}
+
+#[tauri::command]
+pub fn git_merge_conflict_files(path: String) -> Result<Vec<String>, String> {
+    get_merge_conflict_files_for_path_internal(&path)
+}
+
+#[tauri::command]
+pub fn git_resolve_conflict_ours(path: String, file_path: String) -> Result<(), String> {
+    if !check_is_repo(&path) {
+        return Err("Not a git repository".into());
+    }
+    git_helpers::git_cmd(&path, ["checkout", "--ours", &file_path]).map_err(|e| e.to_string())?;
+    git_helpers::git_cmd(&path, ["add", &file_path]).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn git_resolve_conflict_theirs(path: String, file_path: String) -> Result<(), String> {
+    if !check_is_repo(&path) {
+        return Err("Not a git repository".into());
+    }
+    git_helpers::git_cmd(&path, ["checkout", "--theirs", &file_path]).map_err(|e| e.to_string())?;
+    git_helpers::git_cmd(&path, ["add", &file_path]).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn git_resolve_conflict_manual(path: String, file_path: String) -> Result<(), String> {
+    if !check_is_repo(&path) {
+        return Err("Not a git repository".into());
+    }
+    git_helpers::git_cmd(&path, ["add", &file_path]).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn clone_repo(url: String, dest: String) -> Result<String, String> {
+    if !url.contains("://") && !url.contains('@') {
+        return Err("Not a valid git URL".into());
+    }
+
+    let dest_path = PathBuf::from(&dest);
+    let folder_name = url
+        .trim_end_matches(".git")
+        .split('/')
+        .next_back()
+        .unwrap_or("repo");
+
+    let clone_target = dest_path.join(folder_name);
+    if clone_target.exists() {
+        return Err(format!("Folder '{folder_name}' already exists at this location"));
+    }
+
+    let output = git_helpers::git_command()
+        .arg("clone")
+        .arg(&url)
+        .arg(&clone_target)
+        .output()
+        .map_err(|e| format!("Failed to run git: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        return Err(format!("Git clone failed: {stderr}"));
+    }
+
+    Ok(clone_target.to_string_lossy().to_string())
+}
+
+// ---------------------------------------------------------------------------
+// Terminal / log opening (not git commands per se)
+// ---------------------------------------------------------------------------
 
 #[tauri::command]
 pub fn open_terminal(path: String) -> Result<(), String> {
@@ -302,10 +743,7 @@ pub fn open_terminal(path: String) -> Result<(), String> {
 
     #[cfg(target_os = "windows")]
     {
-        let result = Command::new("wt")
-            .arg("-d")
-            .arg(&path)
-            .spawn();
+        let result = Command::new("wt").arg("-d").arg(&path).spawn();
         if result.is_err() {
             Command::new("cmd")
                 .args(["/C", "start", "", "cmd"])
@@ -337,23 +775,20 @@ pub fn open_terminal(path: String) -> Result<(), String> {
             }
         }
 
-        if !spawned {
-            let terminals: [(&str, &[&str]); 6] = [
-                ("gnome-terminal", &["--working-directory", ""]),
-                ("kgx", &["--working-directory", ""]),
-                ("ptyxis", &["--working-directory", ""]),
-                ("konsole", &["--workdir", ""]),
-                ("xfce4-terminal", &["--working-directory", ""]),
-                ("x-terminal-emulator", &["--working-directory", ""]),
-            ];
+        let terminals: [(&str, &[&str]); 6] = [
+            ("gnome-terminal", &["--working-directory", ""]),
+            ("kgx", &["--working-directory", ""]),
+            ("ptyxis", &["--working-directory", ""]),
+            ("konsole", &["--workdir", ""]),
+            ("xfce4-terminal", &["--working-directory", ""]),
+            ("x-terminal-emulator", &["--working-directory", ""]),
+        ];
 
-            for &(term, args) in &terminals {
-                if args.len() == 2 {
-                    let replaced: Vec<&str> = vec![args[0], &path];
-                    if Command::new(term).args(&replaced).spawn().is_ok() {
-                        spawned = true;
-                        break;
-                    }
+        for &(term, args) in &terminals {
+            if args.len() == 2 && !spawned {
+                let replaced: Vec<&str> = vec![args[0], &path];
+                if Command::new(term).args(&replaced).spawn().is_ok() {
+                    spawned = true;
                 }
             }
         }
@@ -424,577 +859,9 @@ pub fn git_log(_app: tauri::AppHandle, path: String) -> Result<(), String> {
     Ok(())
 }
 
-#[tauri::command]
-pub fn git_pull(path: String) -> Result<String, String> {
-    if !check_is_repo(&path) {
-        return Err("Not a git repository".into());
-    }
-    let output = cmd()
-        .args(["-C", &path, "pull"])
-        .output()
-        .map_err(|e| format!("Failed to run git pull: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(friendly_git_error(&stderr, &path));
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    Ok(stdout)
-}
-
-#[tauri::command]
-pub fn git_push(path: String, force: Option<bool>) -> Result<String, String> {
-    if !check_is_repo(&path) {
-        return Err("Not a git repository".into());
-    }
-
-    let mut args = vec!["-C", &path as &str, "push"];
-    if force.unwrap_or(false) {
-        args.push("--force-with-lease");
-    }
-
-    let output = cmd()
-        .args(&args)
-        .output()
-        .map_err(|e| format!("Failed to run git push: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(friendly_git_error(&stderr, &path));
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    Ok(stdout)
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GitLogEntry {
-    pub hash: String,
-    pub message: String,
-    pub author: String,
-    pub date: String,
-}
-
-#[tauri::command]
-pub fn git_log_entries(path: String) -> Result<Vec<GitLogEntry>, String> {
-    if !check_is_repo(&path) {
-        return Err("Not a git repository".into());
-    }
-
-    let output = cmd()
-        .args([
-            "-C",
-            &path,
-            "log",
-            "--oneline",
-            "--max-count=25",
-            "--format=%h|||%an|||%ar|||%s",
-            "--all",
-        ])
-        .output()
-        .map_err(|e| format!("Failed to run git log: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(friendly_git_error(&stderr, &path));
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let entries: Vec<GitLogEntry> = stdout
-        .lines()
-        .filter(|l| !l.trim().is_empty())
-        .filter_map(|line| {
-            let parts: Vec<&str> = line.splitn(4, "|||").collect();
-            if parts.len() < 4 {
-                return None;
-            }
-            Some(GitLogEntry {
-                hash: parts[0].to_string(),
-                author: parts[1].to_string(),
-                date: parts[2].to_string(),
-                message: parts[3].to_string(),
-            })
-        })
-        .collect();
-
-    Ok(entries)
-}
-
-#[tauri::command]
-pub fn git_remote_url(path: String) -> Result<String, String> {
-    if !check_is_repo(&path) {
-        return Err("Not a git repository".into());
-    }
-
-    let output = cmd()
-        .args(["-C", &path, "remote", "get-url", "origin"])
-        .output()
-        .map_err(|e| format!("Failed to get remote URL: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("No remote configured: {}", stderr.trim()));
-    }
-
-    let raw = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if raw.is_empty() {
-        return Err("No remote 'origin' configured".into());
-    }
-
-    fn to_web_url(url: &str) -> String {
-        let url = url.trim_end_matches(".git").trim_end_matches('/');
-
-        if let Some(rest) = url.strip_prefix("git@") {
-            if let Some((host, path)) = rest.split_once(':') {
-                return format!("https://{}/{}", host, path.trim_start_matches('/'));
-            }
-        }
-
-        if url.starts_with("https://") || url.starts_with("http://") {
-            return url.to_string();
-        }
-
-        if let Some(rest) = url.strip_prefix("git://") {
-            return format!("https://{}", rest);
-        }
-
-        url.to_string()
-    }
-
-    Ok(to_web_url(&raw))
-}
-
-#[tauri::command]
-pub fn git_fetch(path: String) -> Result<String, String> {
-    if !check_is_repo(&path) {
-        return Err("Not a git repository".into());
-    }
-    let output = cmd()
-        .args(["-C", &path, "fetch"])
-        .output()
-        .map_err(|e| format!("Failed to run git fetch: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(friendly_git_error(&stderr, &path));
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    Ok(stdout)
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GitBranchInfo {
-    pub name: String,
-    pub is_current: bool,
-}
-
-#[tauri::command]
-pub fn git_list_branches(path: String) -> Result<Vec<GitBranchInfo>, String> {
-    if !check_is_repo(&path) {
-        return Err("Not a git repository".into());
-    }
-
-    let output = cmd()
-        .args(["-C", &path, "branch", "--format=%(refname:short)|||%(HEAD)"])
-        .output()
-        .map_err(|e| format!("Failed to list branches: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Failed to list branches: {}", stderr.trim()));
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let branches: Vec<GitBranchInfo> = stdout
-        .lines()
-        .filter(|l| !l.trim().is_empty())
-        .filter_map(|line| {
-            let parts: Vec<&str> = line.splitn(2, "|||").collect();
-            if parts.len() < 2 {
-                return None;
-            }
-            Some(GitBranchInfo {
-                name: parts[0].to_string(),
-                is_current: parts[1].trim() == "*",
-            })
-        })
-        .collect();
-
-    Ok(branches)
-}
-
-#[tauri::command]
-pub fn git_switch_branch(path: String, name: String) -> Result<(), String> {
-    if !check_is_repo(&path) {
-        return Err("Not a git repository".into());
-    }
-    let output = cmd()
-        .args(["-C", &path, "switch", &name])
-        .output()
-        .map_err(|e| format!("Failed to switch branch: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Branch switch failed: {}", stderr.trim()));
-    }
-    Ok(())
-}
-
-#[tauri::command]
-pub fn git_create_branch(path: String, name: String) -> Result<(), String> {
-    if !check_is_repo(&path) {
-        return Err("Not a git repository".into());
-    }
-    let output = cmd()
-        .args(["-C", &path, "branch", &name])
-        .output()
-        .map_err(|e| format!("Failed to create branch: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Branch creation failed: {}", stderr.trim()));
-    }
-    Ok(())
-}
-
-#[tauri::command]
-pub fn git_delete_branch(path: String, name: String) -> Result<(), String> {
-    if !check_is_repo(&path) {
-        return Err("Not a git repository".into());
-    }
-    let output = cmd()
-        .args(["-C", &path, "branch", "-d", &name])
-        .output()
-        .map_err(|e| format!("Failed to delete branch: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Branch deletion failed: {}", stderr.trim()));
-    }
-    Ok(())
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GitStashEntry {
-    pub index: usize,
-    pub message: String,
-}
-
-#[tauri::command]
-pub fn git_stash_push(path: String) -> Result<String, String> {
-    if !check_is_repo(&path) {
-        return Err("Not a git repository".into());
-    }
-    let output = cmd()
-        .args(["-C", &path, "stash", "push", "--include-untracked"])
-        .output()
-        .map_err(|e| format!("Failed to stash: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Stash failed: {}", stderr.trim()));
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    Ok(stdout)
-}
-
-#[tauri::command]
-pub fn git_stash_list(path: String) -> Result<Vec<GitStashEntry>, String> {
-    if !check_is_repo(&path) {
-        return Err("Not a git repository".into());
-    }
-
-    let output = cmd()
-        .args(["-C", &path, "stash", "list"])
-        .output()
-        .map_err(|e| format!("Failed to list stashes: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Failed to list stashes: {}", stderr.trim()));
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let stashes: Vec<GitStashEntry> = stdout
-        .lines()
-        .filter(|l| !l.trim().is_empty())
-        .filter_map(|line| {
-            if let Some(rest) = line.strip_prefix("stash@{") {
-                let parts: Vec<&str> = rest.splitn(2, '}').collect();
-                if parts.len() == 2 {
-                    let index = parts[0].parse::<usize>().ok()?;
-                    let message = parts[1].trim_start_matches(": ").to_string();
-                    return Some(GitStashEntry { index, message });
-                }
-            }
-            None
-        })
-        .collect();
-
-    Ok(stashes)
-}
-
-#[tauri::command]
-pub fn git_stash_apply(path: String, index: usize) -> Result<(), String> {
-    if !check_is_repo(&path) {
-        return Err("Not a git repository".into());
-    }
-    let output = cmd()
-        .args(["-C", &path, "stash", "apply", &format!("stash@{{{}}}", index)])
-        .output()
-        .map_err(|e| format!("Failed to apply stash: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Stash apply failed: {}", stderr.trim()));
-    }
-    Ok(())
-}
-
-#[tauri::command]
-pub fn git_stash_drop(path: String, index: usize) -> Result<(), String> {
-    if !check_is_repo(&path) {
-        return Err("Not a git repository".into());
-    }
-    let output = cmd()
-        .args(["-C", &path, "stash", "drop", &format!("stash@{{{}}}", index)])
-        .output()
-        .map_err(|e| format!("Failed to drop stash: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Stash drop failed: {}", stderr.trim()));
-    }
-    Ok(())
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GitChangedFile {
-    pub path: String,
-    pub status: String,
-}
-
-#[tauri::command]
-pub fn git_changed_files(path: String) -> Result<Vec<GitChangedFile>, String> {
-    if !check_is_repo(&path) {
-        return Err("Not a git repository".into());
-    }
-
-    let output = cmd()
-        .args(["-C", &path, "status", "--porcelain"])
-        .output()
-        .map_err(|e| format!("Failed to get git status: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Git status failed: {}", stderr.trim()));
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let files: Vec<GitChangedFile> = stdout
-        .lines()
-        .filter(|l| !l.trim().is_empty())
-        .filter_map(|line| {
-            let status = line.get(..2)?.trim().to_string();
-            let file_path = line.get(3..)?.to_string();
-            if status.is_empty() && file_path.is_empty() {
-                return None;
-            }
-            Some(GitChangedFile {
-                path: file_path,
-                status,
-            })
-        })
-        .collect();
-
-    Ok(files)
-}
-
-#[tauri::command]
-pub fn git_discard_changes(path: String) -> Result<(), String> {
-    if !check_is_repo(&path) {
-        return Err("Not a git repository".into());
-    }
-    let output = cmd()
-        .args(["-C", &path, "restore", "."])
-        .output()
-        .map_err(|e| format!("Failed to discard changes: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Discard failed: {}", stderr.trim()));
-    }
-
-    let _ = cmd()
-        .args(["-C", &path, "clean", "-fd"])
-        .output();
-
-    Ok(())
-}
-
-#[tauri::command]
-pub fn git_init(path: String) -> Result<String, String> {
-    let dir = PathBuf::from(&path);
-    if !dir.exists() {
-        return Err("Path does not exist".into());
-    }
-    if check_is_repo(&path) {
-        return Err("Already a git repository".into());
-    }
-
-    let output = cmd()
-        .args(["init", &path])
-        .output()
-        .map_err(|e| format!("Failed to init git: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Git init failed: {}", stderr.trim()));
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    Ok(stdout)
-}
-
-#[tauri::command]
-pub fn git_stage_file(path: String, file_path: String) -> Result<(), String> {
-    if !check_is_repo(&path) {
-        return Err("Not a git repository".into());
-    }
-    let output = cmd()
-        .args(["-C", &path, "add", &file_path])
-        .output()
-        .map_err(|e| format!("Failed to stage file: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Stage failed: {}", stderr.trim()));
-    }
-    Ok(())
-}
-
-#[tauri::command]
-pub fn git_unstage_file(path: String, file_path: String) -> Result<(), String> {
-    if !check_is_repo(&path) {
-        return Err("Not a git repository".into());
-    }
-    let output = cmd()
-        .args(["-C", &path, "restore", "--staged", &file_path])
-        .output()
-        .map_err(|e| format!("Failed to unstage file: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Unstage failed: {}", stderr.trim()));
-    }
-    Ok(())
-}
-
-#[tauri::command]
-pub fn git_commit(path: String, message: String, amend: bool) -> Result<String, String> {
-    if !check_is_repo(&path) {
-        return Err("Not a git repository".into());
-    }
-
-    let mut args = vec!["-C", &path as &str, "commit", "-m", &message as &str];
-    if amend {
-        args.push("--amend");
-    }
-
-    let output = cmd()
-        .args(&args)
-        .output()
-        .map_err(|e| format!("Failed to commit: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let detail = if !stderr.trim().is_empty() {
-            stderr.trim().to_string()
-        } else if !stdout.trim().is_empty() {
-            stdout.trim().to_string()
-        } else {
-            "Unknown error, run 'git commit' in a terminal for more details.".to_string()
-        };
-        return Err(format!("Commit failed: {}", detail));
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    Ok(stdout)
-}
-
-#[tauri::command]
-pub fn git_set_remote(path: String, url: String) -> Result<(), String> {
-    if !check_is_repo(&path) {
-        return Err("Not a git repository".into());
-    }
-
-    let check = cmd()
-        .args(["-C", &path, "remote"])
-        .output()
-        .map_err(|e| format!("Failed to check remotes: {}", e))?;
-
-    let remotes = String::from_utf8_lossy(&check.stdout);
-    let has_origin = remotes.lines().any(|l| l.trim() == "origin");
-
-    let output = if has_origin {
-        cmd()
-            .args(["-C", &path, "remote", "set-url", "origin", &url])
-            .output()
-            .map_err(|e| format!("Failed to set remote URL: {}", e))?
-    } else {
-        cmd()
-            .args(["-C", &path, "remote", "add", "origin", &url])
-            .output()
-            .map_err(|e| format!("Failed to add remote: {}", e))?
-    };
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Remote URL change failed: {}", stderr.trim()));
-    }
-    Ok(())
-}
-
-#[tauri::command]
-pub fn git_remove_remote(path: String) -> Result<(), String> {
-    if !check_is_repo(&path) {
-        return Err("Not a git repository".into());
-    }
-    let output = cmd()
-        .args(["-C", &path, "remote", "remove", "origin"])
-        .output()
-        .map_err(|e| format!("Failed to remove remote: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Remote removal failed: {}", stderr.trim()));
-    }
-    Ok(())
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GitDiffResult {
-    pub hunks: Vec<GitDiffHunk>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GitDiffHunk {
-    pub old_start: u32,
-    pub old_lines: u32,
-    pub new_start: u32,
-    pub new_lines: u32,
-    pub lines: Vec<GitDiffLine>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GitDiffLine {
-    pub kind: String,
-    pub content: String,
-}
+// ---------------------------------------------------------------------------
+// Diff (complex parsing)
+// ---------------------------------------------------------------------------
 
 #[tauri::command]
 pub fn git_file_diff(path: String, file_path: String) -> Result<GitDiffResult, String> {
@@ -1002,24 +869,19 @@ pub fn git_file_diff(path: String, file_path: String) -> Result<GitDiffResult, S
         return Err("Not a git repository".into());
     }
 
-    let output = cmd()
-        .args(["-C", &path, "diff", "--no-color", "--", &file_path])
-        .output()
-        .map_err(|e| format!("Failed to get diff: {}", e))?;
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let output = git_helpers::git_raw(&path, ["diff", "--no-color", "--", &file_path])
+        .map_err(|e| e.to_string())?;
+    let stdout = git_helpers::output_stdout(&output);
 
     let diff_text = if stdout.trim().is_empty() {
-        let cached = cmd()
-            .args(["-C", &path, "diff", "--cached", "--no-color", "--", &file_path])
-            .output()
+        let cached = git_helpers::git_raw(&path, ["diff", "--cached", "--no-color", "--", &file_path])
             .ok();
         match cached {
-            Some(c) => String::from_utf8_lossy(&c.stdout).to_string(),
-            None => stdout.to_string(),
+            Some(c) => git_helpers::output_stdout(&c),
+            None => stdout,
         }
     } else {
-        stdout.to_string()
+        stdout
     };
 
     if diff_text.trim().is_empty() {
@@ -1041,261 +903,24 @@ pub fn git_file_diff(path: String, file_path: String) -> Result<GitDiffResult, S
                         let new_start = new_parts[0].trim_start_matches('+').parse::<u32>().unwrap_or(1);
                         let new_lines = new_parts.get(1).and_then(|s| s.parse::<u32>().ok()).unwrap_or(0);
 
-                        if let Some(hunk) = current_hunk.take() {
-                            result.hunks.push(hunk);
-                        }
+                        if let Some(hunk) = current_hunk.take() { result.hunks.push(hunk); }
                         current_hunk = Some(GitDiffHunk {
-                            old_start,
-                            old_lines,
-                            new_start,
-                            new_lines,
-                            lines: Vec::new(),
+                            old_start, old_lines, new_start, new_lines, lines: Vec::new(),
                         });
                     }
                 }
             }
         } else if let Some(hunk) = &mut current_hunk {
             if line.starts_with('+') {
-                hunk.lines.push(GitDiffLine {
-                    kind: "add".into(),
-                    content: line.strip_prefix('+').unwrap().to_string(),
-                });
+                hunk.lines.push(GitDiffLine { kind: "add".into(), content: line.strip_prefix('+').unwrap().to_string() });
             } else if line.starts_with('-') {
-                hunk.lines.push(GitDiffLine {
-                    kind: "delete".into(),
-                    content: line.strip_prefix('-').unwrap().to_string(),
-                });
+                hunk.lines.push(GitDiffLine { kind: "delete".into(), content: line.strip_prefix('-').unwrap().to_string() });
             } else if line.starts_with(' ') {
-                hunk.lines.push(GitDiffLine {
-                    kind: "context".into(),
-                    content: line.strip_prefix(' ').unwrap().to_string(),
-                });
+                hunk.lines.push(GitDiffLine { kind: "context".into(), content: line.strip_prefix(' ').unwrap().to_string() });
             }
         }
     }
 
-    if let Some(hunk) = current_hunk.take() {
-        result.hunks.push(hunk);
-    }
-
+    if let Some(hunk) = current_hunk.take() { result.hunks.push(hunk); }
     Ok(result)
-}
-
-#[tauri::command]
-pub fn git_undo_commit(path: String) -> Result<(), String> {
-    if !check_is_repo(&path) {
-        return Err("Not a git repository".into());
-    }
-    let output = cmd()
-        .args(["-C", &path, "reset", "--soft", "HEAD~1"])
-        .output()
-        .map_err(|e| format!("Failed to undo commit: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Undo commit failed: {}", stderr.trim()));
-    }
-    Ok(())
-}
-
-#[tauri::command]
-pub fn git_undo_pull(path: String) -> Result<(), String> {
-    if !check_is_repo(&path) {
-        return Err("Not a git repository".into());
-    }
-    let output = cmd()
-        .args(["-C", &path, "reset", "--keep", "ORIG_HEAD"])
-        .output()
-        .map_err(|e| format!("Failed to undo pull: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Undo pull failed: {}", stderr.trim()));
-    }
-    Ok(())
-}
-
-#[tauri::command]
-pub fn clone_repo(url: String, dest: String) -> Result<String, String> {
-    if !url.contains("://") && !url.contains('@') {
-        return Err("Not a valid git URL".into());
-    }
-
-    let dest_path = PathBuf::from(&dest);
-    let folder_name = url
-        .trim_end_matches(".git")
-        .split('/')
-        .next_back()
-        .unwrap_or("repo");
-
-    let clone_target = dest_path.join(folder_name);
-
-    if clone_target.exists() {
-        return Err(format!(
-            "Folder '{}' already exists at this location",
-            folder_name
-        ));
-    }
-
-    let output = cmd()
-        .arg("clone")
-        .arg(&url)
-        .arg(&clone_target)
-        .output()
-        .map_err(|e| format!("Failed to run git: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Git clone failed: {}", stderr.trim()));
-    }
-
-    Ok(clone_target.to_string_lossy().to_string())
-}
-
-fn get_merge_conflict_files_for_path_internal(path: &str) -> Result<Vec<String>, String> {
-    if !check_is_repo(path) {
-        return Err("Not a git repository".into());
-    }
-
-    let output = cmd()
-        .args(["-C", path, "diff", "--name-only", "--diff-filter=U"])
-        .output()
-        .map_err(|e| format!("Failed to check merge conflicts: {}", e))?;
-
-    if !output.status.success() {
-        return Err("Failed to check merge conflicts".into());
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let files: Vec<String> = stdout
-        .lines()
-        .filter(|l| !l.trim().is_empty())
-        .map(|l| l.trim().to_string())
-        .collect();
-
-    Ok(files)
-}
-
-#[tauri::command]
-pub fn git_merge_conflict_files(path: String) -> Result<Vec<String>, String> {
-    get_merge_conflict_files_for_path_internal(&path)
-}
-
-#[tauri::command]
-pub fn git_resolve_conflict_ours(path: String, file_path: String) -> Result<(), String> {
-    if !check_is_repo(&path) {
-        return Err("Not a git repository".into());
-    }
-
-    let checkout = cmd()
-        .args(["-C", &path, "checkout", "--ours", &file_path])
-        .output()
-        .map_err(|e| format!("Failed to run checkout --ours: {}", e))?;
-
-    if !checkout.status.success() {
-        let stderr = String::from_utf8_lossy(&checkout.stderr);
-        return Err(format!("Failed to resolve conflict using ours: {}", stderr.trim()));
-    }
-
-    let add = cmd()
-        .args(["-C", &path, "add", &file_path])
-        .output()
-        .map_err(|e| format!("Failed to stage resolved file: {}", e))?;
-
-    if !add.status.success() {
-        let stderr = String::from_utf8_lossy(&add.stderr);
-        return Err(format!("Failed to stage resolved file: {}", stderr.trim()));
-    }
-
-    Ok(())
-}
-
-#[tauri::command]
-pub fn git_resolve_conflict_theirs(path: String, file_path: String) -> Result<(), String> {
-    if !check_is_repo(&path) {
-        return Err("Not a git repository".into());
-    }
-
-    let checkout = cmd()
-        .args(["-C", &path, "checkout", "--theirs", &file_path])
-        .output()
-        .map_err(|e| format!("Failed to run checkout --theirs: {}", e))?;
-
-    if !checkout.status.success() {
-        let stderr = String::from_utf8_lossy(&checkout.stderr);
-        return Err(format!("Failed to resolve conflict using theirs: {}", stderr.trim()));
-    }
-
-    let add = cmd()
-        .args(["-C", &path, "add", &file_path])
-        .output()
-        .map_err(|e| format!("Failed to stage resolved file: {}", e))?;
-
-    if !add.status.success() {
-        let stderr = String::from_utf8_lossy(&add.stderr);
-        return Err(format!("Failed to stage resolved file: {}", stderr.trim()));
-    }
-
-    Ok(())
-}
-
-#[tauri::command]
-pub fn git_resolve_conflict_manual(path: String, file_path: String) -> Result<(), String> {
-    if !check_is_repo(&path) {
-        return Err("Not a git repository".into());
-    }
-
-    let add = cmd()
-        .args(["-C", &path, "add", &file_path])
-        .output()
-        .map_err(|e| format!("Failed to stage resolved file: {}", e))?;
-
-    if !add.status.success() {
-        let stderr = String::from_utf8_lossy(&add.stderr);
-        return Err(format!("Failed to stage resolved file: {}", stderr.trim()));
-    }
-
-    Ok(())
-}
-
-#[tauri::command]
-pub fn git_abort_merge(path: String) -> Result<(), String> {
-    if !check_is_repo(&path) {
-        return Err("Not a git repository".into());
-    }
-
-    let output = cmd()
-        .args(["-C", &path, "merge", "--abort"])
-        .output()
-        .map_err(|e| format!("Failed to run git merge --abort: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Abort merge failed: {}", stderr.trim()));
-    }
-
-    Ok(())
-}
-
-#[tauri::command]
-pub fn git_is_merging(path: String) -> Result<bool, String> {
-    if !check_is_repo(&path) {
-        return Err("Not a git repository".into());
-    }
-
-    let output = cmd()
-        .args(["-C", &path, "rev-parse", "--git-dir"])
-        .output()
-        .map_err(|e| format!("Failed to check merge state: {}", e))?;
-
-    if !output.status.success() {
-        return Err("Failed to check merge state".into());
-    }
-
-    let git_dir = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    let merge_head = std::path::PathBuf::from(&path).join(&git_dir).join("MERGE_HEAD");
-    let rebase_merge = std::path::PathBuf::from(&path).join(&git_dir).join("rebase-merge");
-    let rebase_apply = std::path::PathBuf::from(&path).join(&git_dir).join("rebase-apply");
-
-    Ok(merge_head.exists() || rebase_merge.exists() || rebase_apply.exists())
 }

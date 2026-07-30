@@ -1,4 +1,5 @@
 use crate::models::*;
+use crate::persist;
 use crate::settings;
 use futures_util::StreamExt;
 use serde::Serialize;
@@ -83,11 +84,7 @@ pub fn read_registry(app: &AppHandle) -> Vec<InstalledGodotVersion> {
 }
 
 pub fn write_registry(app: &AppHandle, list: &Vec<InstalledGodotVersion>) -> Result<(), String> {
-    fs::write(
-        registry_file(app),
-        serde_json::to_string_pretty(list).map_err(|e| e.to_string())?,
-    )
-    .map_err(|e| e.to_string())
+    persist::write_json(&registry_file(app), list).map_err(|e| e.to_string())
 }
 
 pub fn register_version(app: &AppHandle, version: InstalledGodotVersion) -> Result<bool, String> {

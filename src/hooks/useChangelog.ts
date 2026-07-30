@@ -1,23 +1,14 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import { api } from '../lib/api'
+import { useApiData } from '../lib/useApiData'
 import type { ChangelogEntry, ChangelogNote } from '../types'
 
 export function useChangelog() {
-  const [entries, setEntries] = useState<ChangelogEntry[]>([])
-  const [loading, setLoading] = useState(true)
-
-  const refresh = useCallback(async () => {
-    setLoading(true)
-    try {
-      setEntries(await api.listChangelogEntries())
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    refresh()
-  }, [refresh])
+  const { data: entries, loaded: loading, refresh } = useApiData(
+    () => api.listChangelogEntries(),
+    [],
+    [] as ChangelogEntry[],
+  )
 
   const addEntry = useCallback(
     async (version: string, date: string, notes: ChangelogNote[]) => {

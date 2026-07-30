@@ -1,7 +1,7 @@
+use crate::error::AppResult;
+use crate::persist;
 use crate::models::{ChangelogEntry, ChangelogNote};
 
-#[cfg(debug_assertions)]
-use std::fs;
 #[cfg(debug_assertions)]
 use std::path::PathBuf;
 #[cfg(debug_assertions)]
@@ -17,20 +17,16 @@ fn changelog_file() -> PathBuf {
 fn read_entries() -> Vec<ChangelogEntry> {
     #[cfg(debug_assertions)]
     {
-        if let Ok(raw) = fs::read_to_string(changelog_file()) {
-            return serde_json::from_str(&raw).unwrap_or_default();
+        if let Some(entries) = persist::read_json_opt::<Vec<ChangelogEntry>>(&changelog_file()) {
+            return entries;
         }
     }
     serde_json::from_str(EMBEDDED_CHANGELOG).unwrap_or_default()
 }
 
 #[cfg(debug_assertions)]
-fn write_entries(entries: &Vec<ChangelogEntry>) -> Result<(), String> {
-    fs::write(
-        changelog_file(),
-        serde_json::to_string_pretty(entries).map_err(|e| e.to_string())?,
-    )
-    .map_err(|e| e.to_string())
+fn write_entries(entries: &Vec<ChangelogEntry>) -> AppResult<()> {
+    persist::write_json(&changelog_file(), entries)
 }
 
 #[cfg(debug_assertions)]
@@ -82,7 +78,7 @@ pub fn add_changelog_entry(
             created_at: chrono::Utc::now().timestamp(),
         };
         entries.push(entry.clone());
-        write_entries(&entries)?;
+        write_entries(&entries).map_err(|e| e.to_string())?;
         Ok(entry)
     }
 }
@@ -114,7 +110,7 @@ pub fn update_changelog_entry(
         entry.date = _date.trim().to_string();
         entry.notes = clean_notes(_notes);
         let updated = entry.clone();
-        write_entries(&entries)?;
+        write_entries(&entries).map_err(|e| e.to_string())?;
         Ok(updated)
     }
 }
@@ -134,6 +130,6 @@ pub fn delete_changelog_entry(_id: String) -> Result<(), String> {
             .position(|e| e.id == _id)
             .ok_or("Changelog entry not found")?;
         entries.remove(idx);
-        write_entries(&entries)
+        write_entries(&entries).map_err(|e| e.to_string())
     }
 }

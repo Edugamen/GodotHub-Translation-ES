@@ -1,5 +1,6 @@
+use crate::error::AppResult;
+use crate::persist;
 use crate::models::AppSettings;
-use std::fs;
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 
@@ -8,22 +9,11 @@ fn settings_file(app: &AppHandle) -> PathBuf {
 }
 
 pub fn read_settings(app: &AppHandle) -> AppSettings {
-    let file = settings_file(app);
-    if !file.exists() {
-        return AppSettings::default();
-    }
-    fs::read_to_string(&file)
-        .ok()
-        .and_then(|c| serde_json::from_str(&c).ok())
-        .unwrap_or_default()
+    persist::read_json(&settings_file(app))
 }
 
-pub fn write_settings(app: &AppHandle, settings: &AppSettings) -> Result<(), String> {
-    fs::write(
-        settings_file(app),
-        serde_json::to_string_pretty(settings).map_err(|e| e.to_string())?,
-    )
-    .map_err(|e| e.to_string())
+pub fn write_settings(app: &AppHandle, settings: &AppSettings) -> AppResult<()> {
+    persist::write_json(&settings_file(app), settings)
 }
 
 #[tauri::command]
@@ -33,7 +23,7 @@ pub fn get_settings(app: AppHandle) -> AppSettings {
 
 #[tauri::command]
 pub fn update_settings(app: AppHandle, settings: AppSettings) -> Result<AppSettings, String> {
-    write_settings(&app, &settings)?;
+    write_settings(&app, &settings).map_err(|e| e.to_string())?;
     Ok(settings)
 }
 
@@ -41,7 +31,7 @@ pub fn update_settings(app: AppHandle, settings: AppSettings) -> Result<AppSetti
 pub fn reset_app_data(app: AppHandle) -> Result<(), String> {
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     if dir.exists() {
-        fs::remove_dir_all(&dir).map_err(|e| e.to_string())?;
+        std::fs::remove_dir_all(&dir).map_err(|e| e.to_string())?;
     }
     Ok(())
 }
@@ -59,6 +49,6 @@ pub fn reset_settings(app: AppHandle) -> Result<AppSettings, String> {
         language: current.language,
         ..AppSettings::default()
     };
-    write_settings(&app, &reset)?;
+    write_settings(&app, &reset).map_err(|e| e.to_string())?;
     Ok(reset)
 }

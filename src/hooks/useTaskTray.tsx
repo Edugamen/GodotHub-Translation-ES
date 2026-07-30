@@ -3,12 +3,11 @@ import {
   createElement,
   useCallback,
   useContext,
-  useEffect,
   useRef,
   useState,
   type ReactNode,
 } from 'react'
-import { listen } from '@tauri-apps/api/event'
+import { useTauriEvent } from '../lib/useTauriEvent'
 import type { DownloadProgress } from '../types'
 import i18n from '../i18n'
 
@@ -92,120 +91,89 @@ export function TaskTrayProvider({ children }: { children: ReactNode }) {
     [clearTimer],
   )
 
-  useEffect(() => {
-    const unlistens: Promise<() => void>[] = []
+  // --- Tauri event listeners ---
 
-    unlistens.push(
-      listen<[number, number]>('project-scan-progress', (e) => {
-        const [current, total] = e.payload
-        if (current < total) {
-          registerTask({
-            id: 'scan-projects',
-            type: 'scan-projects',
-            label: i18n.t('common:scanning_projects'),
-            description: total > 0 ? `${current} / ${total}` : undefined,
-            progress: { current, total },
-            status: 'running',
-          })
-        } else if (total > 0) {
-          updateTask('scan-projects', { status: 'completed', progress: { current, total } })
-          scheduleRemoval('scan-projects')
-        }
-      }),
-    )
-
-    unlistens.push(
-      listen<[number, number]>('version-scan-progress', (e) => {
-        const [current, total] = e.payload
-        if (current < total) {
-          registerTask({
-            id: 'scan-versions',
-            type: 'scan-versions',
-            label: i18n.t('common:scanning_versions'),
-            description: total > 0 ? `${current} / ${total}` : undefined,
-            progress: { current, total },
-            status: 'running',
-          })
-        } else if (total > 0) {
-          updateTask('scan-versions', { status: 'completed', progress: { current, total } })
-          scheduleRemoval('scan-versions')
-        }
-      }),
-    )
-
-    // Godot download queued
-    unlistens.push(
-      listen<string>('godot-download-queued', (e) => {
-        const key = e.payload
-        registerTask({
-          id: `download-${key}`,
-          type: 'download-godot',
-          label: i18n.t('common:downloading_version', { version: key }),
-          description: i18n.t('common:queued'),
-          progress: null,
-          status: 'queued',
-        })
-      }),
-    )
-
-    // Godot download progress
-    unlistens.push(
-      listen<DownloadProgress>('godot-download-progress', (e) => {
-        const { tag, downloaded, total } = e.payload
-        const id = `download-${tag}`
-        const pct =
-          total > 0 ? Math.round((downloaded / total) * 100) : 0
-        registerTask({
-          id,
-          type: 'download-godot',
-          label: i18n.t('common:downloading_version', { version: tag }),
-          description:
-            total > 0
-              ? `${(downloaded / 1024 / 1024).toFixed(1)} / ${(total / 1024 / 1024).toFixed(1)} MB (${pct}%)`
-              : `${(downloaded / 1024 / 1024).toFixed(1)} MB`,
-          progress: total > 0 ? { current: downloaded, total } : null,
-          status: 'running',
-        })
-      }),
-    )
-
-    // Godot download paused
-    unlistens.push(
-      listen<string>('godot-download-paused', (e) => {
-        updateTask(`download-${e.payload}`, { status: 'paused' })
-      }),
-    )
-
-    // Godot download canceled
-    unlistens.push(
-      listen<string>('godot-download-canceled', (e) => {
-        unregisterTask(`download-${e.payload}`)
-      }),
-    )
-
-    // Godot download error
-    unlistens.push(
-      listen<{ tag: string; message: string }>('godot-download-error', (e) => {
-        updateTask(`download-${e.payload.tag}`, {
-          status: 'error',
-          errorMessage: e.payload.message,
-        })
-        scheduleRemoval(`download-${e.payload.tag}`, 6000)
-      }),
-    )
-
-    // Godot download complete
-    unlistens.push(
-      listen<string>('godot-download-complete', (e) => {
-        updateTask(`download-${e.payload}`, { status: 'completed' })
-        scheduleRemoval(`download-${e.payload}`, 3000)
-      }),
-    )
-
-    return () => {
-      unlistens.forEach((p) => p.then((fn) => fn()))
+  useTauriEvent<[number, number]>('project-scan-progress', ([current, total]) => {
+    if (current < total) {
+      registerTask({
+        id: 'scan-projects',
+        type: 'scan-projects',
+        label: i18n.t('common:scanning_projects'),
+        description: total > 0 ? `${current} / ${total}` : undefined,
+        progress: { current, total },
+        status: 'running',
+      })
+    } else if (total > 0) {
+      updateTask('scan-projects', { status: 'completed', progress: { current, total } })
+      scheduleRemoval('scan-projects')
     }
-  }, [registerTask, updateTask, unregisterTask, scheduleRemoval])
+  })
+
+  useTauriEvent<[number, number]>('version-scan-progress', ([current, total]) => {
+    if (current < total) {
+      registerTask({
+        id: 'scan-versions',
+        type: 'scan-versions',
+        label: i18n.t('common:scanning_versions'),
+        description: total > 0 ? `${current} / ${total}` : undefined,
+        progress: { current, total },
+        status: 'running',
+      })
+    } else if (total > 0) {
+      updateTask('scan-versions', { status: 'completed', progress: { current, total } })
+      scheduleRemoval('scan-versions')
+    }
+  })
+
+  useTauriEvent<string>('godot-download-queued', (key) => {
+    registerTask({
+      id: `download-${key}`,
+      type: 'download-godot',
+      label: i18n.t('common:downloading_version', { version: key }),
+      description: i18n.t('common:queued'),
+      progress: null,
+      status: 'queued',
+    })
+  })
+
+  useTauriEvent<DownloadProgress>('godot-download-progress', (payload) => {
+    const { tag, downloaded, total } = payload
+    const id = `download-${tag}`
+    const pct =
+      total > 0 ? Math.round((downloaded / total) * 100) : 0
+    registerTask({
+      id,
+      type: 'download-godot',
+      label: i18n.t('common:downloading_version', { version: tag }),
+      description:
+        total > 0
+          ? `${(downloaded / 1024 / 1024).toFixed(1)} / ${(total / 1024 / 1024).toFixed(1)} MB (${pct}%)`
+          : `${(downloaded / 1024 / 1024).toFixed(1)} MB`,
+      progress: total > 0 ? { current: downloaded, total } : null,
+      status: 'running',
+    })
+  })
+
+  useTauriEvent<string>('godot-download-paused', (key) => {
+    updateTask(`download-${key}`, { status: 'paused' })
+  })
+
+  useTauriEvent<string>('godot-download-canceled', (key) => {
+    unregisterTask(`download-${key}`)
+  })
+
+  useTauriEvent<{ tag: string; message: string }>('godot-download-error', (payload) => {
+    updateTask(`download-${payload.tag}`, {
+      status: 'error',
+      errorMessage: payload.message,
+    })
+    scheduleRemoval(`download-${payload.tag}`, 6000)
+  })
+
+  useTauriEvent<string>('godot-download-complete', (key) => {
+    updateTask(`download-${key}`, { status: 'completed' })
+    scheduleRemoval(`download-${key}`, 3000)
+  })
 
   const clearCompleted = useCallback(() => {
     setTasks((prev) =>
@@ -216,7 +184,6 @@ export function TaskTrayProvider({ children }: { children: ReactNode }) {
           t.status === 'paused',
       ),
     )
-    // Clear all associated timers
     timersRef.current.forEach((timer) => clearTimeout(timer))
     timersRef.current.clear()
   }, [])

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { listen } from '@tauri-apps/api/event'
 import { api } from '../lib/api'
+import { useTauriEvent } from '../lib/useTauriEvent'
 import { useWorkspaces } from './useWorkspaces'
 import type {
   DownloadProgress,
@@ -26,6 +26,7 @@ export function useGodotVersions() {
     current: number
     total: number
   } | null>(null)
+
   const refreshInstalled = useCallback(
     async () => setInstalled(await api.listInstalledGodotVersions()),
     [],
@@ -74,67 +75,53 @@ export function useGodotVersions() {
 
   useEffect(() => {
     refreshAvailable()
+  }, [refreshAvailable, activeId])
 
-    const unlistenScan = listen<[number, number]>(
-      'version-scan-progress',
-      (e) => {
-        const [current, total] = e.payload
-        setScanProgress({ current, total })
-        if (current >= total) {
-          setTimeout(() => setScanProgress(null), 800)
-        }
-      },
-    )
-    const unlistenQueued = listen<string>('godot-download-queued', (e) => {
-      setDownloads((prev) => ({
-        ...prev,
-        [e.payload]: {
-          tag: e.payload,
-          downloaded: prev[e.payload]?.downloaded ?? 0,
-          total: prev[e.payload]?.total ?? 0,
-          status: 'queued',
-        },
-      }))
-    })
-    const unlistenProgress = listen<DownloadProgress>(
-      'godot-download-progress',
-      (e) => {
-        setDownloads((prev) => ({
-          ...prev,
-          [e.payload.tag]: { ...e.payload, status: 'downloading' },
-        }))
-      },
-    )
-    const unlistenPaused = listen<string>('godot-download-paused', (e) => {
-      setDownloads((prev) =>
-        prev[e.payload]
-          ? { ...prev, [e.payload]: { ...prev[e.payload], status: 'paused' } }
-          : prev,
-      )
-    })
-    const unlistenCanceled = listen<string>('godot-download-canceled', (e) =>
-      clearKey(e.payload),
-    )
-    const unlistenError = listen<{ tag: string; message: string }>(
-      'godot-download-error',
-      (e) => {
-        clearKey(e.payload.tag)
-      },
-    )
-    const unlistenComplete = listen<string>('godot-download-complete', (e) => {
-      clearKey(e.payload)
-      refreshInstalled()
-    })
-    return () => {
-      unlistenQueued.then((f) => f())
-      unlistenProgress.then((f) => f())
-      unlistenPaused.then((f) => f())
-      unlistenCanceled.then((f) => f())
-      unlistenError.then((f) => f())
-      unlistenComplete.then((f) => f())
-      unlistenScan.then((f) => f())
+  // --- Tauri event listeners ---
+  useTauriEvent<[number, number]>('version-scan-progress', ([current, total]) => {
+    setScanProgress({ current, total })
+    if (current >= total) {
+      setTimeout(() => setScanProgress(null), 800)
     }
-  }, [refreshInstalled, refreshAvailable, activeId])
+  })
+
+  useTauriEvent<string>('godot-download-queued', (key) => {
+    setDownloads((prev) => ({
+      ...prev,
+      [key]: {
+        tag: key,
+        downloaded: prev[key]?.downloaded ?? 0,
+        total: prev[key]?.total ?? 0,
+        status: 'queued',
+      },
+    }))
+  })
+
+  useTauriEvent<DownloadProgress>('godot-download-progress', (payload) => {
+    setDownloads((prev) => ({
+      ...prev,
+      [payload.tag]: { ...payload, status: 'downloading' },
+    }))
+  })
+
+  useTauriEvent<string>('godot-download-paused', (key) => {
+    setDownloads((prev) =>
+      prev[key]
+        ? { ...prev, [key]: { ...prev[key], status: 'paused' } }
+        : prev,
+    )
+  })
+
+  useTauriEvent<string>('godot-download-canceled', (key) => clearKey(key))
+
+  useTauriEvent<{ tag: string; message: string }>('godot-download-error', (payload) => {
+    clearKey(payload.tag)
+  })
+
+  useTauriEvent<string>('godot-download-complete', (key) => {
+    clearKey(key)
+    refreshInstalled()
+  })
 
   const download = useCallback(
     async (tag: string, assetName: string, url: string) => {
@@ -148,8 +135,8 @@ export function useGodotVersions() {
     [],
   )
 
-  const pause = useCallback(async (key: string) => api.pauseDownload(key), [])
-  const resume = useCallback(async (key: string) => api.resumeDownload(key), [])
+  const pause = useCallback((key: string) => api.pauseDownload(key), [])
+  const resume = useCallback((key: string) => api.resumeDownload(key), [])
   const cancel = useCallback(async (key: string) => {
     await api.cancelDownload(key)
     clearKey(key)

@@ -1,4 +1,5 @@
 use crate::models::*;
+use crate::persist;
 use std::fs;
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
@@ -28,19 +29,13 @@ pub fn workspace_dir(app: &AppHandle, id: &str) -> PathBuf {
 }
 
 fn write_state(app: &AppHandle, state: &WorkspacesState) -> Result<(), String> {
-    fs::write(
-        workspaces_file(app),
-        serde_json::to_string_pretty(state).map_err(|e| e.to_string())?,
-    )
-    .map_err(|e| e.to_string())
+    persist::write_json(&workspaces_file(app), state).map_err(|e| e.to_string())
 }
 
 pub fn read_state(app: &AppHandle) -> WorkspacesState {
     let file = workspaces_file(app);
     if file.exists() {
-        if let Ok(state) =
-            serde_json::from_str::<WorkspacesState>(&fs::read_to_string(&file).unwrap_or_default())
-        {
+        if let Some(state) = persist::read_json_opt::<WorkspacesState>(&file) {
             if !state.workspaces.is_empty()
                 && state.workspaces.iter().any(|w| w.id == state.active_id)
             {
@@ -49,6 +44,7 @@ pub fn read_state(app: &AppHandle) -> WorkspacesState {
         }
     }
 
+    // Migration: move legacy data into workspace directory
     let base = app.path().app_data_dir().expect("no app data dir");
     let id = Uuid::new_v4().to_string();
     let dir = workspace_dir(app, &id);
@@ -59,17 +55,14 @@ pub fn read_state(app: &AppHandle) -> WorkspacesState {
             let _ = fs::rename(&src, &dst);
         }
     }
+    for legacy_file in ["godot-versions.json", "templates"] {
+        let src = base.join(legacy_file);
+        let dst = dir.join(legacy_file);
+        if src.exists() && !dst.exists() {
+            let _ = fs::rename(&src, &dst);
+        }
+    }
 
-    let versions_src = base.join("godot-versions.json");
-    let versions_dst = dir.join("godot-versions.json");
-    if versions_src.exists() && !versions_dst.exists() {
-        let _ = fs::rename(&versions_src, &versions_dst);
-    }
-    let templates_src = base.join("templates");
-    let templates_dst = dir.join("templates");
-    if templates_src.exists() && !templates_dst.exists() {
-        let _ = fs::rename(&templates_src, &templates_dst);
-    }
     let workspace = Workspace {
         id: id.clone(),
         name: "Default".to_string(),
@@ -149,38 +142,22 @@ pub fn update_workspace(
     color: Option<String>,
 ) -> Result<WorkspacesState, String> {
     let mut state = read_state(&app);
-
-    if let Some(name) = &name {
-        let trimmed = name.trim();
+    if let Some(ref n) = name {
+        let trimmed = n.trim();
         if trimmed.is_empty() {
             return Err("Workspace name can't be empty".into());
         }
-        if state
-            .workspaces
-            .iter()
-            .any(|w| w.id != id && w.name.eq_ignore_ascii_case(trimmed))
-        {
+        if state.workspaces.iter().any(|w| w.id != id && w.name.eq_ignore_ascii_case(trimmed)) {
             return Err("A workspace with this name already exists".into());
         }
     }
-
-    {
-        let ws = state
-            .workspaces
-            .iter_mut()
-            .find(|w| w.id == id)
-            .ok_or("Workspace not found")?;
-        if let Some(name) = name {
-            ws.name = name.trim().to_string();
-        }
-        if let Some(icon) = icon {
-            ws.icon = icon;
-        }
-        if let Some(color) = color {
-            ws.color = color;
-        }
+    if let Some(ws) = state.workspaces.iter_mut().find(|w| w.id == id) {
+        if let Some(ref n) = name { ws.name = n.trim().to_string(); }
+        if let Some(icon) = icon { ws.icon = icon; }
+        if let Some(color) = color { ws.color = color; }
+    } else {
+        return Err("Workspace not found".into());
     }
-
     write_state(&app, &state)?;
     Ok(state)
 }
@@ -191,11 +168,7 @@ pub fn delete_workspace(app: AppHandle, id: String) -> Result<WorkspacesState, S
     if state.workspaces.len() <= 1 {
         return Err("Can't delete your only workspace".into());
     }
-    let idx = state
-        .workspaces
-        .iter()
-        .position(|w| w.id == id)
-        .ok_or("Workspace not found")?;
+    let idx = state.workspaces.iter().position(|w| w.id == id).ok_or("Workspace not found")?;
     state.workspaces.remove(idx);
     if state.active_id == id {
         state.active_id = state.workspaces[0].id.clone();

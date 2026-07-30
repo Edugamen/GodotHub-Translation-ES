@@ -1,4 +1,5 @@
 use crate::models::*;
+use crate::persist;
 use crate::settings;
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -60,11 +61,7 @@ pub(crate) fn read_projects(app: &AppHandle) -> Vec<Project> {
 }
 
 pub(crate) fn write_projects(app: &AppHandle, projects: &Vec<Project>) -> Result<(), String> {
-    fs::write(
-        projects_file(app),
-        serde_json::to_string_pretty(projects).map_err(|e| e.to_string())?,
-    )
-    .map_err(|e| e.to_string())
+    persist::write_json(&projects_file(app), projects).map_err(|e| e.to_string())
 }
 
 fn next_sort_order(projects: &[Project], category: &Option<String>) -> i64 {
@@ -421,7 +418,7 @@ pub fn open_project(
     project.last_opened = Some(chrono::Utc::now().to_rfc3339());
     write_projects(&app, &projects)?;
 
-    let _ = crate::refresh_tray_menu(app.clone());
+    let _ = crate::tray::refresh_tray_menu(app.clone());
 
     if let Some(state) = app.try_state::<ActiveProcesses>() {
         state.0.lock().unwrap().insert(
