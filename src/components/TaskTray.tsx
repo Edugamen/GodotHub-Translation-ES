@@ -182,7 +182,6 @@ export function TaskTray() {
       aria-label={t('task_tray_aria')}
       className="relative w-9 cursor-pointer flex items-center justify-center text-muted hover:text-ink transition-colors shrink-0"
       whileHover={{
-        y: -2,
         scale: 1.1,
       }}
       transition={{

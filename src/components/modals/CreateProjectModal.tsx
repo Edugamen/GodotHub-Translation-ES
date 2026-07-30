@@ -236,7 +236,7 @@ export function CreateProjectModal({
               onChange={setVersion}
               options={installedVersions.map((v) => ({
                 value: v.tag,
-                label: v.custom_name || v.version,
+                label: v.custom_name || v.tag,
                 dotClassName: 'bg-mint',
                 badge: v.is_mono ? 'Mono' : undefined,
               }))}
