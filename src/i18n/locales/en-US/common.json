@@ -582,7 +582,6 @@
   "git_push_uncommitted_confirm": "Push anyway",
   "restart_required_title": "Restart required",
   "restart_required_desc": "This change requires GodotHub to restart to take full effect. The setting has been saved and will apply when you relaunch the app.",
-  "restart_now": "Restart Now",
   "git_force_push_title": "Force push, are you sure?",
   "git_force_push_desc": "This will overwrite the remote branch with your local history. Other collaborators' work may be lost. This should be used with extreme caution.",
   "git_force_push_confirm": "Force push",
