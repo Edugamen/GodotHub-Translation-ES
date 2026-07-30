@@ -22,7 +22,8 @@ pub fn get_settings(app: AppHandle) -> AppSettings {
 }
 
 #[tauri::command]
-pub fn update_settings(app: AppHandle, settings: AppSettings) -> Result<AppSettings, String> {
+pub fn update_settings(app: AppHandle, mut settings: AppSettings) -> Result<AppSettings, String> {
+    settings.dismissed_project_paths = read_settings(&app).dismissed_project_paths;
     write_settings(&app, &settings).map_err(|e| e.to_string())?;
     Ok(settings)
 }
@@ -47,6 +48,7 @@ pub fn reset_settings(app: AppHandle) -> Result<AppSettings, String> {
         scan_depth: current.scan_depth,
         setup_complete: current.setup_complete,
         language: current.language,
+        dismissed_project_paths: current.dismissed_project_paths,
         ..AppSettings::default()
     };
     write_settings(&app, &reset).map_err(|e| e.to_string())?;
