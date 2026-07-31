@@ -137,6 +137,7 @@ pub fn run() {
             projects::validate_godot_folder,
             projects::stop_project,
             projects::pick_file,
+            projects::read_image_file,
             projects::write_project_tags,
             // --- Categories ---
             categories::list_categories,

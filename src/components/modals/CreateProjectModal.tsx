@@ -1,11 +1,19 @@
-import { useEffect, useMemo, useState } from 'react'
-import { motion } from 'framer-motion'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import type { Category, InstalledGodotVersion, ProjectTemplate } from '../../types'
 import { api } from '../../lib/api'
 import { applyNamingConvention } from '../../lib/namingConvention'
 import { useSettings } from '../../hooks/useSettings'
-import { Dropdown } from '../ui/Dropdown'
+import { TemplatePreviewModal } from './TemplatePreviewModal'
+import {
+  IconFolderPlus,
+  IconX,
+  IconCheck,
+  IconBookOpen,
+  IconAlertTriangle,
+  IconSpinner,
+} from '../Icons'
 
 interface Props {
   installedVersions: InstalledGodotVersion[]
@@ -21,7 +29,7 @@ const ICON_PRESET_SVG = (
     fill="none"
     stroke="currentColor"
     strokeWidth={1.5}
-    className="w-5 h-5 text-muted"
+    className="w-6 h-6 text-muted"
   >
     <path
       strokeLinecap="round"
@@ -44,16 +52,23 @@ export function CreateProjectModal({
   const [location, setLocation] = useState(defaultLocation ?? '')
   const [version, setVersion] = useState(installedVersions[0]?.tag ?? '')
   const [iconPath, setIconPath] = useState<string | null>(null)
+  const [iconPreview, setIconPreview] = useState<string | null>(null)
   const [templateId, setTemplateId] = useState<string | null>(null)
+  const [previewTemplate, setPreviewTemplate] = useState<ProjectTemplate | null>(null)
   const [category, setCategory] = useState('')
   const [templates, setTemplates] = useState<ProjectTemplate[]>([])
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [attempted, setAttempted] = useState(false)
+  const nameInputRef = useRef<HTMLInputElement>(null)
 
   const folderName = useMemo(
     () => applyNamingConvention(name, settings.directory_naming_convention),
     [name, settings.directory_naming_convention],
   )
+
+  const selectedVersion = installedVersions.find((v) => v.tag === version)
+  const selectedCategory = categories.find((c) => c.name === category)
 
   const projectNamePlaceholder = useMemo(() => {
     const names = [
@@ -85,31 +100,76 @@ export function CreateProjectModal({
     api.listTemplates().then(setTemplates).catch(() => {})
   }, [])
 
+  useEffect(() => {
+    nameInputRef.current?.focus()
+  }, [])
+
+  // Turn the picked icon file into a previewable data URL
+  useEffect(() => {
+    if (!iconPath) {
+      setIconPreview(null)
+      return
+    }
+    let cancelled = false
+    api
+      .readImageFile(iconPath)
+      .then((data) => {
+        if (!cancelled) setIconPreview(data)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [iconPath])
+
+  // Escape closes the dialog
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
+
   const pickLocation = async () => {
     const folder = await api.pickFolder()
-    if (folder) setLocation(folder)
+    if (folder) {
+      setLocation(folder)
+      setError(null)
+    }
   }
 
   const pickIcon = async () => {
     const file = await api.pickFile()
-    if (file) {
-      setIconPath(file)
-    }
+    if (file) setIconPath(file)
   }
 
   const clearIcon = () => {
     setIconPath(null)
+    setIconPreview(null)
   }
 
+  const nameInvalid = attempted && !name.trim()
+  const locationInvalid = attempted && !location
+
   const submit = async () => {
-    if (!name || !location) {
+    if (busy) return
+    if (!name.trim() || !location) {
+      setAttempted(true)
       setError(t('create_project_error'))
       return
     }
     setBusy(true)
     setError(null)
     try {
-      await api.createProject(name, location, version, iconPath, templateId, category || null)
+      await api.createProject(
+        name.trim(),
+        location,
+        version,
+        iconPath,
+        templateId,
+        category || null,
+      )
       onCreated()
     } catch (e) {
       setError(String(e))
@@ -117,6 +177,8 @@ export function CreateProjectModal({
       setBusy(false)
     }
   }
+
+  const previewName = name.trim() || t('untitled_project')
 
   return (
     <motion.div
@@ -127,191 +189,371 @@ export function CreateProjectModal({
       onClick={onClose}
     >
       <motion.div
-        initial={{ opacity: 0, y: 12, scale: 0.96 }}
+        initial={{ opacity: 0, y: 14, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-        className="bg-surface border border-line rounded-2xl p-8 w-full max-w-2xl flex flex-col gap-6 shadow-2xl"
+        className="bg-surface border border-line rounded-2xl w-full max-w-4xl max-h-[88vh] flex flex-col shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div>
-          <h3 className="font-display font-semibold text-xl">{t('create_project_title')}</h3>
-          <p className="text-xs text-muted mt-1">
-            {t('create_project_desc')}
-          </p>
-        </div>
-
-        {/* Row 1: Name + Location */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex flex-col gap-2">
-            <label className="text-xs font-medium text-muted">{t('project_name_label')}</label>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="focus-ring bg-raised border border-line rounded-lg px-3.5 py-2.5 text-sm focus:border-accent-dim transition-colors"
-              placeholder={projectNamePlaceholder}
-            />
-            {name.trim() && (
-              <p className="text-[10px] text-muted/60 font-mono truncate">
-                {t('folder_name_preview', { name: folderName })}
+        {/* Header */}
+        <div className="flex items-start justify-between gap-4 p-6 pb-4 border-b border-line">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-accent/10 border border-accent-dim/30 flex items-center justify-center shrink-0">
+              <IconFolderPlus className="w-5 h-5 text-accent-bright" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-display font-semibold text-xl">
+                {t('create_project_title')}
+              </h3>
+              <p className="text-xs text-muted mt-0.5">
+                {t('create_project_desc')}
               </p>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-xs font-medium text-muted">{t('project_location_label')}</label>
-            <div className="flex gap-2.5">
-              <input
-                value={location}
-                readOnly
-                className="flex-1 bg-raised border border-line rounded-lg px-3.5 py-2.5 text-sm font-mono text-muted truncate"
-                placeholder={t('choose_folder_placeholder')}
-              />
-              <motion.button
-                whileHover={{ y: -1 }}
-                whileTap={{ scale: 0.96 }}
-                onClick={pickLocation}
-                className="focus-ring cursor-pointer px-4 py-2.5 rounded-lg border border-line hover:border-accent-dim hover:bg-raised text-sm transition-colors shrink-0"
-              >
-                {t('browse')}
-              </motion.button>
             </div>
           </div>
+          <button
+            onClick={onClose}
+            className="focus-ring cursor-pointer p-1.5 rounded-lg text-muted hover:text-ink hover:bg-raised transition-colors shrink-0"
+            aria-label={t('close')}
+          >
+            <IconX className="w-4 h-4" />
+          </button>
         </div>
 
-        {/* Row 2: Template + Category */}
-        <div className="grid grid-cols-2 gap-4">
-          {templates.length > 0 && (
+        {/* Body */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 p-6 flex-1 overflow-y-auto">
+          {/* ---------- Form column ---------- */}
+          <div className="md:col-span-3 flex flex-col gap-5">
             <div className="flex flex-col gap-2">
               <label className="text-xs font-medium text-muted">
-                  {t('template_optional')}
-                </label>
-              <div className="flex flex-wrap gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setTemplateId(null)}
-                  className={`focus-ring cursor-pointer px-2.5 py-1.5 rounded-lg border text-[11px] font-medium transition-colors ${
-                    templateId === null
-                      ? 'border-accent bg-accent/10 text-accent-bright'
-                      : 'border-line text-muted hover:border-accent-dim hover:text-ink'
-                  }`}
-                >
-                  {t('blank_template')}
-                </button>
-                {templates.map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => setTemplateId(t.id)}
-                    className={`focus-ring cursor-pointer px-2.5 py-1.5 rounded-lg border text-[11px] font-medium transition-colors ${
-                      templateId === t.id
-                        ? 'border-accent bg-accent/10 text-accent-bright'
-                        : 'border-line text-muted hover:border-accent-dim hover:text-ink'
-                    }`}
-                  >
-                    {t.name}
-                  </button>
-                ))}
-              </div>
-              {templateId && (
-                <p className="text-[10px] text-muted/60">
-                  {t('template_copy_desc')}
-                </p>
-              )}
-            </div>
-          )}
-
-          {categories.length > 0 && (
-            <div className={`flex flex-col gap-2 ${templates.length === 0 ? 'col-span-2' : ''}`}>
-              <label className="text-xs font-medium text-muted">
-                {t('category_optional')}
+                {t('project_name_label')}
               </label>
-              <Dropdown
-                value={category}
-                onChange={setCategory}
-                emptyLabel={t('no_category_label')}
-                options={categories.map((c) => ({
-                  value: c.name,
-                  label: c.name,
-                  dotClassName: undefined,
-                  dotColor: c.color,
-                }))}
+              <input
+                ref={nameInputRef}
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value)
+                  if (error) setError(null)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') submit()
+                }}
+                className={`focus-ring bg-raised border rounded-lg px-3.5 py-2.5 text-sm transition-colors ${
+                  nameInvalid
+                    ? 'border-danger/70 focus:border-danger'
+                    : 'border-line focus:border-accent-dim'
+                }`}
+                placeholder={projectNamePlaceholder}
               />
-            </div>
-          )}
-        </div>
-
-        {/* Row 3: Version + Icon */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex flex-col gap-2">
-            <label className="text-xs font-medium text-muted">{t('godot_version_label')}</label>
-            <Dropdown
-              value={version}
-              onChange={setVersion}
-              options={installedVersions.map((v) => ({
-                value: v.tag,
-                label: v.custom_name || v.tag,
-                dotClassName: 'bg-mint',
-                badge: v.is_mono ? 'Mono' : undefined,
-              }))}
-            />
-            {installedVersions.length === 0 && (
-              <p className="text-xs text-amber">
-                {t('no_engine_warning')}
-              </p>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-xs font-medium text-muted">
-              {t('project_icon_label')}
-            </label>
-            <div className="flex items-center gap-3">
-              {/* Icon preview */}
-              <div className="w-11 h-11 rounded-xl border border-line bg-raised flex items-center justify-center overflow-hidden shrink-0">
-                {ICON_PRESET_SVG}
+              <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted/60">
+                <IconFolderPlus className="w-3 h-3 text-accent-bright/70 shrink-0" />
+                <span className="truncate">
+                  {name.trim()
+                    ? t('folder_name_preview', { name: folderName })
+                    : t('folder_name_hint')}
+                </span>
               </div>
-              <div className="flex gap-2 flex-1">
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-medium text-muted">
+                {t('project_location_label')}
+              </label>
+              <div className="flex gap-2.5">
+                <input
+                  value={location}
+                  readOnly
+                  onClick={pickLocation}
+                  className={`flex-1 bg-raised border rounded-lg px-3.5 py-2.5 text-sm font-mono text-muted truncate transition-colors ${
+                    locationInvalid
+                      ? 'border-danger/70'
+                      : 'border-line'
+                  }`}
+                  placeholder={t('choose_folder_placeholder')}
+                />
                 <motion.button
                   whileHover={{ y: -1 }}
                   whileTap={{ scale: 0.96 }}
-                  onClick={pickIcon}
-                  className="focus-ring cursor-pointer px-3 py-2 rounded-lg border border-line hover:border-accent-dim hover:bg-raised text-xs transition-colors"
+                  onClick={pickLocation}
+                  className="focus-ring cursor-pointer px-4 py-2.5 rounded-lg border border-line hover:border-accent-dim hover:bg-raised text-sm transition-colors shrink-0"
                 >
-                  {iconPath ? t('change_icon') : t('choose_icon')}
+                  {t('browse')}
                 </motion.button>
-                {iconPath && (
-                  <motion.button
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    whileHover={{ y: -1 }}
-                    whileTap={{ scale: 0.96 }}
-                    onClick={clearIcon}
-                    className="focus-ring cursor-pointer px-3 py-2 rounded-lg border border-line text-muted hover:text-danger hover:border-danger/30 hover:bg-danger/10 text-xs transition-colors"
-                  >
-                    {t('reset_icon')}
-                  </motion.button>
-                )}
               </div>
             </div>
-            {iconPath && (
-              <p className="text-[10px] text-muted/60 font-mono truncate mt-0.5">
-                {iconPath}
-              </p>
+
+            {templates.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-medium text-muted">
+                  {t('template_optional')}
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setTemplateId(null)}
+                    className={`focus-ring cursor-pointer px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                      templateId === null
+                        ? 'border-accent bg-accent/10 text-accent-bright'
+                        : 'border-line text-muted hover:border-accent-dim hover:text-ink hover:bg-raised'
+                    }`}
+                  >
+                    {templateId === null && (
+                      <IconCheck className="w-3 h-3 inline mr-1 -mt-0.5" />
+                    )}
+                    {t('blank_template')}
+                  </button>
+                  {templates.map((tpl) => (
+                    <span
+                      key={tpl.id}
+                      className="relative inline-flex group"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setTemplateId(tpl.id)}
+                        className={`focus-ring cursor-pointer px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                          templateId === tpl.id
+                            ? 'border-accent bg-accent/10 text-accent-bright'
+                            : 'border-line text-muted hover:border-accent-dim hover:text-ink hover:bg-raised'
+                        }`}
+                      >
+                        {templateId === tpl.id && (
+                          <IconCheck className="w-3 h-3 inline mr-1 -mt-0.5" />
+                        )}
+                        {tpl.name}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewTemplate(tpl)}
+                        aria-label={t('template_preview_aria', { name: tpl.name })}
+                        className="focus-ring cursor-pointer absolute -top-2 -right-2 w-5 h-5 rounded-full bg-surface border border-line text-muted hover:text-accent-bright hover:border-accent-dim shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
+                      >
+                        <IconBookOpen className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
             )}
-            <p className="text-[10px] text-muted/40">
-              {t('icon_format_desc')}
-            </p>
+
+            <div className="flex flex-col gap-5">
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-medium text-muted">
+                  {t('godot_version_label')}
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {installedVersions.map((v) => {
+                    const active = version === v.tag
+                    return (
+                      <button
+                        key={v.tag}
+                        type="button"
+                        onClick={() => setVersion(v.tag)}
+                        className={`focus-ring cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                          active
+                            ? 'border-mint bg-mint/10 text-mint'
+                            : 'border-line text-muted hover:border-mint/40 hover:text-ink hover:bg-raised'
+                        }`}
+                      >
+                        {active && <IconCheck className="w-3 h-3 inline -mt-0.5" />}
+                        <span className="w-1.5 h-1.5 rounded-full bg-mint shrink-0" />
+                        {v.custom_name || v.tag}
+                        {v.is_mono && (
+                          <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-mint/15 text-mint border border-mint/25 shrink-0">
+                            Mono
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+                {installedVersions.length === 0 && (
+                  <p className="text-xs text-amber">
+                    {t('no_engine_warning')}
+                  </p>
+                )}
+              </div>
+
+              {categories.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-medium text-muted">
+                    {t('category_optional')}
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setCategory('')}
+                      className={`focus-ring cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                        category === ''
+                          ? 'border-accent bg-accent/10 text-accent-bright'
+                          : 'border-line text-muted hover:border-accent-dim hover:text-ink hover:bg-raised'
+                      }`}
+                    >
+                      {category === '' && <IconCheck className="w-3 h-3 inline -mt-0.5" />}
+                      {t('no_category_label')}
+                    </button>
+                    {categories.map((c) => {
+                      const active = category === c.name
+                      return (
+                        <button
+                          key={c.name}
+                          type="button"
+                          onClick={() => setCategory(c.name)}
+                          className={`focus-ring cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                            active
+                              ? ''
+                              : 'border-line text-muted hover:border-accent-dim hover:text-ink hover:bg-raised'
+                          }`}
+                          style={
+                            active
+                              ? {
+                                  borderColor: c.color,
+                                  backgroundColor: `${c.color}18`,
+                                  color: c.color,
+                                }
+                              : undefined
+                          }
+                        >
+                          {active && <IconCheck className="w-3 h-3 inline -mt-0.5" />}
+                          <span
+                            className="w-1.5 h-1.5 rounded-full ring-1 ring-black/10 shrink-0"
+                            style={{ backgroundColor: c.color }}
+                          />
+                          {c.name}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3.5">
+              <div className="w-14 h-14 rounded-xl border border-line bg-raised flex items-center justify-center overflow-hidden shrink-0">
+                {iconPreview ? (
+                  <img
+                    src={iconPreview}
+                    alt=""
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  ICON_PRESET_SVG
+                )}
+              </div>
+              <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+                <div className="flex gap-2">
+                  <motion.button
+                    whileHover={{ y: -1 }}
+                    whileTap={{ scale: 0.96 }}
+                    onClick={pickIcon}
+                    className="focus-ring cursor-pointer px-3 py-2 rounded-lg border border-line hover:border-accent-dim hover:bg-raised text-xs transition-colors"
+                  >
+                    {iconPath ? t('change_icon') : t('choose_icon')}
+                  </motion.button>
+                  {iconPath && (
+                    <motion.button
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      whileHover={{ y: -1 }}
+                      whileTap={{ scale: 0.96 }}
+                      onClick={clearIcon}
+                      className="focus-ring cursor-pointer px-3 py-2 rounded-lg border border-line text-muted hover:text-danger hover:border-danger/30 hover:bg-danger/10 text-xs transition-colors"
+                    >
+                      {t('reset_icon')}
+                    </motion.button>
+                  )}
+                </div>
+                {iconPath && (
+                  <p className="text-[10px] text-muted/60 font-mono truncate">
+                    {iconPath}
+                  </p>
+                )}
+                <p className="text-[10px] text-muted/40">
+                  {t('icon_format_desc')}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* ---------- Live preview column ---------- */}
+          <div className="md:col-span-2 flex flex-col gap-2">
+            <label className="text-xs font-medium text-muted">
+              {t('preview_label')}
+            </label>
+            <div className="flex-1">
+              <div className="relative overflow-hidden rounded-xl border border-line bg-base/50 p-4 isolate h-full min-h-44">
+                <div className="relative flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-lg border border-line bg-raised flex items-center justify-center overflow-hidden shrink-0">
+                    {iconPreview ? (
+                      <img
+                        src={iconPreview}
+                        alt=""
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      ICON_PRESET_SVG
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="font-display font-semibold text-lg truncate">
+                      {previewName}
+                    </h4>
+                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                      {selectedVersion && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-mint/10 border border-mint/25 text-mint text-[10px] font-mono font-medium">
+                          <span className="w-1.5 h-1.5 rounded-full bg-mint" />
+                          {selectedVersion.custom_name || selectedVersion.tag}
+                        </span>
+                      )}
+                      {selectedCategory && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-raised border border-line text-[10px] font-mono text-muted">
+                          <span
+                            className="w-1.5 h-1.5 rounded-full ring-1 ring-black/10"
+                            style={{ backgroundColor: selectedCategory.color }}
+                          />
+                          {selectedCategory.name}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="relative mt-3 pt-3 border-t border-line">
+                  {settings.directory_naming_convention !== 'keep' && (
+                    <p className="text-[10px] font-mono text-accent-bright/80 mt-1">
+                      {t('folder_name_preview', { name: folderName })}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        {error && <p className="text-xs text-danger">{error}</p>}
+        {/* Error */}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+              className="px-6 overflow-hidden"
+            >
+              <div className="flex items-start gap-2.5 rounded-xl border border-danger/25 bg-danger/10 px-4 py-3">
+                <IconAlertTriangle className="w-4 h-4 text-danger shrink-0 mt-0.5" />
+                <p className="text-xs text-danger leading-relaxed">{error}</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        <div className="flex justify-end gap-2.5 mt-1 pt-3 border-t border-line">
+        {/* Footer */}
+        <div className="flex justify-end gap-2.5 p-6 pt-4 border-t border-line">
           <motion.button
             whileHover={{ y: -1 }}
             whileTap={{ scale: 0.96 }}
             onClick={onClose}
-            className="focus-ring cursor-pointer px-4 py-2.5 rounded-lg text-sm text-muted hover:text-ink hover:bg-raised transition-colors"
+            disabled={busy}
+            className="focus-ring cursor-pointer px-4 py-2.5 rounded-lg text-sm text-muted hover:text-ink hover:bg-raised transition-colors disabled:opacity-50"
           >
             {t('cancel')}
           </motion.button>
@@ -320,12 +562,30 @@ export function CreateProjectModal({
             whileTap={busy ? undefined : { scale: 0.96 }}
             onClick={submit}
             disabled={busy}
-            className="focus-ring px-5 cursor-pointer py-2.5 rounded-lg bg-accent hover:bg-accent-bright disabled:opacity-50 text-sm font-medium text-white transition-colors"
+            className="focus-ring px-5 cursor-pointer py-2.5 rounded-lg bg-accent hover:bg-accent-bright disabled:opacity-50 text-sm font-medium text-white transition-colors flex items-center gap-2"
           >
-            {busy ? t('creating') : t('create_project_btn')}
+            {busy ? (
+              <>
+                <IconSpinner className="w-3.5 h-3.5 animate-spin" />
+                {t('creating')}
+              </>
+            ) : (
+              t('create_project_btn')
+            )}
           </motion.button>
         </div>
       </motion.div>
+
+      <AnimatePresence>
+        {previewTemplate && (
+          <div onClick={(e) => e.stopPropagation()} className="fixed inset-0 z-[60]">
+            <TemplatePreviewModal
+              template={previewTemplate}
+              onClose={() => setPreviewTemplate(null)}
+            />
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   )
 }

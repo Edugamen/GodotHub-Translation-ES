@@ -40,6 +40,8 @@ export const projectsApi = {
     invoke<ProjectSizeInfo>('get_project_size', { path }),
   pickFolder: () => invoke<string | null>('pick_folder'),
   pickFile: () => invoke<string | null>('pick_file'),
+  readImageFile: (path: string) =>
+    invoke<string | null>('read_image_file', { path }),
   getIcon: (path: string) => {
     const cached = iconCache.get(path)
     if (cached !== undefined) return Promise.resolve(cached)

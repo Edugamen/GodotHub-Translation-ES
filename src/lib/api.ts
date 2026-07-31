@@ -31,6 +31,7 @@ export const api = {
   getProjectSize: projectsApi.getSize,
   pickFolder: projectsApi.pickFolder,
   pickFile: projectsApi.pickFile,
+  readImageFile: projectsApi.readImageFile,
   getProjectIcon: projectsApi.getIcon,
   getProjectName: projectsApi.getName,
   reintroduceDismissedProjects: projectsApi.reintroduceDismissed,

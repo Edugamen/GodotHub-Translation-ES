@@ -825,6 +825,32 @@ pub async fn pick_file(app: tauri::AppHandle) -> Option<String> {
     rx.recv().ok().flatten().map(|p| p.to_string())
 }
 
+#[tauri::command]
+pub async fn read_image_file(path: String) -> Option<String> {
+    tokio::task::spawn_blocking(move || {
+        let bytes = std::fs::read(&path).ok()?;
+        let lower = path.to_lowercase();
+        let mime = if lower.ends_with(".png") {
+            "image/png"
+        } else if lower.ends_with(".jpg") || lower.ends_with(".jpeg") {
+            "image/jpeg"
+        } else if lower.ends_with(".webp") {
+            "image/webp"
+        } else {
+            "image/svg+xml"
+        };
+        use base64::{engine::general_purpose, Engine as _};
+        Some(format!(
+            "data:{};base64,{}",
+            mime,
+            general_purpose::STANDARD.encode(bytes)
+        ))
+    })
+    .await
+    .ok()
+    .flatten()
+}
+
 fn find_resource_by_uid(
     dir: &Path,
     target_uid: &str,
