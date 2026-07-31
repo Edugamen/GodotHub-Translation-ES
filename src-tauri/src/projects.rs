@@ -149,16 +149,11 @@ pub fn create_project(
     }
 
     if let Some(ref tid) = template_id {
-        let templates_root = app
-            .path()
-            .app_data_dir()
-            .expect("no app data dir")
-            .join("templates")
-            .join(tid);
-        if !templates_root.exists() {
+        let template_src = crate::templates::template_dir(&app, tid);
+        if !template_src.exists() {
             return Err("Template not found".into());
         }
-        crate::templates::copy_dir(&templates_root, &project_dir, &[])?;
+        crate::templates::copy_dir(&template_src, &project_dir, &[])?;
         let _ = fs::remove_file(project_dir.join("template.json"));
     } else {
         fs::create_dir_all(&project_dir).map_err(|e| e.to_string())?;

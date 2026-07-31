@@ -296,7 +296,7 @@ export const ProjectCard = memo(function ProjectCard({
               onClick={(e) => e.stopPropagation()}
             >
               <div>
-                <h4 className="font-display font-semibold text-base">
+                <h4 className="font-display font-semibold text-muted">
                   {t('project_save_template_title')}
                 </h4>
                 <p className="text-xs text-muted mt-1">

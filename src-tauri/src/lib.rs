@@ -53,6 +53,10 @@ pub fn run() {
 
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
+                // Merge any legacy (pre-workspace) templates folder into the
+                // active workspace and repair stale stored template paths.
+                templates::consolidate_legacy_templates(&handle);
+
                 let s = settings::read_settings(&handle);
                 if s.template_scan_dir.is_some() {
                     let _ = templates::sync_templates_with_scan_dir(handle.clone());

@@ -1,7 +1,7 @@
 use crate::models::*;
 use std::fs;
 use std::path::{Path, PathBuf};
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 use uuid::Uuid;
 
 fn templates_root(app: &AppHandle) -> PathBuf {
@@ -12,8 +12,77 @@ fn templates_root(app: &AppHandle) -> PathBuf {
     dir
 }
 
-fn template_dir(app: &AppHandle, id: &str) -> PathBuf {
+pub(crate) fn template_dir(app: &AppHandle, id: &str) -> PathBuf {
     templates_root(app).join(id)
+}
+
+fn sanitize_folder_name(name: &str) -> String {
+    let cleaned: String = name
+        .chars()
+        .map(|c| match c {
+            '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*' => '_',
+            c if (c as u32) < 32 => '_',
+            c => c,
+        })
+        .collect();
+    let trimmed = cleaned
+        .trim()
+        .trim_end_matches(|c| c == '.' || c == ' ')
+        .to_string();
+    let result = if trimmed.is_empty() {
+        "Template".to_string()
+    } else {
+        trimmed
+    };
+    // The template sync skips hidden folders (names starting with '.'), and
+    // Windows rejects reserved device names, so make the folder always usable.
+    if result.starts_with('.') || is_reserved_windows_name(&result) {
+        format!("_{result}")
+    } else {
+        result
+    }
+}
+
+fn is_reserved_windows_name(name: &str) -> bool {
+    let upper = name.to_ascii_uppercase();
+    if matches!(upper.as_str(), "CON" | "PRN" | "AUX" | "NUL" | "CLOCK$") {
+        return true;
+    }
+    for prefix in ["COM", "LPT"] {
+        if let Some(rest) = upper.strip_prefix(prefix) {
+            if rest.len() == 1
+                && rest
+                    .chars()
+                    .next()
+                    .map(|c| c.is_ascii_digit())
+                    .unwrap_or(false)
+            {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn configured_scan_dir(app: &AppHandle) -> Option<PathBuf> {
+    let settings = crate::settings::read_settings(app);
+    settings
+        .template_scan_dir
+        .as_deref()
+        .map(str::trim)
+        .filter(|d| !d.is_empty())
+        .map(PathBuf::from)
+        .and_then(|p| p.canonicalize().ok())
+}
+
+fn unique_folder_name(scan_dir: &Path, base: &str) -> String {
+    let mut name = base.to_string();
+    let mut n = 2;
+    while scan_dir.join(&name).exists() {
+        name = format!("{base} ({n})");
+        n += 1;
+    }
+    name
 }
 
 fn read_template_json(dir: &Path) -> Option<ProjectTemplate> {
@@ -70,12 +139,68 @@ pub fn list_templates(app: AppHandle) -> Vec<ProjectTemplate> {
     for entry in entries {
         let path = entry.path();
         if path.is_dir() {
-            if let Some(t) = read_template_json(&path) {
+            if let Some(mut t) = read_template_json(&path) {
+                // Always report the real on-disk folder: template.json's stored
+                // `path` can be stale for templates moved from the legacy
+                // app-data location, which made "open in folder" target the
+                // wrong directory.
+                t.path = path.to_string_lossy().to_string();
                 templates.push(t);
             }
         }
     }
     templates
+}
+
+/// One-time startup repair: merge any templates left in the legacy
+/// `app_data_dir()/templates` folder (written by pre-workspace builds) into
+/// the active workspace, fix stale `path` values inside template.json files,
+/// and remove the leftover legacy folder.
+pub(crate) fn consolidate_legacy_templates(app: &AppHandle) {
+    let base = app.path().app_data_dir().expect("no app data dir");
+    let legacy = base.join("templates");
+
+    if legacy.is_dir() {
+        let workspace_root = templates_root(app);
+        if let Ok(entries) = fs::read_dir(&legacy) {
+            for entry in entries.flatten() {
+                let src = entry.path();
+                if !src.is_dir() || !src.join("template.json").is_file() {
+                    continue;
+                }
+                let id = read_template_json(&src)
+                    .map(|t| t.id)
+                    .unwrap_or_else(|| {
+                        src.file_name()
+                            .map(|n| n.to_string_lossy().to_string())
+                            .unwrap_or_default()
+                    });
+                let dst = workspace_root.join(&id);
+                if dst.exists() {
+                    continue;
+                }
+                if copy_dir(&src, &dst, &[]).is_ok() {
+                    if let Some(mut t) = read_template_json(&dst) {
+                        t.path = dst.to_string_lossy().to_string();
+                        let _ = write_template_json(&dst, &t);
+                    }
+                }
+            }
+        }
+        let _ = delete_dir_best_effort(&legacy);
+    }
+
+    // Fix stale `path` values for templates already inside the workspace
+    // (e.g. folders moved from the legacy location by the earlier migration).
+    for t in read_all_templates(app) {
+        let dir = template_dir(app, &t.id);
+        let actual = dir.to_string_lossy().to_string();
+        if t.path != actual {
+            let mut fixed = t;
+            fixed.path = actual;
+            let _ = write_template_json(&dir, &fixed);
+        }
+    }
 }
 
 #[tauri::command]
@@ -106,7 +231,7 @@ pub fn save_project_as_template(
 
     copy_dir(&src, &dst, &[".godot", ".git", "node_modules"])?;
 
-    let template = ProjectTemplate {
+    let mut template = ProjectTemplate {
         id: id.clone(),
         name: trimmed,
         description,
@@ -118,7 +243,78 @@ pub fn save_project_as_template(
     };
 
     write_template_json(&dst, &template)?;
+
+    // If a template scan directory is configured, also place a copy there so the
+    // template shows up in the user's templates folder and stays in sync with it.
+    if let Some(scan_dir) = configured_scan_dir(&app) {
+        let folder_name = unique_folder_name(&scan_dir, &sanitize_folder_name(&template.name));
+        let scan_copy = scan_dir.join(&folder_name);
+        if fs::create_dir_all(&scan_copy).is_ok()
+            && copy_dir(&src, &scan_copy, &[".godot", ".git", "node_modules"]).is_ok()
+        {
+            // scan_dir is canonicalized (see configured_scan_dir), which matches the
+            // path format used by sync_templates_with_scan_dir, so the sync
+            // recognizes this folder as already linked (no duplicate import).
+            let source_path = scan_dir.join(&folder_name).to_string_lossy().to_string();
+            template.source_path = Some(source_path);
+            if write_template_json(&scan_copy, &template).is_ok() {
+                let _ = write_template_json(&dst, &template);
+            } else {
+                // Clean up the partial copy so the sync doesn't import a duplicate.
+                let _ = fs::remove_dir_all(&scan_copy);
+                template.source_path = None;
+                let _ = write_template_json(&dst, &template);
+            }
+        } else {
+            let _ = fs::remove_dir_all(&scan_copy);
+        }
+    }
+
     Ok(template)
+}
+
+/// Recursively deletes a folder, clearing read-only attributes first so
+/// Windows doesn't refuse to remove files copied from VCS or archives.
+fn remove_dir_force(dir: &Path) -> Result<(), String> {
+    fn clear_readonly(path: &Path) {
+        // `Permissions::set_readonly` is a stable inherent method on all
+        // platforms; on Windows it clears the read-only file attribute.
+        if let Ok(meta) = fs::metadata(path) {
+            let mut perms = meta.permissions();
+            perms.set_readonly(false);
+            let _ = fs::set_permissions(path, perms);
+        }
+    }
+
+    fn walk(dir: &Path) -> Result<(), String> {
+        if dir.is_dir() {
+            for entry in fs::read_dir(dir).map_err(|e| e.to_string())? {
+                let entry = entry.map_err(|e| e.to_string())?;
+                let path = entry.path();
+                clear_readonly(&path);
+                if path.is_dir() {
+                    walk(&path)?;
+                } else {
+                    fs::remove_file(&path).map_err(|e| e.to_string())?;
+                }
+            }
+            fs::remove_dir(dir).map_err(|e| e.to_string())
+        } else {
+            clear_readonly(dir);
+            fs::remove_file(dir).map_err(|e| e.to_string())
+        }
+    }
+
+    walk(dir)
+}
+
+/// Tries the recycle bin first and falls back to a permanent delete, so a
+/// template can always be removed even when trash (flaky on Windows) fails.
+fn delete_dir_best_effort(dir: &Path) -> bool {
+    trash::delete_all(dir)
+        .map_err(|e| e.to_string())
+        .or_else(|_| remove_dir_force(dir))
+        .is_ok()
 }
 
 #[tauri::command]
@@ -127,7 +323,29 @@ pub fn delete_template(app: AppHandle, template_id: String) -> Result<(), String
     if !dir.exists() {
         return Err("Template not found".into());
     }
-    trash::delete_all(&dir).map_err(|e| e.to_string())
+
+    // Templates saved from existing projects may also have a copy inside the
+    // configured template scan directory. Remove that copy too, otherwise the
+    // next sync would re-import the deleted template.
+    if let Some(t) = read_template_json(&dir) {
+        if t.source_project_id.is_some() {
+            if let Some(src) = &t.source_path {
+                if let Some(scan_dir) = configured_scan_dir(&app) {
+                    if let Ok(src_canon) = PathBuf::from(src).canonicalize() {
+                        if src_canon.starts_with(&scan_dir) {
+                            let _ = delete_dir_best_effort(&src_canon);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if delete_dir_best_effort(&dir) {
+        Ok(())
+    } else {
+        Err(format!("Could not delete template folder: {}", dir.display()))
+    }
 }
 
 #[tauri::command]
@@ -194,7 +412,7 @@ fn read_all_templates(app: &AppHandle) -> Vec<ProjectTemplate> {
 
 fn delete_template_dir(app: &AppHandle, id: &str) {
     let dir = template_dir(app, id);
-    let _ = trash::delete_all(&dir);
+    let _ = delete_dir_best_effort(&dir);
 }
 
 #[tauri::command]
@@ -241,6 +459,31 @@ pub fn sync_templates_with_scan_dir(app: AppHandle) -> Result<TemplateSyncResult
 
     for mut t in existing {
         if t.source_path.is_none() {
+            // Templates saved from projects before the scan-folder feature keep
+            // their files only in app storage. Migrate them into the configured
+            // template scan folder so they show up there too.
+            if t.source_project_id.is_some() {
+                if let Some(scan_dir) = configured_scan_dir(&app) {
+                    let src_dir = template_dir(&app, &t.id);
+                    let folder_name = unique_folder_name(&scan_dir, &sanitize_folder_name(&t.name));
+                    let scan_copy = scan_dir.join(&folder_name);
+                    if fs::create_dir_all(&scan_copy).is_ok()
+                        && copy_dir(&src_dir, &scan_copy, &[".godot", ".git", "node_modules"]).is_ok()
+                    {
+                        let source_path = scan_dir.join(&folder_name).to_string_lossy().to_string();
+                        t.source_path = Some(source_path);
+                        if write_template_json(&scan_copy, &t).is_ok() {
+                            let _ = write_template_json(&src_dir, &t);
+                            updated_names.push(format!("{} (moved to folder)", t.name));
+                        } else {
+                            let _ = fs::remove_dir_all(&scan_copy);
+                            t.source_path = None;
+                        }
+                    } else {
+                        let _ = fs::remove_dir_all(&scan_copy);
+                    }
+                }
+            }
             continue;
         }
 
@@ -254,10 +497,14 @@ pub fn sync_templates_with_scan_dir(app: AppHandle) -> Result<TemplateSyncResult
                 continue;
             }
 
-            if let Some(proj_name) = crate::projects::resolve_project_name(&src.to_string_lossy()) {
-                if proj_name != t.name {
-                    t.name = proj_name;
-                    let _ = write_template_json(&dst, &t);
+            // Templates saved from projects keep the name the user chose; only
+            // imported templates are renamed to match their project.godot.
+            if t.source_project_id.is_none() {
+                if let Some(proj_name) = crate::projects::resolve_project_name(&src.to_string_lossy()) {
+                    if proj_name != t.name {
+                        t.name = proj_name;
+                        let _ = write_template_json(&dst, &t);
+                    }
                 }
             }
 
@@ -280,8 +527,10 @@ pub fn sync_templates_with_scan_dir(app: AppHandle) -> Result<TemplateSyncResult
                     continue;
                 }
 
-                if let Some(proj_name) = crate::projects::resolve_project_name(&src.to_string_lossy()) {
-                    t.name = proj_name;
+                if t.source_project_id.is_none() {
+                    if let Some(proj_name) = crate::projects::resolve_project_name(&src.to_string_lossy()) {
+                        t.name = proj_name;
+                    }
                 }
 
                 let _ = write_template_json(&dst, &t);
