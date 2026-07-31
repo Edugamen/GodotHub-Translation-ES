@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
+import { openUrl } from '@tauri-apps/plugin-opener'
 import { api } from '../lib/api'
 import type { AssetLibraryAsset } from '../types'
 import { IconSearch, IconStore, IconDownload, IconCheck, IconSpinner, IconX, IconExternalLink } from './Icons'
@@ -205,17 +206,20 @@ export function AssetLibraryBrowser() {
                           <IconStore className="w-5 h-5 text-muted" />
                         )}
                       </div>
+                      {/* Plain <a target="_blank"> links do nothing inside the
+                          Tauri webview, so open via the opener plugin like the
+                          rest of the app (News, Titlebar, Bug Report, etc.). */}
                       {asset.browse_url && (
-                        <a
-                          href={asset.browse_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={(e) => e.stopPropagation()}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            openUrl(asset.browse_url!)
+                          }}
                           className="focus-ring cursor-pointer p-1.5 rounded-lg text-muted/40 opacity-0 group-hover:opacity-100 hover:text-ink hover:bg-raised transition-all"
                           aria-label={t('asset_open_page')}
                         >
                           <IconExternalLink className="w-3.5 h-3.5" />
-                        </a>
+                        </button>
                       )}
                     </div>
 
