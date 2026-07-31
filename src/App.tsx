@@ -60,7 +60,8 @@ function AppContent() {
     switchWorkspace,
     createWorkspace,
   } = useWorkspaces()
-  const { settings } = useSettings()
+  const { settings, loaded: settingsLoaded, settingsWorkspaceId } = useSettings()
+  const settingsReady = settingsLoaded && settingsWorkspaceId === activeId
 
   const [gitSidebarProject, setGitSidebarProject] = useState<{
     project: Project
@@ -82,6 +83,7 @@ function AppContent() {
     }
   })
   const [splashPhase, setSplashPhase] = useState<SplashPhase | 'done'>('enter')
+  const scannedWorkspaceRef = useRef<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [dragType, setDragType] = useState<'project' | 'version'>('project')
   const [importingOverlay, setImportingOverlay] = useState<{
@@ -118,8 +120,6 @@ function AppContent() {
 
   // --- Event listeners ---
 
-  useTauriEvent('watcher:project-scan-done', () => refreshProjects())
-  useTauriEvent('watcher:version-scan-done', () => refreshInstalled())
   useTauriEvent('watcher:template-synced', () => {
     if (tabRef.current === 'templates') {
       window.dispatchEvent(new CustomEvent('app:refresh-templates'))
@@ -127,28 +127,18 @@ function AppContent() {
   })
 
   useEffect(() => {
-    if (settings.auto_scan_on_startup) {
-      const dirs = settings.project_scan_dirs
-      const depth = settings.scan_depth
-      if (dirs.length > 0) {
-        api
-          .scanForProjects(dirs, depth)
-          .then((added) => {
-            if (added.length > 0) refreshProjects()
-          })
-          .catch(() => {})
-      }
-      const versionDirs = settings.version_scan_dirs
-      if (versionDirs.length > 0) {
-        api
-          .scanForVersions(versionDirs, depth)
-          .then((added) => {
-            if (added.length > 0) refreshInstalled()
-          })
-          .catch(() => {})
-      }
+    if (!settingsReady) return
+    if (scannedWorkspaceRef.current === activeId) return
+    scannedWorkspaceRef.current = activeId
+    if (!settings.auto_scan_on_startup) return
+    const depth = settings.scan_depth
+    if (settings.project_scan_dirs.length > 0) {
+      api.scanForProjects(settings.project_scan_dirs, depth).catch(() => {})
     }
-  }, [])
+    if (settings.version_scan_dirs.length > 0) {
+      api.scanForVersions(settings.version_scan_dirs, depth).catch(() => {})
+    }
+  }, [settingsReady, activeId, settings])
 
   useEffect(() => {
     if (splashPhase === 'enter') {

@@ -25,6 +25,8 @@ export function useProjects() {
     }
   })
 
+  useTauriEvent('watcher:project-scan-done', () => refresh(), [refresh])
+
   useTauriEvent('godot-download-complete', () => refresh(), [refresh])
 
   const remove = useCallback(

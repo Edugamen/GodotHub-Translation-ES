@@ -2,8 +2,14 @@ use crate::models::*;
 use crate::persist;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::{Mutex, OnceLock};
 use tauri::{AppHandle, Manager};
 use uuid::Uuid;
+
+fn state_lock() -> &'static Mutex<()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
+}
 
 fn workspaces_file(app: &AppHandle) -> PathBuf {
     let base = app.path().app_data_dir().expect("no app data dir");
@@ -33,13 +39,24 @@ fn write_state(app: &AppHandle, state: &WorkspacesState) -> Result<(), String> {
 }
 
 pub fn read_state(app: &AppHandle) -> WorkspacesState {
+    let _guard = state_lock().lock().unwrap_or_else(|e| e.into_inner());
     let file = workspaces_file(app);
     if file.exists() {
-        if let Some(state) = persist::read_json_opt::<WorkspacesState>(&file) {
-            if !state.workspaces.is_empty()
-                && state.workspaces.iter().any(|w| w.id == state.active_id)
-            {
+        match persist::read_json_opt::<WorkspacesState>(&file) {
+            Some(mut state) if !state.workspaces.is_empty() => {
+                if !state.workspaces.iter().any(|w| w.id == state.active_id) {
+                    state.active_id = state.workspaces[0].id.clone();
+                    let _ = write_state(app, &state);
+                }
                 return state;
+            }
+            Some(_) => {}
+            None => {
+                let backup = file.with_extension(format!(
+                    "json.corrupt-{}",
+                    chrono::Utc::now().timestamp()
+                ));
+                let _ = fs::rename(&file, &backup);
             }
         }
     }
@@ -48,16 +65,9 @@ pub fn read_state(app: &AppHandle) -> WorkspacesState {
     let base = app.path().app_data_dir().expect("no app data dir");
     let id = Uuid::new_v4().to_string();
     let dir = workspace_dir(app, &id);
-    for name in ["settings.json", "projects.json", "categories.json"] {
+    for name in ["settings.json", "projects.json", "categories.json", "templates"] {
         let src = base.join(name);
         let dst = dir.join(name);
-        if src.exists() && !dst.exists() {
-            let _ = fs::rename(&src, &dst);
-        }
-    }
-    for legacy_file in ["godot-versions.json", "templates"] {
-        let src = base.join(legacy_file);
-        let dst = dir.join(legacy_file);
         if src.exists() && !dst.exists() {
             let _ = fs::rename(&src, &dst);
         }

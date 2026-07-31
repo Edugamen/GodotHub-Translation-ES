@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSettings } from '../hooks/useSettings'
-import { useProjectsContext } from '../hooks/projectsContext'
-import { useGodotVersionsContext } from '../hooks/godotVersionsContext'
+import { useWorkspaces } from '../hooks/useWorkspaces'
+import { registerPendingSave, flushPendingSave } from '../lib/pendingSave'
 import { DirList } from '../components/ui/DirList'
 import { Dropdown } from '../components/ui/Dropdown'
 import { Toggle } from '../components/ui/Toggle'
@@ -352,8 +352,9 @@ export function SettingsView({
 }: SettingsViewProps = {}) {
   const { t, i18n } = useTranslation('settings')
   const { settings, update, resetToDefaults, loaded } = useSettings()
-  const { refresh: refreshProjects } = useProjectsContext()
-  const { refreshInstalled } = useGodotVersionsContext()
+  const { activeId } = useWorkspaces()
+  const activeIdRef = useRef(activeId)
+  activeIdRef.current = activeId
   const [current, setCurrent] = useState<AppSettings | null>(null)
   const [scanMessage, setScanMessage] = useState<string | null>(null)
   const [tokenTestState, setTokenTestState] = useState<'idle' | 'testing' | 'success' | 'warning' | 'error'>('idle')
@@ -497,6 +498,7 @@ export function SettingsView({
       if (saveTimeout.current) clearTimeout(saveTimeout.current)
       if (savedIndicatorTimeout.current)
         clearTimeout(savedIndicatorTimeout.current)
+      flushPendingSave()
     }
   }, [])
 
@@ -506,7 +508,12 @@ export function SettingsView({
       if (savedIndicatorTimeout.current)
         clearTimeout(savedIndicatorTimeout.current)
       setSaveState('saving')
-      saveTimeout.current = setTimeout(async () => {
+      const scheduledFor = activeIdRef.current
+      const flush = async () => {
+        if (scheduledFor !== activeIdRef.current) {
+          setSaveState('idle')
+          return
+        }
         await update(next)
         api.restartWatchers().catch(() => {})
         setSaveState('saved')
@@ -514,6 +521,10 @@ export function SettingsView({
           () => setSaveState('idle'),
           1500,
         )
+      }
+      registerPendingSave(flush)
+      saveTimeout.current = setTimeout(() => {
+        flushPendingSave()
       }, SAVE_DEBOUNCE_MS)
     },
     [update],
@@ -553,8 +564,6 @@ export function SettingsView({
         ? api.scanForVersions(current.version_scan_dirs, current.scan_depth)
         : Promise.resolve([]),
     ])
-    if (projects.length > 0) await refreshProjects()
-    if (versions.length > 0) await refreshInstalled()
     setScanMessage(
       t('scan_result', { projects: projects.length, versions: versions.length })
     )

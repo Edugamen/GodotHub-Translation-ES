@@ -225,6 +225,7 @@ pub fn scan_for_projects_blocking(
         }
         let _ = app.emit("project-scan-progress", (added.len(), total));
     }
+    let _ = app.emit("watcher:project-scan-done", ());
     Ok(ScanProjectsResult { added, found_dismissed })
 }
 
@@ -353,6 +354,10 @@ pub fn scan_for_versions_blocking(
         }
         let _ = app.emit("version-scan-progress", (i + 1, total));
     }
+    let _ = app.emit("watcher:version-scan-done", ());
+    if !added.is_empty() {
+        let _ = app.emit("watcher:project-scan-done", ());
+    }
     Ok(added)
 }
 
@@ -415,5 +420,7 @@ fn import_version_blocking(
     if imported.is_empty() {
         return Err(last_err.unwrap_or_else(|| "This version is already imported.".into()));
     }
+    let _ = app.emit("watcher:version-scan-done", ());
+    let _ = app.emit("watcher:project-scan-done", ());
     Ok(imported)
 }

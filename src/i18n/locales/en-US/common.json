@@ -324,6 +324,8 @@
   "sort": "Sort…",
   "loading_projects": "Loading projects…",
   "no_projects_yet": "Nothing here yet. Create a new project or import one you already have on disk.",
+  "no_scan_folders_yet": "This workspace has no scan folders yet. Add one to find your projects.",
+  "add_scan_folder": "Add a scan folder",
   "pinned_section": "Pinned",
   "drop_here_animated": "Drop here",
   "expand_category": "Expand {{name}}",

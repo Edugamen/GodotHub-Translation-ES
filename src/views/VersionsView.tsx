@@ -231,16 +231,16 @@ export function VersionsView() {
 
   const handleScanNow = async () => {
     if (scanning) return
+    if (!settings.version_scan_dirs.length) {
+      window.dispatchEvent(
+        new CustomEvent('app:open-setting', { detail: 'version_scan_dirs' }),
+      )
+      return
+    }
     setDialogMinimized(false)
     setScanning(true)
     try {
-      if (settings.version_scan_dirs.length) {
-        await api.scanForVersions(
-          settings.version_scan_dirs,
-          settings.scan_depth,
-        )
-        await refreshInstalled()
-      }
+      await api.scanForVersions(settings.version_scan_dirs, settings.scan_depth)
     } finally {
       setScanning(false)
     }
@@ -317,13 +317,19 @@ export function VersionsView() {
               {importing ? t('importing') : t('import')}
             </motion.button>
             <Tooltip
-              content={t('add_scan_folder_hint', { ns: 'common' })}
+              content={
+                scanning
+                  ? t('scanning')
+                  : settings.version_scan_dirs.length === 0
+                    ? t('add_scan_folder_hint', { ns: 'common' })
+                    : t('scan_now')
+              }
               side="bottom"
             >              <motion.button
                 whileHover={{ y: -1 }}
                 whileTap={{ scale: 0.96 }}
                 onClick={handleScanNow}
-                disabled={scanning || settings.version_scan_dirs.length === 0}
+                disabled={scanning}
                 className="focus-ring cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-lg border border-line hover:border-accent-dim hover:bg-raised text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <span
