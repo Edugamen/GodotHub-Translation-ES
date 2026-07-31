@@ -250,22 +250,27 @@ export function ProjectsView({
     }, 200)
   }
 
+  const openScanFolderSetting = () => {
+    window.dispatchEvent(
+      new CustomEvent('app:open-setting', { detail: 'project_scan_dirs' }),
+    )
+  }
+
   const handleScanNow = async () => {
     if (scanning) return
+    if (!settings.project_scan_dirs.length) {
+      openScanFolderSetting()
+      return
+    }
     setDialogMinimized(false)
     setScanning(true)
     try {
-      if (settings.project_scan_dirs.length) {
-        const result = await api.scanForProjectsWithInfo(
-          settings.project_scan_dirs,
-          settings.scan_depth,
-        )
-        if (result.found_dismissed.length > 0) {
-          setFoundDismissed(result.found_dismissed)
-        }
-        if (result.added.length > 0) {
-          await refresh()
-        }
+      const result = await api.scanForProjectsWithInfo(
+        settings.project_scan_dirs,
+        settings.scan_depth,
+      )
+      if (result.found_dismissed.length > 0) {
+        setFoundDismissed(result.found_dismissed)
       }
     } finally {
       setScanning(false)
@@ -890,12 +895,21 @@ export function ProjectsView({
           </div>
 
           {/* Scan Now, icon only with tooltip */}
-          <Tooltip content={scanning ? t('scanning') : t('scan_for_projects')} side="bottom">
+          <Tooltip
+            content={
+              scanning
+                ? t('scanning')
+                : settings.project_scan_dirs.length === 0
+                  ? t('add_scan_folder_hint')
+                  : t('scan_for_projects')
+            }
+            side="bottom"
+          >
             <motion.button
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.96 }}
               onClick={handleScanNow}
-              disabled={scanning || settings.project_scan_dirs.length === 0}
+              disabled={scanning}
               className="focus-ring cursor-pointer p-2.5 rounded-lg border border-line hover:border-accent-dim hover:bg-raised text-muted hover:text-ink transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <IconRefresh className={`w-4 h-4 ${scanning ? 'animate-spin' : ''}`} />
@@ -975,8 +989,18 @@ export function ProjectsView({
             <IconNode className="w-5 h-5 text-muted" />
           </div>
           <p className="text-sm text-muted max-w-xs leading-relaxed">
-            {t('no_projects_yet')}
+            {settings.project_scan_dirs.length === 0
+              ? t('no_scan_folders_yet')
+              : t('no_projects_yet')}
           </p>
+          {settings.project_scan_dirs.length === 0 && (
+            <button
+              onClick={openScanFolderSetting}
+              className="focus-ring cursor-pointer px-4 py-2 rounded-lg border border-line hover:border-accent-dim hover:bg-raised text-sm font-medium transition-colors"
+            >
+              {t('add_scan_folder')}
+            </button>
+          )}
         </div>
       ) : !hasVisibleProjects ? (
         <div className="border border-dashed border-line rounded-2xl py-24 flex flex-col items-center gap-4 text-center">

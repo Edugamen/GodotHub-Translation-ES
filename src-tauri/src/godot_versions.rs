@@ -61,11 +61,64 @@ pub fn versions_dir(app: &AppHandle) -> PathBuf {
 }
 
 fn registry_file(app: &AppHandle) -> PathBuf {
-    let dir = crate::workspace::active_workspace_dir(app);
-    if !dir.exists() {
-        let _ = fs::create_dir_all(&dir);
+    let base = app.path().app_data_dir().expect("no app data dir");
+    if !base.exists() {
+        let _ = fs::create_dir_all(&base);
     }
-    dir.join("godot-versions.json")
+    base.join("godot-versions.json")
+}
+
+pub fn migrate_registry_to_global(app: &AppHandle) {
+    let global = registry_file(app);
+    if global.exists() {
+        return;
+    }
+
+    let base = app.path().app_data_dir().expect("no app data dir");
+    let workspaces_root = base.join("workspaces");
+    let Ok(entries) = fs::read_dir(&workspaces_root) else {
+        return;
+    };
+
+    let mut per_workspace_files = vec![];
+    let mut merged: Vec<InstalledGodotVersion> = vec![];
+    let mut seen_paths = std::collections::HashSet::new();
+    let mut seen_tags = std::collections::HashSet::new();
+
+    let mut dirs: Vec<PathBuf> = entries.filter_map(|e| e.ok()).map(|e| e.path()).collect();
+    dirs.sort();
+
+    for dir in dirs {
+        let file = dir.join("godot-versions.json");
+        if !file.exists() {
+            continue;
+        }
+        let list: Vec<InstalledGodotVersion> =
+            serde_json::from_str(&fs::read_to_string(&file).unwrap_or_default())
+                .unwrap_or_default();
+        for v in list {
+            if !seen_paths.insert(v.executable_path.clone()) {
+                continue;
+            }
+            if !seen_tags.insert((v.tag.clone(), v.is_mono)) {
+                continue;
+            }
+            merged.push(v);
+        }
+        per_workspace_files.push(file);
+    }
+
+    if per_workspace_files.is_empty() {
+        return;
+    }
+
+    if persist::write_json(&global, &merged).is_err() {
+        return;
+    }
+
+    for file in per_workspace_files {
+        let _ = fs::rename(&file, file.with_extension("json.migrated"));
+    }
 }
 
 pub fn read_registry(app: &AppHandle) -> Vec<InstalledGodotVersion> {

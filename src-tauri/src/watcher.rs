@@ -88,7 +88,6 @@ fn create_debounced_multi_watcher(
     debounce_duration: Duration,
     extra_delay: Duration,
     action: Arc<dyn Fn(AppHandle) + Send + Sync + 'static>,
-    event_name: &'static str,
 ) -> Option<RecommendedWatcher> {
     if dirs.is_empty() {
         return None;
@@ -149,8 +148,7 @@ fn create_debounced_multi_watcher(
                         let app = app.clone();
                         let action = action.clone();
                         std::thread::spawn(move || {
-                            action(app.clone());
-                            let _ = app.emit(event_name, ());
+                            action(app);
                         });
                     }
                 }
@@ -206,7 +204,6 @@ pub fn start_project_watchers(app: AppHandle, dirs: Vec<PathBuf>, depth: u32, de
                 }
             }
         }) as Arc<dyn Fn(AppHandle) + Send + Sync + 'static>,
-        "watcher:project-scan-done",
     );
 
     if let Some(w) = watcher {
@@ -240,7 +237,6 @@ pub fn start_version_watchers(app: AppHandle, dirs: Vec<PathBuf>, depth: u32, de
                 }
             }
         }) as Arc<dyn Fn(AppHandle) + Send + Sync + 'static>,
-        "watcher:version-scan-done",
     );
 
     if let Some(w) = watcher {
