@@ -340,7 +340,7 @@ pub fn scan_for_versions_blocking(
     let existing_paths: Vec<String> = existing.iter().map(|v| v.executable_path.clone()).collect();
     let max_depth = depth as usize;
 
-    let candidates = collect_matching_paths(&dirs, max_depth, |path| looks_like_executable(path));
+    let candidates = collect_matching_paths(&dirs, max_depth, looks_like_executable);
 
     let total = candidates.len();
     let _ = app.emit("version-scan-progress", (0usize, total));
@@ -394,7 +394,7 @@ fn import_version_blocking(
         candidates = collect_matching_paths(
             &[path],
             4,
-            |p| looks_like_executable(p),
+            looks_like_executable,
         );
     }
 

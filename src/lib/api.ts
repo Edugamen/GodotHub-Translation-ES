@@ -7,6 +7,7 @@ import { categoriesApi } from '../api/categories'
 import { workspacesApi } from '../api/workspaces'
 import { changelogApi } from '../api/changelog'
 import { newsApi } from '../api/news'
+import { assetLibraryApi } from '../api/assetLibrary'
 
 // Re-export cached accessors used by other modules
 export { getCachedProjectIcon, getCachedProjectName }
@@ -133,4 +134,8 @@ export const api = {
 
   // --- News ---
   fetchGodotNews: newsApi.fetch,
+
+  // --- Asset Library ---
+  searchAssetLibrary: assetLibraryApi.search,
+  installAssetAsTemplate: assetLibraryApi.installAsTemplate,
 }

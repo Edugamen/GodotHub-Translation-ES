@@ -1,3 +1,4 @@
+mod asset_library;
 mod categories;
 mod changelog;
 mod error;
@@ -173,7 +174,10 @@ pub fn run() {
             templates::save_project_as_template,
             templates::delete_template,
             templates::sync_templates_with_scan_dir,
-            templates::get_template_preview,
+            // --- Asset Library ---
+asset_library::search_asset_library,
+asset_library::install_asset_as_template,
+templates::get_template_preview,
             // --- Changelog ---
             changelog::list_changelog_entries,
             changelog::add_changelog_entry,

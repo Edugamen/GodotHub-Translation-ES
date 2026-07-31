@@ -332,7 +332,7 @@ async fn refresh_releases_cache(app: AppHandle) -> Result<Vec<GodotRelease>, Str
     Ok(releases)
 }
 
-fn meets_min_version(tag: &str) -> bool {
+pub(crate) fn meets_min_version(tag: &str) -> bool {
     let cleaned = tag.trim_start_matches('v');
     let mut parts = cleaned.split(['.', '-']);
     let major: u32 = parts.next().and_then(|s| s.parse().ok()).unwrap_or(0);

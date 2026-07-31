@@ -176,6 +176,43 @@ export interface ProjectTemplate {
   source_project_id: string | null
   source_path: string | null
   path: string
+  keep_name: boolean
+}
+
+export interface AssetLibraryAsset {
+  asset_id: string
+  title: string
+  author: string
+  category: string
+  godot_version: string
+  cost: string
+  support_level: string
+  asset_type: string
+  description: string | null
+  icon_url: string | null
+  download_url: string | null
+  browse_url: string | null
+  modify_date: string | null
+}
+
+export interface AssetLibraryResponse {
+  assets: AssetLibraryAsset[]
+  page: number
+  pages: number
+  total: number
+}
+
+export interface AssetDownloadProgress {
+  asset_id: string
+  title: string
+  downloaded: number
+  total: number
+}
+
+export interface AssetDownloadError {
+  asset_id: string
+  title: string
+  message: string
 }
 
 export type NamingConvention =

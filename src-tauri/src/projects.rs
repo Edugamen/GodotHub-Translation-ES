@@ -235,8 +235,7 @@ pub fn create_project(
         return Err(format!(
             "A folder named '{}' already exists at this location",
             folder_name
-        )
-        .into());
+        ));
     }
 
     if let Some(ref tid) = template_id {
