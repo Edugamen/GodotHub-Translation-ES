@@ -319,6 +319,11 @@ pub struct ProjectTemplate {
     pub source_project_id: Option<String>,
     pub source_path: Option<String>,
     pub path: String,
+    /// True for templates installed from the Asset Library: keeps the asset
+    /// title instead of being renamed to the bundled project.godot name by
+    /// sync_templates_with_scan_dir.
+    #[serde(default)]
+    pub keep_name: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

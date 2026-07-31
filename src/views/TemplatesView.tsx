@@ -5,14 +5,16 @@ import { api } from '../lib/api'
 import { useSettings } from '../hooks/useSettings'
 import { useWorkspaces } from '../hooks/useWorkspaces'
 import type { ProjectTemplate, TemplateSyncResult } from '../types'
-import { IconCopy, IconTrash, IconAlertTriangle, IconRefresh, IconExternalLink, IconSearch, IconX } from '../components/Icons'
+import { IconCopy, IconTrash, IconAlertTriangle, IconRefresh, IconExternalLink, IconSearch, IconX, IconStore } from '../components/Icons'
 import { Tooltip } from '../components/ui/Tooltip'
 import { TemplatePreviewModal } from '../components/modals/TemplatePreviewModal'
+import { AssetLibraryBrowser } from '../components/AssetLibraryBrowser'
 import { useTaskTray } from '../hooks/useTaskTray'
 
 export function TemplatesView() {
   const { settings } = useSettings()
   const { activeId } = useWorkspaces()
+  const [tab, setTab] = useState<'local' | 'asset'>('local')
   const [templates, setTemplates] = useState<ProjectTemplate[]>([])
   const [loaded, setLoaded] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
@@ -132,13 +134,39 @@ export function TemplatesView() {
               {t('templates_title')}
             </h2>
             <p className="text-xs text-muted mt-1">
-              {templates.length > 0
-                ? t('template_count', { count: templates.length }) + (isSearching ? ' · ' + t('showing_count', { count: filteredTemplates.length }) : '')
-                : t('no_templates_saved')}
+              {tab === 'local'
+                ? templates.length > 0
+                  ? t('template_count', { count: templates.length }) + (isSearching ? ' · ' + t('showing_count', { count: filteredTemplates.length }) : '')
+                  : t('no_templates_saved')
+                : t('asset_library_subtitle')}
             </p>
           </div>
+          {/* Tab bar */}
+          <div className="flex items-center gap-1 p-1 rounded-xl border border-line bg-raised shrink-0">
+            <button
+              onClick={() => setTab('local')}
+              className={`focus-ring cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                tab === 'local' ? 'bg-accent/20 text-accent-bright' : 'text-muted hover:text-ink'
+              }`}
+            >
+              <IconCopy className="w-3.5 h-3.5" />
+              {t('templates_tab_local')}
+            </button>
+            <button
+              onClick={() => setTab('asset')}
+              className={`focus-ring cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                tab === 'asset' ? 'bg-accent/20 text-accent-bright' : 'text-muted hover:text-ink'
+              }`}
+            >
+              <IconStore className="w-3.5 h-3.5" />
+              {t('templates_tab_asset')}
+            </button>
+          </div>
+        </div>
+        {tab === 'local' && (
+          <>
           {/* Search bar */}
-          <div className="relative w-64 shrink-0">
+          <div className="relative w-64 mt-4">
             <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted/50 pointer-events-none" />
             <input
               type="text"
@@ -156,8 +184,7 @@ export function TemplatesView() {
               </button>
             )}
           </div>
-        </div>
-        <div className="flex items-center gap-3 mt-4">
+          <div className="flex items-center gap-3 mt-3">
           <Tooltip
             content={!settings.template_scan_dir ? t('template_scan_dir_hint') : t('template_sync_from_dir')}
             side="bottom"
@@ -193,9 +220,13 @@ export function TemplatesView() {
               {syncMessage}
             </span>
           )}
-        </div>
+          </div>
+          </>
+        )}
       </div>
 
+      {tab === 'local' ? (
+        <>
       {!loaded ? (
         <div className="text-sm text-muted">{t('loading')}</div>
       ) : templates.length === 0 ? (
@@ -283,6 +314,10 @@ export function TemplatesView() {
             </section>
           )}
         </div>
+      )}
+        </>
+      ) : (
+        <AssetLibraryBrowser />
       )}
 
       {/* Preview modal */}

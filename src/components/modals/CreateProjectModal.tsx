@@ -578,7 +578,7 @@ export function CreateProjectModal({
 
       <AnimatePresence>
         {previewTemplate && (
-          <div onClick={(e) => e.stopPropagation()} className="fixed inset-0 z-[60]">
+          <div onClick={(e) => e.stopPropagation()} className="fixed inset-0 z-[60">
             <TemplatePreviewModal
               template={previewTemplate}
               onClose={() => setPreviewTemplate(null)}

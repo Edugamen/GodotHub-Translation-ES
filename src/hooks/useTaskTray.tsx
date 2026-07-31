@@ -8,13 +8,18 @@ import {
   type ReactNode,
 } from 'react'
 import { useTauriEvent } from '../lib/useTauriEvent'
-import type { DownloadProgress } from '../types'
+import type {
+  AssetDownloadError,
+  AssetDownloadProgress,
+  DownloadProgress,
+} from '../types'
 import i18n from '../i18n'
 
 export interface Task {
   id: string
   type:
     | 'download-godot'
+    | 'download-asset'
     | 'scan-projects'
     | 'scan-versions'
     | 'sync-templates'
@@ -173,6 +178,66 @@ export function TaskTrayProvider({ children }: { children: ReactNode }) {
   useTauriEvent<string>('godot-download-complete', (key) => {
     updateTask(`download-${key}`, { status: 'completed' })
     scheduleRemoval(`download-${key}`, 3000)
+  })
+
+  // --- Asset Library template download ---
+
+  useTauriEvent<AssetDownloadProgress>('asset-download-queued', (payload) => {
+    registerTask({
+      id: `download-asset-${payload.asset_id}`,
+      type: 'download-asset',
+      label: i18n.t('common:downloading_asset', {
+        title: payload.title,
+      }),
+      description: i18n.t('common:queued'),
+      progress: null,
+      status: 'queued',
+    })
+  })
+
+  useTauriEvent<AssetDownloadProgress>('asset-download-progress', (payload) => {
+    const { asset_id, title, downloaded, total } = payload
+    const id = `download-asset-${asset_id}`
+    const pct = total > 0 ? Math.round((downloaded / total) * 100) : 0
+    registerTask({
+      id,
+      type: 'download-asset',
+      label: i18n.t('common:downloading_asset', { title }),
+      description:
+        total > 0
+          ? `${(downloaded / 1024 / 1024).toFixed(1)} / ${(
+              total /
+              1024 /
+              1024
+            ).toFixed(1)} MB (${pct}%)`
+          : `${(downloaded / 1024 / 1024).toFixed(1)} MB`,
+      progress: total > 0 ? { current: downloaded, total } : null,
+      status: 'running',
+    })
+  })
+
+  useTauriEvent<AssetDownloadError>('asset-download-error', (payload) => {
+    // Use registerTask (upsert) rather than updateTask: failures that happen
+    // before the queued event (fetch/validation errors) never registered a
+    // task, so the error must be able to create one from scratch.
+    registerTask({
+      id: `download-asset-${payload.asset_id}`,
+      type: 'download-asset',
+      label: payload.title
+        ? i18n.t('common:downloading_asset', { title: payload.title })
+        : i18n.t('common:asset_download_failed'),
+      progress: null,
+      status: 'error',
+      errorMessage: payload.message,
+    })
+    scheduleRemoval(`download-asset-${payload.asset_id}`, 6000)
+  })
+
+  useTauriEvent<AssetDownloadProgress>('asset-download-complete', (payload) => {
+    updateTask(`download-asset-${payload.asset_id}`, {
+      status: 'completed',
+    })
+    scheduleRemoval(`download-asset-${payload.asset_id}`, 3000)
   })
 
   const clearCompleted = useCallback(() => {

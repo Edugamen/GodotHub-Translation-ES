@@ -15,6 +15,7 @@ import {
   IconCheck,
   IconCircleX,
   IconCircleCheck,
+  IconStore,
   IconX,
 } from './Icons'
 
@@ -23,6 +24,8 @@ function TaskIcon({ task }: { task: Task }) {
   switch (task.type) {
     case 'download-godot':
       return <IconDownload className={`${iconClass} text-amber`} />
+    case 'download-asset':
+      return <IconStore className={`${iconClass} text-accent-bright`} />
     case 'scan-projects':
     case 'scan-versions':
       return task.status === 'running' ? (
