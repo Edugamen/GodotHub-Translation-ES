@@ -204,6 +204,7 @@
   "create_project_title": "New Project",
   "create_project_desc": "Creates a fresh project.godot in the folder you choose.",
   "project_name_label": "Name",
+  "folder_name_preview": "Folder: {{name}}",
   "project_location_label": "Location",
   "choose_folder_placeholder": "Choose a folder",
   "browse": "Browse",

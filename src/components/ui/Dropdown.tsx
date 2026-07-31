@@ -19,6 +19,8 @@ interface Props {
   emptyLabel?: string
   className?: string
   openUp?: boolean
+  /** Hide the "empty" option (useful when every option is required). */
+  hideEmpty?: boolean
 }
 
 export function Dropdown({
@@ -28,6 +30,7 @@ export function Dropdown({
   emptyLabel: emptyLabelProp,
   className = '',
   openUp,
+  hideEmpty,
 }: Props) {
   const { t } = useTranslation('versions')
   const emptyLabel = emptyLabelProp ?? t('choose_version')
@@ -106,21 +109,23 @@ export function Dropdown({
             transition={{ duration: 0.15, ease: 'easeOut' }}
             className={`absolute z-20 ${dir ? 'bottom-full mb-2 origin-bottom' : 'mt-2 origin-top'} w-full min-w-44 rounded-xl border border-line bg-surface shadow-2xl shadow-black/40 p-1.5 max-h-60 overflow-y-auto`}
           >
-            <button
-              type="button"
-              onClick={() => {
-                onChange('')
-                setOpen(false)
-              }}
-              className={`w-full flex items-center cursor-pointer gap-2 text-left px-3 py-2 rounded-lg text-xs font-mono transition-colors ${
-                value === ''
-                  ? 'bg-accent/20 text-accent-bright'
-                  : 'text-muted hover:bg-raised hover:text-ink'
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-line" />
-              {emptyLabel}
-            </button>
+            {!hideEmpty && (
+              <button
+                type="button"
+                onClick={() => {
+                  onChange('')
+                  setOpen(false)
+                }}
+                className={`w-full flex items-center cursor-pointer gap-2 text-left px-3 py-2 rounded-lg text-xs font-mono transition-colors ${
+                  value === ''
+                    ? 'bg-accent/20 text-accent-bright'
+                    : 'text-muted hover:bg-raised hover:text-ink'
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-line" />
+                {emptyLabel}
+              </button>
+            )}
             {options.map((o, idx) => (
               <button
                 key={`${o.value}__${idx}`}

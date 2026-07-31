@@ -178,6 +178,14 @@ export interface ProjectTemplate {
   path: string
 }
 
+export type NamingConvention =
+  | 'keep'
+  | 'kebab-case'
+  | 'snake_case'
+  | 'camelCase'
+  | 'PascalCase'
+  | 'Title Case'
+
 export interface AppSettings {
   download_dir: string | null
   default_project_location: string | null
@@ -217,6 +225,7 @@ export interface AppSettings {
   project_icon_opacity: number
   language: string
   use_os_decorations: boolean
+  directory_naming_convention: NamingConvention
 }
 
 export interface ScanResult {

@@ -133,6 +133,90 @@ pub fn list_projects(app: AppHandle) -> Vec<Project> {
     kept
 }
 
+fn capitalize_word(word: &str) -> String {
+    let mut chars = word.chars();
+    match chars.next() {
+        Some(first) => first.to_uppercase().collect::<String>() + &chars.as_str().to_lowercase(),
+        None => String::new(),
+    }
+}
+
+/// Splits a name into words on non-alphanumeric characters and camelCase
+/// boundaries. Mirrors `splitNamingWords` in src/lib/namingConvention.ts.
+fn split_naming_words(name: &str) -> Vec<String> {
+    let mut words: Vec<String> = Vec::new();
+    let mut current = String::new();
+    let chars: Vec<char> = name.chars().collect();
+    let n = chars.len();
+    for (i, &c) in chars.iter().enumerate() {
+        if !c.is_ascii_alphanumeric() {
+            if !current.is_empty() {
+                words.push(std::mem::take(&mut current));
+            }
+            continue;
+        }
+        if !current.is_empty() {
+            let last = current.chars().last().unwrap();
+            let split = (last.is_ascii_lowercase() || last.is_ascii_digit())
+                && c.is_ascii_uppercase()
+                || last.is_ascii_uppercase()
+                    && c.is_ascii_uppercase()
+                    && i + 1 < n
+                    && chars[i + 1].is_ascii_lowercase();
+            if split {
+                words.push(std::mem::take(&mut current));
+            }
+        }
+        current.push(c);
+    }
+    if !current.is_empty() {
+        words.push(current);
+    }
+    words
+}
+
+/// Transforms a project name into a folder name using the configured
+/// convention. Mirrors `applyNamingConvention` in src/lib/namingConvention.ts.
+fn apply_naming_convention(name: &str, convention: &str) -> String {
+    let words = split_naming_words(name);
+    if words.is_empty() {
+        return name.trim().to_string();
+    }
+    match convention {
+        "kebab-case" => words
+            .iter()
+            .map(|w| w.to_lowercase())
+            .collect::<Vec<_>>()
+            .join("-"),
+        "snake_case" => words
+            .iter()
+            .map(|w| w.to_lowercase())
+            .collect::<Vec<_>>()
+            .join("_"),
+        "camelCase" => {
+            let mut out = String::new();
+            for (i, w) in words.iter().enumerate() {
+                if i == 0 {
+                    out.push_str(&w.to_lowercase());
+                } else {
+                    out.push_str(&capitalize_word(w));
+                }
+            }
+            out
+        }
+        "PascalCase" => words
+            .iter()
+            .map(|w| capitalize_word(w))
+            .collect::<String>(),
+        "Title Case" => words
+            .iter()
+            .map(|w| capitalize_word(w))
+            .collect::<Vec<_>>()
+            .join(" "),
+        _ => name.to_string(),
+    }
+}
+
 #[tauri::command]
 pub fn create_project(
     app: AppHandle,
@@ -143,9 +227,16 @@ pub fn create_project(
     template_id: Option<String>,
     category: Option<String>,
 ) -> Result<Project, String> {
-    let project_dir = PathBuf::from(&location).join(&name);
+    let settings = settings::read_settings(&app);
+    let folder_name =
+        apply_naming_convention(&name, &settings.directory_naming_convention);
+    let project_dir = PathBuf::from(&location).join(&folder_name);
     if project_dir.exists() {
-        return Err("A folder with this name already exists at this location".into());
+        return Err(format!(
+            "A folder named '{}' already exists at this location",
+            folder_name
+        )
+        .into());
     }
 
     if let Some(ref tid) = template_id {
@@ -1181,4 +1272,58 @@ pub async fn get_project_size(path: String) -> Result<ProjectSizeInfo, String> {
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn naming_convention_kebab() {
+        assert_eq!(apply_naming_convention("New Game", "kebab-case"), "new-game");
+        assert_eq!(apply_naming_convention("My Awesome Game", "kebab-case"), "my-awesome-game");
+        assert_eq!(apply_naming_convention("Pixels & Dreams", "kebab-case"), "pixels-dreams");
+    }
+
+    #[test]
+    fn naming_convention_snake() {
+        assert_eq!(apply_naming_convention("New Game", "snake_case"), "new_game");
+    }
+
+    #[test]
+    fn naming_convention_camel() {
+        assert_eq!(apply_naming_convention("New Game", "camelCase"), "newGame");
+    }
+
+    #[test]
+    fn naming_convention_pascal() {
+        assert_eq!(apply_naming_convention("New Game", "PascalCase"), "NewGame");
+    }
+
+    #[test]
+    fn naming_convention_title() {
+        assert_eq!(apply_naming_convention("new game", "Title Case"), "New Game");
+    }
+
+    #[test]
+    fn naming_convention_keep_and_unknown() {
+        assert_eq!(apply_naming_convention("New Game", "keep"), "New Game");
+        assert_eq!(apply_naming_convention("New Game", "bogus"), "New Game");
+    }
+
+    #[test]
+    fn naming_convention_splits_camel_and_acronyms() {
+        assert_eq!(apply_naming_convention("myGame", "kebab-case"), "my-game");
+        assert_eq!(apply_naming_convention("HTTPServer", "kebab-case"), "http-server");
+        assert_eq!(
+            apply_naming_convention("v0.0.1 - The Beginning", "snake_case"),
+            "v0_0_1_the_beginning"
+        );
+    }
+
+    #[test]
+    fn naming_convention_empty_falls_back() {
+        assert_eq!(apply_naming_convention("  ", "kebab-case"), "");
+        assert_eq!(apply_naming_convention("!!!", "kebab-case"), "!!!");
+    }
 }

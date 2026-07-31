@@ -204,6 +204,7 @@
   "create_project_title": "新建项目",
   "create_project_desc": "在你选择的文件夹中创建一个新的 project.godot。",
   "project_name_label": "名称",
+  "folder_name_preview": "文件夹：{{name}}",
   "project_location_label": "位置",
   "choose_folder_placeholder": "选择文件夹",
   "browse": "浏览",

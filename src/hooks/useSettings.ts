@@ -53,6 +53,7 @@ const DEFAULTS: AppSettings = {
   project_icon_opacity: 14,
   language: 'en-US',
   use_os_decorations: isLinux,
+  directory_naming_convention: 'keep',
 }
 
 interface SettingsContextValue {

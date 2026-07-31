@@ -5,6 +5,7 @@ import { useSettings } from '../hooks/useSettings'
 import { useProjectsContext } from '../hooks/projectsContext'
 import { useGodotVersionsContext } from '../hooks/godotVersionsContext'
 import { DirList } from '../components/ui/DirList'
+import { Dropdown } from '../components/ui/Dropdown'
 import { Toggle } from '../components/ui/Toggle'
 import { Slider } from '../components/ui/Slider'
 import { ColorSwatchPicker } from '../components/ui/ColorSwatchPicker'
@@ -419,6 +420,7 @@ export function SettingsView({
       auto_watch_template_dir: { tab: 'behavior', section: 'behavior-projects' },
       categories_enabled: { tab: 'behavior', section: 'behavior-projects' },
       workspaces_enabled: { tab: 'behavior', section: 'behavior-projects' },
+      directory_naming_convention: { tab: 'behavior', section: 'behavior-projects' },
       check_updates: { tab: 'advanced', section: 'advanced-updates' },
       tooltip_delay: { tab: 'behavior', section: 'behavior-projects' },
       tray_recent_projects_count: { tab: 'behavior', section: 'behavior' },
@@ -1091,6 +1093,33 @@ export function SettingsView({
                     }
                     label={t('use_workspaces_label')}
                   />
+                </label>
+
+                <label className="flex flex-col gap-2.5 pt-5 border-t border-line">
+                  <span className="text-xs font-medium text-muted">
+                    {t('naming_convention_label')}
+                  </span>
+                  <Dropdown
+                    value={current.directory_naming_convention}
+                    onChange={(value) =>
+                      setField(
+                        'directory_naming_convention',
+                        value as AppSettings['directory_naming_convention'],
+                      )
+                    }
+                    options={[
+                      { value: 'keep', label: t('naming_keep') },
+                      { value: 'kebab-case', label: t('naming_kebab') },
+                      { value: 'snake_case', label: t('naming_snake') },
+                      { value: 'camelCase', label: t('naming_camel') },
+                      { value: 'PascalCase', label: t('naming_pascal') },
+                      { value: 'Title Case', label: t('naming_title') },
+                    ]}
+                    hideEmpty
+                  />
+                  <p className="text-[11px] text-muted leading-relaxed">
+                    {t('naming_convention_desc')}
+                  </p>
                 </label>
 
                 <label className="flex flex-col gap-2.5 pt-5 border-t border-line">

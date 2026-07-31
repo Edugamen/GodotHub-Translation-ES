@@ -194,10 +194,16 @@ pub struct AppSettings {
     pub use_os_decorations: bool,
     #[serde(default)]
     pub dismissed_project_paths: Vec<String>,
+    #[serde(default = "default_naming_convention")]
+    pub directory_naming_convention: String,
 }
 
 fn default_language() -> String {
     "en-US".to_string()
+}
+
+fn default_naming_convention() -> String {
+    "keep".to_string()
 }
 
 fn default_project_icon_opacity() -> u32 {
@@ -383,6 +389,7 @@ tooltip_delay: default_tooltip_delay(),
             language: default_language(),
             use_os_decorations: default_os_decorations(),
             dismissed_project_paths: vec![],
+            directory_naming_convention: default_naming_convention(),
         }
     }
 }

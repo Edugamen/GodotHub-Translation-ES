@@ -3,6 +3,8 @@ import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import type { Category, InstalledGodotVersion, ProjectTemplate } from '../../types'
 import { api } from '../../lib/api'
+import { applyNamingConvention } from '../../lib/namingConvention'
+import { useSettings } from '../../hooks/useSettings'
 import { Dropdown } from '../ui/Dropdown'
 
 interface Props {
@@ -37,6 +39,7 @@ export function CreateProjectModal({
   categories = [],
 }: Props) {
   const { t } = useTranslation('common')
+  const { settings } = useSettings()
   const [name, setName] = useState('')
   const [location, setLocation] = useState(defaultLocation ?? '')
   const [version, setVersion] = useState(installedVersions[0]?.tag ?? '')
@@ -46,6 +49,11 @@ export function CreateProjectModal({
   const [templates, setTemplates] = useState<ProjectTemplate[]>([])
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+
+  const folderName = useMemo(
+    () => applyNamingConvention(name, settings.directory_naming_convention),
+    [name, settings.directory_naming_convention],
+  )
 
   const projectNamePlaceholder = useMemo(() => {
     const names = [
@@ -142,6 +150,11 @@ export function CreateProjectModal({
               className="focus-ring bg-raised border border-line rounded-lg px-3.5 py-2.5 text-sm focus:border-accent-dim transition-colors"
               placeholder={projectNamePlaceholder}
             />
+            {name.trim() && (
+              <p className="text-[10px] text-muted/60 font-mono truncate">
+                {t('folder_name_preview', { name: folderName })}
+              </p>
+            )}
           </div>
 
           <div className="flex flex-col gap-2">

@@ -220,6 +220,7 @@ export const SETTINGS_SEARCH_ITEMS: SettingSearchEntry[] = (
   { key: 'auto_scan_on_startup', tab: 'behavior' },
   { key: 'categories_enabled', tab: 'behavior' },
   { key: 'workspaces_enabled', tab: 'behavior' },
+  { key: 'directory_naming_convention', tab: 'behavior' },
   { key: 'tooltip_delay', tab: 'behavior' },
   { key: 'command_palette_keybind', tab: 'behavior' },
   { key: 'tray_recent_projects_count', tab: 'behavior' },
