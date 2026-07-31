@@ -230,6 +230,18 @@ fn get_merge_conflict_files_for_path_internal(path: &str) -> Result<Vec<String>,
     Ok(stdout.lines().filter(|l| !l.trim().is_empty()).map(|l| l.trim().to_string()).collect())
 }
 
+/// Extracts the repository's base name from a clone URL.
+/// Mirrors `repoBaseName` in src/components/modals/CloneRepoModal.tsx.
+fn repo_base_name(url: &str) -> String {
+    let trimmed = url.trim().trim_end_matches('/').trim_end_matches(".git");
+    trimmed
+        .split('/')
+        .next_back()
+        .filter(|s| !s.is_empty())
+        .unwrap_or("repo")
+        .to_string()
+}
+
 // ---------------------------------------------------------------------------
 // Status (custom parsing)
 // ---------------------------------------------------------------------------
@@ -697,19 +709,19 @@ pub fn git_resolve_conflict_manual(path: String, file_path: String) -> Result<()
 }
 
 #[tauri::command]
-pub fn clone_repo(url: String, dest: String) -> Result<String, String> {
+pub fn clone_repo(app: tauri::AppHandle, url: String, dest: String) -> Result<String, String> {
     if !url.contains("://") && !url.contains('@') {
         return Err("Not a valid git URL".into());
     }
 
     let dest_path = PathBuf::from(&dest);
-    let folder_name = url
-        .trim_end_matches(".git")
-        .split('/')
-        .next_back()
-        .unwrap_or("repo");
+    let settings = crate::settings::read_settings(&app);
+    let folder_name = crate::projects::apply_naming_convention(
+        &repo_base_name(&url),
+        &settings.directory_naming_convention,
+    );
 
-    let clone_target = dest_path.join(folder_name);
+    let clone_target = dest_path.join(&folder_name);
     if clone_target.exists() {
         return Err(format!("Folder '{folder_name}' already exists at this location"));
     }
@@ -922,4 +934,40 @@ pub fn git_file_diff(path: String, file_path: String) -> Result<GitDiffResult, S
 
     if let Some(hunk) = current_hunk.take() { result.hunks.push(hunk); }
     Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn repo_base_name_extraction() {
+        assert_eq!(
+            repo_base_name("https://github.com/user/my-game.git"),
+            "my-game"
+        );
+        assert_eq!(repo_base_name("git@github.com:user/My Repo.git"), "My Repo");
+        assert_eq!(repo_base_name("https://github.com/user/repo"), "repo");
+        assert_eq!(repo_base_name("https://github.com/user/repo.git/"), "repo");
+        assert_eq!(repo_base_name("https://github.com/user/"), "user");
+        assert_eq!(repo_base_name("https://github.com"), "github.com");
+    }
+
+    #[test]
+    fn clone_folder_name_follows_convention() {
+        let name = repo_base_name("https://github.com/user/New Game.git");
+        assert_eq!(name, "New Game");
+        assert_eq!(
+            crate::projects::apply_naming_convention(&name, "kebab-case"),
+            "new-game"
+        );
+        assert_eq!(
+            crate::projects::apply_naming_convention(&name, "PascalCase"),
+            "NewGame"
+        );
+        assert_eq!(
+            crate::projects::apply_naming_convention(&name, "keep"),
+            "New Game"
+        );
+    }
 }

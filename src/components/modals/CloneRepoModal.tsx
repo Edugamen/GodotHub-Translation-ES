@@ -1,8 +1,20 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'framer-motion'
 import { api } from '../../lib/api'
+import { applyNamingConvention } from '../../lib/namingConvention'
+import { useSettings } from '../../hooks/useSettings'
 import { useTaskTray } from '../../hooks/useTaskTray'
+
+/** Extracts the repository's base name from a clone URL. Mirrors `repo_base_name` in src-tauri/src/git.rs. */
+function repoBaseName(url: string): string {
+  let cleaned = url.trim().replace(/\/+$/, '')
+  while (cleaned.endsWith('.git')) {
+    cleaned = cleaned.slice(0, -4)
+  }
+  const parts = cleaned.split('/')
+  return parts[parts.length - 1] || 'repo'
+}
 
 interface Props {
   defaultLocation?: string | null
@@ -20,7 +32,17 @@ export function CloneRepoModal({
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const { t } = useTranslation('common')
+  const { settings } = useSettings()
   const { registerTask, updateTask, unregisterTask } = useTaskTray()
+
+  const folderName = useMemo(
+    () =>
+      applyNamingConvention(
+        repoBaseName(url),
+        settings.directory_naming_convention,
+      ),
+    [url, settings.directory_naming_convention],
+  )
 
   const pickLocation = async () => {
     const folder = await api.pickFolder()
@@ -40,7 +62,7 @@ export function CloneRepoModal({
     setBusy(true)
     setError(null)
 
-    const repoName = url.trim().split('/').pop()?.replace('.git', '') || 'repository'
+    const repoName = repoBaseName(url)
     const taskId = `clone-${Date.now()}`
 
     registerTask({
@@ -130,9 +152,15 @@ export function CloneRepoModal({
               {t('browse')}
             </motion.button>
           </div>
-          <p className="text-[11px] text-muted/60">
-            {t('clone_repo_subfolder_hint')}
-          </p>
+          {url.trim() ? (
+            <p className="text-[11px] text-muted/60 font-mono truncate">
+              {t('clone_repo_folder_preview', { name: folderName })}
+            </p>
+          ) : (
+            <p className="text-[11px] text-muted/60">
+              {t('clone_repo_subfolder_hint')}
+            </p>
+          )}
         </div>
 
         {error && (

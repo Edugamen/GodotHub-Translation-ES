@@ -177,7 +177,7 @@ fn split_naming_words(name: &str) -> Vec<String> {
 
 /// Transforms a project name into a folder name using the configured
 /// convention. Mirrors `applyNamingConvention` in src/lib/namingConvention.ts.
-fn apply_naming_convention(name: &str, convention: &str) -> String {
+pub(crate) fn apply_naming_convention(name: &str, convention: &str) -> String {
     let words = split_naming_words(name);
     if words.is_empty() {
         return name.trim().to_string();

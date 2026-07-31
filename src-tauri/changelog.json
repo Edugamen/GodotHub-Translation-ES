@@ -467,6 +467,10 @@
       {
         "category": "add",
         "text": "Able to Open Versions themselves in Versions view"
+      },
+      {
+        "category": "add",
+        "text": "Directory Naming Convention"
       }
     ],
     "created_at": 1785270388
