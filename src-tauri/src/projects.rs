@@ -415,8 +415,17 @@ pub fn import_project(
     app: AppHandle,
     path: String,
     godot_version: String,
+    category: Option<String>,
 ) -> Result<Project, String> {
-    let project = register_project(app.clone(), path.clone(), godot_version, None)?;
+    let effective_category = category
+        .as_ref()
+        .and_then(|c| if c.trim().is_empty() { None } else { Some(c.clone()) });
+    let project = register_project(
+        app.clone(),
+        path.clone(),
+        godot_version,
+        effective_category,
+    )?;
     undismiss(&app, &path);
     Ok(project)
 }

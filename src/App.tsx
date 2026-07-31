@@ -88,6 +88,7 @@ function AppContent() {
     type: 'project' | 'version'
     total: number
     current: number
+    label?: string | null
   } | null>(null)
   const projectsRef = useRef(projects)
   projectsRef.current = projects
@@ -245,10 +246,10 @@ function AppContent() {
           paths[0].toLowerCase().endsWith('.zip')
 
         if (isVersionZipDrop) {
-          setImportingOverlay({ type: 'version', total: 1, current: 0 })
+          setImportingOverlay({ type: 'version', total: 1, current: 0, label: paths[0] })
           ;(async () => {
             try {
-              setImportingOverlay({ type: 'version', total: 1, current: 1 })
+              setImportingOverlay({ type: 'version', total: 1, current: 1, label: paths[0] })
               const version = await api.importVersionZip(paths[0])
               await refreshInstalled()
               setSuccessNotification({
@@ -270,6 +271,7 @@ function AppContent() {
             type: 'project',
             total: paths.length,
             current: 0,
+            label: paths[0],
           })
 
           ;(async () => {
@@ -284,6 +286,7 @@ function AppContent() {
                 type: 'project',
                 total: paths.length,
                 current: i + 1,
+                label: p,
               })
             }
 

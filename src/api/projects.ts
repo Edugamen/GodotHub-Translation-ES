@@ -26,8 +26,8 @@ export const projectsApi = {
     invoke<void>('reorder_projects', { orderedIds }),
   saveTags: (id: string, path: string, tags: string[]) =>
     invoke<Project>('write_project_tags', { id, path, tags }),
-  import: (path: string, godotVersion: string) =>
-    invoke<Project>('import_project', { path, godotVersion }),
+  import: (path: string, godotVersion: string, category?: string | null) =>
+    invoke<Project>('import_project', { path, godotVersion, category: category ?? null }),
   open: (id: string, editor: boolean, withConsole?: boolean) =>
     invoke<void>('open_project', { id, editor, console: withConsole ?? null }),
   stop: (id: string) =>

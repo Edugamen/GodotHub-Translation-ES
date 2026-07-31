@@ -502,6 +502,8 @@
   "clone_repo_dest_placeholder": "Choose a folder",
   "clone_repo_subfolder_hint": "A subfolder named after the repository will be created here.",
   "clone_repo_folder_preview": "Will be cloned into folder: {{name}}",
+  "clone_repo_url_hint": "Paste an HTTPS or SSH URL — e.g. https://github.com/user/my-game.git",
+  "clone_repo_resolved_path": "Will be created at",
   "clone_repo_error_url": "Please enter a repository URL.",
   "clone_repo_error_location": "Please choose where to clone the repository.",
   "clone_repo_cancel": "Cancel",

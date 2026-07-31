@@ -29,6 +29,7 @@ import { useCategoriesContext } from '../hooks/categoriesContext'
 import { useSettings } from '../hooks/useSettings'
 import { ProjectCard } from '../components/ui/ProjectCard'
 import { Tooltip } from '../components/ui/Tooltip'
+import { ImportProgressCard } from '../components/ImportProgressCard'
 import { CreateProjectModal } from '../components/modals/CreateProjectModal'
 import { CloneRepoModal } from '../components/modals/CloneRepoModal'
 import { CategoryManagerModal } from '../components/modals/CategoryManagerModal'
@@ -1418,6 +1419,7 @@ export function ProjectsView({
         {cloneRepoOpen && (
           <CloneRepoModal
             defaultLocation={settings.default_project_location}
+            categories={categories}
             onClose={() => setCloneRepoOpen(false)}
             onCloned={handleCloneResult}
           />
@@ -1470,33 +1472,28 @@ export function ProjectsView({
         />
       )}
       {(scanning || importing) && !dialogMinimized && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-surface border border-line rounded-2xl px-8 py-6 flex flex-col items-center gap-3 min-w-64">
-            <IconRefresh className="w-6 h-6 animate-spin text-accent" />
-            <p className="text-sm font-medium text-ink">
-              {importing
-                ? t('importing_project')
-                : scanProgress && scanProgress.total > 0
-                  ? t('importing_progress', { current: scanProgress.current, total: scanProgress.total })
-                  : t('scanning_projects')}
-            </p>
-            {scanProgress && scanProgress.total > 0 && (
-              <div className="h-1.5 w-full rounded-full bg-line overflow-hidden">
-                <div
-                  className="h-full bg-accent transition-all duration-200"
-                  style={{
-                    width: `${(scanProgress.current / scanProgress.total) * 100}%`,
-                  }}
-                />
-              </div>
-            )}
-            <button
-              onClick={() => setDialogMinimized(true)}
-              className="focus-ring cursor-pointer text-xs text-muted hover:text-ink transition-colors mt-1"
-            >
-              {t('resume_background')}
-            </button>
-          </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <motion.div
+            initial={{ opacity: 0, y: 14, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+            className="w-full flex justify-center"
+          >
+            <ImportProgressCard
+              icon={<IconRefresh className="w-5 h-5 text-accent-bright" />}
+              title={
+                importing
+                  ? t('importing_project')
+                  : t('scanning_projects')
+              }
+              progress={
+                scanProgress && scanProgress.total > 0
+                  ? { current: scanProgress.current, total: scanProgress.total }
+                  : null
+              }
+              onMinimize={() => setDialogMinimized(true)}
+            />
+          </motion.div>
         </div>
       )}
     </div>

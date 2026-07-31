@@ -502,6 +502,8 @@
   "clone_repo_dest_placeholder": "选择文件夹",
   "clone_repo_subfolder_hint": "将在该位置创建一个以仓库命名的子文件夹。",
   "clone_repo_folder_preview": "将克隆到文件夹：{{name}}",
+  "clone_repo_url_hint": "粘贴 HTTPS 或 SSH 链接 — 例如 https://github.com/user/my-game.git",
+  "clone_repo_resolved_path": "将创建于",
   "clone_repo_error_url": "请输入仓库 URL。",
   "clone_repo_error_location": "请选择克隆仓库的位置。",
   "clone_repo_cancel": "取消",
