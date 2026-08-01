@@ -59,6 +59,7 @@ const DEFAULTS: AppSettings = {
 interface SettingsContextValue {
   settings: AppSettings
   loaded: boolean
+  settingsWorkspaceId: string
   update: (next: AppSettings) => Promise<AppSettings>
   resetToDefaults: () => Promise<AppSettings>
 }
@@ -69,12 +70,15 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const { activeId } = useWorkspaces()
   const [settings, setSettings] = useState<AppSettings>(DEFAULTS)
   const [loaded, setLoaded] = useState(false)
+  const [settingsWorkspaceId, setSettingsWorkspaceId] = useState('')
 
   useEffect(() => {
+    if (!activeId) return
     let cancelled = false
     api.getSettings().then((s) => {
       if (cancelled) return
       setSettings(s)
+      setSettingsWorkspaceId(activeId)
       applyTheme(s.accent_color, s.background_color, s.theme_mode)
       applyAppearance(s)
       if (s.language && s.language !== i18n.language) {
@@ -112,7 +116,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   return createElement(
     SettingsContext.Provider,
-    { value: { settings, loaded, update, resetToDefaults } },
+    { value: { settings, loaded, settingsWorkspaceId, update, resetToDefaults } },
     children,
   )
 }

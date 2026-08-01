@@ -52,6 +52,8 @@ pub fn run() {
         .setup(|app| {
             app.manage(watcher::ActiveWatchers(std::sync::Mutex::new(Vec::new())));
 
+            godot_versions::migrate_registry_to_global(app.handle());
+
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 templates::consolidate_legacy_templates(&handle);

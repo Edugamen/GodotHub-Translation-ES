@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from 'react'
 import { api } from '../lib/api'
+import { flushPendingSave } from '../lib/pendingSave'
 import type { Workspace, WorkspacesState } from '../types'
 
 interface WorkspacesContextValue {
@@ -34,18 +35,21 @@ export function WorkspacesProvider({ children }: { children: ReactNode }) {
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
-    api.listWorkspaces().then((s) => {
-      setState(s)
-      setLoaded(true)
-    })
+    api
+      .listWorkspaces()
+      .then((s) => setState(s))
+      .catch(() => {})
+      .finally(() => setLoaded(true))
   }, [])
 
   const switchWorkspace = async (id: string) => {
     if (id === state.active_id) return
+    await flushPendingSave()
     setState(await api.switchWorkspace(id))
   }
 
   const createWorkspace = async (name: string, icon: string, color: string) => {
+    await flushPendingSave()
     setState(await api.createWorkspace(name, icon, color))
   }
 
@@ -62,6 +66,7 @@ export function WorkspacesProvider({ children }: { children: ReactNode }) {
   }
 
   const deleteWorkspace = async (id: string) => {
+    await flushPendingSave()
     setState(await api.deleteWorkspace(id))
   }
 

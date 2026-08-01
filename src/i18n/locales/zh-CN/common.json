@@ -328,6 +328,8 @@
   "sort": "排序…",
   "loading_projects": "正在加载项目…",
   "no_projects_yet": "还没有项目。创建一个新项目或导入磁盘上已有的项目。",
+  "no_scan_folders_yet": "此工作区尚未设置扫描文件夹。添加一个即可找到你的项目。",
+  "add_scan_folder": "添加扫描文件夹",
   "pinned_section": "已置顶",
   "drop_here_animated": "拖放到此处",
   "expand_category": "展开 {{name}}",
