@@ -114,8 +114,6 @@ pub fn list_projects(app: AppHandle) -> Vec<Project> {
         .into_iter()
         .partition(|p| Path::new(&p.path).join("project.godot").exists());
 
-    // Resolve tags from project.godot for projects that don't have them stored yet
-    // (e.g. projects added before the tags feature existed).
     let mut tags_changed = false;
     for p in kept.iter_mut() {
         if p.tags.is_empty() {
@@ -141,8 +139,6 @@ fn capitalize_word(word: &str) -> String {
     }
 }
 
-/// Splits a name into words on non-alphanumeric characters and camelCase
-/// boundaries. Mirrors `splitNamingWords` in src/lib/namingConvention.ts.
 fn split_naming_words(name: &str) -> Vec<String> {
     let mut words: Vec<String> = Vec::new();
     let mut current = String::new();
@@ -175,8 +171,6 @@ fn split_naming_words(name: &str) -> Vec<String> {
     words
 }
 
-/// Transforms a project name into a folder name using the configured
-/// convention. Mirrors `applyNamingConvention` in src/lib/namingConvention.ts.
 pub(crate) fn apply_naming_convention(name: &str, convention: &str) -> String {
     let words = split_naming_words(name);
     if words.is_empty() {
@@ -439,7 +433,6 @@ pub async fn remove_project(app: AppHandle, id: String, delete_files: bool) -> R
     let project = projects.remove(idx);
     write_projects(&app, &projects)?;
 
-    // Track the removed path so scans don't re-add it
     if !delete_files {
         let mut s = crate::settings::read_settings(&app);
         if !contains_path(&s.dismissed_project_paths, &project.path) {

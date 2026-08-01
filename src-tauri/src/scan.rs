@@ -31,8 +31,6 @@ fn walk<F: FnMut(&Path)>(dir: &Path, depth: usize, max_depth: usize, visit: &mut
     }
 }
 
-/// Walk a list of directories up to `max_depth`, collecting paths that
-/// match the given predicate. Skips non-existent roots.
 fn collect_matching_paths<F>(dirs: &[String], max_depth: usize, mut matcher: F) -> Vec<PathBuf>
 where
     F: FnMut(&Path) -> bool,
@@ -51,19 +49,12 @@ where
     }
     results
 }
-
-/// Register a candidate executable as an `InstalledGodotVersion`.
-/// Handles macOS bundle resolution, version probing, tag normalization,
-/// duplicate detection, and persistent registration.
-/// Returns `Ok(Some(version))` on success, `Ok(None)` if already registered,
-/// or `Err(message)` on failure.
 fn register_version_candidate(
     app: &AppHandle,
     candidate: PathBuf,
     existing: &mut Vec<InstalledGodotVersion>,
     existing_paths: &[String],
 ) -> Result<Option<InstalledGodotVersion>, String> {
-    // Resolve macOS .app bundles to the inner executable
     let exe_path = if candidate.is_dir() {
         match resolve_macos_bundle_exe(&candidate) {
             Some(p) => p,
@@ -75,7 +66,6 @@ fn register_version_candidate(
 
     let exe_str = exe_path.to_string_lossy().to_string();
 
-    // Skip already-known executables
     if existing_paths.contains(&exe_str) {
         return Ok(None);
     }
@@ -105,7 +95,6 @@ fn register_version_candidate(
         base_tag
     };
 
-    // Skip already-known tags
     if existing.iter().any(|v| v.tag == tag && v.is_mono == is_mono) {
         return Ok(None);
     }
@@ -157,8 +146,6 @@ pub async fn scan_for_projects(
     .map_err(|e| e.to_string())?
 }
 
-/// Full scan that also returns which previously-dismissed paths were found.
-/// The dismissed paths are NOT automatically re-added — the frontend can decide.
 #[tauri::command]
 pub async fn scan_for_projects_with_info(
     app: AppHandle,
@@ -208,7 +195,6 @@ pub fn scan_for_projects_blocking(
         })
         .collect();
 
-    // Collect parent directories (the actual project folders)
     let project_dirs: Vec<PathBuf> = new_dirs
         .into_iter()
         .filter_map(|p| p.parent().map(|pp| pp.to_path_buf()))

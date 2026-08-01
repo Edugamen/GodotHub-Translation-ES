@@ -301,6 +301,15 @@ pub struct WorkspacesState {
     pub active_id: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkspaceScanDirs {
+    pub workspace_id: String,
+    pub workspace_name: String,
+    pub project_scan_dirs: Vec<String>,
+    pub version_scan_dirs: Vec<String>,
+    pub template_scan_dir: Option<String>,
+}
+
 fn default_workspace_icon() -> String {
     "briefcase".to_string()
 }
@@ -319,9 +328,6 @@ pub struct ProjectTemplate {
     pub source_project_id: Option<String>,
     pub source_path: Option<String>,
     pub path: String,
-    /// True for templates installed from the Asset Library: keeps the asset
-    /// title instead of being renamed to the bundled project.godot name by
-    /// sync_templates_with_scan_dir.
     #[serde(default)]
     pub keep_name: bool,
 }

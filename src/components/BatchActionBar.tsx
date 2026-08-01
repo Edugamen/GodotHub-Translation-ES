@@ -20,7 +20,6 @@ interface BatchActionBarProps {
   onBatchVersionChange: (tag: string) => void
   onBatchCategoryChange: (category: string) => void
   onBatchRemove: () => void
-  // Confirm dialog states
   confirmBatchRemove: boolean
   confirmBatchPin: boolean
   confirmBatchVersion: string | null
@@ -33,7 +32,6 @@ interface BatchActionBarProps {
   onCancelBatchVersion: () => void
   onConfirmBatchCategory: () => void
   onCancelBatchCategory: () => void
-  // Undo
   undoBatchData: { paths: string[] } | null
   onUndoBatchRemove: () => void
   onDismissUndo: () => void
@@ -71,7 +69,7 @@ export function BatchActionBar({
 
   return (
     <>
-      {/* Floating batch action bar */}
+      
       <AnimatePresence>
         {selectedCount > 0 && (
           <motion.div
@@ -165,7 +163,7 @@ export function BatchActionBar({
         )}
       </AnimatePresence>
 
-      {/* Confirm dialogs */}
+      
       <AnimatePresence>
         {confirmBatchRemove && (
           <ConfirmDialog
@@ -218,7 +216,7 @@ export function BatchActionBar({
         )}
       </AnimatePresence>
 
-      {/* Undo snackbar */}
+      
       <AnimatePresence>
         {undoBatchData && (
           <motion.div

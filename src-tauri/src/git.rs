@@ -211,7 +211,6 @@ fn friendly_git_error(stderr: &str, path: &str) -> String {
     )
 }
 
-/// Run a git command that needs `friendly_git_error` parsing on failure.
 fn friendly_cmd(path: &str, args: &[&str]) -> Result<String, String> {
     let output = git_helpers::git_raw(path, args).map_err(|e| e.to_string())?;
     if !output.status.success() {
@@ -230,8 +229,6 @@ fn get_merge_conflict_files_for_path_internal(path: &str) -> Result<Vec<String>,
     Ok(stdout.lines().filter(|l| !l.trim().is_empty()).map(|l| l.trim().to_string()).collect())
 }
 
-/// Extracts the repository's base name from a clone URL.
-/// Mirrors `repoBaseName` in src/components/modals/CloneRepoModal.tsx.
 fn repo_base_name(url: &str) -> String {
     let trimmed = url.trim().trim_end_matches('/').trim_end_matches(".git");
     trimmed

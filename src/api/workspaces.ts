@@ -1,8 +1,9 @@
 import { invoke } from '@tauri-apps/api/core'
-import type { WorkspacesState } from '../types'
+import type { WorkspacesState, WorkspaceScanDirs } from '../types'
 
 export const workspacesApi = {
   list: () => invoke<WorkspacesState>('list_workspaces'),
+  scanDirs: () => invoke<WorkspaceScanDirs[]>('list_workspace_scan_dirs'),
   create: (name: string, icon: string, color: string) =>
     invoke<WorkspacesState>('create_workspace', { name, icon, color }),
   switch: (id: string) =>

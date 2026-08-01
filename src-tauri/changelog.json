@@ -475,6 +475,10 @@
       {
         "category": "improve",
         "text": "Redesigned Create Project Modal & Clone Project Modal with Live preview"
+      },
+      {
+        "category": "add",
+        "text": "Templates Asset Library to download templates from Godot Asset Store"
       }
     ],
     "created_at": 1785270388

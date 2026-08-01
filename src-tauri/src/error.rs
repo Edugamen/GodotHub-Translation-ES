@@ -24,5 +24,4 @@ impl From<String> for AppError {
     }
 }
 
-/// Convenience alias for Results using our custom error type.
 pub type AppResult<T> = Result<T, AppError>;

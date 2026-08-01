@@ -8,7 +8,6 @@ export interface DropdownOption {
   label: string
   dotClassName?: string
   dotColor?: string
-  /** Optional badge shown inside the dropdown item (e.g. "Mono") */
   badge?: string
 }
 
@@ -19,7 +18,6 @@ interface Props {
   emptyLabel?: string
   className?: string
   openUp?: boolean
-  /** Hide the "empty" option (useful when every option is required). */
   hideEmpty?: boolean
 }
 

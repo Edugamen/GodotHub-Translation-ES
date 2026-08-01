@@ -159,7 +159,7 @@ export function TemplatePreviewModal({ template, onClose }: Props) {
         className="bg-surface border border-line rounded-2xl w-full max-w-lg max-h-[80vh] flex flex-col shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
+        
         <div className="flex items-start justify-between gap-4 p-6 pb-4 border-b border-line">
           <div className="flex items-start gap-3 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
@@ -192,7 +192,7 @@ export function TemplatePreviewModal({ template, onClose }: Props) {
           </button>
         </div>
 
-        {/* Content */}
+        
         <div className="flex-1 overflow-y-auto p-4">
           {loading ? (
             <div className="flex items-center justify-center py-12 text-sm text-muted">

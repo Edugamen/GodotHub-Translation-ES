@@ -87,7 +87,7 @@ function DonutChart({
 
   return (
     <svg viewBox="0 0 200 200" className="w-full h-full drop-shadow-sm overflow-visible">
-      {/* Background ring */}
+      
       <circle cx="100" cy="100" r={innerRadius} fill="none" stroke="var(--color-line)" strokeWidth="18" opacity={0.3} />
 
       {displayArcs.map((arc, i) => {
@@ -121,7 +121,7 @@ function DonutChart({
         )
       })}
 
-      {/* Center hole with total */}
+      
       <circle cx="100" cy="100" r={42} fill="var(--color-surface)" stroke="var(--color-line)" strokeWidth="1" />
       <text
         x="100"

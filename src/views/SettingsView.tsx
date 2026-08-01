@@ -640,7 +640,7 @@ export function SettingsView({
         <SaveStatus state={saveState} />
       </div>
 
-      {/* Settings search */}
+      
       <div className="relative">
         <div className="relative">
           <IconSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted/50 pointer-events-none" />
@@ -667,7 +667,7 @@ export function SettingsView({
           )}
         </div>
 
-        {/* Search results dropdown */}
+        
         {settingsSearchQuery.trim() && (
           <motion.div
             initial={{ opacity: 0, y: -4 }}
@@ -718,7 +718,7 @@ export function SettingsView({
         )}
       </div>
 
-      {/* Tab bar */}
+      
       <div className="inline-flex self-start rounded-lg border border-line bg-raised p-1 gap-1">
         {TABS.map(({ id }) => {
           const label = t(id)
@@ -1371,7 +1371,7 @@ export function SettingsView({
                 <div className="flex flex-col gap-2.5">
                   <span className="text-xs font-medium text-muted">{t('theme')}</span>
                   <div className="flex items-center gap-3 flex-wrap">
-                    {/* Dark / Light */}
+                    
                     <div className="inline-flex self-start rounded-lg border border-line bg-raised p-1 gap-1">
                       {[
                         { mode: 'dark' as const, label: t('dark'), Icon: IconMoon },
@@ -1397,7 +1397,7 @@ export function SettingsView({
                       })}
                     </div>
 
-                    {/* Lucky / Reset */}
+                    
                     <div className="inline-flex self-start rounded-lg border border-line bg-raised p-1 gap-1">
                       <motion.button
                         whileHover={{ y: -1 }}
@@ -1904,7 +1904,6 @@ export function SettingsView({
             variant="default"
             onConfirm={async () => {
               if (!current) return
-              // Save directly (bypass debounce) and await before restarting
               await update({ ...current, use_os_decorations: confirmingOsDec })
               setConfirmingOsDec(null)
               await relaunch()

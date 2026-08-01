@@ -72,7 +72,7 @@ export function GitResultDialog({
         className="bg-surface border border-line rounded-2xl p-6 w-full max-w-md flex flex-col gap-4 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Icon + Title */}
+        
         <div className="flex items-start gap-3.5">
           <div
             className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
@@ -105,7 +105,7 @@ export function GitResultDialog({
           </button>
         </div>
 
-        {/* Raw error (collapsible) */}
+        
         {rawError && (
           <div className="bg-base rounded-xl border border-line overflow-hidden">
             <button
@@ -138,7 +138,7 @@ export function GitResultDialog({
           </div>
         )}
 
-        {/* Actions */}
+        
         <div className="flex items-center justify-end gap-2.5 mt-1">
           {type === 'error' && onOpenTerminal && (
             <button

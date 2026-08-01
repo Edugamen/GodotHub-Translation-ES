@@ -124,7 +124,7 @@ export function MergeConflictDialog({
           className="bg-surface border border-line rounded-2xl w-full max-w-xl flex flex-col shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Header */}
+          
           <div className="flex items-start gap-3.5 p-6 pb-4 border-b border-line">
             <div className="w-10 h-10 rounded-xl bg-danger/10 flex items-center justify-center shrink-0">
               <IconAlertTriangle className="w-5 h-5 text-danger" />
@@ -145,7 +145,7 @@ export function MergeConflictDialog({
             </button>
           </div>
 
-          {/* Progress bar */}
+          
           {conflictFiles.length > 0 && (
             <div className="px-6 pt-4 pb-2">
               <div className="flex items-center justify-between mb-2">
@@ -172,7 +172,7 @@ export function MergeConflictDialog({
             </div>
           )}
 
-          {/* Content */}
+          
           <div className="flex-1 overflow-y-auto max-h-[400px] px-6 py-3">
             {loading ? (
               <div className="flex items-center justify-center py-12">
@@ -212,7 +212,7 @@ export function MergeConflictDialog({
                     }`}
                   >
                     <div className="flex items-center gap-3 px-4 py-3">
-                      {/* Status icon */}
+                      
                       <div
                         className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                           file.resolved
@@ -227,7 +227,7 @@ export function MergeConflictDialog({
                         )}
                       </div>
 
-                      {/* File path */}
+                      
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-mono text-ink truncate">
                           {file.path}
@@ -239,7 +239,7 @@ export function MergeConflictDialog({
                         </p>
                       </div>
 
-                      {/* Actions */}
+                      
                       {!file.resolved && (
                         <div className="flex items-center gap-1 shrink-0">
                           <button
@@ -301,7 +301,7 @@ export function MergeConflictDialog({
             )}
           </div>
 
-          {/* Footer */}
+          
           <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-line">
             <div className="flex items-center gap-2">
               <button
@@ -347,7 +347,7 @@ export function MergeConflictDialog({
         </motion.div>
       </motion.div>
 
-      {/* Abort merge confirmation */}
+      
       <AnimatePresence>
         {showAbortConfirm && (
           <ConfirmDialog

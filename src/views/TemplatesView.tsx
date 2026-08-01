@@ -141,7 +141,7 @@ export function TemplatesView() {
                 : t('asset_library_subtitle')}
             </p>
           </div>
-          {/* Tab bar */}
+          
           <div className="flex items-center gap-1 p-1 rounded-xl border border-line bg-raised shrink-0">
             <button
               onClick={() => setTab('local')}
@@ -165,7 +165,7 @@ export function TemplatesView() {
         </div>
         {tab === 'local' && (
           <>
-          {/* Search bar */}
+          
           <div className="relative w-64 mt-4">
             <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted/50 pointer-events-none" />
             <input
@@ -250,7 +250,7 @@ export function TemplatesView() {
         </div>
       ) : (
         <div className="flex flex-col gap-8">
-          {/* User templates section */}
+          
           {user.length > 0 && (
             <section>
               <div className="flex items-center gap-2 mb-4">
@@ -320,7 +320,7 @@ export function TemplatesView() {
         <AssetLibraryBrowser />
       )}
 
-      {/* Preview modal */}
+      
       <AnimatePresence>
         {previewTemplate && (
           <TemplatePreviewModal
@@ -330,7 +330,7 @@ export function TemplatesView() {
         )}
       </AnimatePresence>
 
-      {/* Delete confirmation dialog */}
+      
       <AnimatePresence>
         {confirmDelete && (
           <motion.div
@@ -387,7 +387,7 @@ export function TemplatesView() {
         )}
       </AnimatePresence>
 
-      {/* Sync overlay */}
+      
       {syncing && !dialogMinimized && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-surface border border-line rounded-2xl px-8 py-6 flex flex-col items-center gap-3 min-w-64">

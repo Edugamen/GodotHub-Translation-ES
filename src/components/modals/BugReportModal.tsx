@@ -159,7 +159,7 @@ export function BugReportModal({ onClose }: Props) {
         className="bg-surface border border-line rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
+        
         <div className="flex items-center gap-3 px-7 pt-7 pb-4 shrink-0">
           <div className="w-10 h-10 rounded-xl bg-danger/10 flex items-center justify-center shrink-0">
             <IconBug className="w-5 h-5 text-danger" />
@@ -172,7 +172,7 @@ export function BugReportModal({ onClose }: Props) {
           </div>
         </div>
 
-        {/* Report preview */}
+        
         <div className="px-7 overflow-y-auto min-h-0 flex-1">
           {loading ? (
             <div className="flex items-center justify-center py-12">
@@ -185,7 +185,7 @@ export function BugReportModal({ onClose }: Props) {
           )}
         </div>
 
-        {/* Actions */}
+        
         <div className="flex items-center justify-between gap-3 px-7 pt-4 pb-7 shrink-0">
           <button
             type="button"

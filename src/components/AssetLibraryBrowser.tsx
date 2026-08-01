@@ -9,9 +9,6 @@ import { Dropdown } from './ui/Dropdown'
 
 const PAGE_SIZE = 12
 
-// Latest stable Godot version first. The Asset Library API's `godot_version`
-// filter means "at or below this version", so the highest entry doubles as
-// the "All versions" option (the backend enforces a 4.1 floor).
 const VERSION_OPTIONS = [
   '4.7',
   '4.6',
@@ -68,8 +65,6 @@ export function AssetLibraryBrowser() {
     setError(null)
     if (searchTimer.current) clearTimeout(searchTimer.current)
     searchTimer.current = setTimeout(async () => {
-      // Only flip into the skeleton state once the search actually starts,
-      // so the grid doesn't flash loading on every keystroke.
       setLoading(true)
       await load(0, false)
       setLoading(false)
@@ -94,8 +89,6 @@ export function AssetLibraryBrowser() {
       setInstalled((prev) => new Set(prev).add(asset.asset_id))
       window.dispatchEvent(new Event('app:refresh-templates'))
     } catch {
-      // Errors surface in the task tray (asset-download-error), matching the
-      // version-download UX, so no blocking alert here.
     } finally {
       setInstalling(null)
     }
@@ -103,7 +96,7 @@ export function AssetLibraryBrowser() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Toolbar: search + version filter */}
+      
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-md">
           <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted/50 pointer-events-none" />
@@ -139,7 +132,7 @@ export function AssetLibraryBrowser() {
         )}
       </div>
 
-      {/* Loading skeleton */}
+      
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -281,7 +274,7 @@ export function AssetLibraryBrowser() {
             </AnimatePresence>
           </div>
 
-          {/* Load more */}
+          
           {page + 1 < pages && (
             <div className="flex justify-center">
               <motion.button

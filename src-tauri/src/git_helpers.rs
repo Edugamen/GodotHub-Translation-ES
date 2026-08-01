@@ -10,8 +10,6 @@ use crate::terminal::CREATE_NO_WINDOW;
 
 use crate::error::{AppError, AppResult};
 
-/// Create a `git` `Command` with platform-specific flags (e.g.
-/// `CREATE_NO_WINDOW` on Windows).
 pub fn git_command() -> Command {
     #[allow(unused_mut)]
     let mut cmd = Command::new("git");
@@ -20,8 +18,6 @@ pub fn git_command() -> Command {
     cmd
 }
 
-/// Execute a `git` command in the given working directory and return stdout
-/// on success, or stderr on failure.
 pub fn git_cmd<I, S>(working_dir: &str, args: I) -> AppResult<String>
 where
     I: IntoIterator<Item = S>,
@@ -40,8 +36,6 @@ where
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
-/// Like `git_cmd` but returns raw `std::process::Output` (useful when stdout
-/// needs special parsing or when you need both stdout and stderr).
 pub fn git_raw<I, S>(working_dir: &str, args: I) -> AppResult<std::process::Output>
 where
     I: IntoIterator<Item = S>,
@@ -54,7 +48,6 @@ where
         .map_err(AppError::from)
 }
 
-/// Output to String helper, used by commands that parse their own stdout.
 pub fn output_stdout(output: &std::process::Output) -> String {
     String::from_utf8_lossy(&output.stdout).to_string()
 }
@@ -63,14 +56,12 @@ pub fn output_stderr(output: &std::process::Output) -> String {
     String::from_utf8_lossy(&output.stderr).to_string()
 }
 
-/// Parse lines from a git command's stdout, skipping empty lines.
 #[allow(dead_code)]
 pub fn git_lines(working_dir: &str, args: &[&str]) -> AppResult<Vec<String>> {
     let out = git_cmd(working_dir, args)?;
     Ok(out.lines().filter(|l| !l.is_empty()).map(String::from).collect())
 }
 
-/// Shell out to open a file/folder with the OS default application.
 #[allow(dead_code)]
 pub fn open_in_os(path: &Path) -> AppResult<()> {
     let path_str = path.to_string_lossy();

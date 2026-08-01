@@ -54,8 +54,6 @@ pub fn run() {
 
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
-                // Merge any legacy (pre-workspace) templates folder into the
-                // active workspace and repair stale stored template paths.
                 templates::consolidate_legacy_templates(&handle);
 
                 let s = settings::read_settings(&handle);
@@ -109,7 +107,6 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
-            // --- Godot Versions ---
             godot_versions::fetch_available_godot_versions,
             godot_versions::download_godot_version,
             godot_versions::pause_download,
@@ -122,7 +119,6 @@ pub fn run() {
             godot_versions::test_github_token,
             godot_versions::get_github_rate_limit,
             godot_versions::import_version_zip,
-            // --- Projects ---
             projects::list_projects,
             projects::create_project,
             projects::import_project,
@@ -140,48 +136,39 @@ pub fn run() {
             projects::pick_file,
             projects::read_image_file,
             projects::write_project_tags,
-            // --- Categories ---
             categories::list_categories,
             categories::create_category,
             categories::update_category,
             categories::rename_category,
             categories::delete_category,
             categories::reorder_categories,
-            // --- Settings ---
             settings::get_settings,
             settings::update_settings,
             settings::reset_settings,
             settings::reset_app_data,
-            // --- Workspaces ---
             workspace::list_workspaces,
+            workspace::list_workspace_scan_dirs,
             workspace::create_workspace,
             workspace::switch_workspace,
             workspace::update_workspace,
             workspace::delete_workspace,
-            // --- Scanning ---
             scan::scan_for_projects,
             scan::scan_for_projects_with_info,
             scan::scan_for_versions,
             scan::import_version,
-            // --- Dismissed projects ---
             projects::reintroduce_dismissed_projects,
-            // --- News ---
             news::fetch_godot_news,
-            // --- Templates ---
             templates::list_templates,
             templates::save_project_as_template,
             templates::delete_template,
             templates::sync_templates_with_scan_dir,
-            // --- Asset Library ---
 asset_library::search_asset_library,
 asset_library::install_asset_as_template,
 templates::get_template_preview,
-            // --- Changelog ---
             changelog::list_changelog_entries,
             changelog::add_changelog_entry,
             changelog::update_changelog_entry,
             changelog::delete_changelog_entry,
-            // --- Git ---
             git::clone_repo,
             git::get_git_status,
             git::batch_git_status,
@@ -217,7 +204,6 @@ templates::get_template_preview,
             git::git_resolve_conflict_manual,
             git::git_abort_merge,
             git::git_is_merging,
-            // --- Tray & Misc ---
             tray::refresh_tray_menu,
             pick_folder,
             watcher::restart_watchers,

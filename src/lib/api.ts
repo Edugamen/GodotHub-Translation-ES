@@ -9,15 +9,9 @@ import { changelogApi } from '../api/changelog'
 import { newsApi } from '../api/news'
 import { assetLibraryApi } from '../api/assetLibrary'
 
-// Re-export cached accessors used by other modules
 export { getCachedProjectIcon, getCachedProjectName }
 
-/**
- * Unified API object that delegates to domain-specific modules.
- * All existing imports of `api` from this module continue to work.
- */
 export const api = {
-  // --- Projects ---
   listProjects: projectsApi.list,
   createProject: projectsApi.create,
   importProject: projectsApi.import,
@@ -39,7 +33,6 @@ export const api = {
   clearProjectIconCache: projectsApi.clearIconCache,
   clearProjectNameCache: projectsApi.clearNameCache,
 
-  // --- Versions ---
   fetchAvailableGodotVersions: versionsApi.fetchAvailable,
   downloadGodotVersion: versionsApi.download,
   pauseDownload: versionsApi.pauseDownload,
@@ -56,7 +49,6 @@ export const api = {
   importVersionZip: versionsApi.importZip,
   validateGodotFolder: versionsApi.validateFolder,
 
-  // --- Git ---
   cloneRepo: gitApi.clone,
   getGitStatus: gitApi.status,
   batchGitStatus: gitApi.batchStatus,
@@ -94,7 +86,6 @@ export const api = {
   gitAbortMerge: gitApi.abortMerge,
   gitIsMerging: gitApi.isMerging,
 
-  // --- Settings ---
   getSettings: settingsApi.get,
   updateSettings: settingsApi.update,
   resetSettings: settingsApi.reset,
@@ -104,14 +95,12 @@ export const api = {
   refreshTrayMenu: settingsApi.refreshTrayMenu,
   restartWatchers: settingsApi.restartWatchers,
 
-  // --- Templates ---
   listTemplates: templatesApi.list,
   saveProjectAsTemplate: templatesApi.saveAsTemplate,
   deleteTemplate: templatesApi.delete,
   getTemplatePreview: templatesApi.getPreview,
   syncTemplatesWithScanDir: templatesApi.syncWithScanDir,
 
-  // --- Categories ---
   listCategories: categoriesApi.list,
   createCategory: categoriesApi.create,
   renameCategory: categoriesApi.rename,
@@ -119,23 +108,20 @@ export const api = {
   deleteCategory: categoriesApi.delete,
   reorderCategories: categoriesApi.reorder,
 
-  // --- Workspaces ---
   listWorkspaces: workspacesApi.list,
+  listWorkspaceScanDirs: workspacesApi.scanDirs,
   createWorkspace: workspacesApi.create,
   switchWorkspace: workspacesApi.switch,
   updateWorkspace: workspacesApi.update,
   deleteWorkspace: workspacesApi.delete,
 
-  // --- Changelog ---
   listChangelogEntries: changelogApi.list,
   addChangelogEntry: changelogApi.add,
   updateChangelogEntry: changelogApi.update,
   deleteChangelogEntry: changelogApi.delete,
 
-  // --- News ---
   fetchGodotNews: newsApi.fetch,
 
-  // --- Asset Library ---
   searchAssetLibrary: assetLibraryApi.search,
   installAssetAsTemplate: assetLibraryApi.installAsTemplate,
 }

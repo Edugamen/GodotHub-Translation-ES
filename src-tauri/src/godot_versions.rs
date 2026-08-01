@@ -114,7 +114,7 @@ struct ReleasesCache {
     releases: Vec<GodotRelease>,
 }
 
-const CACHE_TTL_SECS: i64 = 3600; // 1 hour
+const CACHE_TTL_SECS: i64 = 3600;
 
 fn read_cache_allow_stale(app: &AppHandle) -> Option<(Vec<GodotRelease>, i64)> {
     let file = releases_cache_file(app);

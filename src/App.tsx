@@ -108,15 +108,12 @@ function AppContent() {
 
   const paletteKey = settings.command_palette_keybind || 'k'
 
-  // Sync window decorations when setting changes
   useEffect(() => {
     const w = getCurrentWindow()
     w.setDecorations(settings.use_os_decorations).catch((e) =>
       console.error('Failed to set window decorations:', e),
     )
   }, [settings.use_os_decorations])
-
-  // --- Event listeners ---
 
   useTauriEvent('watcher:project-scan-done', () => refreshProjects())
   useTauriEvent('watcher:version-scan-done', () => refreshInstalled())
@@ -215,7 +212,6 @@ function AppContent() {
     [],
   )
 
-  // Drag & drop
   useEffect(() => {
     const appWindow = getCurrentWebviewWindow()
     const unlistenPromise = appWindow.onDragDropEvent((event) => {
@@ -365,7 +361,6 @@ function AppContent() {
     return () => clearTimeout(t)
   }, [successNotification])
 
-  // Window event handlers
   useEffect(() => {
     const handleSwitchTab = (e: Event) => {
       const idx = (e as CustomEvent).detail as number
@@ -565,7 +560,7 @@ function AppContent() {
           </AnimatePresence>
         </main>
 
-        {/* Git sidebar overlay + backdrop */}
+        
         <AnimatePresence>
           {gitSidebarProject && (
             <>
@@ -663,7 +658,7 @@ function AppContent() {
         )}
       </AnimatePresence>
 
-      {/* Extracted overlay components */}
+      
       <DragDropOverlay visible={dragOver} type={dragType} />
       <SuccessToast
         notification={successNotification}

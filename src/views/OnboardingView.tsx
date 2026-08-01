@@ -1,13 +1,16 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
 import { applyTheme } from '../lib/colors'
 import { applyRadius } from '../lib/appearance'
 import { useCategoriesContext } from '../hooks/categoriesContext'
+import { useWorkspaces } from '../hooks/useWorkspaces'
 import { DirList } from '../components/ui/DirList'
 import { ColorSwatchPicker } from '../components/ui/ColorSwatchPicker'
 import { Slider } from '../components/ui/Slider'
+import { useTauriEvent } from '../lib/useTauriEvent'
 import { api } from '../lib/api'
+import type { WorkspaceScanDirs } from '../types'
 import {
   IconLayoutGrid,
   IconLayoutList,
@@ -20,6 +23,7 @@ import {
   IconDownload,
   IconArrowUpDown,
   IconCopy,
+  IconRefresh,
 } from '../components/Icons'
 import type { AppSettings } from '../types'
 
@@ -157,6 +161,71 @@ function StepShell({
   )
 }
 
+const dedupePaths = (
+  items: { path: string; source: string }[],
+): { path: string; source: string }[] => {
+  const seen = new Set<string>()
+  return items.filter((item) => {
+    if (seen.has(item.path)) return false
+    seen.add(item.path)
+    return true
+  })
+}
+
+function ProgressRow({
+  label,
+  progress,
+  running,
+}: {
+  label: string
+  progress: { current: number; total: number } | null
+  running: boolean
+}) {
+  const hasProgress = !!progress && progress.total > 0
+  const pct = hasProgress
+    ? Math.min((progress.current / progress.total) * 100, 100)
+    : 0
+
+  return (
+    <div className="flex flex-col gap-2 px-4 py-3 rounded-lg bg-surface/60 border border-line">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm text-muted">{label}</span>
+        {hasProgress ? (
+          <span className="font-mono text-xs text-muted shrink-0">
+            {progress.current} / {progress.total}
+          </span>
+        ) : running ? (
+          <span className="flex items-center gap-1.5 text-xs text-accent-bright shrink-0">
+            <IconRefresh className="w-3 h-3 animate-spin" />
+            <span className="font-mono">…</span>
+          </span>
+        ) : (
+          <span className="font-mono text-xs text-muted shrink-0">—</span>
+        )}
+      </div>
+      <div className="h-1.5 w-full rounded-full bg-line/60 overflow-hidden">
+        {hasProgress ? (
+          <motion.div
+            className="h-full rounded-full bg-accent"
+            initial={{ width: 0 }}
+            animate={{ width: `${pct}%` }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+          />
+        ) : running ? (
+          <motion.div
+            className="h-full rounded-full bg-accent/60"
+            animate={{ x: ['-100%', '400%'] }}
+            transition={{ repeat: Infinity, duration: 1.4, ease: 'easeInOut' }}
+            style={{ width: '30%' }}
+          />
+        ) : (
+          <div className="h-full w-0" />
+        )}
+      </div>
+    </div>
+  )
+}
+
 export function OnboardingView({ settings, onComplete }: Props) {
   const { t } = useTranslation('onboarding')
   const { t: tc, i18n } = useTranslation('common')
@@ -167,9 +236,73 @@ export function OnboardingView({ settings, onComplete }: Props) {
       ),
     [settings.categories_enabled],
   )
+  const { activeId } = useWorkspaces()
   const [stepIndex, setStepIndex] = useState(0)
   const [draft, setDraft] = useState<AppSettings>(settings)
   const [finishing, setFinishing] = useState(false)
+  const [workspaceSuggestions, setWorkspaceSuggestions] = useState<
+    WorkspaceScanDirs[]
+  >([])
+
+  useEffect(() => {
+    api.listWorkspaceScanDirs().then(setWorkspaceSuggestions).catch(() => {})
+  }, [])
+
+  const projectSuggestions = useMemo(
+    () =>
+      dedupePaths(
+        workspaceSuggestions
+          .filter((w) => w.workspace_id !== activeId)
+          .flatMap((w) =>
+            w.project_scan_dirs.map((path) => ({
+              path,
+              source: w.workspace_name,
+            })),
+          ),
+      ),
+    [workspaceSuggestions, activeId],
+  )
+  const versionSuggestions = useMemo(
+    () =>
+      dedupePaths(
+        workspaceSuggestions
+          .filter((w) => w.workspace_id !== activeId)
+          .flatMap((w) =>
+            w.version_scan_dirs.map((path) => ({
+              path,
+              source: w.workspace_name,
+            })),
+          ),
+      ),
+    [workspaceSuggestions, activeId],
+  )
+  const templateSuggestions = useMemo(
+    () =>
+      dedupePaths(
+        workspaceSuggestions
+          .filter((w) => w.workspace_id !== activeId)
+          .flatMap((w) =>
+            w.template_scan_dir
+              ? [{ path: w.template_scan_dir, source: w.workspace_name }]
+              : [],
+          ),
+      ),
+    [workspaceSuggestions, activeId],
+  )
+  const pendingTemplateSuggestions = templateSuggestions.filter(
+    (s) => s.path !== draft.template_scan_dir,
+  )
+  const [scanProgress, setScanProgress] = useState<{
+    projects: { current: number; total: number } | null
+    versions: { current: number; total: number } | null
+  }>({ projects: null, versions: null })
+
+  useTauriEvent<[number, number]>('project-scan-progress', ([current, total]) => {
+    setScanProgress((prev) => ({ ...prev, projects: { current, total } }))
+  })
+  useTauriEvent<[number, number]>('version-scan-progress', ([current, total]) => {
+    setScanProgress((prev) => ({ ...prev, versions: { current, total } }))
+  })
   const {
     categories,
     create: createCategory,
@@ -222,6 +355,7 @@ export function OnboardingView({ settings, onComplete }: Props) {
 
   const finish = async (skip: boolean) => {
     setFinishing(true)
+    setScanProgress({ projects: null, versions: null })
     const final: AppSettings = skip
       ? { ...settings, setup_complete: true, language: draft.language }
       : { ...draft, setup_complete: true }
@@ -242,7 +376,7 @@ export function OnboardingView({ settings, onComplete }: Props) {
 
   return (
     <div className="h-screen w-screen flex flex-col bg-base text-ink font-body select-none">
-      {/* Draggable region so the window can be moved during setup (no TitleBar is shown) */}
+      
       <div data-tauri-drag-region className="h-10 shrink-0" />
       <div className="flex-1 flex flex-col items-center justify-center px-8 py-12 overflow-y-auto">
         <div className="flex items-center gap-2 mb-12">
@@ -350,6 +484,7 @@ export function OnboardingView({ settings, onComplete }: Props) {
                     setField('default_project_location', dir)
                   }
                   defaultLabel={t('new_project_default', { ns: 'settings' })}
+                  suggestions={projectSuggestions}
                 />
               </StepShell>
             )}
@@ -367,6 +502,7 @@ export function OnboardingView({ settings, onComplete }: Props) {
                   defaultDir={draft.download_dir}
                   onSetDefault={(dir) => setField('download_dir', dir)}
                   defaultLabel={t('download_folder', { ns: 'settings' })}
+                  suggestions={versionSuggestions}
                 />
               </StepShell>
             )}
@@ -412,6 +548,33 @@ export function OnboardingView({ settings, onComplete }: Props) {
                       </motion.button>
                     )}
                   </div>
+
+                  {pendingTemplateSuggestions.length > 0 && (
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-muted/70">
+                        {tc('suggested_from_workspaces')}
+                      </span>
+                      {pendingTemplateSuggestions.map((s) => (
+                        <motion.button
+                          key={s.path}
+                          whileHover={{ x: 2 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => setField('template_scan_dir', s.path)}
+                          className="focus-ring cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-line text-left hover:border-accent-dim hover:bg-raised/70 transition-colors"
+                        >
+                          <span className="shrink-0 flex items-center justify-center w-4 h-4 rounded bg-accent/15 text-accent-bright">
+                            <IconCopy className="w-3 h-3" />
+                          </span>
+                          <span className="text-[11px] font-mono text-ink truncate">
+                            {s.path}
+                          </span>
+                          <span className="shrink-0 text-[10px] text-muted truncate max-w-32">
+                            {tc('from_workspace', { name: s.source })}
+                          </span>
+                        </motion.button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </StepShell>
             )}
@@ -578,31 +741,86 @@ export function OnboardingView({ settings, onComplete }: Props) {
             {step.id === 'finish' && (
               <StepShell
                 icon={<IconCheck className="w-5 h-5" />}
-                title={t('onboarding_finish_title', { ns: 'common' })}
-                description={t('onboarding_finish_desc', { ns: 'common' })}
+                title={t(
+                  finishing
+                    ? 'onboarding_setting_up_title'
+                    : 'onboarding_finish_title',
+                  { ns: 'common' },
+                )}
+                description={
+                  finishing
+                    ? t('onboarding_setting_up_desc', { ns: 'common' })
+                    : t('onboarding_finish_desc', { ns: 'common' })
+                }
               >
-                <div className="flex flex-col gap-2.5 w-full text-sm">
-                  <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-surface/60 border border-line">
-                    <span className="text-muted">{t('project_folders')}</span>
-                    <span className="font-mono text-xs">
-                      {draft.project_scan_dirs.length || tc('none')}
-                    </span>
+                {finishing ? (
+                  <div className="flex flex-col gap-3 w-full">
+                    <ProgressRow
+                      label={
+                        draft.project_scan_dirs.length > 0
+                          ? tc('scanning_projects')
+                          : tc('skipped')
+                      }
+                      progress={
+                        draft.project_scan_dirs.length > 0
+                          ? scanProgress.projects
+                          : null
+                      }
+                      running={draft.project_scan_dirs.length > 0}
+                    />
+                    <ProgressRow
+                      label={
+                        draft.version_scan_dirs.length > 0
+                          ? tc('scanning_versions')
+                          : tc('skipped')
+                      }
+                      progress={
+                        draft.version_scan_dirs.length > 0
+                          ? scanProgress.versions
+                          : null
+                      }
+                      running={draft.version_scan_dirs.length > 0}
+                    />
+                    {draft.template_scan_dir && (
+                      <ProgressRow
+                        label={tc('syncing')}
+                        progress={null}
+                        running
+                      />
+                    )}
+                    {settings.categories_enabled && (
+                      <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-surface/60 border border-line opacity-70">
+                        <span className="text-muted text-sm">{t('categories')}</span>
+                        <span className="font-mono text-xs text-muted">
+                          {categories.length || tc('none')}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-surface/60 border border-line">
-                    <span className="text-muted">{t('version_folders')}</span>
-                    <span className="font-mono text-xs">
-                      {draft.version_scan_dirs.length || tc('none')}
-                    </span>
-                  </div>
-                  {settings.categories_enabled && (
+                ) : (
+                  <div className="flex flex-col gap-2.5 w-full text-sm">
                     <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-surface/60 border border-line">
-                      <span className="text-muted">{t('categories')}</span>
+                      <span className="text-muted">{t('project_folders')}</span>
                       <span className="font-mono text-xs">
-                        {categories.length || tc('none')}
+                        {draft.project_scan_dirs.length || tc('none')}
                       </span>
                     </div>
-                  )}
-                </div>
+                    <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-surface/60 border border-line">
+                      <span className="text-muted">{t('version_folders')}</span>
+                      <span className="font-mono text-xs">
+                        {draft.version_scan_dirs.length || tc('none')}
+                      </span>
+                    </div>
+                    {settings.categories_enabled && (
+                      <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-surface/60 border border-line">
+                        <span className="text-muted">{t('categories')}</span>
+                        <span className="font-mono text-xs">
+                          {categories.length || tc('none')}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </StepShell>
             )}
           </motion.div>

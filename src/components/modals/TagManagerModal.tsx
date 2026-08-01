@@ -37,12 +37,10 @@ export function TagManagerModal({ project, onClose, onSaved }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const editInputRef = useRef<HTMLInputElement>(null)
 
-  // Focus the add input when modal opens
   useEffect(() => {
     setTimeout(() => inputRef.current?.focus(), 100)
   }, [])
 
-  // Focus the edit input when editing starts
   useEffect(() => {
     if (editingIndex !== null) {
       setTimeout(() => editInputRef.current?.focus(), 50)
@@ -79,7 +77,6 @@ export function TagManagerModal({ project, onClose, onSaved }: Props) {
     if (editingIndex === null) return
     const trimmed = editValue.trim()
     if (!trimmed) {
-      // If empty, remove the tag
       removeTag(editingIndex)
       return
     }
@@ -143,7 +140,7 @@ export function TagManagerModal({ project, onClose, onSaved }: Props) {
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
-        {/* Header */}
+        
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center">
@@ -169,7 +166,7 @@ export function TagManagerModal({ project, onClose, onSaved }: Props) {
           </motion.button>
         </div>
 
-        {/* Error */}
+        
         <AnimatePresence>
           {error && (
             <motion.div
@@ -183,7 +180,7 @@ export function TagManagerModal({ project, onClose, onSaved }: Props) {
           )}
         </AnimatePresence>
 
-        {/* Add tag input */}
+        
         <div className="flex items-center gap-2">
           <input
             ref={inputRef}
@@ -214,7 +211,7 @@ export function TagManagerModal({ project, onClose, onSaved }: Props) {
           </motion.button>
         </div>
 
-        {/* Tags list */}
+        
         <div className="flex flex-col gap-2 max-h-64 overflow-y-auto min-h-0">
           {tags.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 gap-2 text-muted/60">
@@ -234,7 +231,7 @@ export function TagManagerModal({ project, onClose, onSaved }: Props) {
                   transition={{ duration: 0.15 }}
                   className="group flex items-center gap-2 px-3 py-2 rounded-xl bg-raised border border-line/60 hover:border-accent-dim/40 transition-colors"
                 >
-                  {/* Color dot */}
+                  
                   <span
                     className="w-2.5 h-2.5 rounded-full shrink-0 ring-1 ring-black/10"
                     style={{ backgroundColor: color }}
@@ -296,7 +293,7 @@ export function TagManagerModal({ project, onClose, onSaved }: Props) {
           )}
         </div>
 
-        {/* Footer */}
+        
         <div className="flex items-center justify-between pt-1">
           <span className="text-xs text-muted/60">
             {tags.length === 0

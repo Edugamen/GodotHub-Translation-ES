@@ -83,7 +83,6 @@ textarea::placeholder {
   scroll-behavior: auto !important;
 }
 
-/* Smooth colour transitions when theme changes */
 .theme-transitioning,
 .theme-transitioning * {
   transition: background-color 0.35s ease,

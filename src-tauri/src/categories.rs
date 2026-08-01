@@ -106,7 +106,6 @@ pub fn update_category(
 
 #[tauri::command]
 pub fn rename_category(app: AppHandle, id: String, name: String) -> Result<Category, String> {
-    // Reuse update_category logic
     update_category(app, id, Some(name), None)
 }
 

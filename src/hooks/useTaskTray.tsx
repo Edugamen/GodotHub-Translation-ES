@@ -96,7 +96,6 @@ export function TaskTrayProvider({ children }: { children: ReactNode }) {
     [clearTimer],
   )
 
-  // --- Tauri event listeners ---
 
   useTauriEvent<[number, number]>('project-scan-progress', ([current, total]) => {
     if (current < total) {
@@ -180,7 +179,6 @@ export function TaskTrayProvider({ children }: { children: ReactNode }) {
     scheduleRemoval(`download-${key}`, 3000)
   })
 
-  // --- Asset Library template download ---
 
   useTauriEvent<AssetDownloadProgress>('asset-download-queued', (payload) => {
     registerTask({
@@ -217,9 +215,6 @@ export function TaskTrayProvider({ children }: { children: ReactNode }) {
   })
 
   useTauriEvent<AssetDownloadError>('asset-download-error', (payload) => {
-    // Use registerTask (upsert) rather than updateTask: failures that happen
-    // before the queued event (fetch/validation errors) never registered a
-    // task, so the error must be able to create one from scratch.
     registerTask({
       id: `download-asset-${payload.asset_id}`,
       type: 'download-asset',

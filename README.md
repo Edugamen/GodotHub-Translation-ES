@@ -305,6 +305,10 @@ bun tauri build
 
 ---
 
+## Known Issues
+
+- As of v1.2 Workspaces is a bit buggy, When creating a Second workspace, Projects' Scan button won't work unless you switch from the main workspace to the newly created one. We are monitoring this issue and will add a fix as soon as possible..
+
 ## Keyboard Shortcuts
 
 | Shortcut | Action |

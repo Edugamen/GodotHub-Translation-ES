@@ -34,8 +34,6 @@ fn sanitize_folder_name(name: &str) -> String {
     } else {
         trimmed
     };
-    // The template sync skips hidden folders (names starting with '.'), and
-    // Windows rejects reserved device names, so make the folder always usable.
     if result.starts_with('.') || is_reserved_windows_name(&result) {
         format!("_{result}")
     } else {
@@ -124,8 +122,6 @@ pub(crate) fn copy_dir(src: &Path, dst: &Path, skip_dirs: &[&str]) -> Result<(),
 }
 
 
-/// Installs an already-downloaded asset (a folder with a project.godot) as a
-/// local template inside the active workspace.
 pub(crate) fn install_downloaded_asset(
     app: &AppHandle,
     name: String,
@@ -150,31 +146,22 @@ pub(crate) fn install_downloaded_asset(
         source_project_id: None,
         source_path: None,
         path: dst.to_string_lossy().to_string(),
-        // Keep the Asset Library title; the sync must not rename this to the
-        // bundled project.godot name.
         keep_name: true,
     };
 
     write_template_json(&dst, &template)?;
 
-    // If a template scan directory is configured, also place a copy there so
-    // the downloaded asset shows up in the user's templates folder and stays
-    // in sync with it (mirrors save_project_as_template).
     if let Some(scan_dir) = configured_scan_dir(app) {
         let folder_name = unique_folder_name(&scan_dir, &sanitize_folder_name(&template.name));
         let scan_copy = scan_dir.join(&folder_name);
         if fs::create_dir_all(&scan_copy).is_ok()
             && copy_dir(src, &scan_copy, &[".godot", ".git", "node_modules"]).is_ok()
         {
-            // scan_dir is canonicalized (see configured_scan_dir), which matches
-            // the path format used by sync_templates_with_scan_dir, so the sync
-            // recognizes this folder as already linked (no duplicate import).
             let source_path = scan_dir.join(&folder_name).to_string_lossy().to_string();
             template.source_path = Some(source_path);
             if write_template_json(&scan_copy, &template).is_ok() {
                 let _ = write_template_json(&dst, &template);
             } else {
-                // Clean up the partial copy so the sync doesn't import a duplicate.
                 let _ = fs::remove_dir_all(&scan_copy);
                 template.source_path = None;
                 let _ = write_template_json(&dst, &template);
@@ -204,10 +191,6 @@ pub fn list_templates(app: AppHandle) -> Vec<ProjectTemplate> {
         let path = entry.path();
         if path.is_dir() {
             if let Some(mut t) = read_template_json(&path) {
-                // Always report the real on-disk folder: template.json's stored
-                // `path` can be stale for templates moved from the legacy
-                // app-data location, which made "open in folder" target the
-                // wrong directory.
                 t.path = path.to_string_lossy().to_string();
                 templates.push(t);
             }
@@ -216,10 +199,6 @@ pub fn list_templates(app: AppHandle) -> Vec<ProjectTemplate> {
     templates
 }
 
-/// One-time startup repair: merge any templates left in the legacy
-/// `app_data_dir()/templates` folder (written by pre-workspace builds) into
-/// the active workspace, fix stale `path` values inside template.json files,
-/// and remove the leftover legacy folder.
 pub(crate) fn consolidate_legacy_templates(app: &AppHandle) {
     let base = app.path().app_data_dir().expect("no app data dir");
     let legacy = base.join("templates");
@@ -254,8 +233,6 @@ pub(crate) fn consolidate_legacy_templates(app: &AppHandle) {
         let _ = delete_dir_best_effort(&legacy);
     }
 
-    // Fix stale `path` values for templates already inside the workspace
-    // (e.g. folders moved from the legacy location by the earlier migration).
     for t in read_all_templates(app) {
         let dir = template_dir(app, &t.id);
         let actual = dir.to_string_lossy().to_string();
@@ -309,23 +286,17 @@ pub fn save_project_as_template(
 
     write_template_json(&dst, &template)?;
 
-    // If a template scan directory is configured, also place a copy there so the
-    // template shows up in the user's templates folder and stays in sync with it.
     if let Some(scan_dir) = configured_scan_dir(&app) {
         let folder_name = unique_folder_name(&scan_dir, &sanitize_folder_name(&template.name));
         let scan_copy = scan_dir.join(&folder_name);
         if fs::create_dir_all(&scan_copy).is_ok()
             && copy_dir(&src, &scan_copy, &[".godot", ".git", "node_modules"]).is_ok()
         {
-            // scan_dir is canonicalized (see configured_scan_dir), which matches the
-            // path format used by sync_templates_with_scan_dir, so the sync
-            // recognizes this folder as already linked (no duplicate import).
             let source_path = scan_dir.join(&folder_name).to_string_lossy().to_string();
             template.source_path = Some(source_path);
             if write_template_json(&scan_copy, &template).is_ok() {
                 let _ = write_template_json(&dst, &template);
             } else {
-                // Clean up the partial copy so the sync doesn't import a duplicate.
                 let _ = fs::remove_dir_all(&scan_copy);
                 template.source_path = None;
                 let _ = write_template_json(&dst, &template);
@@ -338,16 +309,9 @@ pub fn save_project_as_template(
     Ok(template)
 }
 
-/// Recursively deletes a folder, clearing read-only attributes first so
-/// Windows doesn't refuse to remove files copied from VCS or archives.
 pub(crate) fn remove_dir_force(dir: &Path) -> Result<(), String> {
-    // Clearing the read-only flag is intentional: files copied from VCS or
-    // archives are often read-only and must be deletable. The false argument
-    // is required on all platforms even though only Windows really needs it.
     #[allow(clippy::permissions_set_readonly_false)]
     fn clear_readonly(path: &Path) {
-        // `Permissions::set_readonly` is a stable inherent method on all
-        // platforms; on Windows it clears the read-only file attribute.
         if let Ok(meta) = fs::metadata(path) {
             let mut perms = meta.permissions();
             perms.set_readonly(false);
@@ -377,8 +341,6 @@ pub(crate) fn remove_dir_force(dir: &Path) -> Result<(), String> {
     walk(dir)
 }
 
-/// Tries the recycle bin first and falls back to a permanent delete, so a
-/// template can always be removed even when trash (flaky on Windows) fails.
 fn delete_dir_best_effort(dir: &Path) -> bool {
     trash::delete_all(dir)
         .map_err(|e| e.to_string())
@@ -393,12 +355,6 @@ pub fn delete_template(app: AppHandle, template_id: String) -> Result<(), String
         return Err("Template not found".into());
     }
 
-    // Templates that also live inside the configured template scan directory
-    // (saved from projects, or downloaded from the Asset Library) have a copy
-    // there. Remove that copy too, otherwise the next sync would re-import the
-    // deleted template. Only remove copies the app created — those carry a
-    // template.json marker. Folders the user placed in the scan dir and were
-    // imported by the sync are left untouched.
     if let Some(t) = read_template_json(&dir) {
         if let Some(src) = &t.source_path {
             if let Some(scan_dir) = configured_scan_dir(&app) {
@@ -529,9 +485,6 @@ pub fn sync_templates_with_scan_dir(app: AppHandle) -> Result<TemplateSyncResult
 
     for mut t in existing {
         if t.source_path.is_none() {
-            // Templates that only live in app storage — saved from projects, or
-            // downloaded from the Asset Library — are migrated into the
-            // configured template scan folder so they show up there too.
             if let Some(scan_dir) = configured_scan_dir(&app) {
                 let src_dir = template_dir(&app, &t.id);
                 let folder_name = unique_folder_name(&scan_dir, &sanitize_folder_name(&t.name));
@@ -539,8 +492,6 @@ pub fn sync_templates_with_scan_dir(app: AppHandle) -> Result<TemplateSyncResult
                 if fs::create_dir_all(&scan_copy).is_ok()
                     && copy_dir(&src_dir, &scan_copy, &[".godot", ".git", "node_modules"]).is_ok()
                 {
-                    // Asset Library downloads keep their title rather than being
-                    // renamed to the bundled project.godot name on the next sync.
                     if t.source_project_id.is_none() {
                         t.keep_name = true;
                     }
@@ -570,9 +521,6 @@ pub fn sync_templates_with_scan_dir(app: AppHandle) -> Result<TemplateSyncResult
                 continue;
             }
 
-            // Templates saved from projects keep the name the user chose; only
-            // imported templates are renamed to match their project.godot.
-            // Asset Library installs also keep their title (keep_name).
             if t.source_project_id.is_none() && !t.keep_name {
                 if let Some(proj_name) = crate::projects::resolve_project_name(&src.to_string_lossy()) {
                     if proj_name != t.name {

@@ -143,6 +143,14 @@ export interface WorkspacesState {
   active_id: string
 }
 
+export interface WorkspaceScanDirs {
+  workspace_id: string
+  workspace_name: string
+  project_scan_dirs: string[]
+  version_scan_dirs: string[]
+  template_scan_dir: string | null
+}
+
 export interface TemplateFileEntry {
   path: string
   is_dir: boolean

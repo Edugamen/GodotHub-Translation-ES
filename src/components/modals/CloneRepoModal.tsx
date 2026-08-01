@@ -78,7 +78,6 @@ export function CloneRepoModal({
     urlInputRef.current?.focus()
   }, [])
 
-  // Escape closes the dialog
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -163,7 +162,7 @@ export function CloneRepoModal({
         className="bg-surface border border-line rounded-2xl w-full max-w-4xl max-h-[88vh] flex flex-col shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
+        
         <div className="flex items-start justify-between gap-4 p-6 pb-4 border-b border-line">
           <div className="flex items-start gap-3 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-accent/10 border border-accent-dim/30 flex items-center justify-center shrink-0">
@@ -187,9 +186,9 @@ export function CloneRepoModal({
           </button>
         </div>
 
-        {/* Body */}
+        
         <div className="grid grid-cols-1 md:grid-cols-5 gap-6 p-6 flex-1 overflow-y-auto">
-          {/* ---------- Form column ---------- */}
+          
           <div className="md:col-span-3 flex flex-col gap-5">
             <div className="flex flex-col gap-2">
               <label className="text-xs font-medium text-muted">
@@ -307,7 +306,7 @@ export function CloneRepoModal({
             )}
           </div>
 
-          {/* ---------- Live preview column ---------- */}
+          
           <div className="md:col-span-2 flex flex-col gap-2">
             <label className="text-xs font-medium text-muted">
               {t('preview_label')}
@@ -359,7 +358,7 @@ export function CloneRepoModal({
           </div>
         </div>
 
-        {/* Error */}
+        
         <AnimatePresence>
           {error && (
             <motion.div
@@ -377,7 +376,7 @@ export function CloneRepoModal({
           )}
         </AnimatePresence>
 
-        {/* Footer */}
+        
         <div className="flex justify-end gap-2.5 p-6 pt-4 border-t border-line">
           <motion.button
             whileHover={{ y: -1 }}

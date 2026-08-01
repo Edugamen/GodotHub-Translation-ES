@@ -829,7 +829,7 @@ export function ProjectsView({
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {/* New Project, primary CTA */}
+          
           <motion.button
             whileHover={{ y: -1 }}
             whileTap={{ scale: 0.96 }}
@@ -842,7 +842,7 @@ export function ProjectsView({
             {t('new_project')}
           </motion.button>
 
-          {/* Import split button, main action + clone dropdown */}
+          
           <div ref={importDropdownRef} className="relative flex">
             <div className="flex rounded-lg border border-line">
               <motion.button
@@ -889,7 +889,7 @@ export function ProjectsView({
             </AnimatePresence>
           </div>
 
-          {/* Scan Now, icon only with tooltip */}
+          
           <Tooltip content={scanning ? t('scanning') : t('scan_for_projects')} side="bottom">
             <motion.button
               whileHover={{ y: -1 }}
@@ -902,7 +902,7 @@ export function ProjectsView({
             </motion.button>
           </Tooltip>
 
-          {/* Categories, icon only with tooltip */}
+          
           {categoriesEnabled && (
             <Tooltip content={t('manage_categories')} side="bottom">
               <motion.button
@@ -1192,7 +1192,7 @@ export function ProjectsView({
       </AnimatePresence>
       )}
 
-      {/* Floating batch action bar */}
+      
       <AnimatePresence>
         {selectedCount > 0 && (
           <motion.div
@@ -1345,7 +1345,7 @@ export function ProjectsView({
         )}
       </AnimatePresence>
 
-      {/* Undo snackbar after batch remove */}
+      
       <AnimatePresence>
         {undoBatchData && (
           <motion.div

@@ -10,7 +10,7 @@ fn main() {
         // AppRun hook, which causes "Could not create default EGL display:
         // EGL_BAD_PARAMETER" on native Wayland compositors. Override it
         // unconditionally to prefer Wayland with X11 as fallback. This is safe
-        // everywhere — if Wayland is unavailable, GTK automatically falls
+        // everywhere, if Wayland is unavailable, GTK automatically falls
         // back to X11.
         std::env::set_var("GDK_BACKEND", "wayland,x11");
 

@@ -44,7 +44,6 @@ pub fn read_state(app: &AppHandle) -> WorkspacesState {
         }
     }
 
-    // Migration: move legacy data into workspace directory
     let base = app.path().app_data_dir().expect("no app data dir");
     let id = Uuid::new_v4().to_string();
     let dir = workspace_dir(app, &id);
@@ -90,6 +89,27 @@ pub fn active_workspace_id(app: &AppHandle) -> String {
 #[tauri::command]
 pub fn list_workspaces(app: AppHandle) -> WorkspacesState {
     read_state(&app)
+}
+
+#[tauri::command]
+pub fn list_workspace_scan_dirs(app: AppHandle) -> Vec<WorkspaceScanDirs> {
+    let state = read_state(&app);
+    state
+        .workspaces
+        .iter()
+        .map(|w| {
+            let dir = workspace_dir(&app, &w.id);
+            let settings: crate::models::AppSettings =
+                persist::read_json(&dir.join("settings.json"));
+            WorkspaceScanDirs {
+                workspace_id: w.id.clone(),
+                workspace_name: w.name.clone(),
+                project_scan_dirs: settings.project_scan_dirs,
+                version_scan_dirs: settings.version_scan_dirs,
+                template_scan_dir: settings.template_scan_dir,
+            }
+        })
+        .collect()
 }
 
 #[tauri::command]

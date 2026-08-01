@@ -58,7 +58,7 @@ export function OnboardingTips({ onDismiss }: { onDismiss: () => void }) {
         className="relative z-10 bg-surface border border-line rounded-2xl p-8 w-full max-w-sm flex flex-col items-center gap-5 text-center shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Step indicator dots */}
+        
         <div className="flex items-center gap-2">
           {TIPS.map((_, i) => (
             <button
@@ -74,12 +74,12 @@ export function OnboardingTips({ onDismiss }: { onDismiss: () => void }) {
           ))}
         </div>
 
-        {/* Icon */}
+        
         <div className="w-14 h-14 rounded-2xl bg-accent/10 flex items-center justify-center">
           <current.icon className="w-6 h-6 text-accent-bright" />
         </div>
 
-        {/* Content */}
+        
         <div>
           <h3 className="font-display font-semibold text-lg text-ink">
             {t(current.titleKey)}
@@ -89,7 +89,7 @@ export function OnboardingTips({ onDismiss }: { onDismiss: () => void }) {
           </p>
         </div>
 
-        {/* Actions */}
+        
         <div className="flex items-center gap-3 w-full">
           {!isLast ? (
             <motion.button

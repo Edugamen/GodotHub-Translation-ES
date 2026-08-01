@@ -555,7 +555,7 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
 
   return (
     <div className="w-[380px] h-full flex flex-col overflow-hidden relative">
-      {/* Header */}
+      
       <div className="flex items-center justify-between px-5 py-4 border-b border-line shrink-0">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -594,9 +594,9 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
         </div>
       ) : (
         <>
-          {/* Action buttons */}
+          
           <div className="flex items-center gap-2 px-5 py-3 border-b border-line shrink-0 flex-wrap">
-            {/* Merge status banner */}
+            
             {mergeActive && !showMergeConflicts && (
               <div className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-danger/10 border border-danger/30 mb-1">
                 <IconAlertTriangle className="w-3.5 h-3.5 text-danger shrink-0" />
@@ -655,7 +655,7 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
           </div>
 
           <div className="flex-1 overflow-y-auto">
-            {/* Remote Config */}
+            
             <div className="px-5 pt-4 pb-2 border-b border-line">
               <div className="flex items-center justify-between mb-2">
                 <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted/60">{t('remote_title')}</h4>
@@ -688,7 +688,7 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
               )}
             </div>
 
-            {/* Branches */}
+            
             <div className="px-5 pt-4 pb-2 border-b border-line">
               <div className="flex items-center justify-between mb-2">
                 <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted/60">{t('branches_title', { ns: 'git' })}</h4>
@@ -746,13 +746,13 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
               )}
             </div>
 
-            {/* Changes + Staging + Commit */}
+            
             <div className="px-5 pt-4 pb-2 border-b border-line">
               <div className="flex items-center justify-between mb-2">
                 <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted/60">Changes</h4>
                 {(unstagedFiles.length > 0 || stagedFiles.size > 0) && (
                   <div className="flex items-center gap-2">
-                    {/* Select / Deselect All */}
+                    
                     {stagedFiles.size < unstagedFiles.length && (
                       <button onClick={selectAllUnstaged}
                         className="focus-ring cursor-pointer text-[10px] text-accent-bright hover:underline transition-colors">{t('select_all')}</button>
@@ -780,7 +780,7 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
                 <p className="text-[11px] text-muted/60 py-2">{t('working_tree_clean')}</p>
               ) : (
                 <div className="flex flex-col gap-0.5 max-h-[220px] overflow-y-auto">
-                  {/* Staged section badge */}
+                  
                   {gitStagedFiles.length > 0 && (
                     <>
                       <div className="flex items-center gap-1.5 px-1 py-1 mt-1">
@@ -792,7 +792,7 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
                         return (
                           <div key={`git-staged-${f.path}-${i}`}
                             className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-mint/5 hover:bg-mint/10 transition-colors">
-                            <span className="w-4 h-4 shrink-0" /> {/* Spacer for alignment */}
+                            <span className="w-4 h-4 shrink-0" /> 
                             <span className={`font-mono text-[10px] font-bold w-4 shrink-0 ${info.color}`}>{info.short}</span>
                             <button onClick={() => setDiffFile(f.path)}
                               className="flex-1 text-left text-[11px] font-mono text-muted truncate hover:text-accent-bright transition-colors cursor-pointer">{f.path}</button>
@@ -802,7 +802,7 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
                     </>
                   )}
 
-                  {/* Pending stage (selected via checkbox) */}
+                  
                   {pendingStageFiles.length > 0 && (
                     <>
                       <div className="flex items-center gap-1.5 px-1 py-1 mt-1">
@@ -824,7 +824,7 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
                     </>
                   )}
 
-                  {/* Unstaged / untracked files */}
+                  
                   {unstagedFiles.length > 0 && (
                     <>
                       <div className="flex items-center justify-between gap-1.5 px-1 py-1 mt-1">
@@ -853,7 +853,7 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
                 </div>
               )}
 
-              {/* Commit composer */}
+              
               {changedFiles.length > 0 && (
                 <div className="mt-3 flex flex-col gap-2 pb-1">
                   <textarea
@@ -892,7 +892,7 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
               )}
             </div>
 
-            {/* Undo / Redo */}
+            
             {(undoHistory.length > 0 || redoHistory.length > 0) && (
               <div className="px-5 pt-4 pb-3 border-b border-line">
                 <div className="flex items-center justify-between mb-2">
@@ -922,7 +922,7 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
               </div>
             )}
 
-            {/* Stashes */}
+            
             <div className="px-5 pt-4 pb-2 border-b border-line">
               <div className="flex items-center justify-between mb-2">
                 <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted/60">Stashes</h4>
@@ -949,7 +949,7 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
               )}
             </div>
 
-            {/* Commits */}
+            
             <div className="px-5 pt-4 pb-5">
               <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted/60 mb-3">{t('recent_commits')}</h4>
               {logLoading ? (
@@ -983,7 +983,7 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
         </>
       )}
 
-      {/* Toast notifications */}
+      
       <div className="absolute bottom-3 left-3 right-3 z-50 flex flex-col gap-2 pointer-events-none">
         <AnimatePresence>
           {toasts.map((toast) => (
@@ -1020,7 +1020,7 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
         </AnimatePresence>
       </div>
 
-      {/* Diff viewer */}
+      
       {diffFile && (
         <DiffViewer
           projectPath={project.path}
@@ -1029,7 +1029,7 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
         />
       )}
 
-      {/* Discard confirmation */}
+      
       <AnimatePresence>
         {showDiscardConfirm && (
           <ConfirmDialog
@@ -1043,7 +1043,7 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
         )}
       </AnimatePresence>
 
-      {/* Branch delete confirmation */}
+      
       <AnimatePresence>
         {confirmBranchDelete && (
           <ConfirmDialog
@@ -1057,7 +1057,7 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
         )}
       </AnimatePresence>
 
-      {/* Remote remove confirmation */}
+      
       <AnimatePresence>
         {showRemoveRemoteConfirm && (
           <ConfirmDialog
@@ -1071,7 +1071,7 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
         )}
       </AnimatePresence>
 
-      {/* Stash push confirmation */}
+      
       <AnimatePresence>
         {showStashPushConfirm && (
           <ConfirmDialog
@@ -1084,7 +1084,7 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
         )}
       </AnimatePresence>
 
-      {/* Push with uncommitted changes confirmation */}
+      
       <AnimatePresence>
         {showPushConfirm && (
           <ConfirmDialog
@@ -1098,7 +1098,7 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
         )}
       </AnimatePresence>
 
-      {/* Force push confirmation */}
+      
       <AnimatePresence>
         {showForcePushConfirm && (
           <ConfirmDialog
@@ -1112,7 +1112,7 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
         )}
       </AnimatePresence>
 
-      {/* Git result dialog (errors with instructions / success confirmations) */}
+      
       <AnimatePresence>
         {gitResult && !showMergeConflicts && (
           <GitResultDialog
@@ -1126,7 +1126,7 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
         )}
       </AnimatePresence>
 
-      {/* Merge Conflict Resolver */}
+      
       <AnimatePresence>
         {showMergeConflicts && (
           <MergeConflictDialog

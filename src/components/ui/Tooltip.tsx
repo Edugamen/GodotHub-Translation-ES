@@ -214,13 +214,13 @@ export function Tooltip({ content, children, side: sideProp, className, maxWidth
               top: position.y,
             }}
           >
-            {/* Arrow pointer */}
+            
             <div
               className="absolute z-[-1]"
               style={getArrowStyle()}
             />
 
-            {/* Tooltip body */}
+            
             <div
               className="relative overflow-hidden px-3.5 py-2 rounded-xl border border-line/80 bg-surface/96 text-xs text-ink font-medium shadow-2xl shadow-black/60 backdrop-blur-12px"
               style={{
@@ -229,7 +229,7 @@ export function Tooltip({ content, children, side: sideProp, className, maxWidth
                 overflowWrap: 'break-word',
               }}
             >
-              {/* Shimmer sweep on spawn */}
+              
               {!shimmerDone && (
                 <motion.div
                   initial={{ x: '-100%' }}

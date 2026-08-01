@@ -80,9 +80,6 @@ pub struct AssetLibraryResponse {
     pub total: u32,
 }
 
-/// Emitted as `asset-download-progress` (and `asset-download-queued` /
-/// `asset-download-complete`) while an asset is being downloaded, so the
-/// frontend task tray can show live progress like it does for Godot versions.
 #[derive(Debug, Clone, serde::Serialize)]
 pub(crate) struct AssetDownloadProgress {
     pub asset_id: String,
@@ -91,7 +88,6 @@ pub(crate) struct AssetDownloadProgress {
     pub total: u64,
 }
 
-/// Emitted as `asset-download-error` when a download/install fails.
 #[derive(Debug, Clone, serde::Serialize)]
 pub(crate) struct AssetDownloadError {
     pub asset_id: String,
@@ -186,10 +182,6 @@ pub async fn search_asset_library(
             .into_iter()
             .flatten()
             .filter(|d| ALLOWED_TYPES.contains(&d.asset_type.as_str()))
-            // The Asset Library API's `godot_version` filter only means "at or
-            // below this version", so it still returns ancient assets (e.g.
-            // Godot 2.1). Enforce a hard floor of 4.1 here so older assets
-            // never show up, regardless of the requested version.
             .filter(|d| meets_min_version(&d.godot_version))
             .map(|d| AssetLibraryAsset {
                 asset_id: d.asset_id,
@@ -232,8 +224,6 @@ pub async fn install_asset_as_template(
 ) -> Result<ProjectTemplate, String> {
     let http = client()?;
 
-    // Failures before the queued event are still reported to the task tray so
-    // the user never sees a silent failure (fetch/validation errors).
     let detail = match fetch_detail(&http, &asset_id).await {
         Some(d) => d,
         None => {
@@ -251,7 +241,6 @@ pub async fn install_asset_as_template(
         emit_asset_error(&app, &asset_id, &detail.title, &message);
         return Err(message);
     }
-    // Keep installs consistent with search: never install assets below 4.1.
     if !meets_min_version(&detail.godot_version) {
         let message = format!(
             "This asset targets Godot {} which is older than the supported minimum (4.1)",

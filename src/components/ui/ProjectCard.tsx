@@ -129,7 +129,6 @@ export const ProjectCard = memo(function ProjectCard({
   const [cardMoreUp, setCardMoreUp] = useState(false)
   const cardMoreRef = useRef<HTMLDivElement>(null)
 
-  // Inline tag editing
   const [editingTagIndex, setEditingTagIndex] = useState<number | null>(null)
   const [editTagValue, setEditTagValue] = useState('')
   const [addingTag, setAddingTag] = useState(false)
@@ -375,7 +374,7 @@ export const ProjectCard = memo(function ProjectCard({
                 : 'border-line hover:border-accent-dim'
         }`}
       >
-            {/* Selection checkbox */}
+            
             {onToggleSelect && (
               <div className="absolute top-2.5 left-2.5 z-10">
                 <button
@@ -395,7 +394,7 @@ export const ProjectCard = memo(function ProjectCard({
               </div>
             )}
 
-            {/* Version warning indicator */}
+            
             {versionWarning && (
               <Tooltip
                 content={
@@ -477,7 +476,7 @@ export const ProjectCard = memo(function ProjectCard({
                   <h3 className="font-display font-medium ml-1 text-xl truncate min-w-0">
                     {displayName}
                   </h3>
-                  {/* Tags inline with title - max 2 visible */}
+                  
                   {(project.tags.length > 0 || addingTag) && (
                     <>
                       {project.tags.slice(0, tagsExpanded ? project.tags.length : 2).map((tag, index) => {

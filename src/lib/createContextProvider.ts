@@ -1,12 +1,5 @@
 import { createContext, createElement, useContext, type ReactNode } from 'react'
 
-/**
- * Creates a context provider and consumer hook from a custom hook.
- * Eliminates the repetitive createContext / Provider / useXxxContext pattern.
- *
- * @param useHook - The hook that provides the context value.
- * @param name    - Display name for error messages (e.g. 'ProjectsProvider').
- */
 export function createContextProvider<T>(useHook: () => T, name: string) {
   const Ctx = createContext<T | null>(null)
   Ctx.displayName = name
