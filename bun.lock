@@ -23,6 +23,7 @@
         "react-dom": "^19.1.0",
         "react-i18next": "^17.0.11",
         "semver": "^7.8.5",
+        "tailwindcss-corner-shape": "^1.4.6",
       },
       "devDependencies": {
         "@tailwindcss/vite": "^4.3.2",
@@ -402,6 +403,8 @@
     "source-map-js": ["source-map-js@1.2.1", "", {}, "sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA=="],
 
     "tailwindcss": ["tailwindcss@4.3.2", "", {}, "sha512-WtctNNSH8A9jlMIqxzuYumOHU5uGZyRv0Q5svQl+oEPy5w84YpBxdb7MdqyiSPQge5jTJ6zFQLq0PFygdccSBA=="],
+
+    "tailwindcss-corner-shape": ["tailwindcss-corner-shape@1.4.6", "", { "peerDependencies": { "tailwindcss": ">=3.0.0" }, "bin": { "tailwindcss-corner-shape": "cli.js" } }, "sha512-Uc1K+3Z21GOkQKdHrDuuipwpKQ8SEe/I9rV75UCnZBgAwSyfSHXpy37nGKEuqlXonfVsPsoUt1YN04lfAl5bEw=="],
 
     "tapable": ["tapable@2.3.3", "", {}, "sha512-uxc/zpqFg6x7C8vOE7lh6Lbda8eEL9zmVm/PLeTPBRhh1xCgdWaQ+J1CUieGpIfm2HdtsUpRv+HshiasBMcc6A=="],
 

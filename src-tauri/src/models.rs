@@ -231,7 +231,7 @@ fn default_background() -> String {
     "#15171c".to_string()
 }
 fn default_corner_radius() -> f64 {
-    5.0
+    10.0
 }
 fn default_ui_density() -> f64 {
     1.05

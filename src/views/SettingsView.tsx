@@ -28,7 +28,7 @@ import type { AppSettings } from '../types'
 
 const DEFAULT_ACCENT = '#457ff2'
 const DEFAULT_BG = '#15171c'
-const DEFAULT_RADIUS = 5
+const DEFAULT_RADIUS = 10
 const DEFAULT_DENSITY = 1.05
 const DEFAULT_FONT_SCALE = 1.0
 const DEFAULT_PROJECT_ICON_OPACITY = 14

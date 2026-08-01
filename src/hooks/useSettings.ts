@@ -23,7 +23,7 @@ const DEFAULTS: AppSettings = {
   download_concurrency: 3,
   accent_color: '#457ff2',
   background_color: '#15171c',
-  corner_radius: 5,
+  corner_radius: 10,
   ui_density: 1.05,
   font_scale: 1.0,
   reduce_motion: false,

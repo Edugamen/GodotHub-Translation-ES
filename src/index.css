@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@plugin './corner-shape.config.js';
 
 @theme {
   --color-base: #1e1f22;
