@@ -1,0 +1,16 @@
+.new-ui {
+  --color-base: #131415;
+  --color-surface: #1e2129;
+  --color-raised: #1A1C1F;
+  --color-overlay: #212326;
+  --color-line: #3b4152;
+  --color-border: #383838;
+  --color-ink: #f3f4f8;
+  --color-muted: #9aa3b2;
+  --color-accent: #4c7cff;
+  --color-accent-dim: #3b64d6;
+  --color-accent-bright: #5e89ff;
+  --color-mint: #2fbf71;
+  --color-amber: #f0b132;
+  --color-danger: #f2555a;
+}

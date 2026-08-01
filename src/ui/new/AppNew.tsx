@@ -1,22 +1,29 @@
+import { motion } from 'framer-motion'
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useWorkspaces } from '../../hooks/useWorkspaces'
-import { useProjectsContext } from '../../hooks/projectsContext'
 import { useGodotVersionsContext } from '../../hooks/godotVersionsContext'
+import { SidebarNew } from './components/SidebarNew'
+import { ProjectsViewNew } from './views/ProjectsViewNew'
+import {
+    IconBookOpen,
+  IconCloudArrowDown,
+  IconFolder,
+  IconGear,
+  IconNews,
+  IconRocket,
+  IconStore,
+} from '../../components/Icons'
+import './colors.css'
 
-/**
- * The full set of app views in the New UI. Keep in sync with the classic
- * `Tab` union in `src/components/Sidebar.tsx` — everything here is brand-new
- * code, so the classic shell is never touched by New UI work.
- */
 const TABS = [
-  { id: 'projects', navKey: 'projects' },
-  { id: 'versions', navKey: 'versions' },
-  { id: 'news', navKey: 'news' },
-  { id: 'templates', navKey: 'templates' },
-  { id: 'asset-store', navKey: 'asset_store' },
-  { id: 'settings', navKey: 'settings' },
-  { id: 'changelog', navKey: 'changelog' },
+  { id: 'projects', navKey: 'projects', icon: IconFolder },
+  { id: 'versions', navKey: 'versions', icon: IconCloudArrowDown },
+  { id: 'templates', navKey: 'templates', icon: IconRocket },
+  { id: 'asset-store', navKey: 'asset_store', icon: IconStore },
+  { id: 'news', navKey: 'news', icon: IconNews },
+  { id: 'settings', navKey: 'settings', icon: IconGear, footer: true },
+  { id: 'changelog', navKey: 'changelog', icon: IconBookOpen, footer: true, iconOnly: true },
 ] as const
 
 export type NewTab = (typeof TABS)[number]['id']
@@ -45,20 +52,19 @@ function PlaceholderView({
   )
 }
 
-/**
- * New UI shell — the entire redesigned app renders through this component
- * when the `new_ui` setting is enabled.
- *
- * New views live in `src/ui/new/views/` as their own files. Register one here
- * by adding a case to `renderView()` below; tabs without a finished view fall
- * back to the placeholder so the shell always works.
- */
 export function AppNew() {
   const { t } = useTranslation('nav')
   const { workspaces, activeId } = useWorkspaces()
-  const { projects } = useProjectsContext()
   const { installed } = useGodotVersionsContext()
   const [tab, setTab] = useState<NewTab>('projects')
+
+  const tabs = TABS.map((tab) => ({
+    id: tab.id,
+    label: t(tab.navKey),
+    icon: tab.icon,
+    footer: 'footer' in tab ? tab.footer : undefined,
+    iconOnly: 'iconOnly' in tab ? tab.iconOnly : undefined,
+  }))
 
   const activeWorkspace =
     workspaces.find((w) => w.id === activeId)?.name ?? ''
@@ -66,16 +72,7 @@ export function AppNew() {
   const renderView = () => {
     switch (tab) {
       case 'projects':
-        return (
-          <PlaceholderView
-            title={t('projects')}
-            description="The redesigned Projects view will live here as its own file in src/ui/new/views/."
-          >
-            <span className="text-xs font-mono text-ink bg-raised px-2 py-0.5 rounded-md">
-              {projects.length} projects
-            </span>
-          </PlaceholderView>
-        )
+        return <ProjectsViewNew />
       case 'versions':
         return (
           <PlaceholderView
@@ -126,9 +123,12 @@ export function AppNew() {
   }
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-base text-ink font-body">
+    <div className="new-ui h-screen w-screen flex flex-col bg-base text-ink font-body">
       {/* New top bar */}
-      <header className="shrink-0 h-12 px-5 flex items-center gap-3 border-b border-line">
+      <header
+        data-tauri-drag-region
+        className="shrink-0 h-12 px-5 flex items-center gap-3 border-b border-line select-none"
+      >
         <span className="font-display font-semibold tracking-tight">GodotHub</span>
         <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-accent/15 text-accent-bright border border-accent-dim/40">
           New UI
@@ -138,30 +138,22 @@ export function AppNew() {
         </span>
       </header>
 
-      <div className="relative flex-1 flex min-h-0">
+      <div className="relative flex-1 flex min-h-0 p-4">
         {/* New sidebar */}
-        <nav className="shrink-0 w-52 border-r border-line p-2 flex flex-col gap-1">
-          {TABS.map(({ id, navKey }) => {
-            const active = tab === id
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setTab(id)}
-                className={`focus-ring cursor-pointer w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  active
-                    ? 'bg-accent/15 text-accent-bright border border-accent-dim/40'
-                    : 'text-muted border border-transparent hover:text-ink hover:bg-raised/60'
-                }`}
-              >
-                {t(navKey)}
-              </button>
-            )
-          })}
-        </nav>
+        <SidebarNew tabs={tabs} activeTab={tab} onTabChange={(id) => setTab(id as NewTab)} />
 
         {/* New view area */}
-        <main className="flex-1 overflow-y-auto relative">{renderView()}</main>
+        <main className="flex-1 min-w-0 ml-3 rounded-3xl bg-raised overflow-y-auto relative">
+          <motion.div
+            key={tab}
+            className="h-full"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+          >
+            {renderView()}
+          </motion.div>
+        </main>
       </div>
     </div>
   )

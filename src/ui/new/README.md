@@ -26,6 +26,10 @@ sidebar, and its own view area. It reuses only the **data hooks**
   `renderView()` in `AppNew.tsx`. Tabs without a finished view show a
   placeholder, so the shell always renders.
 - New shared components go in `src/ui/new/components/`.
+- New UI colors live in `src/ui/new/colors.css`, scoped under the `.new-ui`
+  class on the `AppNew` root. Never change the shared tokens in `src/index.css`
+  for New UI work — every New UI component using theme utilities (`bg-base`,
+  `text-ink`, `border-line`, …) picks up the New UI palette automatically.
 - `src/App.tsx` only touches the one-line shell swap. Everything else in the
   classic app stays untouched.
 
@@ -36,5 +40,6 @@ sidebar, and its own view area. It reuses only the **data hooks**
    new tab).
 3. Done — the view only renders when the toggle is on.
 
-The toggle lives in Settings → Appearance → "New UI (Beta)" and is disabled
-until the feature is ready.
+The toggle lives in Settings → Appearance → "New UI (Beta)". Views without a
+finished implementation still show placeholders, so expect gaps while the New
+UI is under construction.

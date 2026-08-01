@@ -1397,7 +1397,6 @@ export function SettingsView({
                   <Tooltip content={t('new_ui_tooltip')} side="top">
                     <Toggle
                       checked={current.new_ui}
-                      disabled
                       onChange={(checked) => {
                         setField('new_ui', checked)
                         applyNewUi(checked)

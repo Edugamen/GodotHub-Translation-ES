@@ -31,9 +31,11 @@ import {
   faFilter,
   faSort,
   faTags,
+  faFolder,
   faNewspaper,
   faAnglesLeft,
   faAnglesRight,
+  faArrowDown,
   faArrowUpRightFromSquare,
   faArrowRotateRight,
   faWifi,
@@ -66,7 +68,7 @@ import {
   faStore,
 } from '@fortawesome/free-solid-svg-icons'
 
-interface IconProps extends Omit<React.SVGProps<SVGSVGElement>, 'ref'> {
+export interface IconProps extends Omit<React.SVGProps<SVGSVGElement>, 'ref'> {
   fill?: string
 }
 
@@ -109,6 +111,7 @@ export const IconTags = solid(faTags)
 export const IconNews = solid(faNewspaper)
 export const IconChevronsLeft = solid(faAnglesLeft)
 export const IconChevronsRight = solid(faAnglesRight)
+export const IconArrowDown = solid(faArrowDown)
 export const IconExternalLink = solid(faArrowUpRightFromSquare)
 export const IconRefresh = solid(faArrowRotateRight)
 export const IconWifiOff = solid(faWifi)
@@ -143,3 +146,4 @@ export const IconCircleCheck = solid(faCircleCheck)
 export const IconCircleX = solid(faCircleXmark)
 export const IconStar = solid(faStar)
 export const IconStore = solid(faStore)
+export const IconFolder = solid(faFolder)
