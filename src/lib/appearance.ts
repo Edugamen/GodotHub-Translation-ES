@@ -21,6 +21,14 @@ export function applyReducedMotion(enabled: boolean) {
   document.documentElement.classList.toggle('reduce-motion', enabled)
 }
 
+export function applyNewUi(enabled: boolean) {
+  if (enabled) {
+    document.documentElement.dataset.ui = 'new'
+  } else {
+    delete document.documentElement.dataset.ui
+  }
+}
+
 export function applyScrollbars(enabled: boolean) {
   document.documentElement.classList.toggle('hide-scrollbars', !enabled)
 }
@@ -40,6 +48,7 @@ export function applyAppearance(settings: {
   reduce_motion: boolean
   show_scrollbars: boolean
   project_icon_opacity: number
+  new_ui: boolean
 }) {
   applyRadius(settings.corner_radius)
   applyDensity(settings.ui_density)
@@ -47,4 +56,5 @@ export function applyAppearance(settings: {
   applyReducedMotion(settings.reduce_motion)
   applyScrollbars(settings.show_scrollbars)
   applyProjectIconOpacity(settings.project_icon_opacity)
+  applyNewUi(settings.new_ui)
 }

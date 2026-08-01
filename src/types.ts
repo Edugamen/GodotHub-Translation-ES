@@ -271,6 +271,7 @@ export interface AppSettings {
   language: string
   use_os_decorations: boolean
   directory_naming_convention: NamingConvention
+  new_ui: boolean
 }
 
 export interface ScanResult {

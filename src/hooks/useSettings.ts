@@ -54,6 +54,7 @@ const DEFAULTS: AppSettings = {
   language: 'en-US',
   use_os_decorations: isLinux,
   directory_naming_convention: 'keep',
+  new_ui: false,
 }
 
 interface SettingsContextValue {

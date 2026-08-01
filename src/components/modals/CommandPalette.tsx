@@ -244,6 +244,7 @@ export const SETTINGS_SEARCH_ITEMS: SettingSearchEntry[] = (
   { key: 'show_star_button', tab: 'advanced' },
   { key: 'show_scrollbars', tab: 'appearance' },
   { key: 'project_icon_opacity', tab: 'appearance' },
+  { key: 'new_ui', tab: 'appearance' },
   ] as SettingSearchEntry[]
 ).filter((item) => !(isMac && item.key === 'minimize_to_tray'))
 

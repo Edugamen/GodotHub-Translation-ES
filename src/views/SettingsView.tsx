@@ -7,6 +7,7 @@ import { registerPendingSave, flushPendingSave } from '../lib/pendingSave'
 import { DirList } from '../components/ui/DirList'
 import { Dropdown } from '../components/ui/Dropdown'
 import { Toggle } from '../components/ui/Toggle'
+import { Tooltip } from '../components/ui/Tooltip'
 import { Slider } from '../components/ui/Slider'
 import { ColorSwatchPicker } from '../components/ui/ColorSwatchPicker'
 import { ConfirmDialog } from '../components/modals/ConfirmDialog'
@@ -20,6 +21,7 @@ import {
   applyFontScale,
   applyReducedMotion,
   applyProjectIconOpacity,
+  applyNewUi,
 } from '../lib/appearance'
 import { SETTINGS_SEARCH_ITEMS } from '../components/modals/CommandPalette'
 import { IconSearch, IconX, IconRefresh } from '../components/Icons'
@@ -437,6 +439,7 @@ export function SettingsView({
       reduce_motion: { tab: 'appearance', section: 'appearance' },
       show_scrollbars: { tab: 'appearance', section: 'appearance' },
       project_icon_opacity: { tab: 'appearance', section: 'appearance' },
+      new_ui: { tab: 'appearance', section: 'appearance' },
       sidebar_width: { tab: 'appearance', section: 'appearance' },
       setup_wizard: { tab: 'advanced', section: 'advanced-setup' },
       reset_settings: { tab: 'advanced', section: 'advanced-reset' },
@@ -609,6 +612,7 @@ export function SettingsView({
       reduce_motion: false,
       theme_mode: 'dark',
       project_icon_opacity: DEFAULT_PROJECT_ICON_OPACITY,
+      new_ui: false,
     })
     previewTheme(DEFAULT_ACCENT, DEFAULT_BG, 'dark')
     applyRadius(DEFAULT_RADIUS)
@@ -616,6 +620,7 @@ export function SettingsView({
     applyFontScale(DEFAULT_FONT_SCALE)
     applyReducedMotion(false)
     applyProjectIconOpacity(DEFAULT_PROJECT_ICON_OPACITY)
+    applyNewUi(false)
   }
 
   const resetAllSettings = async () => {
@@ -1377,6 +1382,31 @@ export function SettingsView({
               description={t('appearance_desc')}
             >
               <div className="flex flex-col gap-7">
+                <label className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <span className="text-xs font-medium text-muted flex items-center gap-2">
+                      {t('new_ui_label')}
+                      <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber/15 text-amber border border-amber/30">
+                        Beta
+                      </span>
+                    </span>
+                    <p className="text-[11px] text-muted mt-1 leading-relaxed">
+                      {t('new_ui_desc')}
+                    </p>
+                  </div>
+                  <Tooltip content={t('new_ui_tooltip')} side="top">
+                    <Toggle
+                      checked={current.new_ui}
+                      disabled
+                      onChange={(checked) => {
+                        setField('new_ui', checked)
+                        applyNewUi(checked)
+                      }}
+                      label={t('new_ui_label')}
+                    />
+                  </Tooltip>
+                </label>
+
                 <div className="flex flex-col gap-2.5">
                   <span className="text-xs font-medium text-muted">{t('theme')}</span>
                   <div className="flex items-center gap-3 flex-wrap">
