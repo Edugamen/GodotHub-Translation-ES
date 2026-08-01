@@ -12,6 +12,7 @@ import { ChangelogView } from './views/ChangelogView'
 import { TemplatesView } from './views/TemplatesView'
 import { OnboardingView } from './views/OnboardingView'
 import { AssetStoreView } from './views/AssetStoreView'
+import { AppNew } from './ui/new'
 import { useSettings } from './hooks/useSettings'
 import { useWorkspaces } from './hooks/useWorkspaces'
 import { useProjectsContext } from './hooks/projectsContext'
@@ -693,7 +694,7 @@ export default function App() {
   return (
     <GodotVersionsProvider>
       <TaskTrayProvider>
-        <AppContent />
+        {settings.new_ui ? <AppNew /> : <AppContent />}
       </TaskTrayProvider>
     </GodotVersionsProvider>
   )

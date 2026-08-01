@@ -190,6 +190,10 @@
   "report_bug_desc": "Help improve GodotHub by reporting issues on GitHub.",
   "token_help_desc": "Create a token at github.com/settings/tokens. You only need to check the public_repo scope if you want private repo access, otherwise leave all scopes unchecked. No sensitive permissions required.",
   "search_placeholder": "Search settings…",
+  "setting_new_ui": "New UI",
+  "new_ui_label": "New UI",
+  "new_ui_desc": "Enables the experimental new interface. Some areas are still unstable and may be unresponsive.",
+  "new_ui_tooltip": "Beta feature — this UI is unstable and may be unresponsive in some areas.",
   "language_label": "Language",
   "use_os_decorations": "Use OS window decorations",
   "use_os_decorations_desc": "Use your operating system's native title bar and window controls instead of GodotHub's custom title bar. Requires a restart to take full effect."
