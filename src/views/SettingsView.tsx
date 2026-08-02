@@ -1387,7 +1387,7 @@ export function SettingsView({
                     <span className="text-xs font-medium text-muted flex items-center gap-2">
                       {t('new_ui_label')}
                       <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber/15 text-amber border border-amber/30">
-                        Beta
+                        {t('git_beta_badge', { ns: 'common' })}
                       </span>
                     </span>
                     <p className="text-[11px] text-muted mt-1 leading-relaxed">

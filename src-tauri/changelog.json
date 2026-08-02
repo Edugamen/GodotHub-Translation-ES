@@ -29,6 +29,7 @@
         "text": "PR by XRomieo: Add Adhoc Signing to fix Mac OS's App is Damaged popup"
       }
     ],
+    "known_issues": [],
     "created_at": 1784658817
   },
   {
@@ -77,6 +78,7 @@
         "text": "Rename versions to use whatever naming style works for you"
       }
     ],
+    "known_issues": [],
     "created_at": 1783950258
   },
   {
@@ -125,6 +127,7 @@
         "text": "Drag and drop support for reordering projects in the list view using the dnd-kit library"
       }
     ],
+    "known_issues": [],
     "created_at": 1783951458
   },
   {
@@ -209,6 +212,7 @@
         "text": "Tooltip UI for overall App."
       }
     ],
+    "known_issues": [],
     "created_at": 1784026943
   },
   {
@@ -289,6 +293,7 @@
         "text": "Project Size Chart Modal that can be accessed via context menu right click on the Project Card"
       }
     ],
+    "known_issues": [],
     "created_at": 1784205220
   },
   {
@@ -309,6 +314,7 @@
         "text": "UX Glitches and Improvements"
       }
     ],
+    "known_issues": [],
     "created_at": 1784628826
   },
   {
@@ -345,6 +351,7 @@
         "text": "Search bar in Templates view"
       }
     ],
+    "known_issues": [],
     "created_at": 1784658817
   },
   {
@@ -421,12 +428,13 @@
         "text": "Option in Settings → Appearance to disable the scrollbar entirely; scroll still works via keyboard, trackpad, or mouse wheel"
       }
     ],
+    "known_issues": [],
     "created_at": 1785245589
   },
   {
     "id": "bb23f26c-73dc-4ec7-b24f-e8cc7ed1ee65",
-    "version": "v1.2",
-    "date": "2026-08-01",
+    "version": "v1.2.0 - The Community Update",
+    "date": "2026-08-02",
     "notes": [
       {
         "category": "fix",
@@ -479,7 +487,43 @@
       {
         "category": "add",
         "text": "Templates Asset Library to download templates from Godot Asset Store"
+      },
+      {
+        "category": "fix",
+        "text": "PR by XRomieo: Workspace scan & refresh now work reliably across workspaces, including newly created ones"
+      },
+      {
+        "category": "improve",
+        "text": "Corner radius shape is now a Squircle (iOS styled) for a softer look"
+      },
+      {
+        "category": "add",
+        "text": "Experimental 'New UI' toggle in Settings -> Appearance (beta, disabled for now, will be enabled in a future update)"
+      },
+      {
+        "category": "add",
+        "text": "Create Project button on template cards to start a project from a template right in the Templates view"
+      },
+      {
+        "category": "add",
+        "text": "Known Issues section in the changelog so each version can list its known problems"
+      },
+      {
+        "category": "fix",
+        "text": "Fixed 'Template not found' error that could happen after rescanning templates; broken template registrations now self-heal automatically"
+      },
+      {
+        "category": "fix",
+        "text": "Custom titlebar is back as the default on Linux, and the OS Decoration toggle in Settings now actually takes effect on Linux too"
+      },
+      {
+        "category": "improve",
+        "text": "Known issues in the changelog are now included in the auto-generated GitHub release notes"
       }
+    ],
+    "known_issues": [
+      "Linux OS: AppImage won't work in some Distros (issue is still unknown and might be a tuari issue, will fix it asap when i find the solution, in the meantime use .rpm or .deb files)",
+      "Linux OS: 'Open with Console', 'Open Folder' and 'Open in IDE' might not work in some Distros as well. (issue is still unknown and might be a tuari issue, will fix it asap when i find the solution)"
     ],
     "created_at": 1785270388
   }

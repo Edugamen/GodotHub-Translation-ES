@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { IconPlus, IconX } from '../Icons'
+import { IconAlertTriangle, IconPlus, IconX } from '../Icons'
 import type { ChangelogEntry, ChangelogNote } from '../../types'
 
 interface Props {
@@ -11,6 +11,7 @@ interface Props {
     version: string,
     date: string,
     notes: ChangelogNote[],
+    knownIssues: string[],
   ) => Promise<void>
 }
 
@@ -33,6 +34,9 @@ export function ChangelogEntryModal({ entry, onClose, onSave }: Props) {
   const [notes, setNotes] = useState<ChangelogNote[]>(
     entry?.notes.length ? entry.notes : [{ category: 'add', text: '' }],
   )
+  const [knownIssues, setKnownIssues] = useState<string[]>(
+    entry?.known_issues?.length ? entry.known_issues : [],
+  )
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -52,6 +56,14 @@ export function ChangelogEntryModal({ entry, onClose, onSave }: Props) {
       prev.length === 1 ? prev : prev.filter((_, idx) => idx !== i),
     )
 
+  const setIssue = (i: number, text: string) =>
+    setKnownIssues((prev) =>
+      prev.map((issue, idx) => (idx === i ? text : issue)),
+    )
+  const addIssue = () => setKnownIssues((prev) => [...prev, ''])
+  const removeIssue = (i: number) =>
+    setKnownIssues((prev) => prev.filter((_, idx) => idx !== i))
+
   const submit = async () => {
     if (!version.trim()) {
       setError(t('changelog_error_no_version'))
@@ -60,7 +72,7 @@ export function ChangelogEntryModal({ entry, onClose, onSave }: Props) {
     setBusy(true)
     setError(null)
     try {
-      await onSave(version, date, notes)
+      await onSave(version, date, notes, knownIssues)
       onClose()
     } catch (e) {
       setError(String(e))
@@ -172,6 +184,56 @@ export function ChangelogEntryModal({ entry, onClose, onSave }: Props) {
           >
             <IconPlus className="w-3 h-3" />
             {t('changelog_add_line')}
+          </motion.button>
+
+          <div className="flex items-center gap-1.5 mt-4">
+            <IconAlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+            <span className="text-xs font-medium text-muted">
+              {t('changelog_known_issues')}
+            </span>
+          </div>
+          <div className="flex flex-col gap-2">
+            {knownIssues.length === 0 ? (
+              <p className="text-[11px] text-muted/60 italic">
+                {t('changelog_known_issues_none')}
+              </p>
+            ) : (
+              knownIssues.map((issue, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <IconAlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <input
+                    value={issue}
+                    onChange={(e) => setIssue(i, e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        addIssue()
+                      }
+                    }}
+                    className="focus-ring flex-1 bg-raised border border-line rounded-lg px-3.5 py-2 text-sm focus:border-amber-400/60 transition-colors"
+                    placeholder={t('changelog_known_issue_placeholder')}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeIssue(i)}
+                    aria-label={t('changelog_remove_known_issue_aria')}
+                    className="focus-ring cursor-pointer p-1.5 rounded-md text-muted hover:text-danger hover:bg-danger/10 transition-colors"
+                  >
+                    <IconX className="w-3 h-3" />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+          <motion.button
+            type="button"
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.96 }}
+            onClick={addIssue}
+            className="focus-ring cursor-pointer self-start flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted hover:text-ink hover:bg-raised transition-colors"
+          >
+            <IconPlus className="w-3 h-3" />
+            {t('changelog_add_known_issue')}
           </motion.button>
         </div>
 

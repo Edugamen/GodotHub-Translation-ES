@@ -54,6 +54,19 @@ pub fn run() {
 
             godot_versions::migrate_registry_to_global(app.handle());
 
+            // Apply the saved OS-decoration preference to the window before it
+            // is shown so the Settings -> Display toggle is honored from the
+            // start. On Linux, runtime toggling after the window is realized is
+            // unreliable (Wayland) there the change takes full effect after a
+            // restart, since the window starts undecorated and this call is
+            // best effort. Idempotent on Windows/macOS.
+            {
+                let settings = settings::read_settings(app.handle());
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.set_decorations(settings.use_os_decorations);
+                }
+            }
+
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 templates::consolidate_legacy_templates(&handle);

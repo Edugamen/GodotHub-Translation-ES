@@ -91,6 +91,8 @@ pub struct ChangelogEntry {
     #[serde(default)]
     pub notes: Vec<ChangelogNote>,
     #[serde(default)]
+    pub known_issues: Vec<String>,
+    #[serde(default)]
     pub created_at: i64,
 }
 
@@ -275,12 +277,6 @@ fn default_watch_templates() -> bool {
     true
 }
 
-#[cfg(target_os = "linux")]
-fn default_os_decorations() -> bool {
-    true
-}
-
-#[cfg(not(target_os = "linux"))]
 fn default_os_decorations() -> bool {
     false
 }

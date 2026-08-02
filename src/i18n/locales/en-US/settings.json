@@ -193,7 +193,7 @@
   "setting_new_ui": "New UI",
   "new_ui_label": "New UI",
   "new_ui_desc": "Enables the experimental new interface. Some areas are still unstable and may be unresponsive.",
-  "new_ui_tooltip": "Beta feature — this UI is unstable and may be unresponsive in some areas.",
+  "new_ui_tooltip": "Beta feature; this UI is unstable and may be unresponsive in some areas.",
   "language_label": "Language",
   "use_os_decorations": "Use OS window decorations",
   "use_os_decorations_desc": "Use your operating system's native title bar and window controls instead of GodotHub's custom title bar. Requires a restart to take full effect."

@@ -5,6 +5,7 @@ import { useChangelog } from '../hooks/useChangelog'
 import { ChangelogEntryModal } from '../components/modals/ChangelogEntryModal'
 import { ConfirmDialog } from '../components/modals/ConfirmDialog'
 import {
+  IconAlertTriangle,
   IconBookOpen,
   IconPencil,
   IconPlus,
@@ -120,6 +121,25 @@ function EntryCard({
               })}
             </div>
           )}
+          {entry.known_issues?.length > 0 && (
+            <div className="mt-4 pt-3.5 border-t border-line/70">
+              <p className="text-[10px] font-semibold uppercase tracking-wide mb-1.5 text-amber-400">
+                <IconAlertTriangle className="w-3 h-3 inline -mt-0.5 mr-1" />
+                {t('known_issues')}
+              </p>
+              <ul className="flex flex-col gap-1.5">
+                {entry.known_issues.map((issue, i) => (
+                  <li
+                    key={i}
+                    className="text-xs text-muted leading-relaxed flex gap-2"
+                  >
+                    <span className="shrink-0 text-amber-400">•</span>
+                    {issue}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
     </motion.div>
@@ -208,10 +228,16 @@ export function ChangelogView() {
           <ChangelogEntryModal
             entry={editingEntry ?? undefined}
             onClose={() => setModalOpen(false)}
-            onSave={async (version, date, notes) => {
+            onSave={async (version, date, notes, knownIssues) => {
               if (editingEntry)
-                await updateEntry(editingEntry.id, version, date, notes)
-              else await addEntry(version, date, notes)
+                await updateEntry(
+                  editingEntry.id,
+                  version,
+                  date,
+                  notes,
+                  knownIssues,
+                )
+              else await addEntry(version, date, notes, knownIssues)
             }}
           />
         )}

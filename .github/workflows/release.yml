@@ -72,6 +72,41 @@ jobs:
       - name: TypeScript typecheck
         run: bun run tsc --noEmit
 
+      - name: Generate release notes from changelog
+        id: release-notes
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          BODY=$(node - <<'EOF'
+          const fs = require('fs');
+          const tag = process.env.RELEASE_TAG;
+          const entries = JSON.parse(fs.readFileSync('src-tauri/changelog.json', 'utf8'));
+          const entry = entries.find((e) => (e.version || '').trim().split(' ')[0] === tag)
+            || entries.find((e) => (e.version || '').trim().split(' ')[0].startsWith(tag));
+          const HEADERS = { add: '🚀 New', fix: '🐛 Fixes', improve: '✨ Improvements' };
+          if (!entry) {
+            console.log('See the assets below for the installer and updater files for your platform.');
+            process.exit(0);
+          }
+          const sections = ['add', 'fix', 'improve']
+            .map((k) => ({ k, items: (entry.notes || []).filter((n) => n.category === k).map((n) => n.text) }))
+            .filter((s) => s.items.length)
+            .map((s) => `## ${HEADERS[s.k]}\n\n` + s.items.map((t) => `- ${t}`).join('\n'))
+            .join('\n\n');
+          const known = (entry.known_issues || []).filter(Boolean);
+          const knownSection = known.length
+            ? `\n\n## ⚠️ Known Issues\n\n` + known.map((t) => `- ${t}`).join('\n')
+            : '';
+          console.log(`## What's new in ${entry.version}\n\n${sections}${knownSection}`);
+          EOF
+          )
+          {
+            echo "body<<GH_RELEASE_NOTES"
+            echo "$BODY"
+            echo "GH_RELEASE_NOTES"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build Tauri app & publish release
         uses: tauri-apps/tauri-action@v1
         env:
@@ -82,7 +117,7 @@ jobs:
           args: ${{ matrix.args }}
           tagName: ${{ github.ref_name }}
           releaseName: 'GodotHub ${{ github.ref_name }}'
-          releaseBody: 'See the assets below for the installer and updater files for your platform.'
+          releaseBody: ${{ steps.release-notes.outputs.body }}
           releaseDraft: true
           uploadUpdaterJson: true
           updaterJsonPreferNsis: true

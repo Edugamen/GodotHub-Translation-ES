@@ -38,6 +38,7 @@ export interface ChangelogEntry {
   version: string
   date: string
   notes: ChangelogNote[]
+  known_issues: string[]
   created_at: number
 }
 

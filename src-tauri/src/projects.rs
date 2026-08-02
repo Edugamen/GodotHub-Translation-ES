@@ -726,6 +726,53 @@ pub fn stop_project(app: AppHandle, id: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Spawn a host binary and treat it as successful unless it exits with a
+/// failure status within a short window. `xdg-open` and friends can spawn fine
+/// yet fail immediately (e.g. no handler configured / portal unavailable), so
+/// a plain `spawn()` is not enough to know the folder actually opened.
+#[cfg(all(unix, not(target_os = "macos")))]
+fn spawn_detached_checked(bin: &str, args: &[std::ffi::OsString]) -> Result<(), String> {
+    let mut cmd = std::process::Command::new(bin);
+    crate::terminal::sanitize_child_env(&mut cmd);
+    cmd.args(args);
+    let child = cmd.spawn().map_err(|e| format!("{bin}: {e}"))?;
+
+    let deadline = std::time::Instant::now() + std::time::Duration::from_millis(1500);
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) if status.success() => return Ok(()),
+            // Exited with an error -> let the caller try the next opener.
+            Ok(Some(_)) => return Err(format!("{bin} exited with an error")),
+            // Still running after the grace period -> it is working, keep it.
+            Ok(None) if std::time::Instant::now() >= deadline => return Ok(()),
+            Ok(None) => std::thread::sleep(std::time::Duration::from_millis(50)),
+            Err(e) => return Err(format!("{bin}: {e}")),
+        }
+    }
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+fn open_folder_linux(path: &str, dir: &Path) -> Result<(), String> {
+    let dir_arg = dir.as_os_str().to_os_string();
+    let path_arg = std::ffi::OsString::from(path);
+    let candidates: [(&str, Vec<std::ffi::OsString>); 5] = [
+        ("xdg-open", vec![dir_arg.clone()]),
+        ("gio", vec![std::ffi::OsString::from("open"), path_arg.clone()]),
+        ("nautilus", vec![path_arg.clone()]),
+        ("dolphin", vec![path_arg.clone()]),
+        ("thunar", vec![path_arg.clone()]),
+    ];
+
+    let mut last_err = String::from("no file manager could open the folder");
+    for (bin, args) in candidates {
+        match spawn_detached_checked(bin, &args) {
+            Ok(()) => return Ok(()),
+            Err(e) => last_err = e,
+        }
+    }
+    Err(last_err)
+}
+
 #[tauri::command]
 pub fn open_project_folder(path: String) -> Result<(), String> {
     let dir = PathBuf::from(&path);
@@ -740,30 +787,9 @@ pub fn open_project_folder(path: String) -> Result<(), String> {
     let result = std::process::Command::new("open").arg(&dir).spawn();
 
     #[cfg(all(unix, not(target_os = "macos")))]
-    let result = std::process::Command::new("xdg-open")
-        .arg(&dir)
-        .spawn()
-        .or_else(|_| {
-            std::process::Command::new("gio")
-                .args(["open", &path])
-                .spawn()
-        })
-        .or_else(|_| {
-            std::process::Command::new("nautilus")
-                .arg(&path)
-                .spawn()
-        })
-        .or_else(|_| {
-            std::process::Command::new("dolphin")
-                .arg(&path)
-                .spawn()
-        })
-        .or_else(|_| {
-            std::process::Command::new("thunar")
-                .arg(&path)
-                .spawn()
-        });
+    return open_folder_linux(&path, &dir);
 
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
     result.map(|_| ()).map_err(|e| e.to_string())
 }
 
@@ -777,9 +803,9 @@ pub fn open_in_editor(app: AppHandle, path: String) -> Result<(), String> {
     let settings = settings::read_settings(&app);
     if let Some(editor_path) = &settings.external_editor_path {
         if !editor_path.trim().is_empty() {
-            let result = std::process::Command::new(editor_path.trim())
-                .arg(&dir)
-                .spawn();
+            let mut cmd = std::process::Command::new(editor_path.trim());
+            crate::terminal::sanitize_child_env(&mut cmd);
+            let result = cmd.arg(&dir).spawn();
             if result.is_ok() {
                 return Ok(());
             }
@@ -787,7 +813,9 @@ pub fn open_in_editor(app: AppHandle, path: String) -> Result<(), String> {
     }
 
     for editor in &["code", "rider", "idea", "code-insiders", "codium", "zed"] {
-        if std::process::Command::new(editor).arg(&dir).spawn().is_ok() {
+        let mut cmd = std::process::Command::new(editor);
+        crate::terminal::sanitize_child_env(&mut cmd);
+        if cmd.arg(&dir).spawn().is_ok() {
             return Ok(());
         }
     }

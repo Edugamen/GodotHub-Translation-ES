@@ -743,7 +743,7 @@ pub fn clone_repo(app: tauri::AppHandle, url: String, dest: String) -> Result<St
 // ---------------------------------------------------------------------------
 
 #[tauri::command]
-pub fn open_terminal(path: String) -> Result<(), String> {
+pub fn open_terminal(_app: tauri::AppHandle, path: String) -> Result<(), String> {
     let dir = PathBuf::from(&path);
     if !dir.exists() {
         return Err("Path does not exist".into());
@@ -769,52 +769,16 @@ pub fn open_terminal(path: String) -> Result<(), String> {
             .map_err(|e| e.to_string())?;
     }
 
+    // Reuse the same robust terminal detection as "open with console" so every
+    // terminal-launching action behaves consistently (honors $TERMINAL, falls
+    // back across 20+ emulators incl. xdg-terminal-exec, AppImage-safe env).
     #[cfg(all(unix, not(target_os = "macos")))]
     {
-        let mut spawned = false;
-
-        if let Ok(term) = std::env::var("TERMINAL") {
-            if !term.is_empty() {
-                spawned = Command::new(&term)
-                    .arg("--working-directory")
-                    .arg(&path)
-                    .spawn()
-                    .is_ok();
-            }
-        }
-
-        let terminals: [(&str, &[&str]); 6] = [
-            ("gnome-terminal", &["--working-directory", ""]),
-            ("kgx", &["--working-directory", ""]),
-            ("ptyxis", &["--working-directory", ""]),
-            ("konsole", &["--workdir", ""]),
-            ("xfce4-terminal", &["--working-directory", ""]),
-            ("x-terminal-emulator", &["--working-directory", ""]),
-        ];
-
-        for &(term, args) in &terminals {
-            if args.len() == 2 && !spawned {
-                let replaced: Vec<&str> = vec![args[0], &path];
-                if Command::new(term).args(&replaced).spawn().is_ok() {
-                    spawned = true;
-                }
-            }
-        }
-
-        if !spawned {
-            spawned = Command::new("xterm")
-                .args(["-e", &format!("cd '{}' && exec bash", path.replace('\'', "'\\''"))])
-                .spawn()
-                .is_ok();
-        }
-
-        if !spawned {
-            Command::new("xdg-open").arg(&path).spawn().ok();
-        }
-
-        if !spawned {
-            return Err("Could not find a terminal emulator".into());
-        }
+        let script = format!(
+            "#!/bin/sh\ncd '{}' && exec ${{SHELL:-bash}}\n",
+            path.replace('\'', "'\\''")
+        );
+        crate::terminal::spawn_shell_script_in_terminal(&_app, &script)?;
     }
 
     Ok(())

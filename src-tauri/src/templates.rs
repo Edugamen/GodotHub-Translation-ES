@@ -191,6 +191,19 @@ pub fn list_templates(app: AppHandle) -> Vec<ProjectTemplate> {
         let path = entry.path();
         if path.is_dir() {
             if let Some(mut t) = read_template_json(&path) {
+                let folder_name = path
+                    .file_name()
+                    .map(|n| n.to_string_lossy().to_string())
+                    .unwrap_or_default();
+                // Self-heal templates whose stored id doesn't match their folder
+                // name (e.g. a stale template.json copied over during a sync).
+                // Otherwise delete, preview, and create-from-template all fail
+                // with "Template not found".
+                if t.id != folder_name {
+                    t.id = folder_name.clone();
+                    t.path = path.to_string_lossy().to_string();
+                    let _ = write_template_json(&path, &t);
+                }
                 t.path = path.to_string_lossy().to_string();
                 templates.push(t);
             }
@@ -348,12 +361,38 @@ fn delete_dir_best_effort(dir: &Path) -> bool {
         .is_ok()
 }
 
+fn find_template_dir_by_id(app: &AppHandle, id: &str) -> Option<PathBuf> {
+    let root = templates_root(app);
+    if !root.exists() {
+        return None;
+    }
+    if let Ok(entries) = fs::read_dir(&root) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                if let Some(t) = read_template_json(&path) {
+                    if t.id == id {
+                        return Some(path);
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+fn resolve_template_dir(app: &AppHandle, id: &str) -> Option<PathBuf> {
+    let dir = template_dir(app, id);
+    if dir.exists() {
+        Some(dir)
+    } else {
+        find_template_dir_by_id(app, id)
+    }
+}
+
 #[tauri::command]
 pub fn delete_template(app: AppHandle, template_id: String) -> Result<(), String> {
-    let dir = template_dir(&app, &template_id);
-    if !dir.exists() {
-        return Err("Template not found".into());
-    }
+    let dir = resolve_template_dir(&app, &template_id).ok_or("Template not found")?;
 
     if let Some(t) = read_template_json(&dir) {
         if let Some(src) = &t.source_path {
@@ -376,10 +415,7 @@ pub fn delete_template(app: AppHandle, template_id: String) -> Result<(), String
 
 #[tauri::command]
 pub fn get_template_preview(app: AppHandle, template_id: String) -> Result<Vec<TemplateFileEntry>, String> {
-    let dir = template_dir(&app, &template_id);
-    if !dir.exists() {
-        return Err("Template not found".into());
-    }
+    let dir = resolve_template_dir(&app, &template_id).ok_or("Template not found")?;
 
     let mut entries = Vec::new();
     list_files_recursive(&dir, &dir, &mut entries)?;
@@ -521,6 +557,12 @@ pub fn sync_templates_with_scan_dir(app: AppHandle) -> Result<TemplateSyncResult
                 continue;
             }
 
+            // The scan copy can carry a stale template.json (e.g. an id from a
+            // previous app-data instance). Always rewrite it so the registry
+            // template's id keeps matching its folder name, otherwise delete
+            // and preview fail with "Template not found".
+            let _ = write_template_json(&dst, &t);
+
             if t.source_project_id.is_none() && !t.keep_name {
                 if let Some(proj_name) = crate::projects::resolve_project_name(&src.to_string_lossy()) {
                     if proj_name != t.name {
@@ -602,6 +644,9 @@ pub fn sync_templates_with_scan_dir(app: AppHandle) -> Result<TemplateSyncResult
         };
 
         if write_template_json(&dst, &template).is_ok() {
+            // Keep the scan copy's template.json in sync so a later update
+            // doesn't copy a stale id back over the registry copy.
+            let _ = write_template_json(&src, &template);
             imported.push(template);
         }
     }

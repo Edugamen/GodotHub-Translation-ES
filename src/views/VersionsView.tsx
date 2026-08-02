@@ -471,7 +471,9 @@ export function VersionsView() {
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation()
-                      api.openGodotVersion(v.tag, consoleToggles[v.tag] || undefined).catch(() => {})
+                      api
+                        .openGodotVersion(v.tag, consoleToggles[v.tag] || undefined)
+                        .catch((err) => alert(String(err)))
                     }}
                     className="focus-ring cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-lg border border-line text-sm font-medium text-ink hover:bg-accent hover:text-white hover:border-accent transition-colors"
                   >
@@ -876,7 +878,7 @@ export function VersionsView() {
         label: t('open_editor'),
         icon: IconRocket,
         onClick: () => {
-          if (tag) api.openGodotVersion(tag).catch(() => {})
+          if (tag) api.openGodotVersion(tag).catch((err) => alert(String(err)))
         },
       },
       ...(version?.supports_console
@@ -885,7 +887,8 @@ export function VersionsView() {
               label: t('open_editor_with_console'),
               icon: IconTerminal,
               onClick: () => {
-                if (tag) api.openGodotVersion(tag, true).catch(() => {})
+                if (tag)
+                  api.openGodotVersion(tag, true).catch((err) => alert(String(err)))
               },
             },
           ]

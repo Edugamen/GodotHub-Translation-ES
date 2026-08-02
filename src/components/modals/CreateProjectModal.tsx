@@ -19,6 +19,7 @@ interface Props {
   installedVersions: InstalledGodotVersion[]
   defaultLocation?: string | null
   categories?: Category[]
+  initialTemplateId?: string | null
   onClose: () => void
   onCreated: () => void
 }
@@ -42,6 +43,7 @@ const ICON_PRESET_SVG = (
 export function CreateProjectModal({
   installedVersions,
   defaultLocation,
+  initialTemplateId = null,
   onClose,
   onCreated,
   categories = [],
@@ -53,7 +55,7 @@ export function CreateProjectModal({
   const [version, setVersion] = useState(installedVersions[0]?.tag ?? '')
   const [iconPath, setIconPath] = useState<string | null>(null)
   const [iconPreview, setIconPreview] = useState<string | null>(null)
-  const [templateId, setTemplateId] = useState<string | null>(null)
+  const [templateId, setTemplateId] = useState<string | null>(initialTemplateId)
   const [previewTemplate, setPreviewTemplate] = useState<ProjectTemplate | null>(null)
   const [category, setCategory] = useState('')
   const [templates, setTemplates] = useState<ProjectTemplate[]>([])
