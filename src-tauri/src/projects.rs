@@ -735,7 +735,7 @@ fn spawn_detached_checked(bin: &str, args: &[std::ffi::OsString]) -> Result<(), 
     let mut cmd = std::process::Command::new(bin);
     crate::terminal::sanitize_child_env(&mut cmd);
     cmd.args(args);
-    let child = cmd.spawn().map_err(|e| format!("{bin}: {e}"))?;
+    let mut child = cmd.spawn().map_err(|e| format!("{bin}: {e}"))?;
 
     let deadline = std::time::Instant::now() + std::time::Duration::from_millis(1500);
     loop {

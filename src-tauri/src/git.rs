@@ -2,6 +2,10 @@ use crate::git_helpers;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
+
+// Only used by the Windows/macOS terminal & git-log openers; on Linux those
+// go through crate::terminal::spawn_shell_script_in_terminal instead.
+#[cfg(any(target_os = "windows", target_os = "macos"))]
 use std::process::Command;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
