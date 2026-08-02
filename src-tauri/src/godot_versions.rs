@@ -164,21 +164,31 @@ fn releases_cache_file(app: &AppHandle) -> PathBuf {
 #[derive(serde::Serialize, serde::Deserialize)]
 struct ReleasesCache {
     fetched_at: i64,
+    #[serde(default)]
+    asset_target: String,
     releases: Vec<GodotRelease>,
 }
 
 const CACHE_TTL_SECS: i64 = 3600;
 
+fn asset_target() -> String {
+    format!("{}-{}", std::env::consts::OS, std::env::consts::ARCH)
+}
+
 fn read_cache_allow_stale(app: &AppHandle) -> Option<(Vec<GodotRelease>, i64)> {
     let file = releases_cache_file(app);
     let raw = fs::read_to_string(&file).ok()?;
     let cache: ReleasesCache = serde_json::from_str(&raw).ok()?;
+    if cache.asset_target != asset_target() {
+        return None;
+    }
     Some((dedupe_releases(cache.releases), cache.fetched_at))
 }
 
 fn write_releases_cache(app: &AppHandle, releases: &[GodotRelease]) {
     let cache = ReleasesCache {
         fetched_at: chrono::Utc::now().timestamp(),
+        asset_target: asset_target(),
         releases: releases.to_vec(),
     };
     if let Ok(json) = serde_json::to_string_pretty(&cache) {
@@ -199,6 +209,19 @@ fn dedupe_releases(releases: Vec<GodotRelease>) -> Vec<GodotRelease> {
         .collect()
 }
 
+#[cfg(target_os = "linux")]
+const LINUX_ARCH_TOKEN: Option<&str> = if cfg!(target_arch = "x86_64") {
+    Some("x86_64")
+} else if cfg!(target_arch = "aarch64") {
+    Some("arm64")
+} else if cfg!(target_arch = "arm") {
+    Some("arm32")
+} else if cfg!(target_arch = "x86") {
+    Some("x86_32")
+} else {
+    None
+};
+
 fn platform_asset_matcher(name: &str) -> bool {
     let n = name.to_lowercase();
     if !n.ends_with(".zip") || n.contains("console") {
@@ -209,7 +232,11 @@ fn platform_asset_matcher(name: &str) -> bool {
     #[cfg(target_os = "macos")]
     return n.contains("macos");
     #[cfg(target_os = "linux")]
-    return n.contains("linux.x86_64") || n.contains("linux_x86_64");
+    return LINUX_ARCH_TOKEN.is_some_and(|arch| {
+        n.split_once("linux.")
+            .or_else(|| n.split_once("linux_"))
+            .is_some_and(|(_, rest)| rest.starts_with(arch))
+    });
 }
 
 #[tauri::command]
@@ -278,7 +305,9 @@ async fn refresh_releases_cache(app: AppHandle) -> Result<Vec<GodotRelease>, Str
             );
             if let Ok(raw) = fs::read_to_string(releases_cache_file(&app)) {
                 if let Ok(stale) = serde_json::from_str::<ReleasesCache>(&raw) {
-                    return Ok(stale.releases);
+                    if stale.asset_target == asset_target() {
+                        return Ok(stale.releases);
+                    }
                 }
             }
             return Err(err);
@@ -783,6 +812,53 @@ pub struct LaunchedEditor {
     pub pid_file: Option<PathBuf>,
 }
 
+#[cfg(target_os = "linux")]
+fn verify_executable_arch(exe: &Path) -> Result<(), String> {
+    use std::io::Read;
+
+    const HOST_MACHINE: u16 = if cfg!(target_arch = "x86_64") {
+        0x3E
+    } else if cfg!(target_arch = "aarch64") {
+        0xB7
+    } else if cfg!(target_arch = "arm") {
+        0x28
+    } else if cfg!(target_arch = "x86") {
+        0x03
+    } else {
+        0
+    };
+
+    if HOST_MACHINE == 0 {
+        return Ok(());
+    }
+
+    let mut header = [0u8; 20];
+    let Ok(mut file) = fs::File::open(exe) else {
+        return Ok(());
+    };
+    if file.read_exact(&mut header).is_err() || &header[..4] != b"\x7fELF" {
+        return Ok(());
+    }
+
+    let machine = u16::from_le_bytes([header[18], header[19]]);
+    if machine == HOST_MACHINE {
+        return Ok(());
+    }
+
+    let built_for = match machine {
+        0x03 => "x86 (32-bit)",
+        0x28 => "ARM (32-bit)",
+        0x3E => "x86-64",
+        0xB7 => "ARM64",
+        _ => "another architecture",
+    };
+    Err(format!(
+        "This Godot build is for {built_for}, but this system is {}. \
+         Remove this version and download it again to get the matching build.",
+        std::env::consts::ARCH
+    ))
+}
+
 pub fn spawn_editor(
     app: &AppHandle,
     exe: &Path,
@@ -790,6 +866,9 @@ pub fn spawn_editor(
     title: &str,
     use_console: bool,
 ) -> Result<LaunchedEditor, String> {
+    #[cfg(target_os = "linux")]
+    verify_executable_arch(exe)?;
+
     if !use_console {
         return spawn_plain(exe, args);
     }
