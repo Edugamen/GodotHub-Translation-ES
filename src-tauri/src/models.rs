@@ -199,6 +199,8 @@ pub struct AppSettings {
     #[serde(default = "default_naming_convention")]
     pub directory_naming_convention: String,
     #[serde(default)]
+    pub git_init_new_projects: bool,
+    #[serde(default)]
     pub new_ui: bool,
 }
 
@@ -399,6 +401,7 @@ tooltip_delay: default_tooltip_delay(),
             use_os_decorations: default_os_decorations(),
             dismissed_project_paths: vec![],
             directory_naming_convention: default_naming_convention(),
+            git_init_new_projects: false,
             new_ui: false,
         }
     }

@@ -71,6 +71,8 @@ export const api = {
   gitChangedFiles: gitApi.changedFiles,
   gitDiscardChanges: gitApi.discardChanges,
   gitInit: gitApi.init,
+  gitInitProject: gitApi.initProject,
+  gitIsAvailable: gitApi.isAvailable,
   gitStageFile: gitApi.stageFile,
   gitUnstageFile: gitApi.unstageFile,
   gitCommit: gitApi.commit,

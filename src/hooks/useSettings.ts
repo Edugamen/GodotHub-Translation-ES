@@ -53,6 +53,7 @@ const DEFAULTS: AppSettings = {
   language: 'en-US',
   use_os_decorations: false,
   directory_naming_convention: 'keep',
+  git_init_new_projects: false,
   new_ui: false,
 }
 

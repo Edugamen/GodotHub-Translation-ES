@@ -221,6 +221,7 @@ export const SETTINGS_SEARCH_ITEMS: SettingSearchEntry[] = (
   { key: 'categories_enabled', tab: 'behavior' },
   { key: 'workspaces_enabled', tab: 'behavior' },
   { key: 'directory_naming_convention', tab: 'behavior' },
+  { key: 'git_init_new_projects', tab: 'behavior' },
   { key: 'tooltip_delay', tab: 'behavior' },
   { key: 'command_palette_keybind', tab: 'behavior' },
   { key: 'tray_recent_projects_count', tab: 'behavior' },
