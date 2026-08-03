@@ -620,9 +620,7 @@
   "command_palette_escape": "Esc",
 
   "workspace_switch_aria": "切换到 {{name}} 工作区",
-  "workspace_right_click": "{{name}}（右键点击编辑）",
-
-  "sidebar_soon": "即将推出",
+  "workspace_right_click": "{{name}}（右键点击编辑）",  
 
   "setting_token_placeholder": "ghp_xxxxxxxxxxxxxxxxxxxx",
 

@@ -24,10 +24,8 @@ export function ScrollToTopButton() {
     const update = () => setVisible(scroller.scrollTop > SHOW_AFTER)
     update()
     scroller.addEventListener('scroll', update, { passive: true })
-    window.addEventListener('resize', update)
     return () => {
       scroller.removeEventListener('scroll', update)
-      window.removeEventListener('resize', update)
     }
   }, [])
 
