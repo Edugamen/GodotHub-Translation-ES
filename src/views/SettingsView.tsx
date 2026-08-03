@@ -424,6 +424,7 @@ export function SettingsView({
       categories_enabled: { tab: 'behavior', section: 'behavior-projects' },
       workspaces_enabled: { tab: 'behavior', section: 'behavior-projects' },
       directory_naming_convention: { tab: 'behavior', section: 'behavior-projects' },
+      git_init_new_projects: { tab: 'behavior', section: 'behavior-projects' },
       check_updates: { tab: 'advanced', section: 'advanced-updates' },
       tooltip_delay: { tab: 'behavior', section: 'behavior-projects' },
       tray_recent_projects_count: { tab: 'behavior', section: 'behavior' },
@@ -1106,6 +1107,24 @@ export function SettingsView({
                       setField('workspaces_enabled', checked)
                     }
                     label={t('use_workspaces_label')}
+                  />
+                </label>
+
+                <label className="flex items-center justify-between gap-4 pt-5 border-t border-line">
+                  <div>
+                    <span className="text-xs font-medium text-muted block">
+                      {t('git_init_new_projects_label')}
+                    </span>
+                    <p className="text-[11px] text-muted mt-1 leading-relaxed">
+                      {t('git_init_new_projects_desc')}
+                    </p>
+                  </div>
+                  <Toggle
+                    checked={current.git_init_new_projects}
+                    onChange={(checked) =>
+                      setField('git_init_new_projects', checked)
+                    }
+                    label={t('git_init_new_projects_label')}
                   />
                 </label>
 
