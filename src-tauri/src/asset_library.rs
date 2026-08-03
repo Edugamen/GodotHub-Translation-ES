@@ -2,10 +2,13 @@ use crate::godot_versions::meets_min_version;
 use crate::models::ProjectTemplate;
 use futures_util::StreamExt;
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::fs;
 use std::io::Cursor;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager};
 
 const ASSET_LIB_API: &str = "https://godotengine.org/asset-library/api";
@@ -139,6 +142,80 @@ async fn fetch_detail(http: &reqwest::Client, asset_id: &str) -> Option<AssetDet
         .ok()
 }
 
+// ---------------------------------------------------------------------------
+// In-memory response caching
+// ---------------------------------------------------------------------------
+// Browsing the old Asset Library is chatty: every search page needs one extra
+// HTTP request per asset to fetch its details (N+1), and the new store returns
+// identical requests in different orders. A small TTL cache keeps repeated
+// navigation and filtering snappy without re-hitting the network.
+
+const DETAIL_CACHE_TTL: Duration = Duration::from_secs(10 * 60);
+const SEARCH_CACHE_TTL: Duration = Duration::from_secs(60);
+const CACHE_MAX_ENTRIES: usize = 256;
+
+/// Thread-safe, bounded, TTL-based cache shared across the asset commands.
+#[derive(Default)]
+pub struct AssetResponseCache {
+    details: Mutex<HashMap<String, (Instant, AssetDetail)>>,
+    searches: Mutex<HashMap<String, (Instant, AssetLibraryResponse)>>,
+}
+
+fn evict_if_full<T>(map: &mut HashMap<String, (Instant, T)>, ttl: Duration) {
+    if map.len() >= CACHE_MAX_ENTRIES {
+        map.retain(|_, (ts, _)| ts.elapsed() < ttl);
+        if map.len() >= CACHE_MAX_ENTRIES {
+            map.clear();
+        }
+    }
+}
+
+impl AssetResponseCache {
+    fn cached_detail(&self, asset_id: &str) -> Option<AssetDetail> {
+        let map = self.details.lock().ok()?;
+        match map.get(asset_id) {
+            Some((ts, d)) if ts.elapsed() < DETAIL_CACHE_TTL => Some(d.clone()),
+            _ => None,
+        }
+    }
+
+    fn store_detail(&self, asset_id: String, detail: AssetDetail) {
+        if let Ok(mut map) = self.details.lock() {
+            evict_if_full(&mut map, DETAIL_CACHE_TTL);
+            map.insert(asset_id, (Instant::now(), detail));
+        }
+    }
+
+    fn cached_search(&self, key: &str) -> Option<AssetLibraryResponse> {
+        let map = self.searches.lock().ok()?;
+        match map.get(key) {
+            Some((ts, r)) if ts.elapsed() < SEARCH_CACHE_TTL => Some(r.clone()),
+            _ => None,
+        }
+    }
+
+    fn store_search(&self, key: String, resp: AssetLibraryResponse) {
+        if let Ok(mut map) = self.searches.lock() {
+            evict_if_full(&mut map, SEARCH_CACHE_TTL);
+            map.insert(key, (Instant::now(), resp));
+        }
+    }
+}
+
+/// Fetch an asset detail, preferring the in-memory cache.
+async fn cached_detail(
+    cache: &AssetResponseCache,
+    http: &reqwest::Client,
+    asset_id: &str,
+) -> Option<AssetDetail> {
+    if let Some(detail) = cache.cached_detail(asset_id) {
+        return Some(detail);
+    }
+    let detail = fetch_detail(http, asset_id).await?;
+    cache.store_detail(asset_id.to_string(), detail.clone());
+    Some(detail)
+}
+
 fn emit_asset_error(app: &AppHandle, asset_id: &str, title: &str, message: &str) {
     let _ = app.emit(
         "asset-download-error",
@@ -212,6 +289,7 @@ async fn stream_download_bytes(
 
 #[tauri::command]
 pub async fn search_asset_library(
+    state: tauri::State<'_, Arc<AssetResponseCache>>,
     filter: Option<String>,
     godot_version: Option<String>,
     page: Option<u32>,
@@ -221,6 +299,14 @@ pub async fn search_asset_library(
     sort: Option<String>,
     reverse: Option<bool>,
 ) -> Result<AssetLibraryResponse, String> {
+    let cache = state.inner().clone();
+    let cache_key = format!(
+        "lib|{filter:?}|{godot_version:?}|{page:?}|{max_results:?}|{asset_type:?}|{category_id:?}|{sort:?}|{reverse:?}"
+    );
+    if let Some(resp) = cache.cached_search(&cache_key) {
+        return Ok(resp);
+    }
+
     let http = client()?;
     let max_results = max_results.unwrap_or(20);
     let start_page = page.unwrap_or(0);
@@ -298,7 +384,8 @@ pub async fn search_asset_library(
         let ids: Vec<String> = search.result.iter().map(|r| r.asset_id.clone()).collect();
         let futures = ids.into_iter().map(|id| {
             let http = http.clone();
-            async move { fetch_detail(&http, &id).await }
+            let cache = cache.clone();
+            async move { cached_detail(&cache, &http, &id).await }
         });
         let details: Vec<Option<AssetDetail>> = futures_util::stream::iter(futures)
             .buffer_unordered(8)
@@ -342,12 +429,14 @@ pub async fn search_asset_library(
         }
     }
 
-    Ok(AssetLibraryResponse {
+    let response = AssetLibraryResponse {
         assets,
         page: current_page,
         pages,
         total,
-    })
+    };
+    cache.store_search(cache_key, response.clone());
+    Ok(response)
 }
 
 #[tauri::command]
@@ -473,12 +562,21 @@ fn normalize_store_asset(a: StoreAsset) -> AssetLibraryAsset {
 /// honours `sort` deterministically - so this keeps paged results stable.
 #[tauri::command]
 pub async fn search_asset_store(
+    state: tauri::State<'_, Arc<AssetResponseCache>>,
     filter: Option<String>,
     godot_version: Option<String>,
     page: Option<u32>,
     max_results: Option<u32>,
     sort: Option<String>,
 ) -> Result<AssetLibraryResponse, String> {
+    let cache = state.inner().clone();
+    let cache_key = format!(
+        "store|{filter:?}|{godot_version:?}|{page:?}|{max_results:?}|{sort:?}"
+    );
+    if let Some(resp) = cache.cached_search(&cache_key) {
+        return Ok(resp);
+    }
+
     let http = client()?;
     let max_results = max_results.unwrap_or(12).clamp(1, 100);
     let app_page = page.unwrap_or(0);
@@ -527,7 +625,7 @@ pub async fn search_asset_store(
         1
     };
 
-    Ok(AssetLibraryResponse {
+    let response = AssetLibraryResponse {
         assets: search
             .hits
             .into_iter()
@@ -536,7 +634,9 @@ pub async fn search_asset_store(
         page: app_page,
         pages,
         total: count,
-    })
+    };
+    cache.store_search(cache_key, response.clone());
+    Ok(response)
 }
 
 #[tauri::command]
@@ -546,6 +646,8 @@ pub async fn install_asset_as_template(
 ) -> Result<ProjectTemplate, String> {
     let http = client()?;
 
+    // Install/download always fetch a fresh detail: cached download URLs could
+    // be time-limited, and a stale link would break the actual download.
     let detail = match fetch_detail(&http, &asset_id).await {
         Some(d) => d,
         None => {
@@ -670,6 +772,7 @@ pub async fn install_asset(
     let target = resolve_install_target(&app, &project_id, &template_id)?;
 
     let http = client()?;
+    // Fresh detail: cached download URLs could be time-limited.
     let detail = match fetch_detail(&http, &asset_id).await {
         Some(d) => d,
         None => {
@@ -742,6 +845,7 @@ pub async fn download_asset(
     dest_dir: Option<String>,
 ) -> Result<String, String> {
     let http = client()?;
+    // Fresh detail: cached download URLs could be time-limited.
     let detail = match fetch_detail(&http, &asset_id).await {
         Some(d) => d,
         None => {

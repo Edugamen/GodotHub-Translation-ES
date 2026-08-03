@@ -50,6 +50,9 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
+            app.manage(std::sync::Arc::new(
+                asset_library::AssetResponseCache::default(),
+            ));
             app.manage(watcher::ActiveWatchers(std::sync::Mutex::new(Vec::new())));
 
             godot_versions::migrate_registry_to_global(app.handle());

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { api } from '../lib/api'
 import type { AssetLibraryAsset } from '../types'
+import { cachedAssetSearch } from '../lib/assetSearchCache'
 import {
   ASSET_SORT_KEYS,
   assetSortParams,
@@ -46,15 +47,19 @@ export function AssetLibraryBrowser() {
     async (nextPage: number, append: boolean) => {
       try {
         const { sort: sortParam, reverse } = assetSortParams(sort)
-        const res = await api.searchAssetLibrary(
-          query.trim() || null,
-          version || VERSION_OPTIONS[0],
-          nextPage,
-          PAGE_SIZE,
-          null,
-          null,
-          sortParam,
-          reverse,
+        const res = await cachedAssetSearch(
+          `lib|${query.trim()}|${version || ''}|${nextPage}|${sortParam}|${reverse}`,
+          () =>
+            api.searchAssetLibrary(
+              query.trim() || null,
+              version || VERSION_OPTIONS[0],
+              nextPage,
+              PAGE_SIZE,
+              null,
+              null,
+              sortParam,
+              reverse,
+            ),
         )
         setAssets((prev) => {
           const next = append ? [...prev, ...res.assets] : res.assets

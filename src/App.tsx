@@ -29,6 +29,7 @@ import { TitleBar } from './components/Titlebar'
 import { SplashScreen, type SplashPhase } from './components/SplashScreen'
 import { OnboardingTips } from './components/OnboardingTips'
 import { ViewErrorBoundary } from './components/ViewErrorBoundary'
+import { ScrollToTopButton } from './components/ui/ScrollToTopButton'
 import { GitSidebar } from './components/git/GitSidebar'
 import { Sidebar, type Tab } from './components/Sidebar'
 import { SuccessToast, ErrorToast } from './components/ToastNotification'
@@ -549,6 +550,8 @@ function AppContent() {
               {renderView()}
             </motion.div>
           </AnimatePresence>
+
+          <ScrollToTopButton />
         </main>
 
         

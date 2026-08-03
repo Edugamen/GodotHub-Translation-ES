@@ -14,6 +14,7 @@
   "launch": "Launch",
   "stop": "Stop",
   "refresh": "Refresh",
+  "scroll_to_top": "Scroll to top",
   "quick_commands": "Quick Commands",
   "dismiss": "Dismiss",
   "add_workspace": "Add Workspace",

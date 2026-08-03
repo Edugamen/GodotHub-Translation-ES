@@ -17,6 +17,7 @@ import type {
   AssetLibraryAsset,
   AssetLibraryCategory,
 } from '../types'
+import { cachedAssetSearch } from '../lib/assetSearchCache'
 import { Dropdown } from './ui/Dropdown'
 import {
   InstallAssetModal,
@@ -140,26 +141,35 @@ export function AssetStoreBrowser() {
         const { sort: librarySort, reverse } = assetSortParams(sort)
         const storeSort = storeServerSort(sort)
         const fetchLibrary = () =>
-          api.searchAssetLibrary(
-            query.trim() || null,
-            version || VERSION_OPTIONS[0],
-            nextPage,
-            PAGE_SIZE,
-            'addon',
-            categoryId || null,
-            librarySort,
-            reverse,
+          cachedAssetSearch(
+            `lib|${query.trim()}|${version || ''}|${nextPage}|${categoryId}|${librarySort}|${reverse}`,
+            () =>
+              api.searchAssetLibrary(
+                query.trim() || null,
+                version || VERSION_OPTIONS[0],
+                nextPage,
+                PAGE_SIZE,
+                'addon',
+                categoryId || null,
+                librarySort,
+                reverse,
+              ),
           )
         const fetchStore = () =>
-          api.searchAssetStore(
-            query.trim() || null,
-            // The store's `compatibility` filter is strict (it requires a
-            // release for that exact version), so only apply it when the user
-            // picks a version explicitly instead of defaulting to the newest.
-            version || null,
-            nextPage,
-            PAGE_SIZE,
-            storeSort,
+          cachedAssetSearch(
+            `store|${query.trim()}|${version || ''}|${nextPage}|${storeSort}`,
+            () =>
+              api.searchAssetStore(
+                query.trim() || null,
+                // The store's `compatibility` filter is strict (it requires a
+                // release for that exact version), so only apply it when the
+                // user picks a version explicitly instead of defaulting to the
+                // newest.
+                version || null,
+                nextPage,
+                PAGE_SIZE,
+                storeSort,
+              ),
           )
 
         let merged: AssetLibraryAsset[] = []

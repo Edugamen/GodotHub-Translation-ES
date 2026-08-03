@@ -64,7 +64,8 @@ export function AssetCard({
             src={asset.icon_url}
             alt=""
             loading="lazy"
-            className="absolute inset-0 w-full h-full object-cover opacity-15 blur-[1px] transition-all duration-300 ease-out group-hover:opacity-25 group-hover:scale-105"
+            decoding="async"
+            className="absolute inset-0 w-full h-full object-cover opacity-15"
             onError={(e) => {
               e.currentTarget.style.display = 'none'
             }}
@@ -82,6 +83,7 @@ export function AssetCard({
                 src={asset.icon_url}
                 alt=""
                 loading="lazy"
+                decoding="async"
                 className="absolute inset-0 w-full h-full object-cover"
                 onError={(e) => {
                   e.currentTarget.style.display = 'none'
