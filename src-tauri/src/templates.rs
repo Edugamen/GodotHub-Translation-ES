@@ -16,7 +16,7 @@ pub(crate) fn template_dir(app: &AppHandle, id: &str) -> PathBuf {
     templates_root(app).join(id)
 }
 
-fn sanitize_folder_name(name: &str) -> String {
+pub(crate) fn sanitize_folder_name(name: &str) -> String {
     let cleaned: String = name
         .chars()
         .map(|c| match c {
@@ -381,7 +381,7 @@ fn find_template_dir_by_id(app: &AppHandle, id: &str) -> Option<PathBuf> {
     None
 }
 
-fn resolve_template_dir(app: &AppHandle, id: &str) -> Option<PathBuf> {
+pub(crate) fn resolve_template_dir(app: &AppHandle, id: &str) -> Option<PathBuf> {
     let dir = template_dir(app, id);
     if dir.exists() {
         Some(dir)

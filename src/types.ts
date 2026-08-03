@@ -202,6 +202,10 @@ export interface AssetLibraryAsset {
   download_url: string | null
   browse_url: string | null
   modify_date: string | null
+  /** Rating (old library) or review score (new store), as a string. */
+  rating?: string
+  /** "library" = old Godot Asset Library, "store" = new Godot Asset Store. */
+  source?: 'library' | 'store'
 }
 
 export interface AssetLibraryResponse {
@@ -222,6 +226,21 @@ export interface AssetDownloadError {
   asset_id: string
   title: string
   message: string
+}
+
+export interface AssetLibraryCategory {
+  id: string
+  name: string
+  /** "0" = addon categories, "1" = project categories */
+  category_type: string
+}
+
+export interface InstallAssetResult {
+  asset_id: string
+  title: string
+  target_type: 'project' | 'template'
+  target_name: string
+  path: string
 }
 
 export type NamingConvention =
