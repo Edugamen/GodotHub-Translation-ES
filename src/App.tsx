@@ -25,6 +25,7 @@ import { CommandPalette } from './components/modals/CommandPalette'
 import { ShortcutCheatsheet } from './components/modals/ShortcutCheatsheet'
 import { CreateWorkspaceModal } from './components/modals/CreateWorkspaceModal'
 import { api } from './lib/api'
+import { isMac } from './lib/platform'
 import { TitleBar } from './components/Titlebar'
 import { SplashScreen, type SplashPhase } from './components/SplashScreen'
 import { OnboardingTips } from './components/OnboardingTips'
@@ -112,6 +113,7 @@ function AppContent() {
   const paletteKey = settings.command_palette_keybind || 'k'
 
   useEffect(() => {
+    if (isMac) return
     const w = getCurrentWindow()
     w.setDecorations(settings.use_os_decorations).catch((e) =>
       console.error('Failed to set window decorations:', e),

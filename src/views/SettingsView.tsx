@@ -1348,21 +1348,23 @@ export function SettingsView({
                 </div>
               </div>
 
-              <label className="flex items-center justify-between gap-4 pt-5 border-t border-line">
-                <div>
-                  <span className="text-xs font-medium text-muted block">
-                    {t('use_os_decorations')}
-                  </span>
-                  <p className="text-[11px] text-muted mt-1 leading-relaxed">
-                    {t('use_os_decorations_desc')}
-                  </p>
-                </div>
-                <Toggle
-                  checked={current.use_os_decorations}
-                  onChange={(checked) => setConfirmingOsDec(checked)}
-                  label={t('use_os_decorations')}
-                />
-              </label>
+              {!isMac && (
+                <label className="flex items-center justify-between gap-4 pt-5 border-t border-line">
+                  <div>
+                    <span className="text-xs font-medium text-muted block">
+                      {t('use_os_decorations')}
+                    </span>
+                    <p className="text-[11px] text-muted mt-1 leading-relaxed">
+                      {t('use_os_decorations_desc')}
+                    </p>
+                  </div>
+                  <Toggle
+                    checked={current.use_os_decorations}
+                    onChange={(checked) => setConfirmingOsDec(checked)}
+                    label={t('use_os_decorations')}
+                  />
+                </label>
+              )}
             </SectionCard>
             </div>
           </motion.div>

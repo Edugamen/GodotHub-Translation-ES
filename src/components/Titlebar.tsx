@@ -52,7 +52,7 @@ export function TitleBar() {
     }
   }
 
-  if (useOsDec) return null
+  if (useOsDec && !isMac) return null
 
   return (
     <div className="relative h-10 flex items-stretch bg-surface border-line border-b select-none shrink-0">
