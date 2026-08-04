@@ -131,3 +131,59 @@ jobs:
             --clobber
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  rewrite-updater-urls:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Point latest.json at the release download URLs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          release_id=$(gh api --paginate "repos/$REPO/releases" \
+            --jq "map(select(.tag_name == \"$TAG\")) | .[0].id // empty")
+          if [ -z "$release_id" ]; then
+            echo "no release found for tag $TAG" >&2
+            exit 1
+          fi
+          gh api --paginate "repos/$REPO/releases/$release_id/assets" > assets.json
+          asset_id=$(node -e "
+            const a = require('./assets.json').find((a) => a.name === 'latest.json');
+            if (!a) { console.error('latest.json is not attached to the release'); process.exit(1); }
+            console.log(a.id);
+          ")
+          gh api -H "Accept: application/octet-stream" \
+            "repos/$REPO/releases/assets/$asset_id" > latest.json
+          node - <<'EOF'
+          const fs = require('fs');
+          const manifest = JSON.parse(fs.readFileSync('latest.json', 'utf8'));
+          const downloadUrls = new Map(
+            JSON.parse(fs.readFileSync('assets.json', 'utf8')).map((a) => [
+              a.url,
+              a.browser_download_url,
+            ]),
+          );
+          let rewritten = 0;
+          let alreadyDirect = 0;
+          for (const [platform, data] of Object.entries(manifest.platforms ?? {})) {
+            if (!data.url.startsWith('https://api.github.com/')) {
+              alreadyDirect++;
+              continue;
+            }
+            const downloadUrl = downloadUrls.get(data.url);
+            if (!downloadUrl) {
+              throw new Error(`no release asset matches ${platform} url ${data.url}`);
+            }
+            data.url = downloadUrl;
+            rewritten++;
+          }
+          if (rewritten + alreadyDirect === 0) {
+            throw new Error('latest.json has no platform entries');
+          }
+          fs.writeFileSync('latest.json', JSON.stringify(manifest, null, 2));
+          console.log(`rewrote ${rewritten} urls, ${alreadyDirect} already direct`);
+          EOF
+          gh release upload "$TAG" latest.json --repo "$REPO" --clobber

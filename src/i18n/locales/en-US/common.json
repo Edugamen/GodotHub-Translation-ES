@@ -529,6 +529,12 @@
   "check_updates_failed": "Update check failed",
   "check_updates_try_again": "Try Again",
   "check_updates_close_btn": "Close",
+  "check_updates_rate_limited": "GitHub rate limit reached",
+  "check_updates_token_rejected": "GitHub token rejected",
+  "check_updates_rate_limited_hint": "GitHub only allows 60 anonymous requests per hour, shared with everyone on your network. Adding a personal access token in Settings raises this to 5,000 per hour and is also used for fetching Godot versions.",
+  "check_updates_rate_limited_token_hint": "Your saved GitHub token was rejected. It may have expired or been revoked. Test it in Settings and replace it if needed.",
+  "check_updates_add_token": "Add GitHub Token",
+  "check_updates_open_token_settings": "Open Token Settings",
   
   "clone_repo_title": "Clone Repository",
   "clone_repo_desc": "Clone a Git repository and import it as a Godot project. The folder must contain a project.godot file.",
