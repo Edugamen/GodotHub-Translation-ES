@@ -426,6 +426,7 @@ export function SettingsView({
       directory_naming_convention: { tab: 'behavior', section: 'behavior-projects' },
       git_init_new_projects: { tab: 'behavior', section: 'behavior-projects' },
       check_updates: { tab: 'advanced', section: 'advanced-updates' },
+      github_token: { tab: 'advanced', section: 'advanced-github-token' },
       tooltip_delay: { tab: 'behavior', section: 'behavior-projects' },
       tray_recent_projects_count: { tab: 'behavior', section: 'behavior' },
       command_palette_keybind: { tab: 'behavior', section: 'behavior' },
@@ -1736,6 +1737,7 @@ export function SettingsView({
             transition={{ duration: 0.12 }}
             className="flex flex-col gap-6"
           >
+            <div data-section-id="advanced-github-token">
             <SectionCard
               title={t('github_token_title')}
               description={t('github_token_desc')}
@@ -1803,6 +1805,7 @@ export function SettingsView({
                 </p>
               </div>
             </SectionCard>
+            </div>
 
             <div data-section-id="advanced-support" className="rounded-xl border border-line bg-surface/60 p-6 flex items-center justify-between gap-6">
               <div className="min-w-0">

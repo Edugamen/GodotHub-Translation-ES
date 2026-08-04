@@ -529,6 +529,12 @@
   "check_updates_failed": "检查更新失败",
   "check_updates_try_again": "重试",
   "check_updates_close_btn": "关闭",
+  "check_updates_rate_limited": "已达到 GitHub 速率限制",
+  "check_updates_token_rejected": "GitHub 令牌被拒绝",
+  "check_updates_rate_limited_hint": "GitHub 每小时仅允许 60 次匿名请求，并且与同一网络下的所有人共享。在设置中添加个人访问令牌可将上限提高到每小时 5000 次，该令牌同样用于获取 Godot 版本列表。",
+  "check_updates_rate_limited_token_hint": "已保存的 GitHub 令牌被拒绝，可能已过期或被吊销。请在设置中测试该令牌，必要时请更换。",
+  "check_updates_add_token": "添加 GitHub 令牌",
+  "check_updates_open_token_settings": "打开令牌设置",
 
   "clone_repo_title": "克隆仓库",
   "clone_repo_desc": "克隆 Git 仓库并将其导入为 Godot 项目。文件夹必须包含 project.godot 文件。",
