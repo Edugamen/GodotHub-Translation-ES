@@ -315,13 +315,11 @@ pub fn create_project(
     write_projects(&app, &projects)?;
     undismiss(&app, &project.path);
     if !project.godot_version.is_empty() {
-        // Persist the binding into the new project, like `godotenv pin`.
         let _ = crate::godotenv::pin_version(&project.path, &project.godot_version);
     }
     Ok(project)
 }
 
-/// `major.minor` of a Godot version tag, used for `project.godot` features.
 fn version_feature_tag(tag: &str) -> String {
     let cleaned = tag.trim().trim_start_matches('v');
     let mut parts = cleaned.split(['.', '-']);
@@ -332,9 +330,6 @@ fn version_feature_tag(tag: &str) -> String {
     }
 }
 
-/// Bind a project to the newly installed version when the project's
-/// GodotEnv-style specifier files (.godotrc / global.json / .csproj) require
-/// it and no version is bound yet.
 pub fn rebind_projects_to_version(app: &AppHandle, version: &InstalledGodotVersion) {
     let mut projects = read_projects(app);
     let mut changed = false;
@@ -479,7 +474,6 @@ pub fn update_project(
     if let Some(v) = updates.godot_version {
         project.godot_version = v.clone();
         if !v.is_empty() {
-            // Persist the binding into the project, like `godotenv pin`.
             let _ = crate::godotenv::pin_version(&project.path, &v);
         }
     }
@@ -727,10 +721,6 @@ pub fn stop_project(app: AppHandle, id: String) -> Result<(), String> {
     Ok(())
 }
 
-/// Spawn a host binary and treat it as successful unless it exits with a
-/// failure status within a short window. `xdg-open` and friends can spawn fine
-/// yet fail immediately (e.g. no handler configured / portal unavailable), so
-/// a plain `spawn()` is not enough to know the folder actually opened.
 #[cfg(all(unix, not(target_os = "macos")))]
 fn spawn_detached_checked(bin: &str, args: &[std::ffi::OsString]) -> Result<(), String> {
     let mut cmd = std::process::Command::new(bin);
@@ -742,9 +732,7 @@ fn spawn_detached_checked(bin: &str, args: &[std::ffi::OsString]) -> Result<(), 
     loop {
         match child.try_wait() {
             Ok(Some(status)) if status.success() => return Ok(()),
-            // Exited with an error -> let the caller try the next opener.
             Ok(Some(_)) => return Err(format!("{bin} exited with an error")),
-            // Still running after the grace period -> it is working, keep it.
             Ok(None) if std::time::Instant::now() >= deadline => return Ok(()),
             Ok(None) => std::thread::sleep(std::time::Duration::from_millis(50)),
             Err(e) => return Err(format!("{bin}: {e}")),
@@ -759,10 +747,6 @@ fn open_folder_linux(path: &str, dir: &Path) -> Result<(), String> {
 
     let mut last_err = String::from("no file manager could open the folder");
 
-    // 1) Honor the user's configured default handler for directories first.
-    //    `xdg-open` consults mimeapps.list for `inode/directory`, so this is
-    //    the normal path on desktop setups. (If that default happens to be a
-    //    terminal emulator, that is a system configuration issue, not ours.)
     for (bin, args) in [("xdg-open", vec![dir_arg.clone()])] {
         match spawn_detached_checked(bin, &args) {
             Ok(()) => return Ok(()),
@@ -770,9 +754,6 @@ fn open_folder_linux(path: &str, dir: &Path) -> Result<(), String> {
         }
     }
 
-    // 2) Fall back to common file managers (and `gio open`, which goes
-    //    through xdg-desktop-portal on Wayland). This covers minimal setups
-    //    where xdg-open is missing or nothing is registered for directories.
     let file_managers: [(&str, Vec<std::ffi::OsString>); 12] = [
         ("gio", vec![std::ffi::OsString::from("open"), path_arg.clone()]),
         ("nautilus", vec![path_arg.clone()]),

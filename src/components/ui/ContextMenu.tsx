@@ -80,6 +80,7 @@ function FloatingSubMenu({
   return (
     <motion.div
       ref={menuRef}
+      data-context-menu
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.96 }}
@@ -171,25 +172,32 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
   const [itemRects, setItemRects] = useState<Map<string, DOMRect>>(new Map())
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
+
   useEffect(() => {
+    const isInsideMenu = (target: EventTarget | null): boolean => {
+      if (!(target instanceof Node)) return false
+      const el = target instanceof Element ? target : target.parentElement
+      return !!el?.closest?.('[data-context-menu]')
+    }
     const clickHandler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        onClose()
-      }
+      if (!isInsideMenu(e.target)) onCloseRef.current()
     }
     const keyHandler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') onCloseRef.current()
     }
-    const raf = requestAnimationFrame(() => {
-      document.addEventListener('mousedown', clickHandler)
-      document.addEventListener('keydown', keyHandler)
-    })
+    // Capture phase so the menu closes even when other handlers (e.g.
+    // dnd-kit on cards) stop propagation of the event. Attach once — the
+    // latest onClose is read through a ref, so re-renders of the parent never
+    // tear the listeners down.
+    document.addEventListener('mousedown', clickHandler, true)
+    document.addEventListener('keydown', keyHandler, true)
     return () => {
-      cancelAnimationFrame(raf)
-      document.removeEventListener('mousedown', clickHandler)
-      document.removeEventListener('keydown', keyHandler)
+      document.removeEventListener('mousedown', clickHandler, true)
+      document.removeEventListener('keydown', keyHandler, true)
     }
-  }, [onClose])
+  }, [])
 
   const handleItemEnter = (label: string, e: React.MouseEvent) => {
     if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
@@ -226,6 +234,7 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
     <div className="fixed inset-0 z-50 pointer-events-none">
       <div
         ref={menuRef}
+        data-context-menu
         className="pointer-events-auto absolute min-w-44 rounded-xl border border-line bg-surface shadow-2xl shadow-black/50 py-1.5 origin-top"
         style={{ left: adjustedPos.x, top: adjustedPos.y }}
       >

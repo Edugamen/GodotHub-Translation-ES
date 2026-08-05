@@ -77,7 +77,6 @@ export function useGodotVersions() {
     refreshAvailable()
   }, [refreshAvailable, activeId])
 
-  // --- Tauri event listeners ---
   useTauriEvent<[number, number]>('version-scan-progress', ([current, total]) => {
     setScanProgress({ current, total })
     if (current >= total) {

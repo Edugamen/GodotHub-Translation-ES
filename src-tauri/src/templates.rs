@@ -195,10 +195,6 @@ pub fn list_templates(app: AppHandle) -> Vec<ProjectTemplate> {
                     .file_name()
                     .map(|n| n.to_string_lossy().to_string())
                     .unwrap_or_default();
-                // Self-heal templates whose stored id doesn't match their folder
-                // name (e.g. a stale template.json copied over during a sync).
-                // Otherwise delete, preview, and create-from-template all fail
-                // with "Template not found".
                 if t.id != folder_name {
                     t.id = folder_name.clone();
                     t.path = path.to_string_lossy().to_string();
@@ -557,10 +553,6 @@ pub fn sync_templates_with_scan_dir(app: AppHandle) -> Result<TemplateSyncResult
                 continue;
             }
 
-            // The scan copy can carry a stale template.json (e.g. an id from a
-            // previous app-data instance). Always rewrite it so the registry
-            // template's id keeps matching its folder name, otherwise delete
-            // and preview fail with "Template not found".
             let _ = write_template_json(&dst, &t);
 
             if t.source_project_id.is_none() && !t.keep_name {
@@ -644,8 +636,6 @@ pub fn sync_templates_with_scan_dir(app: AppHandle) -> Result<TemplateSyncResult
         };
 
         if write_template_json(&dst, &template).is_ok() {
-            // Keep the scan copy's template.json in sync so a later update
-            // doesn't copy a stale id back over the registry copy.
             let _ = write_template_json(&src, &template);
             imported.push(template);
         }

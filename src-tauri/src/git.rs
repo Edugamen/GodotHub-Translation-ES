@@ -4,8 +4,6 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-// Only used by the Windows/macOS terminal & git-log openers; on Linux those
-// go through crate::terminal::spawn_shell_script_in_terminal instead.
 #[cfg(any(target_os = "windows", target_os = "macos"))]
 use std::process::Command;
 
@@ -983,9 +981,6 @@ pub fn open_terminal(_app: tauri::AppHandle, path: String) -> Result<(), String>
             .map_err(|e| e.to_string())?;
     }
 
-    // Reuse the same robust terminal detection as "open with console" so every
-    // terminal-launching action behaves consistently (honors $TERMINAL, falls
-    // back across 20+ emulators incl. xdg-terminal-exec, AppImage-safe env).
     #[cfg(all(unix, not(target_os = "macos")))]
     {
         let script = format!(
