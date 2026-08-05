@@ -25,6 +25,8 @@
 
 > ⚠️ **Note:** This app has only been tested on **Windows, Arch Linux Hyprland and Newest MacOS Version (by a contributor)**. I cannot guarantee how it runs or behaves on other Linux Distros or test personally on Mac. If you find a bug, please [report it on Issues](https://github.com/RykoTheDev/godothub/issues) or contact me if you'd like to help with cross-platform testing or contributions.
 
+> ⚠️ **Another Note:** In Linux, AppImage won't work for most distros due to it being a backend "linuxdeploy" issue that i can't fix myself this happens with almost all Tauri Apps on Linux. when they push a fix to this, I will update it immediately.
+
 <p align="center">
   <a href="https://github.com/RykoTheDev/godothub/releases/latest">
     <kbd>⬇️ Download Now</kbd>
