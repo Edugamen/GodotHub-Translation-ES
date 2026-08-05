@@ -9,7 +9,7 @@ export function useNews() {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const [fromCache, setFromCache] = useState(false)
 
-  const { data: items, loaded: loading, error, refresh: load } =
+  const { data: items, loading, error, refresh: load } =
     useApiDataWithError(
       async () => {
         const res = await api.fetchGodotNews()

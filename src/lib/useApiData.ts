@@ -7,14 +7,17 @@ export function useApiData<T>(
 ) {
   const [data, setData] = useState<T>(initial as T)
   const [loaded, setLoaded] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   const refresh = useCallback(async () => {
+    setLoading(true)
     try {
       setData(await fetcher())
     } catch {
       setData(initial as T)
     } finally {
       setLoaded(true)
+      setLoading(false)
     }
   }, deps)
 
@@ -22,7 +25,7 @@ export function useApiData<T>(
     refresh()
   }, [refresh])
 
-  return { data, loaded, refresh, setData } as const
+  return { data, loaded, loading, refresh, setData } as const
 }
 
 export function useApiDataWithError<T>(
@@ -32,9 +35,11 @@ export function useApiDataWithError<T>(
 ) {
   const [data, setData] = useState<T>(initial as T)
   const [loaded, setLoaded] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
+    setLoading(true)
     setError(null)
     try {
       setData(await fetcher())
@@ -43,6 +48,7 @@ export function useApiDataWithError<T>(
       setError(String(e))
     } finally {
       setLoaded(true)
+      setLoading(false)
     }
   }, deps)
 
@@ -50,5 +56,5 @@ export function useApiDataWithError<T>(
     refresh()
   }, [refresh])
 
-  return { data, loaded, error, refresh, setData } as const
+  return { data, loaded, loading, error, refresh, setData } as const
 }
