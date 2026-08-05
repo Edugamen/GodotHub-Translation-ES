@@ -10,6 +10,7 @@ import { api } from '../lib/api'
 import { applyTheme } from '../lib/colors'
 import { applyAppearance } from '../lib/appearance'
 import { useWorkspaces } from './useWorkspaces'
+import { defaultCornerRadius } from '../lib/platform'
 import i18n from 'i18next'
 import type { AppSettings } from '../types'
 
@@ -22,7 +23,7 @@ const DEFAULTS: AppSettings = {
   download_concurrency: 3,
   accent_color: '#457ff2',
   background_color: '#15171c',
-  corner_radius: 10,
+  corner_radius: defaultCornerRadius,
   ui_density: 1.05,
   font_scale: 1.0,
   reduce_motion: false,

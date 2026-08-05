@@ -28,6 +28,7 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-i18next": "^17.0.11",
+    "react-masonry-css": "^1.0.16",
     "semver": "^7.8.5",
     "tailwindcss-corner-shape": "^1.4.6"
   },

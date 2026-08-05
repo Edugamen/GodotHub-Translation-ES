@@ -1,5 +1,6 @@
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { useTranslation } from 'react-i18next'
+import Masonry from 'react-masonry-css'
 import { useNews } from '../hooks/useNews'
 import {
   IconNews,
@@ -10,6 +11,8 @@ import {
 } from '../components/Icons'
 import { ScrollReveal } from '../components/ui/ScrollReveal'
 import type { NewsItem } from '../types'
+
+const NEWS_BREAKPOINTS = { default: 2, 640: 1 }
 
 function formatDate(iso: string | null): string | null {
   if (!iso) return null
@@ -113,11 +116,15 @@ export function NewsView() {
         )}
 
         {loading && items.length === 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Masonry
+            breakpointCols={NEWS_BREAKPOINTS}
+            className="masonry"
+            columnClassName="masonry-column"
+          >
             {Array.from({ length: 6 }).map((_, i) => (
               <NewsCardSkeleton key={i} />
             ))}
-          </div>
+          </Masonry>
         ) : error && items.length === 0 ? (
           <div className="border border-dashed border-line rounded-2xl py-24 flex flex-col items-center gap-4 text-center">
             <div className="w-12 h-12 rounded-xl bg-raised border border-line flex items-center justify-center">
@@ -145,13 +152,17 @@ export function NewsView() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Masonry
+              breakpointCols={NEWS_BREAKPOINTS}
+              className="masonry"
+              columnClassName="masonry-column"
+            >
               {items.map((item, i) => (
                 <ScrollReveal key={item.id} delay={i * 0.04}>
                   <NewsCard item={item} />
                 </ScrollReveal>
               ))}
-            </div>
+            </Masonry>
 
             {hasMore && (
               <div className="flex justify-center mt-6">

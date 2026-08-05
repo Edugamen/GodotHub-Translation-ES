@@ -526,5 +526,13 @@
       "Linux OS: 'Open with Console', 'Open Folder' and 'Open in IDE' might not work in some Distros as well. (issue is still unknown and might be a tuari issue, will fix it asap when i find the solution)"
     ],
     "created_at": 1785270388
+  },
+  {
+    "id": "b0da60a6-e6ae-436a-8e16-dd08a9408854",
+    "version": "v1.2.5",
+    "date": "2026-08-05",
+    "notes": [],
+    "known_issues": [],
+    "created_at": 1785935430
   }
 ]
