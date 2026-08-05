@@ -23,7 +23,7 @@
   <i>"What if Unity Hub and GitHub Desktop had a baby, but it's adopted?" - Yeah.. That's exactly it.</i>
 </p>
 
-> ⚠️ **Note:** This app has only been tested on **Windows**. I cannot guarantee how it runs or behaves on Linux and macOS. If you find a bug, please [report it on Issues](https://github.com/RykoTheDev/godothub/issues) or contact me if you'd like to help with cross-platform testing or contributions.
+> ⚠️ **Note:** This app has only been tested on **Windows, Arch Linux Hyprland and Newest MacOS Version (by a contributor)**. I cannot guarantee how it runs or behaves on other Linux Distros or test personally on Mac. If you find a bug, please [report it on Issues](https://github.com/RykoTheDev/godothub/issues) or contact me if you'd like to help with cross-platform testing or contributions.
 
 <p align="center">
   <a href="https://github.com/RykoTheDev/godothub/releases/latest">
