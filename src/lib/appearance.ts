@@ -17,8 +17,15 @@ export function applyFontScale(scale: number) {
   document.documentElement.style.fontSize = `${scale * 100}%`
 }
 
+import { MotionGlobalConfig } from 'framer-motion'
+
 export function applyReducedMotion(enabled: boolean) {
   document.documentElement.classList.toggle('reduce-motion', enabled)
+  MotionGlobalConfig.instantAnimations = enabled
+}
+
+export function isReducedMotion(): boolean {
+  return MotionGlobalConfig.instantAnimations === true
 }
 
 export function applyNewUi(enabled: boolean) {

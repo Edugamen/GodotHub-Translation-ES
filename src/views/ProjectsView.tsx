@@ -38,6 +38,7 @@ import { ProjectPropertiesModal } from '../components/modals/ProjectPropertiesMo
 import { TagManagerModal } from '../components/modals/TagManagerModal'
 import { Dropdown } from '../components/ui/Dropdown'
 import { api } from '../lib/api'
+import { isReducedMotion } from '../lib/appearance'
 import {
   IconFolderPlus,
   IconGitBranch,
@@ -242,7 +243,7 @@ export function ProjectsView({
     setTimeout(() => {
       const el = document.getElementById(`project-${projectId}`)
       if (!el) return
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el.scrollIntoView({ behavior: isReducedMotion() ? 'auto' : 'smooth', block: 'center' })
       el.classList.add('ring-2', 'ring-accent', 'rounded-xl')
       setTimeout(() => {
         el.classList.remove('ring-2', 'ring-accent', 'rounded-xl')
@@ -303,7 +304,7 @@ export function ProjectsView({
         const el = document.getElementById(`project-${projectId}`)
         if (!el) return
 
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el.scrollIntoView({ behavior: isReducedMotion() ? 'auto' : 'smooth', block: 'center' })
 
         el.classList.add('ring-2', 'ring-accent', 'rounded-xl')
         setTimeout(() => {
@@ -778,14 +779,14 @@ export function ProjectsView({
     const ids = containers[zoneKey] ?? []
     return (
       <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-        <div className="flex flex-col gap-3 min-h-[8px]">
+        <div className={`flex flex-col gap-3 min-h-[8px] ${activeId ? '' : 'project-list-cv'}`}>
           <AnimatePresence initial={false}>
             {ids.map((id) => {
               const entry = projectsById.get(id)
               if (!entry) return null
               return (
                 <motion.div
-                  layout="position"
+                  layout={activeId ? 'position' : false}
                   key={id}
                   id={`project-${entry.id}`}
                   transition={{ duration: 0.18 }}
@@ -1054,14 +1055,14 @@ export function ProjectsView({
                     )}
                   </div>
                   <SortableContext items={pinnedIds} strategy={verticalListSortingStrategy}>
-                    <div className={`flex flex-col gap-3 min-h-[8px] rounded-xl transition-colors duration-150 ${activeId && isOverPinned ? 'bg-accent/5 ring-1 ring-accent/20 -mx-2 px-2 py-2' : ''}`}>
+                    <div className={`flex flex-col gap-3 min-h-[8px] rounded-xl transition-colors duration-150 ${activeId ? '' : 'project-list-cv'} ${activeId && isOverPinned ? 'bg-accent/5 ring-1 ring-accent/20 -mx-2 px-2 py-2' : ''}`}>
                       <AnimatePresence initial={false}>
                         {pinnedIds.map((id) => {
                           const entry = projectsById.get(id)
                           if (!entry) return null
                           return (
                             <motion.div
-                              layout="position"
+                              layout={activeId ? 'position' : false}
                               key={id}
                               transition={{ duration: 0.18 }}
                             >
@@ -1179,7 +1180,7 @@ export function ProjectsView({
 
           <DragOverlay
             dropAnimation={{
-              duration: 300,
+              duration: isReducedMotion() ? 0 : 300,
               easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
             }}
             style={{

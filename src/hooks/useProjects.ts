@@ -31,34 +31,64 @@ export function useProjects() {
 
   const remove = useCallback(
     async (id: string, deleteFiles: boolean) => {
-      await api.removeProject(id, deleteFiles)
-      await refresh()
+      setData((prev) => {
+        if (!Array.isArray(prev)) return prev
+        return prev.filter((p) => p.id !== id)
+      })
+      try {
+        await api.removeProject(id, deleteFiles)
+      } catch (e) {
+        await refresh()
+        throw e
+      }
     },
-    [refresh],
+    [refresh, setData],
   )
 
   const updateVersion = useCallback(
     async (id: string, godot_version: string) => {
+      const t0 = performance.now()
       await api.updateProject(id, { godot_version })
+      const t1 = performance.now()
       await refresh()
+      const t2 = performance.now()
+      console.log(
+        `[timing] updateVersion update_ipc=${(t1 - t0).toFixed(1)}ms refresh=${(t2 - t1).toFixed(1)}ms total=${(t2 - t0).toFixed(1)}ms`,
+      )
     },
     [refresh],
   )
 
   const setPinned = useCallback(
     async (id: string, pinned: boolean) => {
-      await api.updateProject(id, { pinned })
-      await refresh()
+      setData((prev) => {
+        if (!Array.isArray(prev)) return prev
+        return prev.map((p) => (p.id === id ? { ...p, pinned } : p))
+      })
+      try {
+        await api.updateProject(id, { pinned })
+      } catch (e) {
+        await refresh()
+        throw e
+      }
     },
-    [refresh],
+    [refresh, setData],
   )
 
   const setCategory = useCallback(
     async (id: string, category: string) => {
-      await api.updateProject(id, { category })
-      await refresh()
+      setData((prev) => {
+        if (!Array.isArray(prev)) return prev
+        return prev.map((p) => (p.id === id ? { ...p, category: category || null } : p))
+      })
+      try {
+        await api.updateProject(id, { category })
+      } catch (e) {
+        await refresh()
+        throw e
+      }
     },
-    [refresh],
+    [refresh, setData],
   )
 
   const moveProject = useCallback(

@@ -14,6 +14,7 @@ import { ConfirmDialog } from '../components/modals/ConfirmDialog'
 import { IconSun, IconMoon, IconHeart, IconRocket, IconBug } from '../components/Icons'
 import { api } from '../lib/api'
 import { applyTheme } from '../lib/colors'
+import { isReducedMotion } from '../lib/appearance'
 import { isMac, isWindows } from '../lib/platform'
 import {
   applyRadius,
@@ -461,7 +462,7 @@ export function SettingsView({
         `[data-section-id="${info.section}"]`,
       )
       if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el.scrollIntoView({ behavior: isReducedMotion() ? 'auto' : 'smooth', block: 'center' })
         el.classList.add('setting-highlight')
         setTimeout(() => {
           el.classList.remove('setting-highlight')

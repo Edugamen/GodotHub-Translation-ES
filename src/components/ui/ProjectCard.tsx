@@ -416,7 +416,7 @@ export const ProjectCard = memo(function ProjectCard({
                   src={icon}
                   alt=""
                   aria-hidden="true"
-                  className="select-none absolute -left-6 top-1/2 -translate-y-1/2 -rotate-6 group-hover:rotate-0 h-35 w-35 object-contain grayscale group-hover:grayscale-0 contrast-125 transition-all duration-300 ease-out will-change-transform"
+                  className="select-none absolute -left-6 top-1/2 -translate-y-1/2 -rotate-6 group-hover:rotate-0 h-35 w-35 object-contain grayscale group-hover:grayscale-0 contrast-125 transition-all duration-300 ease-out group-hover:will-change-transform"
                   style={{
                     opacity: 'var(--project-icon-opacity, 0.14)',
                     maskImage:
@@ -428,7 +428,7 @@ export const ProjectCard = memo(function ProjectCard({
               ) : (
                 <span
                   aria-hidden="true"
-                  className="select-none absolute -left-3 top-1/2 -translate-y-1/2 -rotate-6 group-hover:rotate-0 font-display font-black text-muted group-hover:text-accent-bright transition-all duration-300 ease-out will-change-transform"
+                  className="select-none absolute -left-3 top-1/2 -translate-y-1/2 -rotate-6 group-hover:rotate-0 font-display font-black text-muted group-hover:text-accent-bright transition-all duration-300 ease-out group-hover:will-change-transform"
                   style={{
                     fontSize: '72px',
                     lineHeight: 1,

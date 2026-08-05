@@ -21,6 +21,7 @@ import {
 import { getWorkspaceIcon } from '../../lib/workspaceIcons'
 import { formatLastOpened } from '../../lib/lastOpened'
 import { isMac } from '../../lib/platform'
+import { isReducedMotion } from '../../lib/appearance'
 import type { Project, InstalledGodotVersion, Workspace } from '../../types'
 
 interface CommandItem {
@@ -479,7 +480,7 @@ export function CommandPalette({
     if (!listRef.current) return
     const item = listRef.current.querySelector(`[data-index="${selectedIndex}"]`)
     if (item) {
-      item.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+      item.scrollIntoView({ block: 'nearest', behavior: isReducedMotion() ? 'auto' : 'smooth' })
     }
   }, [selectedIndex])
 

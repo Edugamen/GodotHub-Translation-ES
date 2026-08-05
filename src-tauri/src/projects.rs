@@ -109,6 +109,7 @@ fn next_sort_order(projects: &[Project], category: &Option<String>) -> i64 {
 
 #[tauri::command]
 pub fn list_projects(app: AppHandle) -> Vec<Project> {
+    let start = std::time::Instant::now();
     let projects = read_projects(&app);
     let (mut kept, removed): (Vec<Project>, Vec<Project>) = projects
         .into_iter()
@@ -128,6 +129,11 @@ pub fn list_projects(app: AppHandle) -> Vec<Project> {
     if !removed.is_empty() || tags_changed {
         let _ = write_projects(&app, &kept);
     }
+    eprintln!(
+        "[timing] list_projects total={}ms projects={}",
+        start.elapsed().as_millis(),
+        kept.len()
+    );
     kept
 }
 
@@ -463,6 +469,7 @@ pub fn update_project(
     id: String,
     updates: ProjectUpdate,
 ) -> Result<Project, String> {
+    let start = std::time::Instant::now();
     let mut projects = read_projects(&app);
     let project = projects
         .iter_mut()
@@ -475,7 +482,12 @@ pub fn update_project(
         if project.godot_version != v {
             project.godot_version = v.clone();
             if !v.is_empty() {
+                let pin_start = std::time::Instant::now();
                 let _ = crate::godotenv::pin_version(&project.path, &v);
+                eprintln!(
+                    "[timing] update_project.pin_version={}ms",
+                    pin_start.elapsed().as_millis()
+                );
             }
         }
     }
@@ -493,7 +505,13 @@ pub fn update_project(
         project.launch_arguments = launch_arguments;
     }
     let updated = project.clone();
+    let write_start = std::time::Instant::now();
     write_projects(&app, &projects)?;
+    eprintln!(
+        "[timing] update_project id={id} write={}ms total={}ms",
+        write_start.elapsed().as_millis(),
+        start.elapsed().as_millis()
+    );
     Ok(updated)
 }
 
