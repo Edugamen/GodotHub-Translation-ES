@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { IconChevronRight } from '../Icons'
 
@@ -227,7 +228,7 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
     setAdjustedPos({ x: cx, y: cy })
   }, [position])
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 pointer-events-none">
       <div
         ref={menuRef}
@@ -313,6 +314,7 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
           return null
         })}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

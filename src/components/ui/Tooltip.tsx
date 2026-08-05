@@ -1,4 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSettings } from '../../hooks/useSettings'
 
@@ -193,7 +194,7 @@ export function Tooltip({ content, children, side: sideProp, className, maxWidth
       {children}
 
       <AnimatePresence>
-        {show && (
+        {show && createPortal(
           <motion.div
             ref={tooltipRef}
             initial={{
@@ -249,7 +250,8 @@ export function Tooltip({ content, children, side: sideProp, className, maxWidth
               )}
               <span className="relative z-1">{content}</span>
             </div>
-          </motion.div>
+          </motion.div>,
+          document.body,
         )}
       </AnimatePresence>
     </div>
