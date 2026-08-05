@@ -9,6 +9,16 @@ use tauri::{AppHandle, Emitter, Manager};
 
 pub struct ActiveWatchers(pub Mutex<Vec<RecommendedWatcher>>);
 
+fn is_ignored_watcher_event(event: &Event) -> bool {
+    !event.paths.is_empty()
+        && event.paths.iter().all(|p| {
+            matches!(
+                p.file_name().and_then(|n| n.to_str()),
+                Some(".godotrc") | Some("global.json")
+            )
+        })
+}
+
 fn create_debounced_watcher(
     app: AppHandle,
     path: PathBuf,
@@ -52,6 +62,9 @@ fn create_debounced_watcher(
                         | EventKind::Other
                         | EventKind::Any => continue,
                         _ => {
+                            if is_ignored_watcher_event(&event) {
+                                continue;
+                            }
                             last_event = Instant::now();
                             pending = true;
                         }
@@ -131,6 +144,9 @@ fn create_debounced_multi_watcher(
                         | EventKind::Other
                         | EventKind::Any => continue,
                         _ => {
+                            if is_ignored_watcher_event(&event) {
+                                continue;
+                            }
                             last_event = Instant::now();
                             pending = true;
                         }

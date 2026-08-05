@@ -472,9 +472,11 @@ pub fn update_project(
         project.name = name;
     }
     if let Some(v) = updates.godot_version {
-        project.godot_version = v.clone();
-        if !v.is_empty() {
-            let _ = crate::godotenv::pin_version(&project.path, &v);
+        if project.godot_version != v {
+            project.godot_version = v.clone();
+            if !v.is_empty() {
+                let _ = crate::godotenv::pin_version(&project.path, &v);
+            }
         }
     }
     if let Some(category) = updates.category {

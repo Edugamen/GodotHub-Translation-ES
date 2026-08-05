@@ -69,6 +69,7 @@ body:
         - 1.1.5
         - 1.2.0
         - 1.2.1
+        - 1.2.5
       default: 4
     validations:
       required: true

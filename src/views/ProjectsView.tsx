@@ -611,19 +611,25 @@ export function ProjectsView({
   }
 
 
+  const projectsRef = useRef(projects)
+  projectsRef.current = projects
+
   const fetchGitStatuses = useCallback(async () => {
     if (fetchingGitRef.current) return
-    if (projects.length === 0) return
+    const list = projectsRef.current
+    if (list.length === 0) return
     fetchingGitRef.current = true
     try {
-      const paths = projects.map((p) => p.path)
+      const paths = list.map((p) => p.path)
       const statuses = await api.batchGitStatus(paths)
       setGitStatusMap(statuses)
     } catch {
     } finally {
       fetchingGitRef.current = false
     }
-  }, [projects])
+  }, [])
+
+  const projectPathsKey = projects.map((p) => p.path).join('\u0000')
 
   useEffect(() => {
     fetchGitStatuses()
@@ -636,7 +642,7 @@ export function ProjectsView({
       clearInterval(interval)
       window.removeEventListener('app:refresh-git-status', handleRefresh)
     }
-  }, [fetchGitStatuses])
+  }, [fetchGitStatuses, projectPathsKey])
 
   const handleLaunchArgsChange = useCallback(async (id: string, args: string) => {
     await api.updateProject(id, { launch_arguments: args })
