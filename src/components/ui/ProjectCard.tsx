@@ -12,7 +12,7 @@ import {
 } from './ContextMenu'
 import { Tooltip } from './Tooltip'
 
-import { IconGrip, IconMore, IconPin, IconPlay, IconTrash, IconClock, IconExternalLink, IconCode, IconGitBranch, IconX, IconTags, IconCopy, IconHardDrive, IconAlertTriangle, IconCheckCircle, IconTerminal } from '../Icons'
+import { IconGrip, IconMore, IconPin, IconPlay, IconTrash, IconClock, IconExternalLink, IconCode, IconGitBranch, IconX, IconTags, IconCopy, IconHardDrive, IconCheckCircle, IconTerminal } from '../Icons'
 import {
   formatLastOpened,
   type LastOpenedTimeFormat,
@@ -40,7 +40,6 @@ interface Props {
   isDragging?: boolean
   selected?: boolean
   onToggleSelect?: () => void
-  versionWarning?: 'not_found' | 'major_mismatch' | null
   gitStatus?: GitStatus | null
   lastOpenedTimeFormat?: LastOpenedTimeFormat
   lastOpenedDateFormat?: LastOpenedDateFormat
@@ -94,7 +93,6 @@ export const ProjectCard = memo(function ProjectCard({
   isDragging,
   selected,
   onToggleSelect,
-  versionWarning,
   setNodeRef,
   style,
   dragHandleProps,
@@ -395,21 +393,6 @@ export const ProjectCard = memo(function ProjectCard({
             )}
 
             
-            {versionWarning && (
-              <Tooltip
-                content={
-                  versionWarning === 'not_found'
-                    ? t('project_version_warning_not_found', { version: project.godot_version })
-                    : t('project_version_warning_mismatch', { version: project.godot_version })
-                }
-                side="top"
-              >
-                <div className="absolute top-2.5 right-2.5 z-10">
-                  <IconAlertTriangle className="w-4 h-4 text-amber" />
-                </div>
-              </Tooltip>
-            )}
-
             <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl isolate">
               {icon ? (
                 <img
@@ -706,14 +689,14 @@ export const ProjectCard = memo(function ProjectCard({
                   type="button"
                   disabled={!versionInstalled}
                   onClick={() => launchProject(useConsole || undefined)}
-                  className={`focus-ring cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white transition-colors ${
+                  className={`focus-ring flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white transition-colors ${
                     versionInstalled
-                      ? 'bg-accent hover:bg-accent-bright'
+                      ? 'bg-accent hover:bg-accent-bright cursor-pointer'
                       : 'bg-raised text-muted/50 cursor-not-allowed'
                   }`}
                 >
                   <IconPlay className="w-3.5 h-3.5" />
-                  {t('open_project')}
+                  {versionInstalled ? t('open_project') : t('no_version_selected')}
                 </motion.button>
 
                 <div ref={cardMoreRef} className="relative">

@@ -447,24 +447,6 @@ export function ProjectsView({
     return sortProjects(filteredProjects.filter((p) => !p.pinned))
   }, [filteredProjects, sortProjects])
 
-  const versionWarningMap = useMemo(() => {
-    const map: Record<string, 'not_found' | 'major_mismatch' | null> = {}
-    for (const p of filteredProjects) {
-      const isInstalled = installed.some((v) => v.tag === p.godot_version)
-      if (isInstalled) {
-        map[p.id] = null
-        continue
-      }
-      const projectMajor = p.godot_version.split('.')[0]
-      const hasMatchingMajor = installed.some((v) => {
-        const installedMajor = v.tag.split('.')[0]
-        return installedMajor === projectMajor || v.version?.split('.')[0] === projectMajor
-      })
-      map[p.id] = hasMatchingMajor ? 'not_found' : 'major_mismatch'
-    }
-    return map
-  }, [filteredProjects, installed])
-
   const projectsById = useMemo(
     () => new Map(projects.map((p) => [p.id, p])),
     [projects],
@@ -813,7 +795,6 @@ export function ProjectsView({
                     draggable={!dragDisabled}
                     selected={selectedIds.has(entry.id)}
                     onToggleSelect={() => toggleSelect(entry.id)}
-                    versionWarning={versionWarningMap[entry.id] ?? null}
                     lastOpenedTimeFormat={settings.last_opened_time_format}
                     lastOpenedDateFormat={settings.last_opened_date_format}
                   />
@@ -1087,7 +1068,6 @@ export function ProjectsView({
                                 draggable={!dragDisabled}
                                 selected={selectedIds.has(entry.id)}
                                 onToggleSelect={() => toggleSelect(entry.id)}
-                                versionWarning={versionWarningMap[entry.id] ?? null}
                                 lastOpenedTimeFormat={settings.last_opened_time_format}
                                 lastOpenedDateFormat={settings.last_opened_date_format}
                               />

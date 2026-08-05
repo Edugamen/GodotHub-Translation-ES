@@ -571,6 +571,14 @@
       {
         "category": "improve",
         "text": "Pin, category and remove actions now update instantly without a full list refresh"
+      },
+      {
+        "category": "improve",
+        "text": "Removed the version warning icon from project cards when the bound Godot version is not installed"
+      },
+      {
+        "category": "improve",
+        "text": "Open Project button on project cards now shows 'No Version Selected' when no version is bound"
       }
     ],
     "known_issues": [],
