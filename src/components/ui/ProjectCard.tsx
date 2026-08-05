@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, memo } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, memo } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Category, GitStatus, InstalledGodotVersion, Project } from '../../types'
@@ -47,6 +48,9 @@ interface Props {
   style?: React.CSSProperties
   dragHandleProps?: Record<string, unknown>
 }
+
+const MORE_MENU_OPEN_UP_THRESHOLD = 210
+const MORE_MENU_GAP = 8
 
 const TAG_COLORS = [
   '#457ff2', '#f28b45', '#45c97f', '#e74c8a', '#a855f7',
@@ -126,6 +130,8 @@ export const ProjectCard = memo(function ProjectCard({
   const [cardMoreOpen, setCardMoreOpen] = useState(false)
   const [cardMoreUp, setCardMoreUp] = useState(false)
   const cardMoreRef = useRef<HTMLDivElement>(null)
+  const moreMenuRef = useRef<HTMLDivElement>(null)
+  const [morePos, setMorePos] = useState<{ left: number; top: number } | null>(null)
 
   const [editingTagIndex, setEditingTagIndex] = useState<number | null>(null)
   const [editTagValue, setEditTagValue] = useState('')
@@ -175,12 +181,49 @@ export const ProjectCard = memo(function ProjectCard({
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (cardMoreRef.current && !cardMoreRef.current.contains(e.target as Node)) {
+        // The menu is portaled to <body>, so clicks inside it must not be
+        // treated as outside clicks.
+        if (moreMenuRef.current?.contains(e.target as Node)) return
         setCardMoreOpen(false)
       }
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
+
+  const measureMoreMenu = useCallback(() => {
+    const btn = cardMoreRef.current
+    const menu = moreMenuRef.current
+    if (!btn || !menu) return
+    const r = btn.getBoundingClientRect()
+    const mw = menu.offsetWidth
+    const mh = menu.offsetHeight
+    const up = window.innerHeight - r.bottom < MORE_MENU_OPEN_UP_THRESHOLD
+    setCardMoreUp(up)
+    setMorePos({
+      left: Math.max(MORE_MENU_GAP, r.right - mw),
+      top: up
+        ? Math.max(MORE_MENU_GAP, r.top - mh - MORE_MENU_GAP)
+        : Math.min(r.bottom + MORE_MENU_GAP, window.innerHeight - mh - MORE_MENU_GAP),
+    })
+  }, [])
+
+  // Position the portaled menu right after it mounts (synchronously, before paint).
+  useLayoutEffect(() => {
+    if (cardMoreOpen) measureMoreMenu()
+  }, [cardMoreOpen, measureMoreMenu])
+
+  // Keep the menu anchored to the trigger while open.
+  useEffect(() => {
+    if (!cardMoreOpen) return
+    const reposition = () => measureMoreMenu()
+    window.addEventListener('scroll', reposition, true)
+    window.addEventListener('resize', reposition)
+    return () => {
+      window.removeEventListener('scroll', reposition, true)
+      window.removeEventListener('resize', reposition)
+    }
+  }, [cardMoreOpen, measureMoreMenu])
 
   const handleSaveTemplate = async () => {
     if (!templateName.trim()) return
@@ -249,42 +292,45 @@ export const ProjectCard = memo(function ProjectCard({
 
   const dialogs = (
     <>
-      {confirmAction === 'remove' && (
-        <ConfirmDialog
-          title={t('project_remove_title')}
-          description={t('project_remove_desc', { name: displayName })}
-          confirmLabel={t('project_remove_confirm')}
-          onConfirm={() => {
-            onRemove()
-            setConfirmAction(null)
-          }}
-          onCancel={() => setConfirmAction(null)}
-        />
-      )}
-
-      {confirmAction === 'delete' && (
-        <ConfirmDialog
-          title={t('project_delete_title')}
-          description={t('project_delete_desc', { name: displayName })}
-          confirmLabel={t('project_delete_confirm')}
-          variant="danger"
-          onConfirm={() => {
-            onDelete()
-            setConfirmAction(null)
-          }}
-          onCancel={() => setConfirmAction(null)}
-        />
-      )}
-
       <AnimatePresence>
-        {templateSaveOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-            onClick={() => setTemplateSaveOpen(false)}
-          >
+        {confirmAction === 'remove' && (
+          <ConfirmDialog
+            title={t('project_remove_title')}
+            description={t('project_remove_desc', { name: displayName })}
+            confirmLabel={t('project_remove_confirm')}
+            onConfirm={() => {
+              onRemove()
+              setConfirmAction(null)
+            }}
+            onCancel={() => setConfirmAction(null)}
+          />
+        )}
+
+        {confirmAction === 'delete' && (
+          <ConfirmDialog
+            title={t('project_delete_title')}
+            description={t('project_delete_desc', { name: displayName })}
+            confirmLabel={t('project_delete_confirm')}
+            variant="danger"
+            onConfirm={() => {
+              onDelete()
+              setConfirmAction(null)
+            }}
+            onCancel={() => setConfirmAction(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {createPortal(
+        <AnimatePresence>
+          {templateSaveOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+              onClick={() => setTemplateSaveOpen(false)}
+            >
             <motion.div
               initial={{ opacity: 0, y: 12, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -347,10 +393,11 @@ export const ProjectCard = memo(function ProjectCard({
                   {templateBusy ? t('project_saving_template') : t('project_save_template_btn')}
                 </motion.button>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </motion.div>            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
     </>
   )
   return (
@@ -704,7 +751,7 @@ export const ProjectCard = memo(function ProjectCard({
                     onClick={() => {
                       const btnRect = cardMoreRef.current?.getBoundingClientRect()
                       if (btnRect) {
-                        setCardMoreUp(window.innerHeight - btnRect.bottom < 210)
+                        setCardMoreUp(window.innerHeight - btnRect.bottom < MORE_MENU_OPEN_UP_THRESHOLD)
                       }
                       setCardMoreOpen((prev) => !prev)
                     }}
@@ -713,15 +760,18 @@ export const ProjectCard = memo(function ProjectCard({
                   >
                     <IconMore className="w-4 h-4" />
                   </button>
-                  <AnimatePresence>
-                    {cardMoreOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, y: cardMoreUp ? 4 : -4, scale: 0.96 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: cardMoreUp ? 4 : -4, scale: 0.96 }}
-                        transition={{ duration: 0.12, ease: 'easeOut' }}
-                        className={`absolute right-0 z-30 ${cardMoreUp ? 'bottom-full mb-1 origin-bottom' : 'mt-1 origin-top'} min-w-50 rounded-xl border border-line bg-surface shadow-2xl shadow-black/40 p-1.5`}
-                      >
+                  {createPortal(
+                    <AnimatePresence>
+                      {cardMoreOpen && (
+                        <motion.div
+                          ref={moreMenuRef}
+                          initial={{ opacity: 0, y: cardMoreUp ? 4 : -4, scale: 0.96 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: cardMoreUp ? 4 : -4, scale: 0.96 }}
+                          transition={{ duration: 0.12, ease: 'easeOut' }}
+                          className={`fixed z-50 ${cardMoreUp ? 'origin-bottom' : 'origin-top'} min-w-50 rounded-xl border border-line bg-surface shadow-2xl shadow-black/40 p-1.5`}
+                          style={{ left: morePos?.left, top: morePos?.top }}
+                        >
                         <button
                           type="button"
                           onClick={() => { setCardMoreOpen(false); onOpenProperties?.() }}
@@ -764,9 +814,11 @@ export const ProjectCard = memo(function ProjectCard({
                           <IconTrash className="w-3.5 h-3.5" />
                           {t('project_card_delete_files')}
                         </button>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>,
+                    document.body,
+                  )}
                 </div>
               </div>
             </div>

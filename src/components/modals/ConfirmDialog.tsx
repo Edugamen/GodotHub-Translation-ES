@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { IconTrash } from '../Icons'
@@ -22,7 +23,7 @@ export function ConfirmDialog({
   cancelLabel,
 }: Props) {
   const { t } = useTranslation('common')
-  return (
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -74,6 +75,7 @@ export function ConfirmDialog({
           </motion.button>
         </div>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body,
   )
 }
