@@ -187,10 +187,7 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
     const keyHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onCloseRef.current()
     }
-    // Capture phase so the menu closes even when other handlers (e.g.
-    // dnd-kit on cards) stop propagation of the event. Attach once — the
-    // latest onClose is read through a ref, so re-renders of the parent never
-    // tear the listeners down.
+
     document.addEventListener('mousedown', clickHandler, true)
     document.addEventListener('keydown', keyHandler, true)
     return () => {

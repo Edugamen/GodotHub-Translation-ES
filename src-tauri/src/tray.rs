@@ -43,10 +43,13 @@ fn build_tray_menu(app: &AppHandle) -> Result<Menu<tauri::Wry>, tauri::Error> {
     } else {
         let mut recent_items = Vec::new();
         for p in &recent {
-            let label = if p.name.len() > 48 {
-                format!("{}…", &p.name[..47])
+            let resolved = projects::resolve_project_name(&p.path)
+                .filter(|n| !n.trim().is_empty())
+                .unwrap_or_else(|| p.name.clone());
+            let label = if resolved.chars().count() > 48 {
+                format!("{}…", resolved.chars().take(47).collect::<String>())
             } else {
-                p.name.clone()
+                resolved
             };
             let item = MenuItem::with_id(app, &p.id, &label, true, None::<&str>)?;
             recent_items.push(item);
