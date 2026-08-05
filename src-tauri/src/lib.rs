@@ -5,6 +5,7 @@ mod error;
 mod git;
 mod git_helpers;
 mod godot_versions;
+mod godotenv;
 mod models;
 mod news;
 mod persist;

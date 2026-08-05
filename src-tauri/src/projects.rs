@@ -243,9 +243,10 @@ pub fn create_project(
         fs::create_dir_all(&project_dir).map_err(|e| e.to_string())?;
     }
 
+    let feature_tag = version_feature_tag(&godot_version);
     let mut project_godot = format!(
-        "; Engine configuration file.\n\n[application]\n\nconfig/name=\"{}\"\nconfig/icon=\"res://icon.svg\"\nconfig/features=PackedStringArray(\"4.3\")\n",
-        name
+        "; Engine configuration file.\n\n[application]\n\nconfig/name=\"{}\"\nconfig/icon=\"res://icon.svg\"\nconfig/features=PackedStringArray(\"{}\")\n",
+        name, feature_tag
     );
 
     if let Some(icon) = &icon_path {
@@ -313,27 +314,27 @@ pub fn create_project(
     projects.push(project.clone());
     write_projects(&app, &projects)?;
     undismiss(&app, &project.path);
+    if !project.godot_version.is_empty() {
+        // Persist the binding into the new project, like `godotenv pin`.
+        let _ = crate::godotenv::pin_version(&project.path, &project.godot_version);
+    }
     Ok(project)
 }
 
-fn detect_required_version(path: &str) -> Option<String> {
-    let content = fs::read_to_string(PathBuf::from(path).join("project.godot")).ok()?;
-    for line in content.lines() {
-        if let Some(rest) = line.trim().strip_prefix("config/features=") {
-            let start = rest.find('"')? + 1;
-            let end = start + rest[start..].find('"')?;
-            return Some(rest[start..end].to_string());
-        }
+/// `major.minor` of a Godot version tag, used for `project.godot` features.
+fn version_feature_tag(tag: &str) -> String {
+    let cleaned = tag.trim().trim_start_matches('v');
+    let mut parts = cleaned.split(['.', '-']);
+    let is_num = |s: &str| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit());
+    match (parts.next(), parts.next()) {
+        (Some(m), Some(n)) if is_num(m) && is_num(n) => format!("{}.{}", m, n),
+        _ => "4.3".to_string(),
     }
-    None
 }
 
-fn version_matches(required: &str, v: &InstalledGodotVersion) -> bool {
-    let req = required.trim_start_matches('v');
-    v.tag.trim_start_matches('v').starts_with(req)
-        || v.version.trim_start_matches('v').starts_with(req)
-}
-
+/// Bind a project to the newly installed version when the project's
+/// GodotEnv-style specifier files (.godotrc / global.json / .csproj) require
+/// it and no version is bound yet.
 pub fn rebind_projects_to_version(app: &AppHandle, version: &InstalledGodotVersion) {
     let mut projects = read_projects(app);
     let mut changed = false;
@@ -341,8 +342,8 @@ pub fn rebind_projects_to_version(app: &AppHandle, version: &InstalledGodotVersi
         if !p.godot_version.is_empty() {
             continue;
         }
-        if let Some(required) = detect_required_version(&p.path) {
-            if version_matches(&required, version) {
+        if let Some(spec) = crate::godotenv::detect_version(&p.path) {
+            if crate::godotenv::matches_detected(&spec, &version.tag) {
                 p.godot_version = version.tag.clone();
                 changed = true;
             }
@@ -373,13 +374,9 @@ pub fn register_project(
     }
     let mut godot_version = godot_version;
     if godot_version.is_empty() {
-        if let Some(required) = detect_required_version(&path) {
+        if let Some(spec) = crate::godotenv::detect_version(&path) {
             let installed = crate::godot_versions::read_registry(&app);
-            if let Some(v) = installed
-                .iter()
-                .filter(|v| version_matches(&required, v))
-                .min_by_key(|v| if v.is_mono { 1 } else { 0 })
-            {
+            if let Some(v) = crate::godotenv::best_match(&spec, &installed) {
                 godot_version = v.tag.clone();
             }
         }
@@ -480,7 +477,11 @@ pub fn update_project(
         project.name = name;
     }
     if let Some(v) = updates.godot_version {
-        project.godot_version = v;
+        project.godot_version = v.clone();
+        if !v.is_empty() {
+            // Persist the binding into the project, like `godotenv pin`.
+            let _ = crate::godotenv::pin_version(&project.path, &v);
+        }
     }
     if let Some(category) = updates.category {
         project.category = if category.trim().is_empty() {
@@ -755,22 +756,56 @@ fn spawn_detached_checked(bin: &str, args: &[std::ffi::OsString]) -> Result<(), 
 fn open_folder_linux(path: &str, dir: &Path) -> Result<(), String> {
     let dir_arg = dir.as_os_str().to_os_string();
     let path_arg = std::ffi::OsString::from(path);
-    let candidates: [(&str, Vec<std::ffi::OsString>); 5] = [
-        ("xdg-open", vec![dir_arg.clone()]),
-        ("gio", vec![std::ffi::OsString::from("open"), path_arg.clone()]),
-        ("nautilus", vec![path_arg.clone()]),
-        ("dolphin", vec![path_arg.clone()]),
-        ("thunar", vec![path_arg.clone()]),
-    ];
 
     let mut last_err = String::from("no file manager could open the folder");
-    for (bin, args) in candidates {
+
+    // 1) Honor the user's configured default handler for directories first.
+    //    `xdg-open` consults mimeapps.list for `inode/directory`, so this is
+    //    the normal path on desktop setups. (If that default happens to be a
+    //    terminal emulator, that is a system configuration issue, not ours.)
+    for (bin, args) in [("xdg-open", vec![dir_arg.clone()])] {
         match spawn_detached_checked(bin, &args) {
             Ok(()) => return Ok(()),
             Err(e) => last_err = e,
         }
     }
-    Err(last_err)
+
+    // 2) Fall back to common file managers (and `gio open`, which goes
+    //    through xdg-desktop-portal on Wayland). This covers minimal setups
+    //    where xdg-open is missing or nothing is registered for directories.
+    let file_managers: [(&str, Vec<std::ffi::OsString>); 12] = [
+        ("gio", vec![std::ffi::OsString::from("open"), path_arg.clone()]),
+        ("nautilus", vec![path_arg.clone()]),
+        ("org.gnome.Nautilus", vec![path_arg.clone()]),
+        ("dolphin", vec![path_arg.clone()]),
+        ("thunar", vec![path_arg.clone()]),
+        ("pcmanfm", vec![path_arg.clone()]),
+        ("pcmanfm-qt", vec![path_arg.clone()]),
+        ("nemo", vec![path_arg.clone()]),
+        ("caja", vec![path_arg.clone()]),
+        ("konqueror", vec![path_arg.clone()]),
+        (
+            "exo-open",
+            vec![
+                std::ffi::OsString::from("--launch"),
+                std::ffi::OsString::from("FileManager"),
+                path_arg.clone(),
+            ],
+        ),
+        ("gnome-open", vec![path_arg.clone()]),
+    ];
+    for (bin, args) in file_managers {
+        match spawn_detached_checked(bin, &args) {
+            Ok(()) => return Ok(()),
+            Err(e) => last_err = e,
+        }
+    }
+
+    Err(format!(
+        "{last_err}.\n\nNo file manager was found. Install one (e.g. `sudo pacman -S nautilus` \
+         on Arch) or register your default folder handler:\n  xdg-mime default <file-manager>.desktop \
+         inode/directory"
+    ))
 }
 
 #[tauri::command]
