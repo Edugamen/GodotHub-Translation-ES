@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import Masonry from 'react-masonry-css'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   DndContext,
@@ -8,6 +9,7 @@ import {
   KeyboardSensor,
   pointerWithin,
   closestCorners,
+  rectIntersection,
   useSensor,
   useSensors,
   useDroppable,
@@ -20,6 +22,7 @@ import {
   SortableContext,
   useSortable,
   verticalListSortingStrategy,
+  rectSortingStrategy,
   arrayMove,
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable'
@@ -51,6 +54,8 @@ import {
   IconRefresh,
   IconChevronDown,
   IconArrowUpDown,
+  IconLayoutGrid,
+  IconLayoutList,
 } from '../components/Icons'
 import {
   comparatorFor,
@@ -63,6 +68,9 @@ import { useGodotVersionsContext } from '../hooks/godotVersionsContext'
 const UNCATEGORIZED = '__uncategorized__'
 const COLLAPSED_CATS_KEY = 'godothub_collapsed_categories'
 const SORT_BY_KEY = 'godothub_projects_sort_by'
+const VIEW_MODE_KEY = 'godothub_projects_view_mode'
+
+type ViewMode = 'list' | 'grid'
 
 type ZoneKind = 'category' | 'pinned' | 'flat'
 
@@ -192,6 +200,31 @@ export function ProjectsView({
       return 'categories'
     },
   )
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    try {
+      const raw = localStorage.getItem(VIEW_MODE_KEY)
+      if (raw === 'list' || raw === 'grid') return raw
+    } catch {}
+    return 'list'
+  })
+  const contentRef = useRef<HTMLDivElement>(null)
+  const [gridCols, setGridCols] = useState(3)
+
+  useEffect(() => {
+    const el = contentRef.current
+    if (!el) return
+    const compute = () => {
+      const cs = getComputedStyle(el)
+      const padX =
+        parseFloat(cs.paddingLeft || '0') + parseFloat(cs.paddingRight || '0')
+      const w = Math.max(0, el.clientWidth - padX)
+      setGridCols(w >= 1300 ? 4 : w >= 950 ? 3 : w >= 620 ? 2 : 1)
+    }
+    compute()
+    const ro = new ResizeObserver(compute)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   const [scanning, setScanning] = useState(false)
   const [importing, setImporting] = useState(false)
@@ -491,6 +524,12 @@ export function ProjectsView({
     } catch {}
   }, [sortBy])
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(VIEW_MODE_KEY, viewMode)
+    } catch {}
+  }, [viewMode])
+
   const draggedProject = activeId ? (projectsById.get(activeId) ?? null) : null
   const canDropInZone = (kind: ZoneKind) =>
     draggedProject
@@ -507,8 +546,14 @@ export function ProjectsView({
   const customCollisionDetection: CollisionDetection = useCallback((args) => {
     const pointerCollisions = pointerWithin(args)
     if (pointerCollisions.length > 0) return pointerCollisions
+    if (viewMode === 'grid') {
+      // For the 2D masonry grid, rect-based overlap is a better fallback
+      // than corner distance so drags between columns stay accurate.
+      const rectCollisions = rectIntersection(args)
+      if (rectCollisions.length > 0) return rectCollisions
+    }
     return closestCorners(args)
-  }, [])
+  }, [viewMode])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -757,8 +802,61 @@ export function ProjectsView({
   const hasAnyProjects = projects.length > 0
   const hasVisibleProjects = filteredProjects.length > 0
 
+  const renderGridSection = (ids: string[], zoneKey: string) => (
+    // No vertical padding here: adding it mid-drag would shift the whole
+    // masonry grid down. The -mx-2 px-2 pair keeps content aligned while
+    // widening the highlight slightly.
+    <div className={activeId && overContainer === zoneKey ? 'bg-accent/5 rounded-xl ring-1 ring-accent/20 -mx-2 px-2 transition-colors duration-150' : ''}>
+      <SortableContext items={ids} strategy={rectSortingStrategy}>
+        <Masonry
+          breakpointCols={gridCols}
+          className="masonry"
+          columnClassName="masonry-column"
+        >
+          {ids.map((id) => {
+            const entry = projectsById.get(id)
+            if (!entry) return null
+            return (
+              <div key={id} id={`project-${entry.id}`} className="rounded-xl">
+                <SortableProjectCard
+                  project={entry}
+                  variant="grid"
+                  disabled={dragDisabled}
+                  installedVersions={installed}
+                  categories={categories}
+                  categoriesEnabled={categoriesEnabled}
+                  launchWithConsole={settings.launch_with_console}
+                  onRemove={() => remove(entry.id, false)}
+                  onDelete={() => remove(entry.id, true)}
+                  onVersionChange={(tag) => updateVersion(entry.id, tag)}
+                  onCategoryChange={(category) => setCategory(entry.id, category)}
+                  onTogglePin={() => setPinned(entry.id, !entry.pinned)}
+                  onLaunchArgsChange={(args) => handleLaunchArgsChange(entry.id, args)}
+                  gitStatus={gitStatusMap[entry.path] ?? null}
+                  onGitAction={(action) => handleGitAction(entry.id, action)}
+                  onOpenProperties={() => setPropertiesProject(entry)}
+                  onManageTags={() => setTagManagerProject(entry)}
+                  onTagsSaved={() => refresh()}
+                  onShowGitSidebar={() => onShowGitSidebar?.(entry, gitStatusMap[entry.path] ?? null)}
+                  draggable={!dragDisabled}
+                  selected={selectedIds.has(entry.id)}
+                  onToggleSelect={() => toggleSelect(entry.id)}
+                  lastOpenedTimeFormat={settings.last_opened_time_format}
+                  lastOpenedDateFormat={settings.last_opened_date_format}
+                />
+              </div>
+            )
+          })}
+        </Masonry>
+      </SortableContext>
+    </div>
+  )
+
   const renderCards = (zoneKey: string) => {
     const ids = containers[zoneKey] ?? []
+    if (viewMode === 'grid') {
+      return renderGridSection(ids, zoneKey)
+    }
     return (
       <SortableContext items={ids} strategy={verticalListSortingStrategy}>
         <div className={`flex flex-col gap-3 min-h-[8px] ${activeId ? '' : 'project-list-cv'}`}>
@@ -808,7 +906,7 @@ export function ProjectsView({
   }
 
   return (
-    <div className="p-10 pt-6 max-w-8xl mx-auto">
+    <div ref={contentRef} className="p-10 pt-6 max-w-8xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="font-body font-semibold text-3xl tracking-tight">
@@ -938,6 +1036,48 @@ export function ProjectsView({
             )}
           </div>
 
+          <div className="flex items-center rounded-lg border border-line bg-surface p-0.5 gap-0.5 shrink-0">
+            <Tooltip content={t('view_list')}>
+              <motion.button
+                whileTap={{ scale: 0.94 }}
+                onClick={() => setViewMode('list')}
+                aria-label={t('view_list')}
+                aria-pressed={viewMode === 'list'}
+                className={`focus-ring cursor-pointer p-1.5 rounded-md transition-colors ${
+                  viewMode === 'list'
+                    ? 'bg-raised text-ink shadow-sm'
+                    : 'text-muted hover:text-ink hover:bg-raised/60'
+                }`}
+              >
+                <IconLayoutList className="w-3.5 h-3.5" />
+              </motion.button>
+            </Tooltip>
+            <div className="relative">
+              <Tooltip content={t('view_grid')}>
+                <motion.button
+                  whileTap={{ scale: 0.94 }}
+                  onClick={() => setViewMode('grid')}
+                  aria-label={t('view_grid')}
+                  aria-pressed={viewMode === 'grid'}
+                  className={`focus-ring cursor-pointer p-1.5 rounded-md transition-colors ${
+                    viewMode === 'grid'
+                      ? 'bg-raised text-ink shadow-sm'
+                      : 'text-muted hover:text-ink hover:bg-raised/60'
+                  }`}
+                >
+                  <IconLayoutGrid className="w-3.5 h-3.5" />
+                </motion.button>
+              </Tooltip>
+              {viewMode === 'grid' && (
+                <span className="pointer-events-none absolute -top-1.5 -right-1.5 z-10 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber/15 text-amber border border-amber/30">
+                  {t('git_beta_badge')}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="h-5 w-px bg-line/60 shrink-0" />
+
           <div className="flex items-center gap-1.5 shrink-0">
             <IconArrowUpDown className="w-3.5 h-3.5 text-muted shrink-0" />
             <Dropdown
@@ -1035,7 +1175,10 @@ export function ProjectsView({
                       </span>
                     )}
                   </div>
-                  <SortableContext items={pinnedIds} strategy={verticalListSortingStrategy}>
+                  {viewMode === 'grid' ? (
+                    renderGridSection(pinnedIds, '__pinned__')
+                  ) : (
+                    <SortableContext items={pinnedIds} strategy={verticalListSortingStrategy}>
                     <div className={`flex flex-col gap-3 min-h-[8px] rounded-xl transition-colors duration-150 ${activeId ? '' : 'project-list-cv'} ${activeId && isOverPinned ? 'bg-accent/5 ring-1 ring-accent/20 -mx-2 px-2 py-2' : ''}`}>
                       <AnimatePresence initial={false}>
                         {pinnedIds.map((id) => {
@@ -1076,7 +1219,8 @@ export function ProjectsView({
                         })}
                       </AnimatePresence>
                     </div>
-                  </SortableContext>
+                    </SortableContext>
+                  )}
                 </section>
               )
             })()}
@@ -1171,6 +1315,7 @@ export function ProjectsView({
             {draggedProject ? (
               <ProjectCard
                 project={draggedProject}
+                variant={viewMode}
                 installedVersions={installed}
                 categories={categories}
                 categoriesEnabled={categoriesEnabled}

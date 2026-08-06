@@ -579,6 +579,10 @@
       {
         "category": "improve",
         "text": "Open Project button on project cards now shows 'No Version Selected' when no version is bound"
+      },
+      {
+        "category": "add",
+        "text": "Grid view layout for projects: toggle between list and a grid view, with drag-and-drop reordering in both layouts"
       }
     ],
     "known_issues": [],

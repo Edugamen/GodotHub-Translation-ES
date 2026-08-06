@@ -335,6 +335,8 @@
   "search_projects_placeholder": "Search projects by name or path…",
   "clear_search": "Clear search",
   "sort": "Sort…",
+  "view_list": "List view",
+  "view_grid": "Grid view",
   "loading_projects": "Loading projects…",
   "no_projects_yet": "Nothing here yet. Create a new project or import one you already have on disk.",
   "no_scan_folders_yet": "This workspace has no scan folders yet. Add one to find your projects.",
