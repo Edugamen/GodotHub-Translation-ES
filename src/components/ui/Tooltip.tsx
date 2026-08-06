@@ -89,10 +89,6 @@ export function Tooltip({ content, children, side: sideProp, className, maxWidth
   const getAnchorRect = useCallback((): DOMRect | null => {
     const el = triggerRef.current
     if (!el) return null
-    // The wrapper can be a zero-size shell around absolutely positioned
-    // children (e.g. the version-warning icon on a project card). When it
-    // wraps exactly one element, anchor the tooltip to that element's
-    // visible position instead of the shell itself.
     if (el.childElementCount === 1 && el.firstElementChild) {
       return el.firstElementChild.getBoundingClientRect()
     }

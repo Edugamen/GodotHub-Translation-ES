@@ -46,8 +46,6 @@ export function Dropdown({
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
-        // The options list is portaled to <body>, so clicks inside it must
-        // not be treated as outside clicks.
         if (listRef.current?.contains(e.target as Node)) return
         setOpen(false)
       }
@@ -75,12 +73,10 @@ export function Dropdown({
     setOpen((o) => !o)
   }, [])
 
-  // Position the list right after it mounts (synchronously, before paint).
   useLayoutEffect(() => {
     if (open) measure()
   }, [open, measure])
 
-  // Keep the list anchored to the trigger while open.
   useEffect(() => {
     if (!open) return
     const reposition = () => measure()

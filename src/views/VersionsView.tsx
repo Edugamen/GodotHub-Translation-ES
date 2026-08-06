@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSettings } from '../hooks/useSettings'
 import { api } from '../lib/api'
+import { consumePendingAction } from '../lib/pendingAction'
 import { VersionBadge } from '../components/ui/VersionBadge'
 import { ContextMenu, type ContextMenuSection } from '../components/ui/ContextMenu'
 import { Tooltip } from '../components/ui/Tooltip'
@@ -224,6 +225,7 @@ export function VersionsView() {
   const importVersionRef = useRef(handleImportVersion)
   importVersionRef.current = handleImportVersion
   useEffect(() => {
+    if (consumePendingAction() === 'import-version') importVersionRef.current()
     const handler = () => importVersionRef.current()
     window.addEventListener('app:import-version', handler)
     return () => window.removeEventListener('app:import-version', handler)

@@ -186,8 +186,6 @@ export const ProjectCard = memo(function ProjectCard({
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (cardMoreRef.current && !cardMoreRef.current.contains(e.target as Node)) {
-        // The menu is portaled to <body>, so clicks inside it must not be
-        // treated as outside clicks.
         if (moreMenuRef.current?.contains(e.target as Node)) return
         setCardMoreOpen(false)
       }
@@ -213,12 +211,10 @@ export const ProjectCard = memo(function ProjectCard({
     })
   }, [])
 
-  // Position the portaled menu right after it mounts (synchronously, before paint).
   useLayoutEffect(() => {
     if (cardMoreOpen) measureMoreMenu()
   }, [cardMoreOpen, measureMoreMenu])
 
-  // Keep the menu anchored to the trigger while open.
   useEffect(() => {
     if (!cardMoreOpen) return
     const reposition = () => measureMoreMenu()
@@ -297,10 +293,6 @@ export const ProjectCard = memo(function ProjectCard({
 
   const isGrid = variant === 'grid'
 
-  // In grid mode the entire card is the drag handle, so dnd-kit's keyboard
-  // listener must be scoped to the card element itself. Otherwise pressing
-  // Space/Enter/arrow keys while a focused inner control (pin, dropdown,
-  // tag input) is active would start a keyboard drag instead of the control.
   const gridDragHandleProps =
     isGrid && draggable && dragHandleProps
       ? (() => {
@@ -792,24 +784,24 @@ export const ProjectCard = memo(function ProjectCard({
 
             
             {isGrid ? (
-              <div className="pointer-events-none absolute inset-x-0 top-0 h-20 overflow-hidden rounded-t-xl bg-raised/40">
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-36 overflow-hidden rounded-t-xl bg-raised/40">
                 {icon ? (
                   <img
                     src={icon}
                     alt=""
                     aria-hidden="true"
-                    className="select-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-12 w-12 object-contain transition-transform duration-300 ease-out group-hover:scale-110"
-                    style={{ opacity: 0.55 }}
+                    className="select-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-100 w-100 object-contain grayscale group-hover:grayscale-0 transition-all duration-300 ease-out group-hover:scale-110"
+                    style={{ opacity: 0.8 }}
                   />
                 ) : (
                   <span
                     aria-hidden="true"
-                    className="select-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 font-display font-black text-4xl leading-none text-accent-bright/60 transition-colors duration-300 group-hover:text-accent-bright"
+                    className="select-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 font-display font-black text-6xl leading-none text-muted transition-colors duration-300 group-hover:text-accent-bright"
                   >
                     {getInitials(displayName)}
                   </span>
                 )}
-                <div className="absolute inset-x-0 bottom-0 h-5 bg-gradient-to-t from-surface to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 h-14 bg-linear-to-t from-surface to-transparent" />
               </div>
             ) : (
               <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl isolate">
@@ -866,7 +858,7 @@ export const ProjectCard = memo(function ProjectCard({
                   <IconPin className="w-3.5 h-3.5" fill={project.pinned ? 'currentColor' : 'none'} />
                 </button>
 
-                <div className="flex flex-col items-center gap-2 pt-[5.5rem] px-1 text-center min-w-0">
+                <div className="flex flex-col items-center gap-2 pt-[9.5rem] px-1 text-center min-w-0">
                   <h3 className="font-display font-medium text-lg leading-snug truncate max-w-full">
                     {displayName}
                   </h3>

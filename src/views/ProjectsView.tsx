@@ -41,6 +41,7 @@ import { ProjectPropertiesModal } from '../components/modals/ProjectPropertiesMo
 import { TagManagerModal } from '../components/modals/TagManagerModal'
 import { Dropdown } from '../components/ui/Dropdown'
 import { api } from '../lib/api'
+import { consumePendingAction } from '../lib/pendingAction'
 import { isReducedMotion } from '../lib/appearance'
 import {
   IconFolderPlus,
@@ -119,12 +120,40 @@ function SortableProjectCard({
   )
 }
 
-function ZoneDropArea({ zoneKey }: { zoneKey: string }) {
+function ZoneDropArea({
+  zoneKey,
+  variant = 'list',
+  gridCols = 3,
+}: {
+  zoneKey: string
+  variant?: 'list' | 'grid'
+  gridCols?: number
+}) {
   const { t } = useTranslation('common')
   const { setNodeRef, isOver } = useDroppable({
     id: zoneKey,
     data: { type: 'zone', zoneKey },
   })
+
+  const hint = (
+    <div className="flex flex-col items-center gap-1 text-center px-3">
+      <span
+        className={`text-xs transition-all duration-150 ${
+          isOver ? 'text-accent font-semibold' : 'text-muted/40'
+        }`}
+      >
+        {isOver ? t('drop_here') : t('no_projects')}
+      </span>
+      <span
+        className={`text-[10px] transition-all duration-150 ${
+          isOver ? 'text-accent/70' : 'text-muted/30'
+        }`}
+      >
+        {isOver ? t('release_to_move') : t('drag_to_add')}
+      </span>
+    </div>
+  )
+
   return (
     <motion.div
       initial={{ opacity: 0, height: 0, scale: 0.96 }}
@@ -132,27 +161,29 @@ function ZoneDropArea({ zoneKey }: { zoneKey: string }) {
       exit={{ opacity: 0, height: 0, scale: 0.96 }}
       transition={{ duration: 0.2, ease: 'easeOut' }}
     >
-      <div
-        ref={setNodeRef}
-        className={`min-h-[56px] rounded-xl border-2 border-dashed transition-all duration-150 flex items-center justify-center ${
-          isOver
-            ? 'border-accent bg-accent/5'
-            : 'border-line/20'
-        }`}
-      >
-        <div className="flex flex-col items-center gap-1">
-          <span className={`text-xs transition-all duration-150 ${
-            isOver ? 'text-accent font-semibold' : 'text-muted/40'
-          }`}>
-            {isOver ? t('drop_here') : t('no_projects')}
-          </span>
-          <span className={`text-[10px] transition-all duration-150 ${
-            isOver ? 'text-accent/70' : 'text-muted/30'
-          }`}>
-            {isOver ? t('release_to_move') : t('drag_to_add')}
-          </span>
+      {variant === 'grid' ? (
+        <div ref={setNodeRef} className="flex gap-[1rem]">
+          {Array.from({ length: gridCols }).map((_, i) => (
+            <div
+              key={i}
+              className={`flex-1 min-h-40 rounded-xl border-2 border-dashed transition-all duration-150 flex items-center justify-center ${
+                isOver ? 'border-accent bg-accent/5' : 'border-line/20'
+              }`}
+            >
+              {i === 0 ? hint : null}
+            </div>
+          ))}
         </div>
-      </div>
+      ) : (
+        <div
+          ref={setNodeRef}
+          className={`min-h-[56px] rounded-xl border-2 border-dashed transition-all duration-150 flex items-center justify-center ${
+            isOver ? 'border-accent bg-accent/5' : 'border-line/20'
+          }`}
+        >
+          {hint}
+        </div>
+      )}
     </motion.div>
   )
 }
@@ -355,6 +386,11 @@ export function ProjectsView({
   }, [])
 
   useEffect(() => {
+    const pending = consumePendingAction()
+    if (pending === 'new-project') setModalOpen(true)
+    else if (pending === 'import-project') importRef.current()
+    else if (pending === 'scan-projects') scanRef.current()
+
     const handleNewProject = () => setModalOpen(true)
     const handleImportProject = () => importRef.current()
     const handleScanProjects = () => scanRef.current()
@@ -547,8 +583,6 @@ export function ProjectsView({
     const pointerCollisions = pointerWithin(args)
     if (pointerCollisions.length > 0) return pointerCollisions
     if (viewMode === 'grid') {
-      // For the 2D masonry grid, rect-based overlap is a better fallback
-      // than corner distance so drags between columns stay accurate.
       const rectCollisions = rectIntersection(args)
       if (rectCollisions.length > 0) return rectCollisions
     }
@@ -803,9 +837,6 @@ export function ProjectsView({
   const hasVisibleProjects = filteredProjects.length > 0
 
   const renderGridSection = (ids: string[], zoneKey: string) => (
-    // No vertical padding here: adding it mid-drag would shift the whole
-    // masonry grid down. The -mx-2 px-2 pair keeps content aligned while
-    // widening the highlight slightly.
     <div className={activeId && overContainer === zoneKey ? 'bg-accent/5 rounded-xl ring-1 ring-accent/20 -mx-2 px-2 transition-colors duration-150' : ''}>
       <SortableContext items={ids} strategy={rectSortingStrategy}>
         <Masonry
@@ -1281,7 +1312,7 @@ export function ProjectsView({
                           <div className={activeId && isOver && !isEmpty ? 'bg-accent/5 rounded-xl ring-1 ring-accent/20 -mx-2 px-2 py-2 transition-colors duration-150' : ''}>
                             {isEmpty ? (
                               <div className={activeId ? 'group -mx-2 px-2 py-1' : ''}>
-                                <ZoneDropArea zoneKey={key} />
+                                <ZoneDropArea zoneKey={key} variant={viewMode} gridCols={gridCols} />
                               </div>
                             ) : (
                               renderCards(key)
