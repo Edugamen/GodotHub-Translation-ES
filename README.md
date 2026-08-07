@@ -72,11 +72,27 @@
   </tr>
   <tr>
     <td width="50%" align="center">
+      <img src="assets/asset-store-view.png" alt="Asset Store View" width="400">
+      <br>
+      <strong>📦 Asset Store</strong>
+      <br>
+      <sub>Install assets from old and new asset store directly in your projects or templates</sub>
+    </td>
+    <td width="50%" align="center">
       <img src="assets/git-view.png" alt="Git Integration" width="400">
       <br>
       <strong>🔄 Git Integration</strong>
       <br>
       <sub>Full Git management inside GodotHub</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="assets/settings-appearance-view.png" alt="Settings & Appearance" width="400">
+      <br>
+      <strong>🎨 Appearance & Settings</strong>
+      <br>
+      <sub>Deep customization with themes, accent colors, corner radius, and more</sub>
     </td>
     <td width="50%" align="center">
       <img src="assets/news-view.png" alt="News Feed" width="400">
@@ -84,15 +100,6 @@
       <strong>📰 News Feed</strong>
       <br>
       <sub>Stay up to date with Godot community news</sub>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" align="center" colspan="2">
-      <img src="assets/settings-appearance-view.png" alt="Settings & Appearance" width="400">
-      <br>
-      <strong>🎨 Appearance & Settings</strong>
-      <br>
-      <sub>Deep customization with themes, accent colors, corner radius, and more</sub>
     </td>
   </tr>
 </table>
