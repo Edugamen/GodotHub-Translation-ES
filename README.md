@@ -17,6 +17,7 @@
   <img src="https://img.shields.io/badge/Godot-4.x-478cbf?style=flat-square" alt="Godot 4.x">
   <img src="https://img.shields.io/github/license/RykoTheDev/godothub?style=flat-square&color=23a55a" alt="License">
   <img src="https://img.shields.io/github/stars/RykoTheDev/godothub?style=flat-square&color=f0b132" alt="Stars">
+  <img src="https://img.shields.io/badge/winget-available-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Winget Available">
 </p>
 
 <p align="center">
@@ -157,7 +158,7 @@ Download, install, and manage any Godot version effortlessly.
 
 ### Templates
 
-Save time by reusing project structures.
+Save time by reusing project structures. Templates now support **tags** that automatically sync with your `project.godot` file.
 
 | Feature | Description |
 |---|---|
@@ -166,6 +167,7 @@ Save time by reusing project structures.
 | **Preview Contents** | Browse the full directory tree of any template before using it. |
 | **Sync from Directory** | Automatically import templates from a configured scan folder. |
 | **File Watcher** | The template directory is watched for changes. Edit a template folder and the library updates automatically. |
+| **🏷️ Template Tags** | Each template can have tags that are **automatically fetched from `project.godot`** and kept in sync. You can **edit, add, or remove** tags directly in GodotHub, and your changes will be **written back to `project.godot`** automatically. This is perfect for categorizing templates by genre, engine version, or any custom metadata. |
 
 ### Git Integration
 
@@ -282,6 +284,15 @@ GodotHub is available as a desktop application for:
 | **Linux** | `.deb`, `.AppImage`, or `.rpm` packages |
 
 > [⬇️ Download the latest release](https://github.com/RykoTheDev/godothub/releases/latest)
+
+### Install via Winget (Windows)
+
+GodotHub is now available on the **Windows Package Manager (winget)**! If you're on Windows 10 or 11, you can install GodotHub with a single command:
+
+powershell >
+```winget install RykoTheDev.GodotHub```
+
+and to manually update > ```winget upgrade RykoTheDev.GodotHub```
 
 ### Build from Source
 
