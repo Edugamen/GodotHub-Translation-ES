@@ -1032,20 +1032,21 @@ pub async fn download_store_asset(
     }
     let dest = dir.join(&file_name);
 
+    let asset_id = format!("store:{publisher_slug}/{asset_slug}");
     let detail = AssetDetail {
-        asset_id: asset_slug.clone(),
+        asset_id: asset_id.clone(),
         title: base.clone(),
         ..Default::default()
     };
     emit_asset_queued(&app, &detail);
 
-    let result = download_to_file(&app, &http, &download_url, &dest, &asset_slug, &base).await;
+    let result = download_to_file(&app, &http, &download_url, &dest, &asset_id, &base).await;
 
     match &result {
         Ok(_) => emit_asset_complete(&app, &detail),
         Err(message) => {
             let _ = fs::remove_file(&dest);
-            emit_asset_error(&app, &asset_slug, &base, message);
+            emit_asset_error(&app, &asset_id, &base, message);
         }
     }
 
