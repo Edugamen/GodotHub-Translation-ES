@@ -203,5 +203,5 @@ jobs:
           identifier: Ryko.GodotHub
           token: ${{ secrets.WINGET_TOKEN }}
           version: ${{ steps.version.outputs.version }}
-          installers-regex: '\.exe$'
+          installers-regex: '\.msi$'
           max-versions-to-keep: 3
