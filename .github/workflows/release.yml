@@ -190,11 +190,18 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     
     steps:
+      - name: Strip 'v' prefix from tag
+        id: version
+        run: |
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"  # Remove leading 'v' if present
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      
       - name: Publish to WinGet
         uses: vedantmgoyal9/winget-releaser@v2
         with:
           identifier: Ryko.GodotHub
           token: ${{ secrets.WINGET_TOKEN }}
-          version: ${{ github.ref_name }}
+          version: ${{ steps.version.outputs.version }}
           installers-regex: '\.exe$'
           max-versions-to-keep: 3
