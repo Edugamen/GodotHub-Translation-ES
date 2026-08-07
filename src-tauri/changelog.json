@@ -583,6 +583,10 @@
       {
         "category": "add",
         "text": "Grid view layout for projects: toggle between list and a grid view, with drag-and-drop reordering in both layouts"
+      },
+      {
+        "category": "fix",
+        "text": "Fixed template sync keeping deprecated files: syncing now mirrors the editable template folder, so files you delete, rename, or move while editing no longer linger in the stored template or show up in new projects created from it"
       }
     ],
     "known_issues": [],

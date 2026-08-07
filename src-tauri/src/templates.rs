@@ -121,6 +121,55 @@ pub(crate) fn copy_dir(src: &Path, dst: &Path, skip_dirs: &[&str]) -> Result<(),
     Ok(())
 }
 
+pub(crate) fn mirror_dir(src: &Path, dst: &Path, skip_dirs: &[&str]) -> Result<(), String> {
+    if !dst.exists() {
+        fs::create_dir_all(dst).map_err(|e| e.to_string())?;
+    }
+
+    fn prune(src: &Path, dst: &Path, skip_dirs: &[&str]) -> Result<(), String> {
+        // Collect the entries of the source to know what should survive.
+        let mut src_entries: std::collections::HashMap<String, bool> = std::collections::HashMap::new();
+        for entry in fs::read_dir(src).map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            let name = entry.file_name().to_string_lossy().to_string();
+            if skip_dirs.iter().any(|d| name == *d) {
+                continue;
+            }
+            let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
+            src_entries.insert(name, is_dir);
+        }
+
+        // Drop stale entries from the destination, recursing into shared dirs.
+        for entry in fs::read_dir(dst).map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name == "template.json" || skip_dirs.iter().any(|d| name == *d) {
+                continue;
+            }
+            let dst_is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
+            match src_entries.get(&name) {
+                None => {
+                    // No longer present in the source folder: remove the stale copy.
+                    remove_dir_force(&entry.path())?;
+                }
+                Some(src_is_dir) if *src_is_dir != dst_is_dir => {
+                    // Type mismatch (file <-> dir): drop it, it gets re-created below.
+                    remove_dir_force(&entry.path())?;
+                }
+                Some(true) => {
+                    // Directory present on both sides: recurse to drop nested stale files.
+                    prune(&src.join(&name), &entry.path(), skip_dirs)?;
+                }
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+
+    prune(src, dst, skip_dirs)?;
+    copy_dir(src, dst, skip_dirs)
+}
+
 
 pub(crate) fn install_downloaded_asset(
     app: &AppHandle,
@@ -548,7 +597,7 @@ pub fn sync_templates_with_scan_dir(app: AppHandle) -> Result<TemplateSyncResult
         if source_to_folder.contains_key(src_path) {
             let src = PathBuf::from(src_path);
             let dst = template_dir(&app, &t.id);
-            if let Err(e) = copy_dir(&src, &dst, &[".godot", ".git", "node_modules"]) {
+            if let Err(e) = mirror_dir(&src, &dst, &[".godot", ".git", "node_modules"]) {
                 eprintln!("Failed to update template '{}': {}", t.name, e);
                 continue;
             }
@@ -576,7 +625,7 @@ pub fn sync_templates_with_scan_dir(app: AppHandle) -> Result<TemplateSyncResult
                 let src = PathBuf::from(new_path);
                 let dst = template_dir(&app, &t.id);
 
-                if let Err(e) = copy_dir(&src, &dst, &[".godot", ".git", "node_modules"]) {
+                if let Err(e) = mirror_dir(&src, &dst, &[".godot", ".git", "node_modules"]) {
                     eprintln!("Failed to update template '{}' after rename: {}", t.name, e);
                     delete_template_dir(&app, &t.id);
                     removed_names.push(t.name.clone());
