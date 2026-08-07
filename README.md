@@ -135,6 +135,7 @@ Take full control of your Godot projects with a rich, intuitive interface.
 | **Create & Import** | Create new projects from scratch or from templates, import existing ones from disk, or clone directly from Git repositories. |
 | **Drag & Drop Reorder** | Rearrange projects with smooth drag-and-drop. Reorder within categories, or move between them. |
 | **Pin Projects** | Pin your most important projects to a dedicated Pinned section at the top. |
+| **Tags Support** | Tags get fetched directly from project.godot so they are in sync with your godot launcher. You can edit, Add more or delete them and they will sync |
 | **Batch Operations** | Select multiple projects at once to change versions, assign categories, toggle pins, or remove from the library. |
 | **Search & Filter** | Search by name or path, filter by category, and sort by custom order, name, date, last opened, or project size. |
 | **Version Warnings** | Visual indicators when a project's bound Godot version is missing or has a major version mismatch. |
@@ -158,7 +159,7 @@ Download, install, and manage any Godot version effortlessly.
 
 ### Templates
 
-Save time by reusing project structures. Templates now support **tags** that automatically sync with your `project.godot` file.
+Save time by reusing project structures.
 
 | Feature | Description |
 |---|---|
@@ -167,7 +168,6 @@ Save time by reusing project structures. Templates now support **tags** that aut
 | **Preview Contents** | Browse the full directory tree of any template before using it. |
 | **Sync from Directory** | Automatically import templates from a configured scan folder. |
 | **File Watcher** | The template directory is watched for changes. Edit a template folder and the library updates automatically. |
-| **🏷️ Template Tags** | Each template can have tags that are **automatically fetched from `project.godot`** and kept in sync. You can **edit, add, or remove** tags directly in GodotHub, and your changes will be **written back to `project.godot`** automatically. This is perfect for categorizing templates by genre, engine version, or any custom metadata. |
 
 ### Git Integration
 
