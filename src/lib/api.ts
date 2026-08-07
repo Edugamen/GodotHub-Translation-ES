@@ -126,4 +126,10 @@ export const api = {
 
   searchAssetLibrary: assetLibraryApi.search,
   installAssetAsTemplate: assetLibraryApi.installAsTemplate,
+  installAsset: assetLibraryApi.install,
+  downloadAsset: assetLibraryApi.download,
+  searchAssetStore: assetLibraryApi.searchStore,
+  downloadStoreAsset: assetLibraryApi.downloadStoreAsset,
+  installStoreAsset: assetLibraryApi.installStoreAsset,
+  listAssetLibraryCategories: assetLibraryApi.listCategories,
 }

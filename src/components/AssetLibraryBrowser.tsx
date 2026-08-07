@@ -4,8 +4,16 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { api } from '../lib/api'
 import type { AssetLibraryAsset } from '../types'
-import { IconSearch, IconStore, IconDownload, IconCheck, IconSpinner, IconX, IconExternalLink } from './Icons'
+import { cachedAssetSearch } from '../lib/assetSearchCache'
+import {
+  ASSET_SORT_KEYS,
+  assetSortParams,
+  rankByRelevance,
+  type AssetSortKey,
+} from '../lib/assetSort'
+import { IconSearch, IconStore, IconDownload, IconCheck, IconSpinner, IconX } from './Icons'
 import { Dropdown } from './ui/Dropdown'
+import { AssetCard } from './ui/AssetCard'
 
 const PAGE_SIZE = 12
 
@@ -19,12 +27,6 @@ const VERSION_OPTIONS = [
   '4.1',
 ]
 
-const SUPPORT_BADGE: Record<string, string> = {
-  official: 'bg-mint/10 text-mint border-mint/20',
-  community: 'bg-accent/10 text-accent-bright border-accent-dim/40',
-  testers: 'bg-amber/10 text-amber border-amber/20',
-}
-
 export function AssetLibraryBrowser() {
   const { t } = useTranslation('common')
   const [assets, setAssets] = useState<AssetLibraryAsset[]>([])
@@ -33,6 +35,7 @@ export function AssetLibraryBrowser() {
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [version, setVersion] = useState('')
+  const [sort, setSort] = useState<AssetSortKey>('relevance')
   const [page, setPage] = useState(0)
   const [pages, setPages] = useState(0)
   const [total, setTotal] = useState(0)
@@ -43,13 +46,27 @@ export function AssetLibraryBrowser() {
   const load = useCallback(
     async (nextPage: number, append: boolean) => {
       try {
-        const res = await api.searchAssetLibrary(
-          query.trim() || null,
-          version || VERSION_OPTIONS[0],
-          nextPage,
-          PAGE_SIZE,
+        const { sort: sortParam, reverse } = assetSortParams(sort)
+        const res = await cachedAssetSearch(
+          `lib|${query.trim()}|${version || ''}|${nextPage}|${sortParam}|${reverse}`,
+          () =>
+            api.searchAssetLibrary(
+              query.trim() || null,
+              version || VERSION_OPTIONS[0],
+              nextPage,
+              PAGE_SIZE,
+              null,
+              null,
+              sortParam,
+              reverse,
+            ),
         )
-        setAssets((prev) => (append ? [...prev, ...res.assets] : res.assets))
+        setAssets((prev) => {
+          const next = append ? [...prev, ...res.assets] : res.assets
+          return sort === 'relevance' && query.trim()
+            ? rankByRelevance(next, query)
+            : next
+        })
         setPages(res.pages)
         setTotal(res.total)
         setPage(res.page)
@@ -58,7 +75,7 @@ export function AssetLibraryBrowser() {
         setError(String(e))
       }
     },
-    [query, version],
+    [query, version, sort],
   )
 
   useEffect(() => {
@@ -72,7 +89,7 @@ export function AssetLibraryBrowser() {
     return () => {
       if (searchTimer.current) clearTimeout(searchTimer.current)
     }
-  }, [query, version, load])
+  }, [query, version, sort, load])
 
   const loadMore = async () => {
     if (loadingMore || page + 1 >= pages) return
@@ -116,6 +133,17 @@ export function AssetLibraryBrowser() {
             </button>
           )}
         </div>
+        <div className="w-44 shrink-0">
+          <Dropdown
+            value={sort}
+            onChange={(v) => setSort(v as AssetSortKey)}
+            options={ASSET_SORT_KEYS.map((k) => ({
+              value: k,
+              label: t(`asset_sort_${k}`),
+            }))}
+            hideEmpty
+          />
+        </div>
         <div className="w-40 shrink-0">
           <Dropdown
             value={version}
@@ -138,15 +166,23 @@ export function AssetLibraryBrowser() {
           {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
-              className="border border-line rounded-xl bg-surface p-4 flex flex-col gap-3 animate-pulse"
+              className="border border-line rounded-xl bg-surface overflow-hidden flex flex-col animate-pulse"
             >
-              <div className="flex items-center justify-between">
-                <div className="w-12 h-12 rounded-lg bg-raised" />
-                <div className="w-20 h-8 rounded-lg bg-raised" />
+              <div className="h-28 bg-raised" />
+              <div className="p-3.5 flex flex-col gap-2.5 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="h-4 w-3/4 rounded bg-raised" />
+                  <div className="w-5 h-5 rounded bg-raised shrink-0" />
+                </div>
+                <div className="h-3 w-1/2 rounded bg-raised" />
+                <div className="flex gap-1.5 mt-1">
+                  <div className="h-4 w-14 rounded-md bg-raised" />
+                  <div className="h-4 w-10 rounded-md bg-raised" />
+                </div>
               </div>
-              <div className="h-4 w-3/4 rounded bg-raised" />
-              <div className="h-3 w-1/2 rounded bg-raised" />
-              <div className="h-3 w-2/3 rounded bg-raised mt-1" />
+              <div className="px-3.5 py-3 border-t border-line/50 flex justify-end">
+                <div className="h-7 w-20 rounded-lg bg-raised" />
+              </div>
             </div>
           ))}
         </div>
@@ -174,77 +210,21 @@ export function AssetLibraryBrowser() {
                 const isInstalled = installed.has(asset.asset_id)
                 const isInstalling = installing === asset.asset_id
                 return (
-                  <motion.div
+                  <AssetCard
                     key={asset.asset_id}
-                    layout
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="group relative border border-line rounded-xl bg-surface p-4 flex flex-col gap-3 transition-colors hover:border-accent-dim hover:bg-raised"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="w-12 h-12 rounded-lg bg-raised border border-line flex items-center justify-center overflow-hidden shrink-0">
-                        {asset.icon_url ? (
-                          <img
-                            src={asset.icon_url}
-                            alt=""
-                            loading="lazy"
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none'
-                              e.currentTarget.parentElement?.classList.remove('overflow-hidden')
-                            }}
-                          />
-                        ) : (
-                          <IconStore className="w-5 h-5 text-muted" />
-                        )}
-                      </div>
-                      {/* Plain <a target="_blank"> links do nothing inside the
-                          Tauri webview, so open via the opener plugin like the
-                          rest of the app (News, Titlebar, Bug Report, etc.). */}
-                      {asset.browse_url && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            openUrl(asset.browse_url!)
-                          }}
-                          className="focus-ring cursor-pointer p-1.5 rounded-lg text-muted/40 opacity-0 group-hover:opacity-100 hover:text-ink hover:bg-raised transition-all"
-                          aria-label={t('asset_open_page')}
-                        >
-                          <IconExternalLink className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-display font-semibold text-sm leading-snug line-clamp-2">
-                        {asset.title}
-                      </h4>
-                      <p className="text-[11px] text-muted/70 mt-0.5 truncate">
-                        {t('asset_by_author', { author: asset.author })}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 text-[10px] text-muted/50 font-mono truncate">
-                      <span>Godot {asset.godot_version}</span>
-                      <span>·</span>
-                      <span className="truncate">{asset.category}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-2">
-                      <span
-                        className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold border ${
-                          SUPPORT_BADGE[asset.support_level] ?? 'bg-raised text-muted border-line'
-                        }`}
-                      >
-                        {asset.support_level}
-                      </span>
+                    asset={asset}
+                    onOpenPage={
+                      asset.browse_url
+                        ? () => openUrl(asset.browse_url!)
+                        : undefined
+                    }
+                    actions={
                       <motion.button
                         whileHover={isInstalled || isInstalling ? undefined : { y: -1 }}
                         whileTap={isInstalled || isInstalling ? undefined : { scale: 0.96 }}
                         onClick={() => install(asset)}
                         disabled={isInstalled || isInstalling}
-                        className={`focus-ring cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:cursor-default ${
+                        className={`focus-ring cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:cursor-default ml-auto ${
                           isInstalled
                             ? 'bg-mint/10 text-mint border border-mint/20'
                             : 'bg-accent/15 text-accent-bright border border-accent-dim/40 hover:bg-accent/25'
@@ -267,8 +247,8 @@ export function AssetLibraryBrowser() {
                           </>
                         )}
                       </motion.button>
-                    </div>
-                  </motion.div>
+                    }
+                  />
                 )
               })}
             </AnimatePresence>

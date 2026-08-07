@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useWorkspaces } from '../../hooks/useWorkspaces'
 import { useProjectsContext } from '../../hooks/projectsContext'
 import { useGodotVersionsContext } from '../../hooks/godotVersionsContext'
+import { ScrollToTopButton } from '../../components/ui/ScrollToTopButton'
 
 /**
  * The full set of app views in the New UI. Keep in sync with the classic
@@ -161,7 +162,10 @@ export function AppNew() {
         </nav>
 
         {/* New view area */}
-        <main className="flex-1 overflow-y-auto relative">{renderView()}</main>
+        <main className="flex-1 overflow-y-auto relative">
+          {renderView()}
+          <ScrollToTopButton />
+        </main>
       </div>
     </div>
   )

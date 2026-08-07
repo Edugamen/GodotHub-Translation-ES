@@ -51,6 +51,9 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
+            app.manage(std::sync::Arc::new(
+                asset_library::AssetResponseCache::default(),
+            ));
             app.manage(watcher::ActiveWatchers(std::sync::Mutex::new(Vec::new())));
 
             godot_versions::migrate_registry_to_global(app.handle());
@@ -173,9 +176,15 @@ pub fn run() {
             templates::save_project_as_template,
             templates::delete_template,
             templates::sync_templates_with_scan_dir,
-asset_library::search_asset_library,
-asset_library::install_asset_as_template,
-templates::get_template_preview,
+            asset_library::search_asset_library,
+            asset_library::install_asset_as_template,
+            asset_library::install_asset,
+            asset_library::download_asset,
+            asset_library::search_asset_store,
+            asset_library::download_store_asset,
+            asset_library::install_store_asset,
+            asset_library::get_asset_library_categories,
+            templates::get_template_preview,
             changelog::list_changelog_entries,
             changelog::add_changelog_entry,
             changelog::update_changelog_entry,
