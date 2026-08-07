@@ -5,6 +5,7 @@ mod error;
 mod git;
 mod git_helpers;
 mod godot_versions;
+mod godotenv;
 mod models;
 mod news;
 mod persist;
@@ -57,12 +58,7 @@ pub fn run() {
 
             godot_versions::migrate_registry_to_global(app.handle());
 
-            // Apply the saved OS-decoration preference to the window before it
-            // is shown so the Settings -> Display toggle is honored from the
-            // start. On Linux, runtime toggling after the window is realized is
-            // unreliable (Wayland) there the change takes full effect after a
-            // restart, since the window starts undecorated and this call is
-            // best effort. Idempotent on Windows/macOS.
+            #[cfg(not(target_os = "macos"))]
             {
                 let settings = settings::read_settings(app.handle());
                 if let Some(window) = app.get_webview_window("main") {
@@ -214,6 +210,8 @@ pub fn run() {
             git::git_changed_files,
             git::git_discard_changes,
             git::git_init,
+            git::git_init_project,
+            git::git_is_available,
             git::git_stage_file,
             git::git_unstage_file,
             git::git_commit,

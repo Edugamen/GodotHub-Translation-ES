@@ -93,6 +93,13 @@ export interface GitChangedFile {
   status: string
 }
 
+export interface GitInitOutcome {
+  initialized: boolean
+  committed: boolean
+  branch: string | null
+  warning: string | null
+}
+
 export interface GitDiffLine {
   kind: 'context' | 'add' | 'delete'
   content: string
@@ -291,6 +298,7 @@ export interface AppSettings {
   language: string
   use_os_decorations: boolean
   directory_naming_convention: NamingConvention
+  git_init_new_projects: boolean
   new_ui: boolean
 }
 

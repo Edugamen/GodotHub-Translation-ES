@@ -157,12 +157,6 @@ fn flags_for(binary: &str) -> &'static [&'static str] {
         .unwrap_or(&["-e"])
 }
 
-/// Strip environment entries that can break spawned host programs when the app
-/// itself runs from an AppImage. The AppImage runtime exports `LD_LIBRARY_PATH`
-/// pointing at the AppImage's bundled libraries; distro-built host binaries
-/// (file managers, terminals, IDEs) can crash or fail silently when they
-/// inherit it. Removing it only when `APPIMAGE` is set keeps other launches
-/// untouched. No-op on other platforms.
 #[cfg(all(unix, not(target_os = "macos")))]
 pub fn sanitize_child_env(cmd: &mut Command) {
     if std::env::var_os("APPIMAGE").is_some() {

@@ -7,6 +7,9 @@ import { WorkspacesProvider } from './hooks/useWorkspaces'
 import { ProjectsProvider } from './hooks/projectsContext'
 import { CategoriesProvider } from './hooks/categoriesContext'
 import './i18n'
+import { initReducedMotionDetection } from './lib/appearance'
+
+initReducedMotionDetection()
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>

@@ -77,10 +77,28 @@ textarea::placeholder {
   scrollbar-width: none;
 }
 
+.project-list-cv > * {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 120px;
+}
+
+.masonry {
+  display: flex;
+  width: auto;
+  margin-left: -1rem;
+}
+.masonry-column {
+  padding-left: 1rem;
+  background-clip: padding-box;
+}
+.masonry-column > * {
+  margin-bottom: 1rem;
+}
+
 .reduce-motion,
 .reduce-motion * {
   transition-duration: 0.001ms !important;
-  animation-duration: 0.001ms !important;
+  animation: none !important;
   scroll-behavior: auto !important;
 }
 
@@ -92,6 +110,11 @@ textarea::placeholder {
               fill 0.35s ease,
               stroke 0.35s ease,
               box-shadow 0.35s ease !important;
+}
+
+.reduce-motion .theme-transitioning,
+.reduce-motion .theme-transitioning * {
+  transition-duration: 0.001ms !important;
 }
 
 /* ---------------------------------------------------------------------- */

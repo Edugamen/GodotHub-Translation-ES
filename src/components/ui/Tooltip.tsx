@@ -86,9 +86,18 @@ export function Tooltip({ content, children, side: sideProp, className, maxWidth
     return { x, y, side }
   }, [sideProp])
 
+  const getAnchorRect = useCallback((): DOMRect | null => {
+    const el = triggerRef.current
+    if (!el) return null
+    if (el.childElementCount === 1 && el.firstElementChild) {
+      return el.firstElementChild.getBoundingClientRect()
+    }
+    return el.getBoundingClientRect()
+  }, [])
+
   const handleMouseEnter = useCallback(() => {
     timeoutRef.current = setTimeout(() => {
-      const rect = triggerRef.current?.getBoundingClientRect()
+      const rect = getAnchorRect()
       if (!rect) return
       sizeKnownRef.current = false
 
@@ -105,7 +114,7 @@ export function Tooltip({ content, children, side: sideProp, className, maxWidth
         sizeKnownRef.current = true
       })
     }, delay)
-  }, [pickSideAndCalc, delay])
+  }, [getAnchorRect, pickSideAndCalc, delay])
 
   const handleMouseLeave = useCallback(() => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current)
@@ -117,8 +126,9 @@ export function Tooltip({ content, children, side: sideProp, className, maxWidth
   useEffect(() => {
     if (!show) return
     const handler = () => {
-      if (!triggerRef.current || !tooltipRef.current || !sizeKnownRef.current) return
-      const rect = triggerRef.current.getBoundingClientRect()
+      if (!tooltipRef.current || !sizeKnownRef.current) return
+      const rect = getAnchorRect()
+      if (!rect) return
       const tw = tooltipRef.current.offsetWidth
       const th = tooltipRef.current.offsetHeight
       const result = pickSideAndCalc(rect, tw, th)
@@ -131,7 +141,7 @@ export function Tooltip({ content, children, side: sideProp, className, maxWidth
       window.removeEventListener('scroll', handler, true)
       window.removeEventListener('resize', handler)
     }
-  }, [show, pickSideAndCalc])
+  }, [show, getAnchorRect, pickSideAndCalc])
 
   const effectiveMaxWidth = Math.min(maxWidth, window.innerWidth - VIEWPORT_PADDING * 2)
 
@@ -185,18 +195,14 @@ export function Tooltip({ content, children, side: sideProp, className, maxWidth
   }
 
   return (
-    <>
-      <div
-        ref={triggerRef}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        className={className}
-      >
-        {children}
-      </div>
+    <div
+      ref={triggerRef}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      className={className}
+    >
+      {children}
 
-      {/* Portaled so transformed/clipped ancestors (e.g. motion cards with
-          layout/hover lifts) can't clip or misplace the fixed tooltip. */}
       {createPortal(
         <AnimatePresence>
           {show && (
@@ -220,13 +226,11 @@ export function Tooltip({ content, children, side: sideProp, className, maxWidth
                 top: position.y,
               }}
             >
-              
               <div
                 className="absolute z-[-1]"
                 style={getArrowStyle()}
               />
 
-              
               <div
                 className="relative overflow-hidden px-3.5 py-2 rounded-xl border border-line/80 bg-surface/96 text-xs text-ink font-medium shadow-2xl shadow-black/60 backdrop-blur-12px"
                 style={{
@@ -235,7 +239,6 @@ export function Tooltip({ content, children, side: sideProp, className, maxWidth
                   overflowWrap: 'break-word',
                 }}
               >
-                
                 {!shimmerDone && (
                   <motion.div
                     initial={{ x: '-100%' }}
@@ -260,6 +263,6 @@ export function Tooltip({ content, children, side: sideProp, className, maxWidth
         </AnimatePresence>,
         document.body,
       )}
-    </>
+    </div>
   )
 }

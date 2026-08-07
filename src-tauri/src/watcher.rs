@@ -9,6 +9,16 @@ use tauri::{AppHandle, Emitter, Manager};
 
 pub struct ActiveWatchers(pub Mutex<Vec<RecommendedWatcher>>);
 
+fn is_ignored_watcher_event(event: &Event) -> bool {
+    !event.paths.is_empty()
+        && event.paths.iter().all(|p| {
+            matches!(
+                p.file_name().and_then(|n| n.to_str()),
+                Some(".godotrc") | Some("global.json")
+            )
+        })
+}
+
 fn create_debounced_watcher(
     app: AppHandle,
     path: PathBuf,
@@ -52,6 +62,9 @@ fn create_debounced_watcher(
                         | EventKind::Other
                         | EventKind::Any => continue,
                         _ => {
+                            if is_ignored_watcher_event(&event) {
+                                continue;
+                            }
                             last_event = Instant::now();
                             pending = true;
                         }
@@ -131,6 +144,9 @@ fn create_debounced_multi_watcher(
                         | EventKind::Other
                         | EventKind::Any => continue,
                         _ => {
+                            if is_ignored_watcher_event(&event) {
+                                continue;
+                            }
                             last_event = Instant::now();
                             pending = true;
                         }
@@ -272,4 +288,67 @@ pub fn restart_watchers(app: AppHandle) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use notify::event::CreateKind;
+
+    fn event(paths: &[&str]) -> Event {
+        let mut e = Event::new(EventKind::Create(CreateKind::File));
+        for p in paths {
+            e = e.add_path(PathBuf::from(p));
+        }
+        e
+    }
+
+    #[test]
+    fn ignores_pin_file_events() {
+        assert!(is_ignored_watcher_event(&event(&[
+            "/projects/game/.godotrc"
+        ])));
+        assert!(is_ignored_watcher_event(&event(&[
+            "/projects/game/global.json"
+        ])));
+        assert!(is_ignored_watcher_event(&event(&[
+            "/projects/game/sub/.godotrc"
+        ])));
+        assert!(is_ignored_watcher_event(&event(&[
+            "/projects/game/.godotrc",
+            "/projects/game/global.json",
+        ])));
+    }
+
+    #[test]
+    fn does_not_ignore_non_pin_files() {
+        assert!(!is_ignored_watcher_event(&event(&[
+            "/projects/game/project.godot"
+        ])));
+        assert!(!is_ignored_watcher_event(&event(&[
+            "/projects/game/icon.svg"
+        ])));
+    }
+
+    #[test]
+    fn does_not_ignore_mixed_path_events() {
+        assert!(!is_ignored_watcher_event(&event(&[
+            "/projects/game/.godotrc",
+            "/projects/game/project.godot",
+        ])));
+        assert!(!is_ignored_watcher_event(&event(&[
+            "/projects/game/global.json",
+            "/projects/game/icon.svg",
+        ])));
+        assert!(!is_ignored_watcher_event(&event(&[
+            "/projects/game/.godotrc",
+            "/projects/game/global.json",
+            "/projects/game/scenes/main.tscn",
+        ])));
+    }
+
+    #[test]
+    fn does_not_ignore_events_without_paths() {
+        assert!(!is_ignored_watcher_event(&event(&[])));
+    }
 }

@@ -4,7 +4,7 @@ import { useApiData } from '../lib/useApiData'
 import type { ChangelogEntry, ChangelogNote } from '../types'
 
 export function useChangelog() {
-  const { data: entries, loaded: loading, refresh } = useApiData(
+  const { data: entries, loading, refresh } = useApiData(
     () => api.listChangelogEntries(),
     [],
     [] as ChangelogEntry[],

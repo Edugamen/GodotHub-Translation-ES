@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
 import { api } from '../lib/api'
+import { consumePendingAction } from '../lib/pendingAction'
 import { useSettings } from '../hooks/useSettings'
 import { useWorkspaces } from '../hooks/useWorkspaces'
 import type { ProjectTemplate, TemplateSyncResult } from '../types'
@@ -98,6 +99,7 @@ export function TemplatesView() {
   const loadRef = useRef(load)
   loadRef.current = load
   useEffect(() => {
+    if (consumePendingAction() === 'sync-templates') syncRef.current()
     const handler = () => syncRef.current()
     const refreshHandler = () => loadRef.current()
     window.addEventListener('app:sync-templates', handler)

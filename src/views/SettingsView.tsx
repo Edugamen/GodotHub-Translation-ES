@@ -14,7 +14,8 @@ import { ConfirmDialog } from '../components/modals/ConfirmDialog'
 import { IconSun, IconMoon, IconHeart, IconRocket, IconBug } from '../components/Icons'
 import { api } from '../lib/api'
 import { applyTheme } from '../lib/colors'
-import { isMac, isWindows } from '../lib/platform'
+import { isReducedMotion } from '../lib/appearance'
+import { isMac, isWindows, defaultCornerRadius } from '../lib/platform'
 import {
   applyRadius,
   applyDensity,
@@ -30,7 +31,7 @@ import type { AppSettings } from '../types'
 
 const DEFAULT_ACCENT = '#457ff2'
 const DEFAULT_BG = '#15171c'
-const DEFAULT_RADIUS = 10
+const DEFAULT_RADIUS = defaultCornerRadius
 const DEFAULT_DENSITY = 1.05
 const DEFAULT_FONT_SCALE = 1.0
 const DEFAULT_PROJECT_ICON_OPACITY = 14
@@ -424,7 +425,9 @@ export function SettingsView({
       categories_enabled: { tab: 'behavior', section: 'behavior-projects' },
       workspaces_enabled: { tab: 'behavior', section: 'behavior-projects' },
       directory_naming_convention: { tab: 'behavior', section: 'behavior-projects' },
+      git_init_new_projects: { tab: 'behavior', section: 'behavior-projects' },
       check_updates: { tab: 'advanced', section: 'advanced-updates' },
+      github_token: { tab: 'advanced', section: 'advanced-github-token' },
       tooltip_delay: { tab: 'behavior', section: 'behavior-projects' },
       tray_recent_projects_count: { tab: 'behavior', section: 'behavior' },
       command_palette_keybind: { tab: 'behavior', section: 'behavior' },
@@ -459,7 +462,7 @@ export function SettingsView({
         `[data-section-id="${info.section}"]`,
       )
       if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el.scrollIntoView({ behavior: isReducedMotion() ? 'auto' : 'smooth', block: 'center' })
         el.classList.add('setting-highlight')
         setTimeout(() => {
           el.classList.remove('setting-highlight')
@@ -1109,6 +1112,24 @@ export function SettingsView({
                   />
                 </label>
 
+                <label className="flex items-center justify-between gap-4 pt-5 border-t border-line">
+                  <div>
+                    <span className="text-xs font-medium text-muted block">
+                      {t('git_init_new_projects_label')}
+                    </span>
+                    <p className="text-[11px] text-muted mt-1 leading-relaxed">
+                      {t('git_init_new_projects_desc')}
+                    </p>
+                  </div>
+                  <Toggle
+                    checked={current.git_init_new_projects}
+                    onChange={(checked) =>
+                      setField('git_init_new_projects', checked)
+                    }
+                    label={t('git_init_new_projects_label')}
+                  />
+                </label>
+
                 <label className="flex flex-col gap-2.5 pt-5 border-t border-line">
                   <span className="text-xs font-medium text-muted">
                     {t('naming_convention_label')}
@@ -1348,21 +1369,23 @@ export function SettingsView({
                 </div>
               </div>
 
-              <label className="flex items-center justify-between gap-4 pt-5 border-t border-line">
-                <div>
-                  <span className="text-xs font-medium text-muted block">
-                    {t('use_os_decorations')}
-                  </span>
-                  <p className="text-[11px] text-muted mt-1 leading-relaxed">
-                    {t('use_os_decorations_desc')}
-                  </p>
-                </div>
-                <Toggle
-                  checked={current.use_os_decorations}
-                  onChange={(checked) => setConfirmingOsDec(checked)}
-                  label={t('use_os_decorations')}
-                />
-              </label>
+              {!isMac && (
+                <label className="flex items-center justify-between gap-4 pt-5 border-t border-line">
+                  <div>
+                    <span className="text-xs font-medium text-muted block">
+                      {t('use_os_decorations')}
+                    </span>
+                    <p className="text-[11px] text-muted mt-1 leading-relaxed">
+                      {t('use_os_decorations_desc')}
+                    </p>
+                  </div>
+                  <Toggle
+                    checked={current.use_os_decorations}
+                    onChange={(checked) => setConfirmingOsDec(checked)}
+                    label={t('use_os_decorations')}
+                  />
+                </label>
+              )}
             </SectionCard>
             </div>
           </motion.div>
@@ -1715,6 +1738,7 @@ export function SettingsView({
             transition={{ duration: 0.12 }}
             className="flex flex-col gap-6"
           >
+            <div data-section-id="advanced-github-token">
             <SectionCard
               title={t('github_token_title')}
               description={t('github_token_desc')}
@@ -1782,6 +1806,7 @@ export function SettingsView({
                 </p>
               </div>
             </SectionCard>
+            </div>
 
             <div data-section-id="advanced-support" className="rounded-xl border border-line bg-surface/60 p-6 flex items-center justify-between gap-6">
               <div className="min-w-0">
