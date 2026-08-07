@@ -413,7 +413,7 @@ And every open-source library that makes GodotHub possible (see `package.json` a
 
 ---
 
-> 🤖 **AI Notice:** Some parts of this codebase have been restructured and small bugs have been fixed with the assistance of AI. All changes are reviewed and tested before being merged. If you notice anything unusual, feel free to [open an issue](https://github.com/RykoTheDev/godothub/issues).
+> 🤖 **AI Notice:** Some parts of this codebase have been restructured and small bugs have been fixed with the assistance of AI. All changes are reviewed and tested before being merged. If you notice anything unusual, feel free to [open an issue](https://github.com/RykoTheDev/godothub/issues). oh and Copilot is not being used here on github.. it activated automatically so now its in contributers list and its annoying.. I disabled it and it doesnt have any authority over this repository even reviewing..
 
 ---
 
