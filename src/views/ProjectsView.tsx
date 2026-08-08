@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import Masonry from 'react-masonry-css'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   DndContext,
@@ -8,6 +9,7 @@ import {
   KeyboardSensor,
   pointerWithin,
   closestCorners,
+  rectIntersection,
   useSensor,
   useSensors,
   useDroppable,
@@ -20,6 +22,7 @@ import {
   SortableContext,
   useSortable,
   verticalListSortingStrategy,
+  rectSortingStrategy,
   arrayMove,
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable'
@@ -38,6 +41,8 @@ import { ProjectPropertiesModal } from '../components/modals/ProjectPropertiesMo
 import { TagManagerModal } from '../components/modals/TagManagerModal'
 import { Dropdown } from '../components/ui/Dropdown'
 import { api } from '../lib/api'
+import { consumePendingAction } from '../lib/pendingAction'
+import { isReducedMotion } from '../lib/appearance'
 import {
   IconFolderPlus,
   IconGitBranch,
@@ -50,6 +55,8 @@ import {
   IconRefresh,
   IconChevronDown,
   IconArrowUpDown,
+  IconLayoutGrid,
+  IconLayoutList,
 } from '../components/Icons'
 import {
   comparatorFor,
@@ -62,6 +69,9 @@ import { useGodotVersionsContext } from '../hooks/godotVersionsContext'
 const UNCATEGORIZED = '__uncategorized__'
 const COLLAPSED_CATS_KEY = 'godothub_collapsed_categories'
 const SORT_BY_KEY = 'godothub_projects_sort_by'
+const VIEW_MODE_KEY = 'godothub_projects_view_mode'
+
+type ViewMode = 'list' | 'grid'
 
 type ZoneKind = 'category' | 'pinned' | 'flat'
 
@@ -110,12 +120,40 @@ function SortableProjectCard({
   )
 }
 
-function ZoneDropArea({ zoneKey }: { zoneKey: string }) {
+function ZoneDropArea({
+  zoneKey,
+  variant = 'list',
+  gridCols = 3,
+}: {
+  zoneKey: string
+  variant?: 'list' | 'grid'
+  gridCols?: number
+}) {
   const { t } = useTranslation('common')
   const { setNodeRef, isOver } = useDroppable({
     id: zoneKey,
     data: { type: 'zone', zoneKey },
   })
+
+  const hint = (
+    <div className="flex flex-col items-center gap-1 text-center px-3">
+      <span
+        className={`text-xs transition-all duration-150 ${
+          isOver ? 'text-accent font-semibold' : 'text-muted/40'
+        }`}
+      >
+        {isOver ? t('drop_here') : t('no_projects')}
+      </span>
+      <span
+        className={`text-[10px] transition-all duration-150 ${
+          isOver ? 'text-accent/70' : 'text-muted/30'
+        }`}
+      >
+        {isOver ? t('release_to_move') : t('drag_to_add')}
+      </span>
+    </div>
+  )
+
   return (
     <motion.div
       initial={{ opacity: 0, height: 0, scale: 0.96 }}
@@ -123,27 +161,29 @@ function ZoneDropArea({ zoneKey }: { zoneKey: string }) {
       exit={{ opacity: 0, height: 0, scale: 0.96 }}
       transition={{ duration: 0.2, ease: 'easeOut' }}
     >
-      <div
-        ref={setNodeRef}
-        className={`min-h-[56px] rounded-xl border-2 border-dashed transition-all duration-150 flex items-center justify-center ${
-          isOver
-            ? 'border-accent bg-accent/5'
-            : 'border-line/20'
-        }`}
-      >
-        <div className="flex flex-col items-center gap-1">
-          <span className={`text-xs transition-all duration-150 ${
-            isOver ? 'text-accent font-semibold' : 'text-muted/40'
-          }`}>
-            {isOver ? t('drop_here') : t('no_projects')}
-          </span>
-          <span className={`text-[10px] transition-all duration-150 ${
-            isOver ? 'text-accent/70' : 'text-muted/30'
-          }`}>
-            {isOver ? t('release_to_move') : t('drag_to_add')}
-          </span>
+      {variant === 'grid' ? (
+        <div ref={setNodeRef} className="flex gap-[1rem]">
+          {Array.from({ length: gridCols }).map((_, i) => (
+            <div
+              key={i}
+              className={`flex-1 min-h-40 rounded-xl border-2 border-dashed transition-all duration-150 flex items-center justify-center ${
+                isOver ? 'border-accent bg-accent/5' : 'border-line/20'
+              }`}
+            >
+              {i === 0 ? hint : null}
+            </div>
+          ))}
         </div>
-      </div>
+      ) : (
+        <div
+          ref={setNodeRef}
+          className={`min-h-[56px] rounded-xl border-2 border-dashed transition-all duration-150 flex items-center justify-center ${
+            isOver ? 'border-accent bg-accent/5' : 'border-line/20'
+          }`}
+        >
+          {hint}
+        </div>
+      )}
     </motion.div>
   )
 }
@@ -191,6 +231,31 @@ export function ProjectsView({
       return 'categories'
     },
   )
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    try {
+      const raw = localStorage.getItem(VIEW_MODE_KEY)
+      if (raw === 'list' || raw === 'grid') return raw
+    } catch {}
+    return 'list'
+  })
+  const contentRef = useRef<HTMLDivElement>(null)
+  const [gridCols, setGridCols] = useState(3)
+
+  useEffect(() => {
+    const el = contentRef.current
+    if (!el) return
+    const compute = () => {
+      const cs = getComputedStyle(el)
+      const padX =
+        parseFloat(cs.paddingLeft || '0') + parseFloat(cs.paddingRight || '0')
+      const w = Math.max(0, el.clientWidth - padX)
+      setGridCols(w >= 1300 ? 4 : w >= 950 ? 3 : w >= 620 ? 2 : 1)
+    }
+    compute()
+    const ro = new ResizeObserver(compute)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   const [scanning, setScanning] = useState(false)
   const [importing, setImporting] = useState(false)
@@ -242,7 +307,7 @@ export function ProjectsView({
     setTimeout(() => {
       const el = document.getElementById(`project-${projectId}`)
       if (!el) return
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el.scrollIntoView({ behavior: isReducedMotion() ? 'auto' : 'smooth', block: 'center' })
       el.classList.add('ring-2', 'ring-accent', 'rounded-xl')
       setTimeout(() => {
         el.classList.remove('ring-2', 'ring-accent', 'rounded-xl')
@@ -303,7 +368,7 @@ export function ProjectsView({
         const el = document.getElementById(`project-${projectId}`)
         if (!el) return
 
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el.scrollIntoView({ behavior: isReducedMotion() ? 'auto' : 'smooth', block: 'center' })
 
         el.classList.add('ring-2', 'ring-accent', 'rounded-xl')
         setTimeout(() => {
@@ -321,6 +386,11 @@ export function ProjectsView({
   }, [])
 
   useEffect(() => {
+    const pending = consumePendingAction()
+    if (pending === 'new-project') setModalOpen(true)
+    else if (pending === 'import-project') importRef.current()
+    else if (pending === 'scan-projects') scanRef.current()
+
     const handleNewProject = () => setModalOpen(true)
     const handleImportProject = () => importRef.current()
     const handleScanProjects = () => scanRef.current()
@@ -446,24 +516,6 @@ export function ProjectsView({
     return sortProjects(filteredProjects.filter((p) => !p.pinned))
   }, [filteredProjects, sortProjects])
 
-  const versionWarningMap = useMemo(() => {
-    const map: Record<string, 'not_found' | 'major_mismatch' | null> = {}
-    for (const p of filteredProjects) {
-      const isInstalled = installed.some((v) => v.tag === p.godot_version)
-      if (isInstalled) {
-        map[p.id] = null
-        continue
-      }
-      const projectMajor = p.godot_version.split('.')[0]
-      const hasMatchingMajor = installed.some((v) => {
-        const installedMajor = v.tag.split('.')[0]
-        return installedMajor === projectMajor || v.version?.split('.')[0] === projectMajor
-      })
-      map[p.id] = hasMatchingMajor ? 'not_found' : 'major_mismatch'
-    }
-    return map
-  }, [filteredProjects, installed])
-
   const projectsById = useMemo(
     () => new Map(projects.map((p) => [p.id, p])),
     [projects],
@@ -508,6 +560,12 @@ export function ProjectsView({
     } catch {}
   }, [sortBy])
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(VIEW_MODE_KEY, viewMode)
+    } catch {}
+  }, [viewMode])
+
   const draggedProject = activeId ? (projectsById.get(activeId) ?? null) : null
   const canDropInZone = (kind: ZoneKind) =>
     draggedProject
@@ -524,8 +582,12 @@ export function ProjectsView({
   const customCollisionDetection: CollisionDetection = useCallback((args) => {
     const pointerCollisions = pointerWithin(args)
     if (pointerCollisions.length > 0) return pointerCollisions
+    if (viewMode === 'grid') {
+      const rectCollisions = rectIntersection(args)
+      if (rectCollisions.length > 0) return rectCollisions
+    }
     return closestCorners(args)
-  }, [])
+  }, [viewMode])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -611,19 +673,25 @@ export function ProjectsView({
   }
 
 
+  const projectsRef = useRef(projects)
+  projectsRef.current = projects
+
   const fetchGitStatuses = useCallback(async () => {
     if (fetchingGitRef.current) return
-    if (projects.length === 0) return
+    const list = projectsRef.current
+    if (list.length === 0) return
     fetchingGitRef.current = true
     try {
-      const paths = projects.map((p) => p.path)
+      const paths = list.map((p) => p.path)
       const statuses = await api.batchGitStatus(paths)
       setGitStatusMap(statuses)
     } catch {
     } finally {
       fetchingGitRef.current = false
     }
-  }, [projects])
+  }, [])
+
+  const projectPathsKey = projects.map((p) => p.path).join('\u0000')
 
   useEffect(() => {
     fetchGitStatuses()
@@ -636,7 +704,7 @@ export function ProjectsView({
       clearInterval(interval)
       window.removeEventListener('app:refresh-git-status', handleRefresh)
     }
-  }, [fetchGitStatuses])
+  }, [fetchGitStatuses, projectPathsKey])
 
   const handleLaunchArgsChange = useCallback(async (id: string, args: string) => {
     await api.updateProject(id, { launch_arguments: args })
@@ -768,18 +836,68 @@ export function ProjectsView({
   const hasAnyProjects = projects.length > 0
   const hasVisibleProjects = filteredProjects.length > 0
 
+  const renderGridSection = (ids: string[], zoneKey: string) => (
+    <div className={activeId && overContainer === zoneKey ? 'bg-accent/5 rounded-xl ring-1 ring-accent/20 -mx-2 px-2 transition-colors duration-150' : ''}>
+      <SortableContext items={ids} strategy={rectSortingStrategy}>
+        <Masonry
+          breakpointCols={gridCols}
+          className="masonry"
+          columnClassName="masonry-column"
+        >
+          {ids.map((id) => {
+            const entry = projectsById.get(id)
+            if (!entry) return null
+            return (
+              <div key={id} id={`project-${entry.id}`} className="rounded-xl">
+                <SortableProjectCard
+                  project={entry}
+                  variant="grid"
+                  disabled={dragDisabled}
+                  installedVersions={installed}
+                  categories={categories}
+                  categoriesEnabled={categoriesEnabled}
+                  launchWithConsole={settings.launch_with_console}
+                  onRemove={() => remove(entry.id, false)}
+                  onDelete={() => remove(entry.id, true)}
+                  onVersionChange={(tag) => updateVersion(entry.id, tag)}
+                  onCategoryChange={(category) => setCategory(entry.id, category)}
+                  onTogglePin={() => setPinned(entry.id, !entry.pinned)}
+                  onLaunchArgsChange={(args) => handleLaunchArgsChange(entry.id, args)}
+                  gitStatus={gitStatusMap[entry.path] ?? null}
+                  onGitAction={(action) => handleGitAction(entry.id, action)}
+                  onOpenProperties={() => setPropertiesProject(entry)}
+                  onManageTags={() => setTagManagerProject(entry)}
+                  onTagsSaved={() => refresh()}
+                  onShowGitSidebar={() => onShowGitSidebar?.(entry, gitStatusMap[entry.path] ?? null)}
+                  draggable={!dragDisabled}
+                  selected={selectedIds.has(entry.id)}
+                  onToggleSelect={() => toggleSelect(entry.id)}
+                  lastOpenedTimeFormat={settings.last_opened_time_format}
+                  lastOpenedDateFormat={settings.last_opened_date_format}
+                />
+              </div>
+            )
+          })}
+        </Masonry>
+      </SortableContext>
+    </div>
+  )
+
   const renderCards = (zoneKey: string) => {
     const ids = containers[zoneKey] ?? []
+    if (viewMode === 'grid') {
+      return renderGridSection(ids, zoneKey)
+    }
     return (
       <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-        <div className="flex flex-col gap-3 min-h-[8px]">
+        <div className={`flex flex-col gap-3 min-h-[8px] ${activeId ? '' : 'project-list-cv'}`}>
           <AnimatePresence initial={false}>
             {ids.map((id) => {
               const entry = projectsById.get(id)
               if (!entry) return null
               return (
                 <motion.div
-                  layout="position"
+                  layout={activeId ? 'position' : false}
                   key={id}
                   id={`project-${entry.id}`}
                   transition={{ duration: 0.18 }}
@@ -806,7 +924,6 @@ export function ProjectsView({
                     draggable={!dragDisabled}
                     selected={selectedIds.has(entry.id)}
                     onToggleSelect={() => toggleSelect(entry.id)}
-                    versionWarning={versionWarningMap[entry.id] ?? null}
                     lastOpenedTimeFormat={settings.last_opened_time_format}
                     lastOpenedDateFormat={settings.last_opened_date_format}
                   />
@@ -820,7 +937,7 @@ export function ProjectsView({
   }
 
   return (
-    <div className="p-10 pt-6 max-w-8xl mx-auto">
+    <div ref={contentRef} className="p-10 pt-6 max-w-8xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="font-body font-semibold text-3xl tracking-tight">
@@ -950,6 +1067,48 @@ export function ProjectsView({
             )}
           </div>
 
+          <div className="flex items-center rounded-lg border border-line bg-surface p-0.5 gap-0.5 shrink-0">
+            <Tooltip content={t('view_list')}>
+              <motion.button
+                whileTap={{ scale: 0.94 }}
+                onClick={() => setViewMode('list')}
+                aria-label={t('view_list')}
+                aria-pressed={viewMode === 'list'}
+                className={`focus-ring cursor-pointer p-1.5 rounded-md transition-colors ${
+                  viewMode === 'list'
+                    ? 'bg-raised text-ink shadow-sm'
+                    : 'text-muted hover:text-ink hover:bg-raised/60'
+                }`}
+              >
+                <IconLayoutList className="w-3.5 h-3.5" />
+              </motion.button>
+            </Tooltip>
+            <div className="relative">
+              <Tooltip content={t('view_grid')}>
+                <motion.button
+                  whileTap={{ scale: 0.94 }}
+                  onClick={() => setViewMode('grid')}
+                  aria-label={t('view_grid')}
+                  aria-pressed={viewMode === 'grid'}
+                  className={`focus-ring cursor-pointer p-1.5 rounded-md transition-colors ${
+                    viewMode === 'grid'
+                      ? 'bg-raised text-ink shadow-sm'
+                      : 'text-muted hover:text-ink hover:bg-raised/60'
+                  }`}
+                >
+                  <IconLayoutGrid className="w-3.5 h-3.5" />
+                </motion.button>
+              </Tooltip>
+              {viewMode === 'grid' && (
+                <span className="pointer-events-none absolute -top-1.5 -right-1.5 z-10 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber/15 text-amber border border-amber/30">
+                  {t('git_beta_badge')}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="h-5 w-px bg-line/60 shrink-0" />
+
           <div className="flex items-center gap-1.5 shrink-0">
             <IconArrowUpDown className="w-3.5 h-3.5 text-muted shrink-0" />
             <Dropdown
@@ -1047,15 +1206,18 @@ export function ProjectsView({
                       </span>
                     )}
                   </div>
-                  <SortableContext items={pinnedIds} strategy={verticalListSortingStrategy}>
-                    <div className={`flex flex-col gap-3 min-h-[8px] rounded-xl transition-colors duration-150 ${activeId && isOverPinned ? 'bg-accent/5 ring-1 ring-accent/20 -mx-2 px-2 py-2' : ''}`}>
+                  {viewMode === 'grid' ? (
+                    renderGridSection(pinnedIds, '__pinned__')
+                  ) : (
+                    <SortableContext items={pinnedIds} strategy={verticalListSortingStrategy}>
+                    <div className={`flex flex-col gap-3 min-h-[8px] rounded-xl transition-colors duration-150 ${activeId ? '' : 'project-list-cv'} ${activeId && isOverPinned ? 'bg-accent/5 ring-1 ring-accent/20 -mx-2 px-2 py-2' : ''}`}>
                       <AnimatePresence initial={false}>
                         {pinnedIds.map((id) => {
                           const entry = projectsById.get(id)
                           if (!entry) return null
                           return (
                             <motion.div
-                              layout="position"
+                              layout={activeId ? 'position' : false}
                               key={id}
                               transition={{ duration: 0.18 }}
                             >
@@ -1080,7 +1242,6 @@ export function ProjectsView({
                                 draggable={!dragDisabled}
                                 selected={selectedIds.has(entry.id)}
                                 onToggleSelect={() => toggleSelect(entry.id)}
-                                versionWarning={versionWarningMap[entry.id] ?? null}
                                 lastOpenedTimeFormat={settings.last_opened_time_format}
                                 lastOpenedDateFormat={settings.last_opened_date_format}
                               />
@@ -1089,7 +1250,8 @@ export function ProjectsView({
                         })}
                       </AnimatePresence>
                     </div>
-                  </SortableContext>
+                    </SortableContext>
+                  )}
                 </section>
               )
             })()}
@@ -1150,7 +1312,7 @@ export function ProjectsView({
                           <div className={activeId && isOver && !isEmpty ? 'bg-accent/5 rounded-xl ring-1 ring-accent/20 -mx-2 px-2 py-2 transition-colors duration-150' : ''}>
                             {isEmpty ? (
                               <div className={activeId ? 'group -mx-2 px-2 py-1' : ''}>
-                                <ZoneDropArea zoneKey={key} />
+                                <ZoneDropArea zoneKey={key} variant={viewMode} gridCols={gridCols} />
                               </div>
                             ) : (
                               renderCards(key)
@@ -1173,7 +1335,7 @@ export function ProjectsView({
 
           <DragOverlay
             dropAnimation={{
-              duration: 300,
+              duration: isReducedMotion() ? 0 : 300,
               easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
             }}
             style={{
@@ -1184,6 +1346,7 @@ export function ProjectsView({
             {draggedProject ? (
               <ProjectCard
                 project={draggedProject}
+                variant={viewMode}
                 installedVersions={installed}
                 categories={categories}
                 categoriesEnabled={categoriesEnabled}

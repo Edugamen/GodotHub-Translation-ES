@@ -1,4 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSettings } from '../../hooks/useSettings'
 
@@ -85,9 +86,18 @@ export function Tooltip({ content, children, side: sideProp, className, maxWidth
     return { x, y, side }
   }, [sideProp])
 
+  const getAnchorRect = useCallback((): DOMRect | null => {
+    const el = triggerRef.current
+    if (!el) return null
+    if (el.childElementCount === 1 && el.firstElementChild) {
+      return el.firstElementChild.getBoundingClientRect()
+    }
+    return el.getBoundingClientRect()
+  }, [])
+
   const handleMouseEnter = useCallback(() => {
     timeoutRef.current = setTimeout(() => {
-      const rect = triggerRef.current?.getBoundingClientRect()
+      const rect = getAnchorRect()
       if (!rect) return
       sizeKnownRef.current = false
 
@@ -104,7 +114,7 @@ export function Tooltip({ content, children, side: sideProp, className, maxWidth
         sizeKnownRef.current = true
       })
     }, delay)
-  }, [pickSideAndCalc, delay])
+  }, [getAnchorRect, pickSideAndCalc, delay])
 
   const handleMouseLeave = useCallback(() => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current)
@@ -116,8 +126,9 @@ export function Tooltip({ content, children, side: sideProp, className, maxWidth
   useEffect(() => {
     if (!show) return
     const handler = () => {
-      if (!triggerRef.current || !tooltipRef.current || !sizeKnownRef.current) return
-      const rect = triggerRef.current.getBoundingClientRect()
+      if (!tooltipRef.current || !sizeKnownRef.current) return
+      const rect = getAnchorRect()
+      if (!rect) return
       const tw = tooltipRef.current.offsetWidth
       const th = tooltipRef.current.offsetHeight
       const result = pickSideAndCalc(rect, tw, th)
@@ -130,7 +141,7 @@ export function Tooltip({ content, children, side: sideProp, className, maxWidth
       window.removeEventListener('scroll', handler, true)
       window.removeEventListener('resize', handler)
     }
-  }, [show, pickSideAndCalc])
+  }, [show, getAnchorRect, pickSideAndCalc])
 
   const effectiveMaxWidth = Math.min(maxWidth, window.innerWidth - VIEWPORT_PADDING * 2)
 
@@ -192,66 +203,66 @@ export function Tooltip({ content, children, side: sideProp, className, maxWidth
     >
       {children}
 
-      <AnimatePresence>
-        {show && (
-          <motion.div
-            ref={tooltipRef}
-            initial={{
-              opacity: 0,
-              scale: 0.85,
-              ...getInitialTransform(),
-            }}
-            animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
-            exit={{
-              opacity: 0,
-              scale: 0.85,
-              ...getExitTransform(),
-            }}
-            transition={{ type: 'spring', stiffness: 500, damping: 28, mass: 0.8 }}
-            className="fixed z-999 pointer-events-none"
-            style={{
-              left: position.x,
-              top: position.y,
-            }}
-          >
-            
-            <div
-              className="absolute z-[-1]"
-              style={getArrowStyle()}
-            />
-
-            
-            <div
-              className="relative overflow-hidden px-3.5 py-2 rounded-xl border border-line/80 bg-surface/96 text-xs text-ink font-medium shadow-2xl shadow-black/60 backdrop-blur-12px"
+      {createPortal(
+        <AnimatePresence>
+          {show && (
+            <motion.div
+              ref={tooltipRef}
+              initial={{
+                opacity: 0,
+                scale: 0.85,
+                ...getInitialTransform(),
+              }}
+              animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
+              exit={{
+                opacity: 0,
+                scale: 0.85,
+                ...getExitTransform(),
+              }}
+              transition={{ type: 'spring', stiffness: 500, damping: 28, mass: 0.8 }}
+              className="fixed z-999 pointer-events-none"
               style={{
-                maxWidth: effectiveMaxWidth,
-                wordBreak: 'break-word',
-                overflowWrap: 'break-word',
+                left: position.x,
+                top: position.y,
               }}
             >
-              
-              {!shimmerDone && (
-                <motion.div
-                  initial={{ x: '-100%' }}
-                  animate={{ x: '200%' }}
-                  onAnimationComplete={() => setShimmerDone(true)}
-                  transition={{
-                    duration: 0.7,
-                    ease: [0.22, 1, 0.36, 1],
-                    delay: 0.04,
-                  }}
-                  className="absolute inset-0 pointer-events-none"
-                  style={{
-                    background:
-                      'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%)',
-                  }}
-                />
-              )}
-              <span className="relative z-1">{content}</span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              <div
+                className="absolute z-[-1]"
+                style={getArrowStyle()}
+              />
+
+              <div
+                className="relative overflow-hidden px-3.5 py-2 rounded-xl border border-line/80 bg-surface/96 text-xs text-ink font-medium shadow-2xl shadow-black/60 backdrop-blur-12px"
+                style={{
+                  maxWidth: effectiveMaxWidth,
+                  wordBreak: 'break-word',
+                  overflowWrap: 'break-word',
+                }}
+              >
+                {!shimmerDone && (
+                  <motion.div
+                    initial={{ x: '-100%' }}
+                    animate={{ x: '200%' }}
+                    onAnimationComplete={() => setShimmerDone(true)}
+                    transition={{
+                      duration: 0.7,
+                      ease: [0.22, 1, 0.36, 1],
+                      delay: 0.04,
+                    }}
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                      background:
+                        'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%)',
+                    }}
+                  />
+                )}
+                <span className="relative z-1">{content}</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
     </div>
   )
 }

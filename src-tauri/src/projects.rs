@@ -109,6 +109,7 @@ fn next_sort_order(projects: &[Project], category: &Option<String>) -> i64 {
 
 #[tauri::command]
 pub fn list_projects(app: AppHandle) -> Vec<Project> {
+    let start = std::time::Instant::now();
     let projects = read_projects(&app);
     let (mut kept, removed): (Vec<Project>, Vec<Project>) = projects
         .into_iter()
@@ -128,6 +129,11 @@ pub fn list_projects(app: AppHandle) -> Vec<Project> {
     if !removed.is_empty() || tags_changed {
         let _ = write_projects(&app, &kept);
     }
+    eprintln!(
+        "[timing] list_projects total={}ms projects={}",
+        start.elapsed().as_millis(),
+        kept.len()
+    );
     kept
 }
 
@@ -243,9 +249,10 @@ pub fn create_project(
         fs::create_dir_all(&project_dir).map_err(|e| e.to_string())?;
     }
 
+    let feature_tag = version_feature_tag(&godot_version);
     let mut project_godot = format!(
-        "; Engine configuration file.\n\n[application]\n\nconfig/name=\"{}\"\nconfig/icon=\"res://icon.svg\"\nconfig/features=PackedStringArray(\"4.3\")\n",
-        name
+        "; Engine configuration file.\n\n[application]\n\nconfig/name=\"{}\"\nconfig/icon=\"res://icon.svg\"\nconfig/features=PackedStringArray(\"{}\")\n",
+        name, feature_tag
     );
 
     if let Some(icon) = &icon_path {
@@ -313,25 +320,20 @@ pub fn create_project(
     projects.push(project.clone());
     write_projects(&app, &projects)?;
     undismiss(&app, &project.path);
+    if !project.godot_version.is_empty() {
+        let _ = crate::godotenv::pin_version(&project.path, &project.godot_version);
+    }
     Ok(project)
 }
 
-fn detect_required_version(path: &str) -> Option<String> {
-    let content = fs::read_to_string(PathBuf::from(path).join("project.godot")).ok()?;
-    for line in content.lines() {
-        if let Some(rest) = line.trim().strip_prefix("config/features=") {
-            let start = rest.find('"')? + 1;
-            let end = start + rest[start..].find('"')?;
-            return Some(rest[start..end].to_string());
-        }
+fn version_feature_tag(tag: &str) -> String {
+    let cleaned = tag.trim().trim_start_matches('v');
+    let mut parts = cleaned.split(['.', '-']);
+    let is_num = |s: &str| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit());
+    match (parts.next(), parts.next()) {
+        (Some(m), Some(n)) if is_num(m) && is_num(n) => format!("{}.{}", m, n),
+        _ => "4.3".to_string(),
     }
-    None
-}
-
-fn version_matches(required: &str, v: &InstalledGodotVersion) -> bool {
-    let req = required.trim_start_matches('v');
-    v.tag.trim_start_matches('v').starts_with(req)
-        || v.version.trim_start_matches('v').starts_with(req)
 }
 
 pub fn rebind_projects_to_version(app: &AppHandle, version: &InstalledGodotVersion) {
@@ -341,8 +343,8 @@ pub fn rebind_projects_to_version(app: &AppHandle, version: &InstalledGodotVersi
         if !p.godot_version.is_empty() {
             continue;
         }
-        if let Some(required) = detect_required_version(&p.path) {
-            if version_matches(&required, version) {
+        if let Some(spec) = crate::godotenv::detect_version(&p.path) {
+            if crate::godotenv::matches_detected(&spec, &version.tag) {
                 p.godot_version = version.tag.clone();
                 changed = true;
             }
@@ -373,13 +375,9 @@ pub fn register_project(
     }
     let mut godot_version = godot_version;
     if godot_version.is_empty() {
-        if let Some(required) = detect_required_version(&path) {
+        if let Some(spec) = crate::godotenv::detect_version(&path) {
             let installed = crate::godot_versions::read_registry(&app);
-            if let Some(v) = installed
-                .iter()
-                .filter(|v| version_matches(&required, v))
-                .min_by_key(|v| if v.is_mono { 1 } else { 0 })
-            {
+            if let Some(v) = crate::godotenv::best_match(&spec, &installed) {
                 godot_version = v.tag.clone();
             }
         }
@@ -471,6 +469,7 @@ pub fn update_project(
     id: String,
     updates: ProjectUpdate,
 ) -> Result<Project, String> {
+    let start = std::time::Instant::now();
     let mut projects = read_projects(&app);
     let project = projects
         .iter_mut()
@@ -480,7 +479,17 @@ pub fn update_project(
         project.name = name;
     }
     if let Some(v) = updates.godot_version {
-        project.godot_version = v;
+        if project.godot_version != v {
+            project.godot_version = v.clone();
+            if !v.is_empty() {
+                let pin_start = std::time::Instant::now();
+                let _ = crate::godotenv::pin_version(&project.path, &v);
+                eprintln!(
+                    "[timing] update_project.pin_version={}ms",
+                    pin_start.elapsed().as_millis()
+                );
+            }
+        }
     }
     if let Some(category) = updates.category {
         project.category = if category.trim().is_empty() {
@@ -496,7 +505,13 @@ pub fn update_project(
         project.launch_arguments = launch_arguments;
     }
     let updated = project.clone();
+    let write_start = std::time::Instant::now();
     write_projects(&app, &projects)?;
+    eprintln!(
+        "[timing] update_project id={id} write={}ms total={}ms",
+        write_start.elapsed().as_millis(),
+        start.elapsed().as_millis()
+    );
     Ok(updated)
 }
 
@@ -726,6 +741,74 @@ pub fn stop_project(app: AppHandle, id: String) -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(all(unix, not(target_os = "macos")))]
+fn spawn_detached_checked(bin: &str, args: &[std::ffi::OsString]) -> Result<(), String> {
+    let mut cmd = std::process::Command::new(bin);
+    crate::terminal::sanitize_child_env(&mut cmd);
+    cmd.args(args);
+    let mut child = cmd.spawn().map_err(|e| format!("{bin}: {e}"))?;
+
+    let deadline = std::time::Instant::now() + std::time::Duration::from_millis(1500);
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) if status.success() => return Ok(()),
+            Ok(Some(_)) => return Err(format!("{bin} exited with an error")),
+            Ok(None) if std::time::Instant::now() >= deadline => return Ok(()),
+            Ok(None) => std::thread::sleep(std::time::Duration::from_millis(50)),
+            Err(e) => return Err(format!("{bin}: {e}")),
+        }
+    }
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+fn open_folder_linux(path: &str, dir: &Path) -> Result<(), String> {
+    let dir_arg = dir.as_os_str().to_os_string();
+    let path_arg = std::ffi::OsString::from(path);
+
+    let mut last_err = String::from("no file manager could open the folder");
+
+    for (bin, args) in [("xdg-open", vec![dir_arg.clone()])] {
+        match spawn_detached_checked(bin, &args) {
+            Ok(()) => return Ok(()),
+            Err(e) => last_err = e,
+        }
+    }
+
+    let file_managers: [(&str, Vec<std::ffi::OsString>); 12] = [
+        ("gio", vec![std::ffi::OsString::from("open"), path_arg.clone()]),
+        ("nautilus", vec![path_arg.clone()]),
+        ("org.gnome.Nautilus", vec![path_arg.clone()]),
+        ("dolphin", vec![path_arg.clone()]),
+        ("thunar", vec![path_arg.clone()]),
+        ("pcmanfm", vec![path_arg.clone()]),
+        ("pcmanfm-qt", vec![path_arg.clone()]),
+        ("nemo", vec![path_arg.clone()]),
+        ("caja", vec![path_arg.clone()]),
+        ("konqueror", vec![path_arg.clone()]),
+        (
+            "exo-open",
+            vec![
+                std::ffi::OsString::from("--launch"),
+                std::ffi::OsString::from("FileManager"),
+                path_arg.clone(),
+            ],
+        ),
+        ("gnome-open", vec![path_arg.clone()]),
+    ];
+    for (bin, args) in file_managers {
+        match spawn_detached_checked(bin, &args) {
+            Ok(()) => return Ok(()),
+            Err(e) => last_err = e,
+        }
+    }
+
+    Err(format!(
+        "{last_err}.\n\nNo file manager was found. Install one (e.g. `sudo pacman -S nautilus` \
+         on Arch) or register your default folder handler:\n  xdg-mime default <file-manager>.desktop \
+         inode/directory"
+    ))
+}
+
 #[tauri::command]
 pub fn open_project_folder(path: String) -> Result<(), String> {
     let dir = PathBuf::from(&path);
@@ -740,30 +823,9 @@ pub fn open_project_folder(path: String) -> Result<(), String> {
     let result = std::process::Command::new("open").arg(&dir).spawn();
 
     #[cfg(all(unix, not(target_os = "macos")))]
-    let result = std::process::Command::new("xdg-open")
-        .arg(&dir)
-        .spawn()
-        .or_else(|_| {
-            std::process::Command::new("gio")
-                .args(["open", &path])
-                .spawn()
-        })
-        .or_else(|_| {
-            std::process::Command::new("nautilus")
-                .arg(&path)
-                .spawn()
-        })
-        .or_else(|_| {
-            std::process::Command::new("dolphin")
-                .arg(&path)
-                .spawn()
-        })
-        .or_else(|_| {
-            std::process::Command::new("thunar")
-                .arg(&path)
-                .spawn()
-        });
+    return open_folder_linux(&path, &dir);
 
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
     result.map(|_| ()).map_err(|e| e.to_string())
 }
 
@@ -777,9 +839,9 @@ pub fn open_in_editor(app: AppHandle, path: String) -> Result<(), String> {
     let settings = settings::read_settings(&app);
     if let Some(editor_path) = &settings.external_editor_path {
         if !editor_path.trim().is_empty() {
-            let result = std::process::Command::new(editor_path.trim())
-                .arg(&dir)
-                .spawn();
+            let mut cmd = std::process::Command::new(editor_path.trim());
+            crate::terminal::sanitize_child_env(&mut cmd);
+            let result = cmd.arg(&dir).spawn();
             if result.is_ok() {
                 return Ok(());
             }
@@ -787,7 +849,9 @@ pub fn open_in_editor(app: AppHandle, path: String) -> Result<(), String> {
     }
 
     for editor in &["code", "rider", "idea", "code-insiders", "codium", "zed"] {
-        if std::process::Command::new(editor).arg(&dir).spawn().is_ok() {
+        let mut cmd = std::process::Command::new(editor);
+        crate::terminal::sanitize_child_env(&mut cmd);
+        if cmd.arg(&dir).spawn().is_ok() {
             return Ok(());
         }
     }

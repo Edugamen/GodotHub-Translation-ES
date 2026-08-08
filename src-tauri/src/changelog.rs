@@ -45,6 +45,15 @@ fn clean_notes(notes: Vec<ChangelogNote>) -> Vec<ChangelogNote> {
         .collect()
 }
 
+#[cfg(debug_assertions)]
+fn clean_known_issues(issues: Vec<String>) -> Vec<String> {
+    issues
+        .into_iter()
+        .map(|i| i.trim().to_string())
+        .filter(|i| !i.is_empty())
+        .collect()
+}
+
 #[tauri::command]
 pub fn list_changelog_entries() -> Vec<ChangelogEntry> {
     let mut entries = read_entries();
@@ -57,6 +66,7 @@ pub fn add_changelog_entry(
     _version: String,
     _date: String,
     _notes: Vec<ChangelogNote>,
+    _known_issues: Vec<String>,
 ) -> Result<ChangelogEntry, String> {
     #[cfg(not(debug_assertions))]
     {
@@ -75,6 +85,7 @@ pub fn add_changelog_entry(
             version,
             date: _date.trim().to_string(),
             notes: clean_notes(_notes),
+            known_issues: clean_known_issues(_known_issues),
             created_at: chrono::Utc::now().timestamp(),
         };
         entries.push(entry.clone());
@@ -89,6 +100,7 @@ pub fn update_changelog_entry(
     _version: String,
     _date: String,
     _notes: Vec<ChangelogNote>,
+    _known_issues: Vec<String>,
 ) -> Result<ChangelogEntry, String> {
     #[cfg(not(debug_assertions))]
     {
@@ -109,6 +121,7 @@ pub fn update_changelog_entry(
         entry.version = version;
         entry.date = _date.trim().to_string();
         entry.notes = clean_notes(_notes);
+        entry.known_issues = clean_known_issues(_known_issues);
         let updated = entry.clone();
         write_entries(&entries).map_err(|e| e.to_string())?;
         Ok(updated)

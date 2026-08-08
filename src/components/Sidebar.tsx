@@ -102,7 +102,6 @@ export function Sidebar({
     tabId: Tab,
     label: string,
     Icon: typeof IconLayoutGrid,
-    opts?: { assetStore?: boolean; isBottom?: boolean },
   ) => {
     const active = activeTab === tabId
     const btn = (
@@ -114,11 +113,8 @@ export function Sidebar({
           collapsed
             ? 'w-11 h-11 justify-center px-0'
             : 'w-full pl-4 pr-3'
-        } ${opts?.assetStore
-          ? active
-            ? 'text-ink border border-dashed border-amber/40 bg-amber/4'
-            : 'text-muted hover:text-ink hover:bg-amber/4 border border-dashed border-transparent hover:border-amber/25'
-          : active
+        } ${
+          active
             ? 'text-ink'
             : 'text-muted hover:text-ink hover:bg-raised/60'
         }`}
@@ -131,17 +127,10 @@ export function Sidebar({
           />
         )}
         <Icon
-          className={`relative w-4 h-4 shrink-0 ${active ? 'text-accent-bright' : opts?.assetStore ? 'text-amber/70' : ''}`}
+          className={`relative w-4 h-4 shrink-0 ${active ? 'text-accent-bright' : ''}`}
         />
         {!collapsed && (
-          <>
-            <span className="relative">{label}</span>
-            {opts?.assetStore && (
-              <span className="relative ml-auto text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-amber/10 text-amber/70 border border-amber/20">
-                {t('sidebar_soon')}
-              </span>
-            )}
-          </>
+          <span className="relative">{label}</span>
         )}
       </button>
     )
@@ -163,9 +152,7 @@ export function Sidebar({
         className={`flex flex-col gap-1.5 mt-3 w-full ${collapsed ? 'items-center' : ''}`}
       >
         {NAV_ITEMS.map(({ tab: tabId, labelKey, icon: Icon }) =>
-          renderNavButton(tabId, tNav(labelKey), Icon, {
-            assetStore: tabId === 'asset-store',
-          }),
+          renderNavButton(tabId, tNav(labelKey), Icon),
         )}
       </nav>
 

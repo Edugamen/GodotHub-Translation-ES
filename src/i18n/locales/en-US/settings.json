@@ -56,6 +56,9 @@
   "setting_workspaces_enabled": "Use workspaces",
   "setting_tooltip_delay": "Tooltip delay",
   "setting_directory_naming_convention": "Directory naming convention",
+  "setting_git_init_new_projects": "Initialize Git repository",
+  "git_init_new_projects_label": "Initialize Git repository",
+  "git_init_new_projects_desc": "Tick the Git option by default in the New Project dialog. It adds a Godot .gitignore, a .gitattributes, and an initial commit on main.",
   "naming_convention_label": "Directory naming convention",
   "naming_convention_desc": "How the project folder is named when you create a new project. The project name always keeps the spaces you typed; only the folder name is transformed.",
   "naming_keep": "Keep as typed (My Game)",
@@ -193,7 +196,7 @@
   "setting_new_ui": "New UI",
   "new_ui_label": "New UI",
   "new_ui_desc": "Enables the experimental new interface. Some areas are still unstable and may be unresponsive.",
-  "new_ui_tooltip": "Beta feature — this UI is unstable and may be unresponsive in some areas.",
+  "new_ui_tooltip": "Beta feature; this UI is unstable and may be unresponsive in some areas.",
   "language_label": "Language",
   "use_os_decorations": "Use OS window decorations",
   "use_os_decorations_desc": "Use your operating system's native title bar and window controls instead of GodotHub's custom title bar. Requires a restart to take full effect."

@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import type { GitBranchInfo, GitChangedFile, GitDiffResult, GitLogEntry, GitStashEntry, GitStatus } from '../types'
+import type { GitBranchInfo, GitChangedFile, GitDiffResult, GitInitOutcome, GitLogEntry, GitStashEntry, GitStatus } from '../types'
 
 export const gitApi = {
   status: (path: string) =>
@@ -44,6 +44,10 @@ export const gitApi = {
     invoke<void>('git_discard_changes', { path }),
   init: (path: string) =>
     invoke<string>('git_init', { path }),
+  initProject: (path: string) =>
+    invoke<GitInitOutcome>('git_init_project', { path }),
+  isAvailable: () =>
+    invoke<boolean>('git_is_available'),
   stageFile: (path: string, filePath: string) =>
     invoke<void>('git_stage_file', { path, filePath }),
   unstageFile: (path: string, filePath: string) =>

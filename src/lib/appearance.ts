@@ -17,8 +17,55 @@ export function applyFontScale(scale: number) {
   document.documentElement.style.fontSize = `${scale * 100}%`
 }
 
-export function applyReducedMotion(enabled: boolean) {
+import { MotionGlobalConfig } from 'framer-motion'
+
+let inAppReduceMotion = false
+let reducedMotionQuery: MediaQueryList | null = null
+
+function reducedMotionMediaQuery(): MediaQueryList {
+  reducedMotionQuery ??= window.matchMedia('(prefers-reduced-motion: reduce)')
+  return reducedMotionQuery
+}
+
+function osPrefersReducedMotion(): boolean {
+  return reducedMotionMediaQuery().matches
+}
+
+function shouldReduceMotion(): boolean {
+  return inAppReduceMotion || osPrefersReducedMotion()
+}
+
+function applyReduceMotionState() {
+  const enabled = shouldReduceMotion()
   document.documentElement.classList.toggle('reduce-motion', enabled)
+  MotionGlobalConfig.instantAnimations = enabled
+}
+
+export function applyReducedMotion(enabled: boolean) {
+  inAppReduceMotion = enabled
+  applyReduceMotionState()
+}
+
+export function initReducedMotionDetection() {
+  const mq = reducedMotionMediaQuery()
+  const handler = () => applyReduceMotionState()
+  if (typeof mq.addEventListener === 'function') {
+    mq.addEventListener('change', handler)
+  } else {
+    mq.addListener(handler)
+  }
+  applyReduceMotionState()
+  return () => {
+    if (typeof mq.removeEventListener === 'function') {
+      mq.removeEventListener('change', handler)
+    } else {
+      mq.removeListener(handler)
+    }
+  }
+}
+
+export function isReducedMotion(): boolean {
+  return shouldReduceMotion()
 }
 
 export function applyNewUi(enabled: boolean) {

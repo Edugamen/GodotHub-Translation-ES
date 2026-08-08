@@ -24,9 +24,7 @@ function splitNamingWords(name: string): string[] {
       const last = current[current.length - 1]
       const next = name[i + 1]
       const split =
-        // "fooBar" -> split between "foo" and "Bar"
         ((/[a-z0-9]/.test(last) && /[A-Z]/.test(c)) ||
-          // "HTTP Server" -> split before the trailing capital of a run
           (/[A-Z]/.test(last) &&
             /[A-Z]/.test(c) &&
             next !== undefined &&

@@ -2,10 +2,15 @@ import { useEffect, useState, useRef } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
 import { api } from '../lib/api'
+import { consumePendingAction } from '../lib/pendingAction'
 import { useSettings } from '../hooks/useSettings'
 import { useWorkspaces } from '../hooks/useWorkspaces'
 import type { ProjectTemplate, TemplateSyncResult } from '../types'
-import { IconCopy, IconTrash, IconAlertTriangle, IconRefresh, IconExternalLink, IconSearch, IconX, IconStore } from '../components/Icons'
+import { CreateProjectModal } from '../components/modals/CreateProjectModal'
+import { useGodotVersionsContext } from '../hooks/godotVersionsContext'
+import { useCategoriesContext } from '../hooks/categoriesContext'
+import { useProjectsContext } from '../hooks/projectsContext'
+import { IconCopy, IconTrash, IconAlertTriangle, IconRefresh, IconExternalLink, IconSearch, IconX, IconStore, IconFolderPlus } from '../components/Icons'
 import { Tooltip } from '../components/ui/Tooltip'
 import { TemplatePreviewModal } from '../components/modals/TemplatePreviewModal'
 import { AssetLibraryBrowser } from '../components/AssetLibraryBrowser'
@@ -14,6 +19,9 @@ import { useTaskTray } from '../hooks/useTaskTray'
 export function TemplatesView() {
   const { settings } = useSettings()
   const { activeId } = useWorkspaces()
+  const { installed } = useGodotVersionsContext()
+  const { categories } = useCategoriesContext()
+  const { refresh: refreshProjects } = useProjectsContext()
   const [tab, setTab] = useState<'local' | 'asset'>('local')
   const [templates, setTemplates] = useState<ProjectTemplate[]>([])
   const [loaded, setLoaded] = useState(false)
@@ -24,6 +32,7 @@ export function TemplatesView() {
   const [syncMessage, setSyncMessage] = useState<string | null>(null)
   const [syncResult, setSyncResult] = useState<TemplateSyncResult | null>(null)
   const [previewTemplate, setPreviewTemplate] = useState<ProjectTemplate | null>(null)
+  const [createTemplate, setCreateTemplate] = useState<ProjectTemplate | null>(null)
   const [query, setQuery] = useState('')
   const { registerTask, updateTask, unregisterTask } = useTaskTray()
   const { t } = useTranslation('common')
@@ -90,6 +99,7 @@ export function TemplatesView() {
   const loadRef = useRef(load)
   loadRef.current = load
   useEffect(() => {
+    if (consumePendingAction() === 'sync-templates') syncRef.current()
     const handler = () => syncRef.current()
     const refreshHandler = () => loadRef.current()
     window.addEventListener('app:sync-templates', handler)
@@ -307,6 +317,18 @@ export function TemplatesView() {
                           </>
                         )}
                       </div>
+                      <motion.button
+                        whileHover={{ y: -1 }}
+                        whileTap={{ scale: 0.96 }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setCreateTemplate(tmpl)
+                        }}
+                        className="focus-ring cursor-pointer flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-accent/10 border border-accent-dim/30 text-accent-bright text-xs font-semibold hover:bg-accent/20 transition-colors"
+                      >
+                        <IconFolderPlus className="w-3.5 h-3.5" />
+                        {t('template_create_project')}
+                      </motion.button>
                     </motion.div>
                   ))}
                 </AnimatePresence>
@@ -326,6 +348,22 @@ export function TemplatesView() {
           <TemplatePreviewModal
             template={previewTemplate}
             onClose={() => setPreviewTemplate(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {createTemplate && (
+          <CreateProjectModal
+            installedVersions={installed}
+            defaultLocation={settings.default_project_location}
+            initialTemplateId={createTemplate.id}
+            categories={categories}
+            onClose={() => setCreateTemplate(null)}
+            onCreated={() => {
+              setCreateTemplate(null)
+              refreshProjects()
+            }}
           />
         )}
       </AnimatePresence>

@@ -1,8 +1,8 @@
-import { motion } from 'framer-motion'
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useWorkspaces } from '../../hooks/useWorkspaces'
 import { useGodotVersionsContext } from '../../hooks/godotVersionsContext'
+
 import { SidebarNew } from './components/SidebarNew'
 import { ProjectsViewNew } from './views/ProjectsViewNew'
 import {
@@ -143,17 +143,7 @@ export function AppNew() {
         <SidebarNew tabs={tabs} activeTab={tab} onTabChange={(id) => setTab(id as NewTab)} />
 
         {/* New view area */}
-        <main className="flex-1 min-w-0 ml-3 rounded-3xl bg-raised overflow-y-auto relative">
-          <motion.div
-            key={tab}
-            className="h-full"
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-          >
-            {renderView()}
-          </motion.div>
-        </main>
+        <main className="flex-1 overflow-y-auto relative">{renderView()}</main>
       </div>
     </div>
   )

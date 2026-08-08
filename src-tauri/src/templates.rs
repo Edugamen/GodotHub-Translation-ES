@@ -16,7 +16,7 @@ pub(crate) fn template_dir(app: &AppHandle, id: &str) -> PathBuf {
     templates_root(app).join(id)
 }
 
-fn sanitize_folder_name(name: &str) -> String {
+pub(crate) fn sanitize_folder_name(name: &str) -> String {
     let cleaned: String = name
         .chars()
         .map(|c| match c {
@@ -121,6 +121,55 @@ pub(crate) fn copy_dir(src: &Path, dst: &Path, skip_dirs: &[&str]) -> Result<(),
     Ok(())
 }
 
+pub(crate) fn mirror_dir(src: &Path, dst: &Path, skip_dirs: &[&str]) -> Result<(), String> {
+    if !dst.exists() {
+        fs::create_dir_all(dst).map_err(|e| e.to_string())?;
+    }
+
+    fn prune(src: &Path, dst: &Path, skip_dirs: &[&str]) -> Result<(), String> {
+        // Collect the entries of the source to know what should survive.
+        let mut src_entries: std::collections::HashMap<String, bool> = std::collections::HashMap::new();
+        for entry in fs::read_dir(src).map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            let name = entry.file_name().to_string_lossy().to_string();
+            if skip_dirs.iter().any(|d| name == *d) {
+                continue;
+            }
+            let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
+            src_entries.insert(name, is_dir);
+        }
+
+        // Drop stale entries from the destination, recursing into shared dirs.
+        for entry in fs::read_dir(dst).map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name == "template.json" || skip_dirs.iter().any(|d| name == *d) {
+                continue;
+            }
+            let dst_is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
+            match src_entries.get(&name) {
+                None => {
+                    // No longer present in the source folder: remove the stale copy.
+                    remove_dir_force(&entry.path())?;
+                }
+                Some(src_is_dir) if *src_is_dir != dst_is_dir => {
+                    // Type mismatch (file <-> dir): drop it, it gets re-created below.
+                    remove_dir_force(&entry.path())?;
+                }
+                Some(true) => {
+                    // Directory present on both sides: recurse to drop nested stale files.
+                    prune(&src.join(&name), &entry.path(), skip_dirs)?;
+                }
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+
+    prune(src, dst, skip_dirs)?;
+    copy_dir(src, dst, skip_dirs)
+}
+
 
 pub(crate) fn install_downloaded_asset(
     app: &AppHandle,
@@ -191,6 +240,15 @@ pub fn list_templates(app: AppHandle) -> Vec<ProjectTemplate> {
         let path = entry.path();
         if path.is_dir() {
             if let Some(mut t) = read_template_json(&path) {
+                let folder_name = path
+                    .file_name()
+                    .map(|n| n.to_string_lossy().to_string())
+                    .unwrap_or_default();
+                if t.id != folder_name {
+                    t.id = folder_name.clone();
+                    t.path = path.to_string_lossy().to_string();
+                    let _ = write_template_json(&path, &t);
+                }
                 t.path = path.to_string_lossy().to_string();
                 templates.push(t);
             }
@@ -348,12 +406,38 @@ fn delete_dir_best_effort(dir: &Path) -> bool {
         .is_ok()
 }
 
+fn find_template_dir_by_id(app: &AppHandle, id: &str) -> Option<PathBuf> {
+    let root = templates_root(app);
+    if !root.exists() {
+        return None;
+    }
+    if let Ok(entries) = fs::read_dir(&root) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                if let Some(t) = read_template_json(&path) {
+                    if t.id == id {
+                        return Some(path);
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+pub(crate) fn resolve_template_dir(app: &AppHandle, id: &str) -> Option<PathBuf> {
+    let dir = template_dir(app, id);
+    if dir.exists() {
+        Some(dir)
+    } else {
+        find_template_dir_by_id(app, id)
+    }
+}
+
 #[tauri::command]
 pub fn delete_template(app: AppHandle, template_id: String) -> Result<(), String> {
-    let dir = template_dir(&app, &template_id);
-    if !dir.exists() {
-        return Err("Template not found".into());
-    }
+    let dir = resolve_template_dir(&app, &template_id).ok_or("Template not found")?;
 
     if let Some(t) = read_template_json(&dir) {
         if let Some(src) = &t.source_path {
@@ -376,10 +460,7 @@ pub fn delete_template(app: AppHandle, template_id: String) -> Result<(), String
 
 #[tauri::command]
 pub fn get_template_preview(app: AppHandle, template_id: String) -> Result<Vec<TemplateFileEntry>, String> {
-    let dir = template_dir(&app, &template_id);
-    if !dir.exists() {
-        return Err("Template not found".into());
-    }
+    let dir = resolve_template_dir(&app, &template_id).ok_or("Template not found")?;
 
     let mut entries = Vec::new();
     list_files_recursive(&dir, &dir, &mut entries)?;
@@ -516,10 +597,12 @@ pub fn sync_templates_with_scan_dir(app: AppHandle) -> Result<TemplateSyncResult
         if source_to_folder.contains_key(src_path) {
             let src = PathBuf::from(src_path);
             let dst = template_dir(&app, &t.id);
-            if let Err(e) = copy_dir(&src, &dst, &[".godot", ".git", "node_modules"]) {
+            if let Err(e) = mirror_dir(&src, &dst, &[".godot", ".git", "node_modules"]) {
                 eprintln!("Failed to update template '{}': {}", t.name, e);
                 continue;
             }
+
+            let _ = write_template_json(&dst, &t);
 
             if t.source_project_id.is_none() && !t.keep_name {
                 if let Some(proj_name) = crate::projects::resolve_project_name(&src.to_string_lossy()) {
@@ -542,7 +625,7 @@ pub fn sync_templates_with_scan_dir(app: AppHandle) -> Result<TemplateSyncResult
                 let src = PathBuf::from(new_path);
                 let dst = template_dir(&app, &t.id);
 
-                if let Err(e) = copy_dir(&src, &dst, &[".godot", ".git", "node_modules"]) {
+                if let Err(e) = mirror_dir(&src, &dst, &[".godot", ".git", "node_modules"]) {
                     eprintln!("Failed to update template '{}' after rename: {}", t.name, e);
                     delete_template_dir(&app, &t.id);
                     removed_names.push(t.name.clone());
@@ -602,6 +685,7 @@ pub fn sync_templates_with_scan_dir(app: AppHandle) -> Result<TemplateSyncResult
         };
 
         if write_template_json(&dst, &template).is_ok() {
+            let _ = write_template_json(&src, &template);
             imported.push(template);
         }
     }

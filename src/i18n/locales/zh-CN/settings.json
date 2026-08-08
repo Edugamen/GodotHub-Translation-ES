@@ -56,6 +56,9 @@
   "setting_workspaces_enabled": "使用工作区",
   "setting_tooltip_delay": "工具提示延迟",
   "setting_directory_naming_convention": "目录命名规范",
+  "setting_git_init_new_projects": "初始化 Git 仓库",
+  "git_init_new_projects_label": "初始化 Git 仓库",
+  "git_init_new_projects_desc": "在新建项目对话框中默认勾选 Git 选项。它会添加 Godot 的 .gitignore 和 .gitattributes，并在 main 分支上创建首次提交。",
   "naming_convention_label": "目录命名规范",
   "naming_convention_desc": "创建新项目时文件夹的命名方式。项目名称始终保留您输入的空格，仅转换文件夹名称。",
   "naming_keep": "按输入保留（My Game）",
@@ -193,7 +196,7 @@
   "setting_new_ui": "新界面",
   "new_ui_label": "新界面",
   "new_ui_desc": "启用实验性新界面。部分区域仍不稳定，可能会出现无响应。",
-  "new_ui_tooltip": "Beta 功能 — 此界面不稳定，部分区域可能出现无响应。",
+  "new_ui_tooltip": "Beta 功能; 此界面不稳定，部分区域可能出现无响应。",
   "language_label": "语言",
   "use_os_decorations": "使用系统窗口装饰",
   "use_os_decorations_desc": "使用操作系统的原生标题栏和窗口控件，而不是 GodotHub 的自定义标题栏。需要重启才能完全生效。"

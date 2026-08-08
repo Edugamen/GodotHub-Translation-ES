@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { check } from '@tauri-apps/plugin-updater'
 import { getVersion } from '@tauri-apps/api/app'
 import { IconRefresh, IconDownload, IconCheck, IconX } from '../Icons'
+import { useSettings } from '../../hooks/useSettings'
 
 type UpdateState =
   | { type: 'checking' }
@@ -18,12 +19,43 @@ interface Props {
   mode?: 'background' | 'manual'
 }
 
+type TokenHint = 'rate-limited' | 'token-rejected'
+
+function githubTokenHint(message: string, hasToken: boolean): TokenHint | null {
+  if (/\b401\b/.test(message)) return 'token-rejected'
+  if (/\b403\b/.test(message) || /rate limit/i.test(message)) {
+    return hasToken ? 'token-rejected' : 'rate-limited'
+  }
+  return null
+}
+
+function downloadsFromGithubApi(rawJson: Record<string, unknown> | undefined) {
+  const platforms = rawJson?.platforms as
+    | Record<string, { url?: unknown }>
+    | undefined
+  if (!platforms) return false
+  const urls = Object.values(platforms)
+    .map((p) => p?.url)
+    .filter((u): u is string => typeof u === 'string')
+  if (urls.length === 0) return false
+  return urls.every((u) => {
+    try {
+      return new URL(u).host === 'api.github.com'
+    } catch {
+      return false
+    }
+  })
+}
+
 export function CheckForUpdatesModal({ onClose, mode = 'manual' }: Props) {
   const { t } = useTranslation('common')
+  const { settings } = useSettings()
   const [state, setState] = useState<UpdateState>({ type: 'checking' })
   const [currentVersion, setCurrentVersion] = useState<string | null>(null)
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
+
+  const githubToken = settings.github_token?.trim() || null
 
   const doCheck = useCallback(async () => {
     setState({ type: 'checking' })
@@ -36,19 +68,32 @@ export function CheckForUpdatesModal({ onClose, mode = 'manual' }: Props) {
           notes: update.body ?? null,
           downloadAndInstall: async () => {
             setState({ type: 'downloading', progress: 0 })
+            let downloaded = 0
+            let total: number | null = null
             try {
-              await update.downloadAndInstall((progressEvent) => {
-                const ev = progressEvent as Record<string, unknown>
-                if (ev && typeof ev === 'object' && 'event' in ev && (ev.event === 'Progress' || ev.event === 'DownloadProgress')) {
-                  const data = ev.data as Record<string, unknown> | undefined
-                  if (data && typeof data === 'object' && 'progress' in data) {
-                    const p = (data as Record<string, number>).progress
-                    if (typeof p === 'number') {
-                      setState({ type: 'downloading', progress: p })
+              const sendToken =
+                githubToken && downloadsFromGithubApi(update.rawJson)
+              await update.downloadAndInstall(
+                (progressEvent) => {
+                  if (progressEvent.event === 'Started') {
+                    downloaded = 0
+                    total = progressEvent.data.contentLength ?? null
+                  } else if (progressEvent.event === 'Progress') {
+                    downloaded += progressEvent.data.chunkLength
+                    if (total) {
+                      setState({
+                        type: 'downloading',
+                        progress: Math.min(downloaded / total, 1),
+                      })
                     }
+                  } else if (progressEvent.event === 'Finished') {
+                    setState({ type: 'downloading', progress: 1 })
                   }
-                }
-              })
+                },
+                sendToken
+                  ? { headers: { Authorization: `Bearer ${githubToken}` } }
+                  : undefined,
+              )
               setState({ type: 'done' })
             } catch (e) {
               setState({ type: 'error', message: String(e) })
@@ -68,7 +113,7 @@ export function CheckForUpdatesModal({ onClose, mode = 'manual' }: Props) {
       }
       setState({ type: 'error', message: String(e) })
     }
-  }, [mode])
+  }, [mode, githubToken])
 
   useEffect(() => {
     getVersion().then(setCurrentVersion).catch(() => setCurrentVersion(null))
@@ -82,6 +127,13 @@ export function CheckForUpdatesModal({ onClose, mode = 'manual' }: Props) {
     if (state.type === 'available') {
       await state.downloadAndInstall()
     }
+  }
+
+  const openTokenSettings = () => {
+    onClose()
+    window.dispatchEvent(
+      new CustomEvent('app:open-setting', { detail: 'github_token' }),
+    )
   }
 
   return (
@@ -215,17 +267,44 @@ export function CheckForUpdatesModal({ onClose, mode = 'manual' }: Props) {
             </div>
           )}
 
-          {state.type === 'error' && (
-            <div className="flex flex-col items-center gap-4">
+          {state.type === 'error' && (() => {
+            const hint = githubTokenHint(state.message, !!githubToken)
+            return (
+            <div className="flex flex-col items-center gap-4 w-full">
               <div className="w-14 h-14 rounded-full bg-danger/10 flex items-center justify-center">
                 <IconX className="w-6 h-6 text-danger" />
               </div>
               <div className="text-center">
-                <p className="text-sm font-medium text-ink">{t('check_updates_failed')}</p>
+                <p className="text-sm font-medium text-ink">
+                  {hint === 'rate-limited'
+                    ? t('check_updates_rate_limited')
+                    : hint === 'token-rejected'
+                      ? t('check_updates_token_rejected')
+                      : t('check_updates_failed')}
+                </p>
                 <p className="text-xs text-muted mt-1 max-w-xs">
                   {state.message}
                 </p>
               </div>
+              {hint && (
+                <div className="w-full bg-raised rounded-xl border border-line p-4 flex flex-col gap-3">
+                  <p className="text-[11px] text-muted leading-relaxed">
+                    {hint === 'token-rejected'
+                      ? t('check_updates_rate_limited_token_hint')
+                      : t('check_updates_rate_limited_hint')}
+                  </p>
+                  <motion.button
+                    whileHover={{ y: -1 }}
+                    whileTap={{ scale: 0.96 }}
+                    onClick={openTokenSettings}
+                    className="focus-ring cursor-pointer self-start px-4 py-2 rounded-lg bg-accent hover:bg-accent-bright text-xs font-medium text-white transition-colors"
+                  >
+                    {hint === 'token-rejected'
+                      ? t('check_updates_open_token_settings')
+                      : t('check_updates_add_token')}
+                  </motion.button>
+                </div>
+              )}
               <motion.button
                 whileHover={{ y: -1 }}
                 whileTap={{ scale: 0.96 }}
@@ -236,7 +315,8 @@ export function CheckForUpdatesModal({ onClose, mode = 'manual' }: Props) {
                 {t('check_updates_try_again')}
               </motion.button>
             </div>
-          )}
+            )
+          })()}
         </div>
 
         <div className="flex justify-end pt-3 border-t border-line">

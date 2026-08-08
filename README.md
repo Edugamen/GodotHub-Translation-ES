@@ -17,13 +17,16 @@
   <img src="https://img.shields.io/badge/Godot-4.x-478cbf?style=flat-square" alt="Godot 4.x">
   <img src="https://img.shields.io/github/license/RykoTheDev/godothub?style=flat-square&color=23a55a" alt="License">
   <img src="https://img.shields.io/github/stars/RykoTheDev/godothub?style=flat-square&color=f0b132" alt="Stars">
+  <img src="https://img.shields.io/badge/winget-available-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Winget Available">
 </p>
 
 <p align="center">
   <i>"What if Unity Hub and GitHub Desktop had a baby, but it's adopted?" - Yeah.. That's exactly it.</i>
 </p>
 
-> ⚠️ **Note:** This app has only been tested on **Windows**. I cannot guarantee how it runs or behaves on Linux and macOS. If you find a bug, please [report it on Issues](https://github.com/RykoTheDev/godothub/issues) or contact me if you'd like to help with cross-platform testing or contributions.
+> ⚠️ **Note:** This app has only been tested on **Windows, Arch Linux Hyprland and Newest MacOS Version (by a contributor)**. I cannot guarantee how it runs or behaves on other Linux Distros or test personally on Mac. If you find a bug, please [report it on Issues](https://github.com/RykoTheDev/godothub/issues) or contact me if you'd like to help with cross-platform testing or contributions.
+
+> ⚠️ **Another Note:** In Linux, AppImage won't work for most distros due to it being a backend "linuxdeploy" issue that i can't fix myself this happens with almost all Tauri Apps on Linux. when they push a fix to this, I will update it immediately.
 
 <p align="center">
   <a href="https://github.com/RykoTheDev/godothub/releases/latest">
@@ -70,11 +73,27 @@
   </tr>
   <tr>
     <td width="50%" align="center">
+      <img src="assets/asset-store-view.png" alt="Asset Store View" width="400">
+      <br>
+      <strong>📦 Asset Store</strong>
+      <br>
+      <sub>Install assets from old and new asset store directly in your projects or templates</sub>
+    </td>
+    <td width="50%" align="center">
       <img src="assets/git-view.png" alt="Git Integration" width="400">
       <br>
       <strong>🔄 Git Integration</strong>
       <br>
       <sub>Full Git management inside GodotHub</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="assets/settings-appearance-view.png" alt="Settings & Appearance" width="400">
+      <br>
+      <strong>🎨 Appearance & Settings</strong>
+      <br>
+      <sub>Deep customization with themes, accent colors, corner radius, and more</sub>
     </td>
     <td width="50%" align="center">
       <img src="assets/news-view.png" alt="News Feed" width="400">
@@ -82,15 +101,6 @@
       <strong>📰 News Feed</strong>
       <br>
       <sub>Stay up to date with Godot community news</sub>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" align="center" colspan="2">
-      <img src="assets/settings-appearance-view.png" alt="Settings & Appearance" width="400">
-      <br>
-      <strong>🎨 Appearance & Settings</strong>
-      <br>
-      <sub>Deep customization with themes, accent colors, corner radius, and more</sub>
     </td>
   </tr>
 </table>
@@ -125,6 +135,7 @@ Take full control of your Godot projects with a rich, intuitive interface.
 | **Create & Import** | Create new projects from scratch or from templates, import existing ones from disk, or clone directly from Git repositories. |
 | **Drag & Drop Reorder** | Rearrange projects with smooth drag-and-drop. Reorder within categories, or move between them. |
 | **Pin Projects** | Pin your most important projects to a dedicated Pinned section at the top. |
+| **Tags Support** | Tags get fetched directly from project.godot so they are in sync with your godot launcher. You can edit, Add more or delete them and they will sync |
 | **Batch Operations** | Select multiple projects at once to change versions, assign categories, toggle pins, or remove from the library. |
 | **Search & Filter** | Search by name or path, filter by category, and sort by custom order, name, date, last opened, or project size. |
 | **Version Warnings** | Visual indicators when a project's bound Godot version is missing or has a major version mismatch. |
@@ -274,6 +285,15 @@ GodotHub is available as a desktop application for:
 
 > [⬇️ Download the latest release](https://github.com/RykoTheDev/godothub/releases/latest)
 
+### Install via Winget (Windows)
+
+GodotHub is now available on the **Windows Package Manager (winget)**! If you're on Windows 10 or 11, you can install GodotHub with a single command:
+
+powershell >
+```winget install RykoTheDev.GodotHub```
+
+and to manually update > ```winget upgrade RykoTheDev.GodotHub```
+
 ### Build from Source
 
 #### Prerequisites
@@ -305,9 +325,6 @@ bun tauri build
 
 ---
 
-## Known Issues
-
-- As of v1.2 Workspaces is a bit buggy, When creating a Second workspace, Projects' Scan button won't work unless you switch from the main workspace to the newly created one. We are monitoring this issue and will add a fix as soon as possible..
 
 ## Keyboard Shortcuts
 
@@ -414,7 +431,7 @@ And every open-source library that makes GodotHub possible (see `package.json` a
 
 ---
 
-> 🤖 **AI Notice:** Some parts of this codebase have been restructured and small bugs have been fixed with the assistance of AI. All changes are reviewed and tested before being merged. If you notice anything unusual, feel free to [open an issue](https://github.com/RykoTheDev/godothub/issues).
+> 🤖 **AI Notice:** Some parts of this codebase have been restructured and small bugs have been fixed with the assistance of AI. All changes are reviewed and tested before being merged. If you notice anything unusual, feel free to [open an issue](https://github.com/RykoTheDev/godothub/issues). oh and Copilot is not being used here on github.. it activated automatically so now its in contributers list and its annoying.. I disabled it and it doesnt have any authority over this repository even reviewing..
 
 ---
 

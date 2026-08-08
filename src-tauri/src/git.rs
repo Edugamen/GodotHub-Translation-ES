@@ -1,7 +1,10 @@
 use crate::git_helpers;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::fs;
+use std::path::{Path, PathBuf};
+
+#[cfg(any(target_os = "windows", target_os = "macos"))]
 use std::process::Command;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,6 +38,14 @@ pub struct GitStashEntry {
 pub struct GitChangedFile {
     pub path: String,
     pub status: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitInitOutcome {
+    pub initialized: bool,
+    pub committed: bool,
+    pub branch: Option<String>,
+    pub warning: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -73,8 +84,50 @@ fn check_is_repo(path: &str) -> bool {
     false
 }
 
+fn parent_repo(path: &str) -> Option<PathBuf> {
+    let dir = PathBuf::from(path);
+    let parent = dir.parent()?;
+    if parent.as_os_str().is_empty() {
+        return None;
+    }
+    if parent.join(".git").exists() {
+        Some(parent.to_path_buf())
+    } else {
+        None
+    }
+}
+
 fn friendly_git_error(stderr: &str, path: &str) -> String {
     let lower = stderr.to_lowercase();
+
+    if lower.contains("xcode-select")
+        || lower.contains("no developer tools")
+        || lower.contains("command line developer tools")
+    {
+        return format!(
+            concat!(
+                "macOS needs the Xcode Command Line Tools before Git will run.\n\n",
+                "Install them, then initialize the repository from the Git panel:\n",
+                "  xcode-select --install\n\n",
+                "Raw error:\n{}",
+            ),
+            stderr.trim()
+        );
+    }
+    if lower.contains("please tell me who you are")
+        || (lower.contains("user.email") && lower.contains("user.name"))
+    {
+        return format!(
+            concat!(
+                "Git doesn't know who you are yet, so it couldn't commit.\n\n",
+                "Set your identity, then commit from the Git panel:\n",
+                "  git config --global user.name \"Your Name\"\n",
+                "  git config --global user.email \"you@example.com\"\n\n",
+                "Raw error:\n{}",
+            ),
+            stderr.trim()
+        );
+    }
 
     if lower.contains("host key verification failed") {
         return format!(
@@ -563,6 +616,165 @@ pub fn git_init(path: String) -> Result<String, String> {
     Ok(stdout)
 }
 
+const GODOT_GITIGNORE: &str = "\
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# Godot-specific ignores
+.import/
+export.cfg
+export_presets.cfg
+
+# Imported translations (automatically generated from CSV files)
+*.translation
+
+# Mono-specific ignores
+.mono/
+data_*/
+mono_crash.*.json
+
+# Editor and export output
+.vscode/
+/build/
+/builds/
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+";
+
+const GODOT_GITATTRIBUTES: &str = "\
+# Normalize line endings for every file Git considers text.
+* text=auto eol=lf
+";
+
+#[cfg(unix)]
+fn is_executable(path: &Path) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+    fs::metadata(path)
+        .map(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
+        .unwrap_or(false)
+}
+
+#[cfg(not(unix))]
+fn is_executable(path: &Path) -> bool {
+    path.is_file()
+}
+
+#[cfg(target_os = "windows")]
+fn executable_names(name: &str) -> Vec<String> {
+    std::env::var("PATHEXT")
+        .unwrap_or_else(|_| ".EXE;.CMD;.BAT;.COM".to_string())
+        .split(';')
+        .map(|ext| ext.trim())
+        .filter(|ext| !ext.is_empty())
+        .map(|ext| format!("{name}{}", ext.to_lowercase()))
+        .collect()
+}
+
+#[cfg(not(target_os = "windows"))]
+fn executable_names(name: &str) -> Vec<String> {
+    vec![name.to_string()]
+}
+
+#[tauri::command]
+pub fn git_is_available() -> bool {
+    let Some(path_var) = std::env::var_os("PATH") else {
+        return false;
+    };
+    let names = executable_names("git");
+    std::env::split_paths(&path_var)
+        .any(|dir| names.iter().any(|name| is_executable(&dir.join(name))))
+}
+
+#[tauri::command]
+pub fn git_init_project(path: String) -> Result<GitInitOutcome, String> {
+    let dir = PathBuf::from(&path);
+    if !dir.is_dir() {
+        return Err("Path does not exist".into());
+    }
+
+    if dir.join(".git").exists() {
+        return Ok(GitInitOutcome {
+            initialized: false,
+            committed: false,
+            branch: None,
+            warning: None,
+        });
+    }
+
+    if let Some(parent) = parent_repo(&path) {
+        return Ok(GitInitOutcome {
+            initialized: false,
+            committed: false,
+            branch: None,
+            warning: Some(format!(
+                "No repository was created: the folder above this one is already a Git repository ({}). Commit the project from there instead.",
+                parent.display()
+            )),
+        });
+    }
+
+    if !git_is_available() {
+        return Err("Git isn't installed, or it isn't on your PATH.".into());
+    }
+
+    if let Err(e) = git_helpers::git_cmd(&path, ["init"]) {
+        return Err(friendly_git_error(&e.to_string(), &path));
+    }
+
+    for (name, contents) in [
+        (".gitignore", GODOT_GITIGNORE),
+        (".gitattributes", GODOT_GITATTRIBUTES),
+    ] {
+        let file = dir.join(name);
+        if !file.exists() {
+            fs::write(&file, contents).map_err(|e| format!("Failed to write {name}: {e}"))?;
+        }
+    }
+
+    if let Err(e) = git_helpers::git_cmd(&path, ["add", "."]) {
+        return Ok(GitInitOutcome {
+            initialized: true,
+            committed: false,
+            branch: None,
+            warning: Some(friendly_git_error(&e.to_string(), &path)),
+        });
+    }
+
+    let commit = git_helpers::git_raw(&path, ["commit", "-m", "Initial commit"])
+        .map_err(|e| e.to_string())?;
+    if !commit.status.success() {
+        let stderr = git_helpers::output_stderr(&commit);
+        let detail = if stderr.trim().is_empty() {
+            git_helpers::output_stdout(&commit)
+        } else {
+            stderr
+        };
+        return Ok(GitInitOutcome {
+            initialized: true,
+            committed: false,
+            branch: None,
+            warning: Some(friendly_git_error(&detail, &path)),
+        });
+    }
+
+    let mut branch = git_helpers::git_cmd(&path, ["rev-parse", "--abbrev-ref", "HEAD"]).ok();
+    if branch.as_deref() == Some("master")
+        && git_helpers::git_cmd(&path, ["branch", "-M", "main"]).is_ok()
+    {
+        branch = Some("main".to_string());
+    }
+
+    Ok(GitInitOutcome {
+        initialized: true,
+        committed: true,
+        branch,
+        warning: None,
+    })
+}
+
 #[tauri::command]
 pub fn git_stage_file(path: String, file_path: String) -> Result<(), String> {
     if !check_is_repo(&path) {
@@ -743,7 +955,7 @@ pub fn clone_repo(app: tauri::AppHandle, url: String, dest: String) -> Result<St
 // ---------------------------------------------------------------------------
 
 #[tauri::command]
-pub fn open_terminal(path: String) -> Result<(), String> {
+pub fn open_terminal(_app: tauri::AppHandle, path: String) -> Result<(), String> {
     let dir = PathBuf::from(&path);
     if !dir.exists() {
         return Err("Path does not exist".into());
@@ -771,50 +983,11 @@ pub fn open_terminal(path: String) -> Result<(), String> {
 
     #[cfg(all(unix, not(target_os = "macos")))]
     {
-        let mut spawned = false;
-
-        if let Ok(term) = std::env::var("TERMINAL") {
-            if !term.is_empty() {
-                spawned = Command::new(&term)
-                    .arg("--working-directory")
-                    .arg(&path)
-                    .spawn()
-                    .is_ok();
-            }
-        }
-
-        let terminals: [(&str, &[&str]); 6] = [
-            ("gnome-terminal", &["--working-directory", ""]),
-            ("kgx", &["--working-directory", ""]),
-            ("ptyxis", &["--working-directory", ""]),
-            ("konsole", &["--workdir", ""]),
-            ("xfce4-terminal", &["--working-directory", ""]),
-            ("x-terminal-emulator", &["--working-directory", ""]),
-        ];
-
-        for &(term, args) in &terminals {
-            if args.len() == 2 && !spawned {
-                let replaced: Vec<&str> = vec![args[0], &path];
-                if Command::new(term).args(&replaced).spawn().is_ok() {
-                    spawned = true;
-                }
-            }
-        }
-
-        if !spawned {
-            spawned = Command::new("xterm")
-                .args(["-e", &format!("cd '{}' && exec bash", path.replace('\'', "'\\''"))])
-                .spawn()
-                .is_ok();
-        }
-
-        if !spawned {
-            Command::new("xdg-open").arg(&path).spawn().ok();
-        }
-
-        if !spawned {
-            return Err("Could not find a terminal emulator".into());
-        }
+        let script = format!(
+            "#!/bin/sh\ncd '{}' && exec ${{SHELL:-bash}}\n",
+            path.replace('\'', "'\\''")
+        );
+        crate::terminal::spawn_shell_script_in_terminal(&_app, &script)?;
     }
 
     Ok(())

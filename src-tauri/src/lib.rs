@@ -5,6 +5,7 @@ mod error;
 mod git;
 mod git_helpers;
 mod godot_versions;
+mod godotenv;
 mod models;
 mod news;
 mod persist;
@@ -50,9 +51,20 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
+            app.manage(std::sync::Arc::new(
+                asset_library::AssetResponseCache::default(),
+            ));
             app.manage(watcher::ActiveWatchers(std::sync::Mutex::new(Vec::new())));
 
             godot_versions::migrate_registry_to_global(app.handle());
+
+            #[cfg(not(target_os = "macos"))]
+            {
+                let settings = settings::read_settings(app.handle());
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.set_decorations(settings.use_os_decorations);
+                }
+            }
 
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
@@ -164,9 +176,15 @@ pub fn run() {
             templates::save_project_as_template,
             templates::delete_template,
             templates::sync_templates_with_scan_dir,
-asset_library::search_asset_library,
-asset_library::install_asset_as_template,
-templates::get_template_preview,
+            asset_library::search_asset_library,
+            asset_library::install_asset_as_template,
+            asset_library::install_asset,
+            asset_library::download_asset,
+            asset_library::search_asset_store,
+            asset_library::download_store_asset,
+            asset_library::install_store_asset,
+            asset_library::get_asset_library_categories,
+            templates::get_template_preview,
             changelog::list_changelog_entries,
             changelog::add_changelog_entry,
             changelog::update_changelog_entry,
@@ -192,6 +210,8 @@ templates::get_template_preview,
             git::git_changed_files,
             git::git_discard_changes,
             git::git_init,
+            git::git_init_project,
+            git::git_is_available,
             git::git_stage_file,
             git::git_unstage_file,
             git::git_commit,

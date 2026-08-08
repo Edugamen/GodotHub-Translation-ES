@@ -4,15 +4,20 @@ import { useApiData } from '../lib/useApiData'
 import type { ChangelogEntry, ChangelogNote } from '../types'
 
 export function useChangelog() {
-  const { data: entries, loaded: loading, refresh } = useApiData(
+  const { data: entries, loading, refresh } = useApiData(
     () => api.listChangelogEntries(),
     [],
     [] as ChangelogEntry[],
   )
 
   const addEntry = useCallback(
-    async (version: string, date: string, notes: ChangelogNote[]) => {
-      await api.addChangelogEntry(version, date, notes)
+    async (
+      version: string,
+      date: string,
+      notes: ChangelogNote[],
+      knownIssues: string[],
+    ) => {
+      await api.addChangelogEntry(version, date, notes, knownIssues)
       await refresh()
     },
     [refresh],
@@ -24,8 +29,9 @@ export function useChangelog() {
       version: string,
       date: string,
       notes: ChangelogNote[],
+      knownIssues: string[],
     ) => {
-      await api.updateChangelogEntry(id, version, date, notes)
+      await api.updateChangelogEntry(id, version, date, notes, knownIssues)
       await refresh()
     },
     [refresh],

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 
@@ -37,7 +38,7 @@ export function LaunchArgsModal({
     })
   }
 
-  return (
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -114,6 +115,7 @@ export function LaunchArgsModal({
           </motion.button>
         </div>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body,
   )
 }

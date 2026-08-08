@@ -29,6 +29,7 @@
         "text": "PR by XRomieo: Add Adhoc Signing to fix Mac OS's App is Damaged popup"
       }
     ],
+    "known_issues": [],
     "created_at": 1784658817
   },
   {
@@ -77,6 +78,7 @@
         "text": "Rename versions to use whatever naming style works for you"
       }
     ],
+    "known_issues": [],
     "created_at": 1783950258
   },
   {
@@ -125,6 +127,7 @@
         "text": "Drag and drop support for reordering projects in the list view using the dnd-kit library"
       }
     ],
+    "known_issues": [],
     "created_at": 1783951458
   },
   {
@@ -209,6 +212,7 @@
         "text": "Tooltip UI for overall App."
       }
     ],
+    "known_issues": [],
     "created_at": 1784026943
   },
   {
@@ -289,6 +293,7 @@
         "text": "Project Size Chart Modal that can be accessed via context menu right click on the Project Card"
       }
     ],
+    "known_issues": [],
     "created_at": 1784205220
   },
   {
@@ -309,6 +314,7 @@
         "text": "UX Glitches and Improvements"
       }
     ],
+    "known_issues": [],
     "created_at": 1784628826
   },
   {
@@ -345,6 +351,7 @@
         "text": "Search bar in Templates view"
       }
     ],
+    "known_issues": [],
     "created_at": 1784658817
   },
   {
@@ -421,12 +428,13 @@
         "text": "Option in Settings → Appearance to disable the scrollbar entirely; scroll still works via keyboard, trackpad, or mouse wheel"
       }
     ],
+    "known_issues": [],
     "created_at": 1785245589
   },
   {
     "id": "bb23f26c-73dc-4ec7-b24f-e8cc7ed1ee65",
-    "version": "v1.2",
-    "date": "2026-08-01",
+    "version": "v1.2.0 - The Community Update",
+    "date": "2026-08-02",
     "notes": [
       {
         "category": "fix",
@@ -479,8 +487,109 @@
       {
         "category": "add",
         "text": "Templates Asset Library to download templates from Godot Asset Store"
+      },
+      {
+        "category": "fix",
+        "text": "PR by XRomieo: Workspace scan & refresh now work reliably across workspaces, including newly created ones"
+      },
+      {
+        "category": "improve",
+        "text": "Corner radius shape is now a Squircle (iOS styled) for a softer look"
+      },
+      {
+        "category": "add",
+        "text": "Experimental 'New UI' toggle in Settings -> Appearance (beta, disabled for now, will be enabled in a future update)"
+      },
+      {
+        "category": "add",
+        "text": "Create Project button on template cards to start a project from a template right in the Templates view"
+      },
+      {
+        "category": "add",
+        "text": "Known Issues section in the changelog so each version can list its known problems"
+      },
+      {
+        "category": "fix",
+        "text": "Fixed 'Template not found' error that could happen after rescanning templates; broken template registrations now self-heal automatically"
+      },
+      {
+        "category": "fix",
+        "text": "Custom titlebar is back as the default on Linux, and the OS Decoration toggle in Settings now actually takes effect on Linux too"
+      },
+      {
+        "category": "improve",
+        "text": "Known issues in the changelog are now included in the auto-generated GitHub release notes"
       }
     ],
+    "known_issues": [
+      "Linux OS: AppImage won't work in some Distros (issue is still unknown and might be a tuari issue, will fix it asap when i find the solution, in the meantime use .rpm or .deb files)",
+      "Linux OS: 'Open with Console', 'Open Folder' and 'Open in IDE' might not work in some Distros as well. (issue is still unknown and might be a tuari issue, will fix it asap when i find the solution)"
+    ],
     "created_at": 1785270388
+  },
+  {
+    "id": "b0da60a6-e6ae-436a-8e16-dd08a9408854",
+    "version": "v1.2.5 - The Something Update",
+    "date": "2026-08-05",
+    "notes": [
+      {
+        "category": "add",
+        "text": "Project version binding exactly like GodotEnv; auto-detects the version from global.json, .csproj or .godotrc and pins it to the project"
+      },
+      {
+        "category": "add",
+        "text": "Masonry layout for the News section so cards of varying heights pack neatly without gaps"
+      },
+      {
+        "category": "add",
+        "text": "Reduce Motion now also follows the OS 'prefers-reduced-motion' setting and turns off every animation in the app"
+      },
+      {
+        "category": "add",
+        "text": "Platform-aware default corner radius: 5 on Linux and macOS, 10 on Windows"
+      },
+      {
+        "category": "fix",
+        "text": "Context menu on project cards not closing when clicking outside or pressing Escape"
+      },
+      {
+        "category": "fix",
+        "text": "Tray 'Open Recent' showing folder names instead of the actual project names"
+      },
+      {
+        "category": "fix",
+        "text": "Lag when changing or assigning a version to a project"
+      },
+      {
+        "category": "fix",
+        "text": "News view briefly showing 'No news available' while the feed was still loading"
+      },
+      {
+        "category": "improve",
+        "text": "Scrolling performance with many projects; offscreen cards are no longer rendered and fast scrolling no longer stutters"
+      },
+      {
+        "category": "improve",
+        "text": "Pin, category and remove actions now update instantly without a full list refresh"
+      },
+      {
+        "category": "improve",
+        "text": "Removed the version warning icon from project cards when the bound Godot version is not installed"
+      },
+      {
+        "category": "improve",
+        "text": "Open Project button on project cards now shows 'No Version Selected' when no version is bound"
+      },
+      {
+        "category": "add",
+        "text": "Grid view layout for projects: toggle between list and a grid view, with drag-and-drop reordering in both layouts"
+      },
+      {
+        "category": "fix",
+        "text": "Fixed template sync keeping deprecated files: syncing now mirrors the editable template folder, so files you delete, rename, or move while editing no longer linger in the stored template or show up in new projects created from it"
+      }
+    ],
+    "known_issues": [],
+    "created_at": 1785935430
   }
 ]

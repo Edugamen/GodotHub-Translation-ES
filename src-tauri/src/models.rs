@@ -91,6 +91,8 @@ pub struct ChangelogEntry {
     #[serde(default)]
     pub notes: Vec<ChangelogNote>,
     #[serde(default)]
+    pub known_issues: Vec<String>,
+    #[serde(default)]
     pub created_at: i64,
 }
 
@@ -197,6 +199,8 @@ pub struct AppSettings {
     #[serde(default = "default_naming_convention")]
     pub directory_naming_convention: String,
     #[serde(default)]
+    pub git_init_new_projects: bool,
+    #[serde(default)]
     pub new_ui: bool,
 }
 
@@ -233,7 +237,11 @@ fn default_background() -> String {
     "#15171c".to_string()
 }
 fn default_corner_radius() -> f64 {
-    10.0
+    if cfg!(any(target_os = "linux", target_os = "macos")) {
+        5.0
+    } else {
+        10.0
+    }
 }
 fn default_ui_density() -> f64 {
     1.05
@@ -275,12 +283,6 @@ fn default_watch_templates() -> bool {
     true
 }
 
-#[cfg(target_os = "linux")]
-fn default_os_decorations() -> bool {
-    true
-}
-
-#[cfg(not(target_os = "linux"))]
 fn default_os_decorations() -> bool {
     false
 }
@@ -403,6 +405,7 @@ tooltip_delay: default_tooltip_delay(),
             use_os_decorations: default_os_decorations(),
             dismissed_project_paths: vec![],
             directory_naming_convention: default_naming_convention(),
+            git_init_new_projects: false,
             new_ui: false,
         }
     }

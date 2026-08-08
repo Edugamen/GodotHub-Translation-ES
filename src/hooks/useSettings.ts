@@ -9,8 +9,8 @@ import {
 import { api } from '../lib/api'
 import { applyTheme } from '../lib/colors'
 import { applyAppearance } from '../lib/appearance'
-import { isLinux } from '../lib/platform'
 import { useWorkspaces } from './useWorkspaces'
+import { defaultCornerRadius } from '../lib/platform'
 import i18n from 'i18next'
 import type { AppSettings } from '../types'
 
@@ -23,7 +23,7 @@ const DEFAULTS: AppSettings = {
   download_concurrency: 3,
   accent_color: '#457ff2',
   background_color: '#15171c',
-  corner_radius: 10,
+  corner_radius: defaultCornerRadius,
   ui_density: 1.05,
   font_scale: 1.0,
   reduce_motion: false,
@@ -52,8 +52,9 @@ const DEFAULTS: AppSettings = {
   show_scrollbars: true,
   project_icon_opacity: 14,
   language: 'en-US',
-  use_os_decorations: isLinux,
+  use_os_decorations: false,
   directory_naming_convention: 'keep',
+  git_init_new_projects: false,
   new_ui: false,
 }
 

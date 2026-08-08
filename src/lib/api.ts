@@ -71,6 +71,8 @@ export const api = {
   gitChangedFiles: gitApi.changedFiles,
   gitDiscardChanges: gitApi.discardChanges,
   gitInit: gitApi.init,
+  gitInitProject: gitApi.initProject,
+  gitIsAvailable: gitApi.isAvailable,
   gitStageFile: gitApi.stageFile,
   gitUnstageFile: gitApi.unstageFile,
   gitCommit: gitApi.commit,
@@ -124,4 +126,10 @@ export const api = {
 
   searchAssetLibrary: assetLibraryApi.search,
   installAssetAsTemplate: assetLibraryApi.installAsTemplate,
+  installAsset: assetLibraryApi.install,
+  downloadAsset: assetLibraryApi.download,
+  searchAssetStore: assetLibraryApi.searchStore,
+  downloadStoreAsset: assetLibraryApi.downloadStoreAsset,
+  installStoreAsset: assetLibraryApi.installStoreAsset,
+  listAssetLibraryCategories: assetLibraryApi.listCategories,
 }

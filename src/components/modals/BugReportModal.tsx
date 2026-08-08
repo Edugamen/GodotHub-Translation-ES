@@ -9,7 +9,7 @@ interface Props {
   onClose: () => void
 }
 
-const BUG_REPORT_URL = 'https://github.com/RykoTheDev/GodotHub-Releases/issues/new'
+const BUG_REPORT_URL = 'https://github.com/RykoTheDev/GodotHub/issues/new'
 
 interface CapturedError {
   time: string

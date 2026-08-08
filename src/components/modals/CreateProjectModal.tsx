@@ -6,6 +6,7 @@ import { api } from '../../lib/api'
 import { applyNamingConvention } from '../../lib/namingConvention'
 import { useSettings } from '../../hooks/useSettings'
 import { TemplatePreviewModal } from './TemplatePreviewModal'
+import { Toggle } from '../ui/Toggle'
 import {
   IconFolderPlus,
   IconX,
@@ -13,12 +14,14 @@ import {
   IconBookOpen,
   IconAlertTriangle,
   IconSpinner,
+  IconGitBranch,
 } from '../Icons'
 
 interface Props {
   installedVersions: InstalledGodotVersion[]
   defaultLocation?: string | null
   categories?: Category[]
+  initialTemplateId?: string | null
   onClose: () => void
   onCreated: () => void
 }
@@ -42,6 +45,7 @@ const ICON_PRESET_SVG = (
 export function CreateProjectModal({
   installedVersions,
   defaultLocation,
+  initialTemplateId = null,
   onClose,
   onCreated,
   categories = [],
@@ -53,12 +57,16 @@ export function CreateProjectModal({
   const [version, setVersion] = useState(installedVersions[0]?.tag ?? '')
   const [iconPath, setIconPath] = useState<string | null>(null)
   const [iconPreview, setIconPreview] = useState<string | null>(null)
-  const [templateId, setTemplateId] = useState<string | null>(null)
+  const [templateId, setTemplateId] = useState<string | null>(initialTemplateId)
   const [previewTemplate, setPreviewTemplate] = useState<ProjectTemplate | null>(null)
   const [category, setCategory] = useState('')
   const [templates, setTemplates] = useState<ProjectTemplate[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [initGit, setInitGit] = useState(settings.git_init_new_projects)
+  const [gitAvailable, setGitAvailable] = useState(true)
+  const [gitWarning, setGitWarning] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [initializingGit, setInitializingGit] = useState(false)
   const [attempted, setAttempted] = useState(false)
   const nameInputRef = useRef<HTMLInputElement>(null)
 
@@ -101,6 +109,16 @@ export function CreateProjectModal({
   }, [])
 
   useEffect(() => {
+    api
+      .gitIsAvailable()
+      .then((available) => {
+        setGitAvailable(available)
+        if (!available) setInitGit(false)
+      })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
     nameInputRef.current?.focus()
   }, [])
 
@@ -121,13 +139,21 @@ export function CreateProjectModal({
     }
   }, [iconPath])
 
+  const dismiss = () => {
+    if (gitWarning) onCreated()
+    else onClose()
+  }
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') {
+        if (gitWarning) onCreated()
+        else onClose()
+      }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [onClose])
+  }, [gitWarning, onClose, onCreated])
 
   const pickLocation = async () => {
     const folder = await api.pickFolder()
@@ -151,7 +177,7 @@ export function CreateProjectModal({
   const locationInvalid = attempted && !location
 
   const submit = async () => {
-    if (busy) return
+    if (busy || gitWarning) return
     if (!name.trim() || !location) {
       setAttempted(true)
       setError(t('create_project_error'))
@@ -160,7 +186,7 @@ export function CreateProjectModal({
     setBusy(true)
     setError(null)
     try {
-      await api.createProject(
+      const project = await api.createProject(
         name.trim(),
         location,
         version,
@@ -168,6 +194,21 @@ export function CreateProjectModal({
         templateId,
         category || null,
       )
+      if (initGit) {
+        setInitializingGit(true)
+        try {
+          const outcome = await api.gitInitProject(project.path)
+          if (outcome.warning) {
+            setGitWarning(outcome.warning)
+            return
+          }
+        } catch (e) {
+          setGitWarning(String(e))
+          return
+        } finally {
+          setInitializingGit(false)
+        }
+      }
       onCreated()
     } catch (e) {
       setError(String(e))
@@ -184,7 +225,7 @@ export function CreateProjectModal({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={onClose}
+      onClick={dismiss}
     >
       <motion.div
         initial={{ opacity: 0, y: 14, scale: 0.96 }}
@@ -209,7 +250,7 @@ export function CreateProjectModal({
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={dismiss}
             className="focus-ring cursor-pointer p-1.5 rounded-lg text-muted hover:text-ink hover:bg-raised transition-colors shrink-0"
             aria-label={t('close')}
           >
@@ -469,6 +510,28 @@ export function CreateProjectModal({
                 </p>
               </div>
             </div>
+
+            <div className="flex flex-col gap-3 pt-5 border-t border-line">
+              <label className="text-xs font-medium text-muted">
+                {t('other_settings_label')}
+              </label>
+              <label className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <span className="text-xs font-medium text-ink block">
+                    {t('init_git_label')}
+                  </span>
+                  <p className="text-[11px] text-muted mt-1 leading-relaxed">
+                    {gitAvailable ? t('init_git_desc') : t('init_git_unavailable')}
+                  </p>
+                </div>
+                <Toggle
+                  checked={initGit}
+                  onChange={setInitGit}
+                  disabled={busy || !gitAvailable || gitWarning !== null}
+                  label={t('init_git_label')}
+                />
+              </label>
+            </div>
           </div>
 
           
@@ -510,6 +573,12 @@ export function CreateProjectModal({
                           {selectedCategory.name}
                         </span>
                       )}
+                      {initGit && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-accent/10 border border-accent/25 text-accent-bright text-[10px] font-mono font-medium">
+                          <IconGitBranch className="w-3 h-3" />
+                          git
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -544,33 +613,70 @@ export function CreateProjectModal({
           )}
         </AnimatePresence>
 
+        <AnimatePresence>
+          {gitWarning && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+              className="px-6 overflow-hidden"
+            >
+              <div className="flex items-start gap-2.5 rounded-xl border border-amber/25 bg-amber/10 px-4 py-3">
+                <IconAlertTriangle className="w-4 h-4 text-amber shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-amber">
+                    {t('git_init_warning_title')}
+                  </p>
+                  <p className="text-xs text-muted leading-relaxed mt-1 whitespace-pre-wrap break-words">
+                    {gitWarning}
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         
         <div className="flex justify-end gap-2.5 p-6 pt-4 border-t border-line">
-          <motion.button
-            whileHover={{ y: -1 }}
-            whileTap={{ scale: 0.96 }}
-            onClick={onClose}
-            disabled={busy}
-            className="focus-ring cursor-pointer px-4 py-2.5 rounded-lg text-sm text-muted hover:text-ink hover:bg-raised transition-colors disabled:opacity-50"
-          >
-            {t('cancel')}
-          </motion.button>
-          <motion.button
-            whileHover={busy ? undefined : { y: -1 }}
-            whileTap={busy ? undefined : { scale: 0.96 }}
-            onClick={submit}
-            disabled={busy}
-            className="focus-ring px-5 cursor-pointer py-2.5 rounded-lg bg-accent hover:bg-accent-bright disabled:opacity-50 text-sm font-medium text-white transition-colors flex items-center gap-2"
-          >
-            {busy ? (
-              <>
-                <IconSpinner className="w-3.5 h-3.5 animate-spin" />
-                {t('creating')}
-              </>
-            ) : (
-              t('create_project_btn')
-            )}
-          </motion.button>
+          {gitWarning ? (
+            <motion.button
+              whileHover={{ y: -1 }}
+              whileTap={{ scale: 0.96 }}
+              onClick={onCreated}
+              className="focus-ring px-5 cursor-pointer py-2.5 rounded-lg bg-accent hover:bg-accent-bright text-sm font-medium text-white transition-colors"
+            >
+              {t('create_project_done')}
+            </motion.button>
+          ) : (
+            <>
+              <motion.button
+                whileHover={{ y: -1 }}
+                whileTap={{ scale: 0.96 }}
+                onClick={onClose}
+                disabled={busy}
+                className="focus-ring cursor-pointer px-4 py-2.5 rounded-lg text-sm text-muted hover:text-ink hover:bg-raised transition-colors disabled:opacity-50"
+              >
+                {t('cancel')}
+              </motion.button>
+              <motion.button
+                whileHover={busy ? undefined : { y: -1 }}
+                whileTap={busy ? undefined : { scale: 0.96 }}
+                onClick={submit}
+                disabled={busy}
+                className="focus-ring px-5 cursor-pointer py-2.5 rounded-lg bg-accent hover:bg-accent-bright disabled:opacity-50 text-sm font-medium text-white transition-colors flex items-center gap-2"
+              >
+                {busy ? (
+                  <>
+                    <IconSpinner className="w-3.5 h-3.5 animate-spin" />
+                    {initializingGit ? t('initializing_git') : t('creating')}
+                  </>
+                ) : (
+                  t('create_project_btn')
+                )}
+              </motion.button>
+            </>
+          )}
         </div>
       </motion.div>
 

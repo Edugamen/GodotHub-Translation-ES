@@ -1,18 +1,35 @@
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { lazy, Suspense, useEffect, useState, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { listen } from '@tauri-apps/api/event'
-import { ProjectsView } from './views/ProjectsView'
-import { VersionsView } from './views/VersionsView'
-import { NewsView } from './views/NewsView'
-import { SettingsView } from './views/SettingsView'
-import { ChangelogView } from './views/ChangelogView'
-import { TemplatesView } from './views/TemplatesView'
-import { OnboardingView } from './views/OnboardingView'
-import { AssetStoreView } from './views/AssetStoreView'
-import { AppNew } from './ui/new'
+
+const ProjectsView = lazy(() =>
+  import('./views/ProjectsView').then((m) => ({ default: m.ProjectsView })),
+)
+const VersionsView = lazy(() =>
+  import('./views/VersionsView').then((m) => ({ default: m.VersionsView })),
+)
+const NewsView = lazy(() =>
+  import('./views/NewsView').then((m) => ({ default: m.NewsView })),
+)
+const SettingsView = lazy(() =>
+  import('./views/SettingsView').then((m) => ({ default: m.SettingsView })),
+)
+const ChangelogView = lazy(() =>
+  import('./views/ChangelogView').then((m) => ({ default: m.ChangelogView })),
+)
+const TemplatesView = lazy(() =>
+  import('./views/TemplatesView').then((m) => ({ default: m.TemplatesView })),
+)
+const OnboardingView = lazy(() =>
+  import('./views/OnboardingView').then((m) => ({ default: m.OnboardingView })),
+)
+const AssetStoreView = lazy(() =>
+  import('./views/AssetStoreView').then((m) => ({ default: m.AssetStoreView })),
+)
+const AppNew = lazy(() => import('./ui/new').then((m) => ({ default: m.AppNew })))
 import { useSettings } from './hooks/useSettings'
 import { useWorkspaces } from './hooks/useWorkspaces'
 import { useProjectsContext } from './hooks/projectsContext'
@@ -25,10 +42,13 @@ import { CommandPalette } from './components/modals/CommandPalette'
 import { ShortcutCheatsheet } from './components/modals/ShortcutCheatsheet'
 import { CreateWorkspaceModal } from './components/modals/CreateWorkspaceModal'
 import { api } from './lib/api'
+import { setPendingAction } from './lib/pendingAction'
+import { isMac } from './lib/platform'
 import { TitleBar } from './components/Titlebar'
 import { SplashScreen, type SplashPhase } from './components/SplashScreen'
 import { OnboardingTips } from './components/OnboardingTips'
 import { ViewErrorBoundary } from './components/ViewErrorBoundary'
+import { ScrollToTopButton } from './components/ui/ScrollToTopButton'
 import { GitSidebar } from './components/git/GitSidebar'
 import { Sidebar, type Tab } from './components/Sidebar'
 import { SuccessToast, ErrorToast } from './components/ToastNotification'
@@ -45,13 +65,23 @@ import {
 import { TaskTrayProvider } from './hooks/useTaskTray'
 import type { GitStatus, Project } from './types'
 
+function ViewLoading() {
+  const { t } = useTranslation('common')
+  return (
+    <div
+      className="flex items-center justify-center py-24"
+      role="status"
+      aria-label={t('loading')}
+    >
+      <div className="w-8 h-8 rounded-full border-2 border-accent/30 border-t-accent animate-spin" />
+    </div>
+  )
+}
+
 function AppContent() {
   const [tab, setTab] = useState<Tab>('projects')
   const tabRef = useRef(tab)
   tabRef.current = tab
-  const pendingActionRef = useRef<
-    'new-project' | 'import-project' | 'scan-projects' | 'import-version' | 'sync-templates' | null
-  >(null)
 
   const { projects, refresh: refreshProjects } = useProjectsContext()
   const { installed, refreshInstalled } = useGodotVersionsContext()
@@ -112,6 +142,7 @@ function AppContent() {
   const paletteKey = settings.command_palette_keybind || 'k'
 
   useEffect(() => {
+    if (isMac) return
     const w = getCurrentWindow()
     w.setDecorations(settings.use_os_decorations).catch((e) =>
       console.error('Failed to set window decorations:', e),
@@ -157,7 +188,7 @@ function AppContent() {
     if (tabRef.current === 'projects') {
       window.dispatchEvent(new CustomEvent('app:new-project'))
     } else {
-      pendingActionRef.current = 'new-project'
+      setPendingAction('new-project')
       setTab('projects')
     }
   }, [])
@@ -166,7 +197,7 @@ function AppContent() {
     if (tabRef.current === 'projects') {
       window.dispatchEvent(new CustomEvent('app:import-project'))
     } else {
-      pendingActionRef.current = 'import-project'
+      setPendingAction('import-project')
       setTab('projects')
     }
   }, [])
@@ -175,7 +206,7 @@ function AppContent() {
     if (tabRef.current === 'projects') {
       window.dispatchEvent(new CustomEvent('app:scan-projects'))
     } else {
-      pendingActionRef.current = 'scan-projects'
+      setPendingAction('scan-projects')
       setTab('projects')
     }
   }, [])
@@ -184,7 +215,7 @@ function AppContent() {
     if (tabRef.current === 'versions') {
       window.dispatchEvent(new CustomEvent('app:import-version'))
     } else {
-      pendingActionRef.current = 'import-version'
+      setPendingAction('import-version')
       setTab('versions')
     }
   }, [])
@@ -193,7 +224,7 @@ function AppContent() {
     if (tabRef.current === 'templates') {
       window.dispatchEvent(new CustomEvent('app:sync-templates'))
     } else {
-      pendingActionRef.current = 'sync-templates'
+      setPendingAction('sync-templates')
       setTab('templates')
     }
   }, [])
@@ -456,49 +487,63 @@ function AppContent() {
       case 'projects':
         return (
           <ViewErrorBoundary name="Projects">
-            <ProjectsView
-              key={activeId}
-              onShowGitSidebar={(p, s) => setGitSidebarProject({ project: p, gitStatus: s })}
-            />
+            <Suspense fallback={<ViewLoading />}>
+              <ProjectsView
+                key={activeId}
+                onShowGitSidebar={(p, s) => setGitSidebarProject({ project: p, gitStatus: s })}
+              />
+            </Suspense>
           </ViewErrorBoundary>
         )
       case 'versions':
         return (
           <ViewErrorBoundary name="Versions">
-            <VersionsView />
+            <Suspense fallback={<ViewLoading />}>
+              <VersionsView />
+            </Suspense>
           </ViewErrorBoundary>
         )
       case 'news':
         return (
           <ViewErrorBoundary name="News">
-            <NewsView />
+            <Suspense fallback={<ViewLoading />}>
+              <NewsView />
+            </Suspense>
           </ViewErrorBoundary>
         )
       case 'templates':
         return (
           <ViewErrorBoundary name="Templates">
-            <TemplatesView />
+            <Suspense fallback={<ViewLoading />}>
+              <TemplatesView />
+            </Suspense>
           </ViewErrorBoundary>
         )
       case 'asset-store':
         return (
           <ViewErrorBoundary name="Asset Store">
-            <AssetStoreView />
+            <Suspense fallback={<ViewLoading />}>
+              <AssetStoreView />
+            </Suspense>
           </ViewErrorBoundary>
         )
       case 'changelog':
         return (
           <ViewErrorBoundary name="Changelog">
-            <ChangelogView />
+            <Suspense fallback={<ViewLoading />}>
+              <ChangelogView />
+            </Suspense>
           </ViewErrorBoundary>
         )
       case 'settings':
         return (
           <ViewErrorBoundary name="Settings">
-            <SettingsView
-              highlightSetting={highlightSetting}
-              onHighlightDone={() => setHighlightSetting(null)}
-            />
+            <Suspense fallback={<ViewLoading />}>
+              <SettingsView
+                highlightSetting={highlightSetting}
+                onHighlightDone={() => setHighlightSetting(null)}
+              />
+            </Suspense>
           </ViewErrorBoundary>
         )
       default:
@@ -529,16 +574,7 @@ function AppContent() {
         />
 
         <main className="flex-1 overflow-y-auto relative">
-          <AnimatePresence
-            mode="wait"
-            onExitComplete={() => {
-              if (pendingActionRef.current) {
-                const action = pendingActionRef.current
-                pendingActionRef.current = null
-                window.dispatchEvent(new CustomEvent(`app:${action}`))
-              }
-            }}
-          >
+          <AnimatePresence mode="wait">
             <motion.div
               key={tab}
               initial={{ opacity: 0, y: 8 }}
@@ -549,6 +585,8 @@ function AppContent() {
               {renderView()}
             </motion.div>
           </AnimatePresence>
+
+          <ScrollToTopButton />
         </main>
 
         
@@ -688,13 +726,23 @@ export default function App() {
   }
 
   if (!settings.setup_complete) {
-    return <OnboardingView settings={settings} onComplete={update} />
+    return (
+      <Suspense fallback={<ViewLoading />}>
+        <OnboardingView settings={settings} onComplete={update} />
+      </Suspense>
+    )
   }
 
   return (
     <GodotVersionsProvider>
       <TaskTrayProvider>
-        {settings.new_ui ? <AppNew /> : <AppContent />}
+        {settings.new_ui ? (
+          <Suspense fallback={<ViewLoading />}>
+            <AppNew />
+          </Suspense>
+        ) : (
+          <AppContent />
+        )}
       </TaskTrayProvider>
     </GodotVersionsProvider>
   )
