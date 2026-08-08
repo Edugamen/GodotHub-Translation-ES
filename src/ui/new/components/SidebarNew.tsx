@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import type { ComponentType } from 'react'
+import { useTranslation } from 'react-i18next'
 import { IconChevronsLeft } from '../../../components/Icons'
 import type { IconProps } from '../../../components/Icons'
 import { Tooltip } from '../../../components/ui/Tooltip'
@@ -145,7 +145,7 @@ export function SidebarNew({
           <motion.span
             layoutId="new-ui-nav-pill"
             transition={{ type: 'spring', stiffness: 650, damping: 38 }}
-            className="absolute inset-0 rounded-xl bg-overlay border border-accent/40 pointer-events-none"
+            className="absolute inset-0 rounded-xl bg-overlay border border-white/3 pointer-events-none"
           />
         )}
         <Icon

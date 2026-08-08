@@ -143,6 +143,8 @@
   "pin_unpin_desc": "这将{{action}}所有选中的项目。",
   "scanning": "正在扫描…",
   "scan_now": "立即扫描",
+  "scan_complete": "扫描完成",
+  "scan_failed": "扫描失败",
   "drop_godot_zip": "拖放 Godot .zip 文件到此处",
   "drop_project_folders": "拖放 Godot 项目文件夹到此处",
   "uncategorized": "未分类",

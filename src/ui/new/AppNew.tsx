@@ -6,7 +6,7 @@ import { useGodotVersionsContext } from '../../hooks/godotVersionsContext'
 import { SidebarNew } from './components/SidebarNew'
 import { ProjectsViewNew } from './views/ProjectsViewNew'
 import {
-    IconBookOpen,
+  IconBookOpen,
   IconCloudArrowDown,
   IconFolder,
   IconGear,
@@ -72,7 +72,7 @@ export function AppNew() {
   const renderView = () => {
     switch (tab) {
       case 'projects':
-        return <ProjectsViewNew />
+        return <ProjectsViewNew onOpenSettings={() => setTab('settings')} />
       case 'versions':
         return (
           <PlaceholderView
@@ -138,12 +138,12 @@ export function AppNew() {
         </span>
       </header>
 
-      <div className="relative flex-1 flex min-h-0 p-4">
+      <div className="relative flex-1 flex min-h-0 p-4 gap-4">
         {/* New sidebar */}
         <SidebarNew tabs={tabs} activeTab={tab} onTabChange={(id) => setTab(id as NewTab)} />
 
         {/* New view area */}
-        <main className="flex-1 overflow-y-auto relative">{renderView()}</main>
+        <main className="flex-1 self-start min-w-0 px-6 py-4 relative rounded-3xl bg-raised">{renderView()}</main>
       </div>
     </div>
   )

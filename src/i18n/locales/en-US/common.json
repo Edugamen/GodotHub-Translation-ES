@@ -143,6 +143,8 @@
   "pin_unpin_desc": "This will {{action}} all selected projects.",
   "scanning": "Scanning…",
   "scan_now": "Scan Now",
+  "scan_complete": "Scan complete",
+  "scan_failed": "Scan failed",
   "drop_godot_zip": "Drop your Godot .zip file",
   "drop_project_folders": "Drop your Godot project folders",
   "uncategorized": "Uncategorized",
