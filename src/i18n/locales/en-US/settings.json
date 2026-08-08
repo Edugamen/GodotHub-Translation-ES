@@ -186,6 +186,8 @@
   "text_size_desc": "Scales all text (and anything sized relative to it) across the app.",
   "reduce_motion_desc": "Minimizes hover and UI transition animations.",
   "scrollbar_desc": "Hides the scrollbar across the entire app when toggled off. You can still scroll with keyboard, trackpad, or mouse wheel.",
+  "sticky_header": "Sticky header",
+  "sticky_header_desc": "Keeps the projects header, search bar, and filter/sort toolbar visible at the top while scrolling the project list.",
   "icon_opacity_desc": "Controls the background icon opacity on project cards. Lower values make the icon more subtle, higher values make it more visible.",
   "background_color_desc": "Background color applies across all themes. In light mode the app derives card surfaces, borders, and overlays from your chosen background. In dark mode the background sets the base page color.",
   "setup_wizard_desc": "Reopens the first-time setup flow where you can reconfigure scan folders, categories, accent color, and corner radius. Settings already saved will be kept, you can always skip steps you don't need to change.",

@@ -7,6 +7,7 @@
   --color-raised: #323339;
   --color-overlay: #3a3c43;
   --color-line: #3f4147;
+  --color-outline: #3f4147;
   --color-ink: #f2f3f5;
   --color-muted: #949ba4;
   --color-accent: #5865f2;
@@ -22,6 +23,17 @@
   --radius-md: 10px;
   --radius-lg: 14px;
   --radius-xl: 20px;
+  /* Semantic radius tokens — tune once here, used across the new UI.
+     NOTE: the corner-shape plugin bakes these at build time; runtime
+     overrides (scoped to .new-ui) will NOT apply to squircle utilities. */
+  --radius-tag: 10px; /* badges, tags, small pills */
+  --radius-btn: 16px; /* buttons, icon chips */
+  --radius-dropdown-btn: 13px; /* buttons, icon chips */
+  --radius-dropdown: 13px; /* buttons, icon chips */
+  --radius-item: 22px; /* nav items, icon buttons, menu items */
+  --radius-tile: 16px; /* icon tiles */
+  --radius-menu: 24px; /* dropdown menus, popovers */
+  --radius-card: 24px; /* cards */
   --spacing: 4.5px;
 }
 
@@ -141,6 +153,13 @@ textarea::placeholder {
 }
 .icon-wiggle:active svg {
   transform: scale(0.92);
+}
+
+/* Remove the browser's default focus outline app-wide; interactive elements
+   that need a visible focus state use the .focus-ring box-shadow instead. */
+*:focus,
+*:focus-visible {
+  outline: none;
 }
 
 .focus-ring {

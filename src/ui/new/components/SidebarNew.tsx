@@ -135,7 +135,7 @@ export function SidebarNew({
         type="button"
         onClick={() => onTabChange(tab.id)}
         aria-label={hideLabel ? tab.label : undefined}
-        className={`focus-ring cursor-pointer relative flex items-center rounded-xl text-sm font-medium transition-colors ${layoutClass} ${
+        className={`focus-ring cursor-pointer relative flex items-center rounded-item text-sm font-medium transition-colors ${layoutClass} ${
           active
             ? 'text-ink border border-transparent'
             : 'text-muted border border-transparent hover:text-ink hover:bg-raised/60'
@@ -145,7 +145,7 @@ export function SidebarNew({
           <motion.span
             layoutId="new-ui-nav-pill"
             transition={{ type: 'spring', stiffness: 650, damping: 38 }}
-            className="absolute inset-0 rounded-xl bg-overlay border border-white/3 pointer-events-none"
+            className="absolute inset-0 rounded-item bg-overlay border border-outline/50 shadow-md shadow-black/10 pointer-events-none"
           />
         )}
         <Icon
@@ -170,7 +170,7 @@ export function SidebarNew({
       type="button"
       onClick={toggleCollapsed}
       aria-label={collapsed ? t('expand_sidebar') : t('collapse_sidebar')}
-      className={`focus-ring cursor-pointer relative flex items-center justify-center rounded-xl text-sm font-medium transition-colors border border-transparent text-muted hover:text-ink hover:bg-raised/60 ${
+      className={`focus-ring cursor-pointer relative flex items-center justify-center rounded-item text-sm font-medium transition-colors border border-transparent text-muted hover:text-ink hover:bg-raised/60 ${
         collapsed ? 'w-11 h-11 shrink-0' : 'w-9 h-9 ml-auto shrink-0'
       }`}
     >
@@ -199,7 +199,7 @@ export function SidebarNew({
       <motion.div
         animate={{ width: collapsed ? COLLAPSED_WIDTH : width }}
         transition={dragging ? { duration: 0 } : { type: 'spring', stiffness: 650, damping: 38 }}
-        className="flex flex-col h-full rounded-3xl bg-raised overflow-hidden"
+        className="flex flex-col h-full rounded-card bg-raised overflow-hidden"
       >
       <nav className={`flex-1 p-3 flex flex-col gap-1 ${collapsed ? 'items-center' : ''}`}>
         {mainTabs.map((tab) =>
@@ -261,7 +261,7 @@ export function SidebarNew({
           style={knobY != null ? { top: knobY } : undefined}
         >
           <div
-            className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 rounded-md bg-raised border border-line shadow-md shadow-base text-[10px] font-mono text-muted tabular-nums whitespace-nowrap transition-all duration-200 ${
+            className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 rounded-tag bg-raised border border-line shadow-md shadow-base text-[10px] font-mono text-muted tabular-nums whitespace-nowrap transition-all duration-200 ${
               dragging ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'
             }`}
           >

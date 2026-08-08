@@ -5,6 +5,7 @@ import { useGodotVersionsContext } from '../../hooks/godotVersionsContext'
 
 import { SidebarNew } from './components/SidebarNew'
 import { ProjectsViewNew } from './views/ProjectsViewNew'
+import { SettingsViewNew } from './views/SettingsViewNew'
 import {
   IconBookOpen,
   IconCloudArrowDown,
@@ -39,13 +40,13 @@ function PlaceholderView({
 }) {
   return (
     <div className="h-full flex flex-col items-center justify-center gap-4 text-center px-10">
-      <div className="w-14 h-14 rounded-2xl bg-accent/10 border border-accent-dim/30 flex items-center justify-center text-accent-bright text-lg font-semibold">
+      <div className="w-14 h-14 rounded-tile bg-accent/10 border border-accent-dim/30 flex items-center justify-center text-accent-bright text-lg font-semibold">
         {title.slice(0, 1)}
       </div>
       <h2 className="font-display text-xl font-semibold text-ink">{title}</h2>
       <p className="text-sm text-muted max-w-sm leading-relaxed">{description}</p>
       {children}
-      <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-md bg-amber/10 text-amber border border-amber/20">
+      <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-tag bg-amber/10 text-amber border border-amber/20">
         New UI · under construction
       </span>
     </div>
@@ -79,7 +80,7 @@ export function AppNew() {
             title={t('versions')}
             description="The redesigned Versions view will live here as its own file in src/ui/new/views/."
           >
-            <span className="text-xs font-mono text-ink bg-raised px-2 py-0.5 rounded-md">
+            <span className="text-xs font-mono text-ink bg-raised px-2 py-0.5 rounded-tag">
               {installed.length} installed
             </span>
           </PlaceholderView>
@@ -106,12 +107,7 @@ export function AppNew() {
           />
         )
       case 'settings':
-        return (
-          <PlaceholderView
-            title={t('settings')}
-            description="The redesigned Settings view will live here as its own file in src/ui/new/views/."
-          />
-        )
+        return <SettingsViewNew />
       case 'changelog':
         return (
           <PlaceholderView
@@ -130,7 +126,7 @@ export function AppNew() {
         className="shrink-0 h-12 px-5 flex items-center gap-3 border-b border-line select-none"
       >
         <span className="font-display font-semibold tracking-tight">GodotHub</span>
-        <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-accent/15 text-accent-bright border border-accent-dim/40">
+        <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-tag bg-accent/15 text-accent-bright border border-accent-dim/40">
           New UI
         </span>
         <span className="ml-auto text-xs text-muted truncate">
@@ -142,8 +138,14 @@ export function AppNew() {
         {/* New sidebar */}
         <SidebarNew tabs={tabs} activeTab={tab} onTabChange={(id) => setTab(id as NewTab)} />
 
-        {/* New view area */}
-        <main className="flex-1 self-start min-w-0 px-6 py-4 relative rounded-3xl bg-raised">{renderView()}</main>
+        {/* New view area — projects renders its own layout so the sort dropdown can sit below the card; other views keep the generic card */}
+        {tab === 'projects' ? (
+          renderView()
+        ) : (
+          <main className="flex-1 self-start min-w-0 px-6 py-4 relative rounded-card bg-raised">
+            {renderView()}
+          </main>
+        )}
       </div>
     </div>
   )

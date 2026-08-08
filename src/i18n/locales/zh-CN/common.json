@@ -271,6 +271,8 @@
   "sort_name_desc": "名称 (Z–A)",
   "sort_created_desc": "添加日期（最新）",
   "sort_created_asc": "添加日期（最早）",
+  "filter": "筛选",
+  "filter_all": "全部项目",
 
   "args_heading": "启动参数",
   "args_label": "参数",

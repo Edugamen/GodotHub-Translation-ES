@@ -151,15 +151,15 @@ export function ScanButton({ onOpenSettings }: { onOpenSettings?: () => void }) 
                 : t('scanning')
         }
         className={[
-          'relative inline-flex items-center justify-center w-10 h-10 p-0 shrink-0 grow-0 overflow-hidden rounded-xl',
-          'select-none focus-ring border transition-colors duration-300',
+          'relative inline-flex items-center justify-center shadow-md shadow-black/10 border border-outline/50 w-10 h-10 shrink-0 grow-0 overflow-hidden rounded-item',
+          'select-none focus-ring transition-colors duration-300',
           phase === 'idle'
-            ? 'border-white/4 bg-overlay text-muted hover:text-ink hover:bg-raised cursor-pointer'
+            ? 'bg-overlay text-muted hover:text-ink hover:bg-raised cursor-pointer'
             : phase === 'done'
-              ? 'border-transparent bg-mint text-overlay'
+              ? 'bg-mint text-overlay'
               : phase === 'error'
-                ? 'border-transparent bg-danger text-overlay'
-                : 'border-transparent bg-accent text-overlay',
+                ? 'bg-danger text-overlay'
+                : 'bg-accent text-overlay',
         ].join(' ')}
       >
         <span role="status" aria-live="polite" className="sr-only">
