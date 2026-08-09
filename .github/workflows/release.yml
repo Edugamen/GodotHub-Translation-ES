@@ -115,9 +115,6 @@ jobs:
           releaseName: 'GodotHub ${{ github.ref_name }}'
           releaseBody: ${{ steps.release-notes.outputs.body }}
           releaseDraft: true
-          # latest.json is generated deterministically in the generate-latest-json
-          # job below; tauri-action's built-in merge races across the parallel
-          # matrix jobs and can silently drop platform entries.
           uploadUpdaterJson: false
           uploadUpdaterSignatures: true
 
@@ -130,11 +127,7 @@ jobs:
             --clobber
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # Builds the merged updater manifest (latest.json) in the exact v1.2.5 format:
-  # both base keys ({os}-{arch}) and installer-suffixed keys ({os}-{arch}-{installer})
-  # per platform, so tauri-plugin-updater finds its target on every platform.
-  # This runs after ALL matrix jobs finish, so there is no race.
+    
   generate-latest-json:
     needs: build
     runs-on: ubuntu-latest
@@ -269,7 +262,7 @@ jobs:
     needs: [build, generate-latest-json]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
-    
+
     steps:
       - name: Strip 'v' prefix from tag
         id: version
@@ -277,7 +270,15 @@ jobs:
           VERSION="${{ github.ref_name }}"
           VERSION="${VERSION#v}"  # Remove leading 'v' if present
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-      
+
+      - name: Sync winget-pkgs fork
+        env:
+          GH_TOKEN: ${{ secrets.WINGET_TOKEN }}
+        run: |
+          FORK_OWNER=$(gh api user --jq .login)
+          gh api -X POST "repos/${FORK_OWNER}/winget-pkgs/merge-upstream" \
+            -f branch=master
+
       - name: Publish to WinGet
         uses: vedantmgoyal9/winget-releaser@v2
         with:
