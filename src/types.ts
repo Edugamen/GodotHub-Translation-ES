@@ -73,6 +73,8 @@ export interface GitStatus {
 
 export interface GitLogEntry {
   hash: string
+  /** Full parent hashes (empty for root commits) — used to draw the commit graph. */
+  parents: string[]
   message: string
   author: string
   date: string

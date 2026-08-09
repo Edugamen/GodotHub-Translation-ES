@@ -2,8 +2,6 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { IconCheck, IconX } from './Icons'
 
-// --- Success Toast ---
-
 interface SuccessNotificationData {
   count: number
   firstId: string
@@ -58,8 +56,6 @@ export function SuccessToast({ notification, onDismiss }: SuccessToastProps) {
     </AnimatePresence>
   )
 }
-
-// --- Error Toast ---
 
 interface ErrorToastProps {
   message: string | null

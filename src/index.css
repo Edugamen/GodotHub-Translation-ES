@@ -39,7 +39,16 @@ textarea::placeholder {
   width: 8px;
   height: 8px;
 }
+::-webkit-scrollbar:vertical {
+  width: 8px;
+}
+::-webkit-scrollbar:horizontal {
+  height: 8px;
+}
 ::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-track:horizontal {
   background: transparent;
 }
 
@@ -50,11 +59,26 @@ textarea::placeholder {
   background-clip: padding-box;
   transition: background 0.2s ease;
 }
+::-webkit-scrollbar-thumb:horizontal {
+  background: var(--color-line);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background 0.2s ease;
+}
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-accent-dim);
   background-clip: padding-box;
 }
+::-webkit-scrollbar-thumb:horizontal:hover {
+  background: var(--color-accent-dim);
+  background-clip: padding-box;
+}
 ::-webkit-scrollbar-thumb:active {
+  background: var(--color-accent);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:horizontal:active {
   background: var(--color-accent);
   background-clip: padding-box;
 }

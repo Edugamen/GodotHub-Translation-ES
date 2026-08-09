@@ -115,7 +115,6 @@ export function AppNew() {
 
   return (
     <div className="h-screen w-screen flex flex-col bg-base text-ink font-body">
-      {/* New top bar */}
       <header className="shrink-0 h-12 px-5 flex items-center gap-3 border-b border-line">
         <span className="font-display font-semibold tracking-tight">GodotHub</span>
         <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-accent/15 text-accent-bright border border-accent-dim/40">
@@ -127,7 +126,6 @@ export function AppNew() {
       </header>
 
       <div className="relative flex-1 flex min-h-0">
-        {/* New sidebar */}
         <nav className="shrink-0 w-52 border-r border-line p-2 flex flex-col gap-1">
           {TABS.map(({ id, navKey }) => {
             const active = tab === id

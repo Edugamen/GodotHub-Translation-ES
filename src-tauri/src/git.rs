@@ -1,6 +1,6 @@
 use crate::git_helpers;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -17,6 +17,7 @@ pub struct GitStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GitLogEntry {
     pub hash: String,
+    pub parents: Vec<String>,
     pub message: String,
     pub author: String,
     pub date: String,
@@ -67,10 +68,6 @@ pub struct GitDiffLine {
     pub kind: String,
     pub content: String,
 }
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 fn check_is_repo(path: &str) -> bool {
     let dir = PathBuf::from(path);
@@ -292,10 +289,6 @@ fn repo_base_name(url: &str) -> String {
         .to_string()
 }
 
-// ---------------------------------------------------------------------------
-// Status (custom parsing)
-// ---------------------------------------------------------------------------
-
 fn get_git_status_for_path(path: &str) -> GitStatus {
     if !check_is_repo(path) {
         return GitStatus { branch: None, has_uncommitted: false, is_repo: false };
@@ -334,10 +327,6 @@ fn get_git_status_for_path(path: &str) -> GitStatus {
         None => GitStatus { branch: None, has_uncommitted: false, is_repo: true },
     }
 }
-
-// ---------------------------------------------------------------------------
-// Commands
-// ---------------------------------------------------------------------------
 
 #[tauri::command]
 pub fn get_git_status(path: String) -> GitStatus {
@@ -391,7 +380,13 @@ pub fn git_log_entries(path: String) -> Result<Vec<GitLogEntry>, String> {
     }
     let stdout = git_helpers::git_cmd(
         &path,
-        ["log", "--oneline", "--max-count=25", "--format=%h|||%an|||%ar|||%s", "--all"],
+        [
+            "log",
+            "--max-count=100",
+            "--topo-order",
+            "--format=%H|||%P|||%an|||%ar|||%s",
+            "--all",
+        ],
     )
     .map_err(|e| e.to_string())?;
 
@@ -399,13 +394,17 @@ pub fn git_log_entries(path: String) -> Result<Vec<GitLogEntry>, String> {
         .lines()
         .filter(|l| !l.trim().is_empty())
         .filter_map(|line| {
-            let parts: Vec<&str> = line.splitn(4, "|||").collect();
-            if parts.len() < 4 { return None; }
+            let parts: Vec<&str> = line.splitn(5, "|||").collect();
+            if parts.len() < 5 { return None; }
             Some(GitLogEntry {
                 hash: parts[0].to_string(),
-                author: parts[1].to_string(),
-                date: parts[2].to_string(),
-                message: parts[3].to_string(),
+                parents: parts[1]
+                    .split_whitespace()
+                    .map(|p| p.to_string())
+                    .collect(),
+                author: parts[2].to_string(),
+                date: parts[3].to_string(),
+                message: parts[4].to_string(),
             })
         })
         .collect();
@@ -505,12 +504,18 @@ pub fn git_delete_branch(path: String, name: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn git_stash_push(path: String) -> Result<String, String> {
+pub fn git_stash_push(path: String, paths: Option<Vec<String>>) -> Result<String, String> {
     if !check_is_repo(&path) {
         return Err("Not a git repository".into());
     }
-    git_helpers::git_cmd(&path, ["stash", "push", "--include-untracked"])
-        .map_err(|e| e.to_string())
+    let mut args: Vec<&str> = vec!["stash", "push", "--include-untracked"];
+    if let Some(files) = &paths {
+        args.push("--");
+        for file in files {
+            args.push(file.as_str());
+        }
+    }
+    git_helpers::git_cmd(&path, &args).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -560,24 +565,97 @@ pub fn git_stash_drop(path: String, index: usize) -> Result<(), String> {
     Ok(())
 }
 
+fn parse_changed_files(stdout: &str) -> Vec<GitChangedFile> {
+    stdout
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .filter_map(|line| {
+            let status = line.get(..2)?.to_string();
+            let file_path = line.get(2..)?.trim_start().to_string();
+            if status.trim().is_empty() && file_path.is_empty() {
+                None
+            } else {
+                Some(GitChangedFile { path: file_path, status })
+            }
+        })
+        .collect()
+}
+
+fn reroot_to_project(
+    files: Vec<GitChangedFile>,
+    project: &Path,
+    top: &Path,
+) -> Vec<GitChangedFile> {
+    let Ok(prefix) = project.strip_prefix(top) else {
+        return files; // Not under the repo root — keep entries as-is.
+    };
+    if prefix.as_os_str().is_empty() {
+        return files; // Project *is* the repo root — nothing to scope.
+    }
+    files
+        .into_iter()
+        .filter_map(|f| {
+            let rel = Path::new(&f.path).strip_prefix(prefix).ok()?;
+            let path = if rel.as_os_str().is_empty() {
+                project.file_name()?.to_string_lossy().to_string()
+            } else {
+                rel.to_string_lossy().to_string()
+            };
+            Some(GitChangedFile { path, status: f.status })
+        })
+        .collect()
+}
+
+fn check_ignored_files(path: &str, files: &[GitChangedFile]) -> HashSet<String> {
+    let mut args: Vec<&str> = vec!["check-ignore", "--no-index", "--"];
+    for f in files {
+        args.push(f.path.as_str());
+    }
+    let output = git_helpers::git_raw(path, &args).ok();
+    match output {
+        Some(out) if out.status.success() => git_helpers::output_stdout(&out)
+            .lines()
+            .map(|l| l.trim().to_string())
+            .collect(),
+        _ => HashSet::new(),
+    }
+}
+
 #[tauri::command]
 pub fn git_changed_files(path: String) -> Result<Vec<GitChangedFile>, String> {
     if !check_is_repo(&path) {
         return Err("Not a git repository".into());
     }
-    let stdout = git_helpers::git_cmd(&path, ["status", "--porcelain"])
-        .map_err(|e| e.to_string())?;
+    let project = fs::canonicalize(&path).unwrap_or_else(|_| PathBuf::from(&path));
+    let top = if project.join(".git").exists() {
+        Some(project.clone())
+    } else {
+        git_helpers::git_cmd(&path, ["rev-parse", "--show-toplevel"])
+            .ok()
+            .map(|s| {
+                let top = PathBuf::from(s.trim());
+                fs::canonicalize(&top).unwrap_or(top)
+            })
+    };
+    let nested = matches!(&top, Some(t) if *t != project);
 
-    let files: Vec<GitChangedFile> = stdout
-        .lines()
-        .filter(|l| !l.trim().is_empty())
-        .filter_map(|line| {
-            let status = line.get(..2)?.trim().to_string();
-            let file_path = line.get(3..)?.to_string();
-            if status.is_empty() && file_path.is_empty() { None }
-            else { Some(GitChangedFile { path: file_path, status }) }
-        })
-        .collect();
+    let args: &[&str] = if nested {
+        &["status", "--porcelain", "-uall", "--", "."]
+    } else {
+        &["status", "--porcelain"]
+    };
+    let stdout = git_helpers::git_cmd(&path, args).map_err(|e| e.to_string())?;
+
+    let mut files = parse_changed_files(&stdout);
+    if nested {
+        if let Some(top) = top {
+            files = reroot_to_project(files, &project, &top);
+        }
+    }
+    if !files.is_empty() {
+        let ignored = check_ignored_files(&path, &files);
+        files.retain(|f| !ignored.contains(&f.path));
+    }
 
     Ok(files)
 }
@@ -950,10 +1028,6 @@ pub fn clone_repo(app: tauri::AppHandle, url: String, dest: String) -> Result<St
     Ok(clone_target.to_string_lossy().to_string())
 }
 
-// ---------------------------------------------------------------------------
-// Terminal / log opening (not git commands per se)
-// ---------------------------------------------------------------------------
-
 #[tauri::command]
 pub fn open_terminal(_app: tauri::AppHandle, path: String) -> Result<(), String> {
     let dir = PathBuf::from(&path);
@@ -1040,10 +1114,6 @@ pub fn git_log(_app: tauri::AppHandle, path: String) -> Result<(), String> {
     Ok(())
 }
 
-// ---------------------------------------------------------------------------
-// Diff (complex parsing)
-// ---------------------------------------------------------------------------
-
 #[tauri::command]
 pub fn git_file_diff(path: String, file_path: String) -> Result<GitDiffResult, String> {
     if !check_is_repo(&path) {
@@ -1072,17 +1142,12 @@ pub fn git_file_diff(path: String, file_path: String) -> Result<GitDiffResult, S
     Ok(parse_diff_text(&diff_text))
 }
 
-/// Parses the raw `git diff --no-color` output into structured hunks.
-///
-/// Hunk header format: `@@ -old_start[,old_lines] +new_start[,new_lines] @@ [context]`
 fn parse_diff_text(diff_text: &str) -> GitDiffResult {
     let mut result = GitDiffResult { hunks: Vec::new() };
     let mut current_hunk: Option<GitDiffHunk> = None;
 
     for line in diff_text.lines() {
         if let Some(header) = line.strip_prefix("@@ ") {
-            // `header` looks like `-1,3 +1,4 @@ ...`; split off the trailing
-            // ` @@ context` part, then split the ranges on the separating space.
             let Some((old_range, new_range)) = header
                 .split(" @@")
                 .next()
@@ -1094,7 +1159,6 @@ fn parse_diff_text(diff_text: &str) -> GitDiffResult {
             let old_parts: Vec<&str> = old_range.split(',').collect();
             let new_parts: Vec<&str> = new_range.split(',').collect();
             let old_start = old_parts[0].trim_start_matches('-').parse::<u32>().unwrap_or(1);
-            // A missing count (e.g. `-1`) means a single line, so default to 1.
             let old_lines = old_parts.get(1).and_then(|s| s.parse::<u32>().ok()).unwrap_or(1);
             let new_start = new_parts[0].trim_start_matches('+').parse::<u32>().unwrap_or(1);
             let new_lines = new_parts.get(1).and_then(|s| s.parse::<u32>().ok()).unwrap_or(1);
@@ -1171,8 +1235,6 @@ mod tests {
 
     #[test]
     fn parse_diff_text_handles_multiple_hunks_and_count_defaults() {
-        // `-1` / `+1` without a comma mean a single line (defaults to 1),
-        // and `-0,0` for brand-new files must keep its explicit zero count.
         let diff = "\
 @@ -1 +1 @@
  same
@@ -1198,6 +1260,112 @@ mod tests {
     fn parse_diff_text_returns_empty_for_headers_without_content() {
         let result = parse_diff_text("diff --git a/a.txt b/a.txt\nindex 1..2 100644");
         assert!(result.hunks.is_empty());
+    }
+
+    #[test]
+    fn reroot_to_project_filters_and_reroots_nested_project() {
+        let files = vec![
+            GitChangedFile { path: "myproject/game.gd".into(), status: " M".into() },
+            GitChangedFile { path: "godot/editor/editor_layout.cfg".into(), status: " M".into() },
+            GitChangedFile { path: "myproject/sub/asset.png".into(), status: "??".into() },
+        ];
+        let scoped = reroot_to_project(files, Path::new("/repo/myproject"), Path::new("/repo"));
+        assert_eq!(scoped.len(), 2);
+        assert_eq!(scoped[0].path, "game.gd");
+        assert_eq!(scoped[0].status, " M");
+        assert_eq!(scoped[1].path, "sub/asset.png");
+        assert_eq!(scoped[1].status, "??");
+    }
+
+    #[test]
+    fn reroot_to_project_noop_when_project_is_repo_root() {
+        let files = vec![GitChangedFile { path: "a.txt".into(), status: " M".into() }];
+        let scoped = reroot_to_project(files, Path::new("/repo"), Path::new("/repo"));
+        assert_eq!(scoped.len(), 1);
+        assert_eq!(scoped[0].path, "a.txt");
+    }
+
+    #[test]
+    fn reroot_to_project_ignores_sibling_prefixes() {
+        let files = vec![
+            GitChangedFile { path: "myproject-other/x.txt".into(), status: "??".into() },
+            GitChangedFile { path: "myproject/x.txt".into(), status: "??".into() },
+        ];
+        let scoped = reroot_to_project(files, Path::new("/repo/myproject"), Path::new("/repo"));
+        assert_eq!(scoped.len(), 1);
+        assert_eq!(scoped[0].path, "x.txt");
+    }
+
+    #[test]
+    fn reroot_to_project_keeps_deleted_project_folder() {
+        let files = vec![GitChangedFile { path: "myproject/".into(), status: " D".into() }];
+        let scoped = reroot_to_project(files, Path::new("/repo/myproject"), Path::new("/repo"));
+        assert_eq!(scoped.len(), 1);
+        assert_eq!(scoped[0].path, "myproject");
+        assert_eq!(scoped[0].status, " D");
+    }
+
+    #[test]
+    fn parse_changed_files_keeps_index_and_worktree_columns() {
+        let files = parse_changed_files(
+            " M src/unstaged.ts\n\nM  src/staged.ts\nMM src/both.ts\nA  src/added.ts\n?? src/untracked.ts\n D src/removed.ts\n",
+        );
+        assert_eq!(files.len(), 6); // blank line in fixture is skipped
+        assert_eq!(files[0].path, "src/unstaged.ts");
+        assert_eq!(files[0].status, " M");
+        assert_eq!(files[1].path, "src/staged.ts");
+        assert_eq!(files[1].status, "M ");
+        assert_eq!(files[2].path, "src/both.ts");
+        assert_eq!(files[2].status, "MM");
+        assert_eq!(files[3].path, "src/added.ts");
+        assert_eq!(files[3].status, "A ");
+        assert_eq!(files[4].path, "src/untracked.ts");
+        assert_eq!(files[4].status, "??");
+        assert_eq!(files[5].path, "src/removed.ts");
+        assert_eq!(files[5].status, " D");
+    }
+
+    #[test]
+    fn changed_files_preserves_first_character_of_worktree_changes() {
+        let dir = std::env::temp_dir().join(format!("godothub_git_test_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let dir_str = dir.to_string_lossy().to_string();
+        let run = |args: &[&str]| git_helpers::git_cmd(&dir_str, args).unwrap();
+        run(&["init", "-q"]);
+        run(&["config", "user.email", "test@test.com"]);
+        run(&["config", "user.name", "Test"]);
+        std::fs::write(dir.join("project.godot"), "x").unwrap();
+        run(&["add", "."]);
+        run(&["commit", "-qm", "init"]);
+        std::fs::write(dir.join("project.godot"), "y").unwrap();
+
+        let files = git_changed_files(dir_str).unwrap();
+        assert_eq!(files.len(), 1, "expected exactly one change, got {files:?}");
+        assert_eq!(files[0].path, "project.godot");
+        assert_eq!(files[0].status, " M");
+
+        let parent = std::env::temp_dir().join(format!("godothub_git_test_nested_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&parent);
+        std::fs::create_dir_all(parent.join("sub")).unwrap();
+        let parent_str = parent.to_string_lossy().to_string();
+        let proj_str = parent.join("sub").to_string_lossy().to_string();
+        let run2 = |wd: &str, args: &[&str]| git_helpers::git_cmd(wd, args).unwrap();
+        run2(&parent_str, &["init", "-q"]);
+        run2(&parent_str, &["config", "user.email", "test@test.com"]);
+        run2(&parent_str, &["config", "user.name", "Test"]);
+        std::fs::write(parent.join("sub").join("project.godot"), "x").unwrap();
+        std::fs::write(parent.join("outside.txt"), "x").unwrap();
+        run2(&parent_str, &["add", "."]);
+        run2(&parent_str, &["commit", "-qm", "init"]);
+        std::fs::write(parent.join("sub").join("project.godot"), "y").unwrap();
+        let files = git_changed_files(proj_str.clone()).unwrap();
+        assert_eq!(files.len(), 1, "expected one in-project change, got {files:?}");
+        assert_eq!(files[0].path, "project.godot");
+        assert_eq!(files[0].status, " M");
+
+        let _ = std::fs::remove_dir_all(&parent);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

@@ -30,8 +30,8 @@ export const gitApi = {
     invoke<void>('git_create_branch', { path, name }),
   deleteBranch: (path: string, name: string) =>
     invoke<void>('git_delete_branch', { path, name }),
-  stashPush: (path: string) =>
-    invoke<string>('git_stash_push', { path }),
+  stashPush: (path: string, paths?: string[]) =>
+    invoke<string>('git_stash_push', { path, paths }),
   stashList: (path: string) =>
     invoke<GitStashEntry[]>('git_stash_list', { path }),
   stashApply: (path: string, index: number) =>

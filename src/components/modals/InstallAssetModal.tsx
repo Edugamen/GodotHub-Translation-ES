@@ -147,7 +147,6 @@ export function InstallAssetModal({ asset, onClose, onInstalled }: Props) {
         onClick={(e) => e.stopPropagation()}
         className="bg-surface border border-line rounded-2xl w-full max-w-md flex flex-col overflow-hidden shadow-2xl"
       >
-        {/* Header */}
         <div className="flex items-start gap-3 p-5 pb-4">
           <div className="w-11 h-11 rounded-xl bg-raised border border-line flex items-center justify-center overflow-hidden shrink-0">
             {asset.icon_url ? (
@@ -183,7 +182,6 @@ export function InstallAssetModal({ asset, onClose, onInstalled }: Props) {
           </button>
         </div>
 
-        {/* Tabs */}
         <div className="px-5 pb-3">
           <div className="flex items-center gap-1 p-1 rounded-xl border border-line bg-raised">
             <button

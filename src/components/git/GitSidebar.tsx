@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AnimatePresence, motion } from 'framer-motion'
 import type {
@@ -11,15 +12,16 @@ import type {
 } from '../../types'
 import { api } from '../../lib/api'
 import { DiffViewer } from './DiffViewer'
+import { CommitGraph } from './CommitGraph'
 import { GitResultDialog, parseGitError } from './GitResultDialog'
 import { MergeConflictDialog } from './MergeConflictDialog'
 import { Tooltip } from '../ui/Tooltip'
+import { ContextMenu, type ContextMenuSection } from '../ui/ContextMenu'
 import {
   IconX,
   IconGitBranch,
   IconCloudArrowDown,
   IconRefresh,
-  IconExternalLink,
   IconTerminal,
   IconTrash,
   IconArrowUpDown,
@@ -30,6 +32,10 @@ import {
   IconAlertTriangle,
   IconInfo,
   IconBomb,
+  IconPlus,
+  IconCopy,
+  IconCode,
+  IconChevronRight,
 } from '../Icons'
 import { ConfirmDialog } from '../modals/ConfirmDialog'
 
@@ -58,14 +64,156 @@ function truncateMessage(msg: string): string {
 
 function statusLabel(status: string): { short: string; color: string; label: string } {
   const s = status.trim()
-  if (s === 'M' || s === 'M ') return { short: 'M', color: 'text-amber', label: 'Modified' }
-  if (s === 'A' || s === 'A ') return { short: 'A', color: 'text-mint', label: 'Added' }
-  if (s === 'D' || s === 'D ') return { short: 'D', color: 'text-danger', label: 'Deleted' }
-  if (s === 'R' || s === 'R ') return { short: 'R', color: 'text-accent-bright', label: 'Renamed' }
-  if (s === 'C' || s === 'C ') return { short: 'C', color: 'text-accent-bright', label: 'Copied' }
+  const primary = s.length >= 2 && s[0] !== ' ' ? s[0] : s[s.length - 1] ?? ''
+  if (primary === 'M') return { short: 'M', color: 'text-amber', label: 'Modified' }
+  if (primary === 'A') return { short: 'A', color: 'text-mint', label: 'Added' }
+  if (primary === 'D') return { short: 'D', color: 'text-danger', label: 'Deleted' }
+  if (primary === 'R') return { short: 'R', color: 'text-accent-bright', label: 'Renamed' }
+  if (primary === 'C') return { short: 'C', color: 'text-accent-bright', label: 'Copied' }
   if (s.includes('?')) return { short: '?', color: 'text-muted', label: 'Untracked' }
   if (s.includes('U')) return { short: 'U', color: 'text-danger', label: 'Unmerged' }
   return { short: s, color: 'text-muted', label: s }
+}
+
+function FileRow({
+  file,
+  staged,
+  busy,
+  onDiff,
+  onToggleStage,
+  onDiscard,
+  onContextMenu,
+}: {
+  file: GitChangedFile
+  staged: boolean
+  busy: boolean
+  onDiff: () => void
+  onToggleStage: () => void
+  onDiscard: () => void
+  onContextMenu: (x: number, y: number) => void
+}) {
+  const { t } = useTranslation('git')
+  const info = statusLabel(file.status)
+  const untracked = file.status.trim().includes('?')
+  const slash = file.path.lastIndexOf('/')
+  const folder = slash >= 0 ? file.path.slice(0, slash + 1) : ''
+  const name = slash >= 0 ? file.path.slice(slash + 1) : file.path
+  return (
+    <div
+      className="group flex items-center gap-1.5 pl-5 pr-1 py-1 rounded-md hover:bg-raised transition-colors"
+      onContextMenu={(e) => {
+        e.preventDefault()
+        onContextMenu(e.clientX, e.clientY)
+      }}
+    >
+      <span className={`font-mono text-[10px] font-bold w-5 shrink-0 text-center ${info.color}`}>{info.short}</span>
+      <button
+        onClick={onDiff}
+        disabled={untracked || busy}
+        title={info.label}
+        className="flex-1 min-w-0 text-left text-[11px] truncate cursor-pointer disabled:cursor-default transition-colors"
+      >
+        {folder && <span className="text-muted/50">{folder}</span>}
+        <span className="text-ink/90 group-hover:text-accent-bright transition-colors">{name}</span>
+      </button>
+      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button
+          onClick={onDiff}
+          disabled={untracked || busy}
+          title={t('view_diff')}
+          aria-label={t('view_diff')}
+          className="focus-ring cursor-pointer p-1 rounded text-muted/50 hover:text-accent-bright hover:bg-raised disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        >
+          <IconCode className="w-3 h-3" />
+        </button>
+        <button
+          onClick={onToggleStage}
+          disabled={busy}
+          title={staged ? t('unstage_file') : t('stage_file')}
+          aria-label={staged ? t('unstage_file') : t('stage_file')}
+          className="focus-ring cursor-pointer p-1 rounded text-muted/50 hover:text-accent-bright hover:bg-raised disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        >
+          {staged ? <IconX className="w-3 h-3" /> : <IconPlus className="w-3 h-3" />}
+        </button>
+        <button
+          onClick={onDiscard}
+          disabled={busy}
+          title={t('discard')}
+          aria-label={t('discard')}
+          className="focus-ring cursor-pointer p-1 rounded text-muted/50 hover:text-danger hover:bg-raised disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        >
+          <IconTrash className="w-3 h-3" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * VS Code-style collapsible group header: label + count badge, with batch
+ * actions revealed on hover (e.g. stage all / unstage all / discard all).
+ */
+function ChangeGroup({
+  label,
+  count,
+  collapsed,
+  onToggle,
+  actions,
+  children,
+}: {
+  label: string
+  count: number
+  collapsed: boolean
+  onToggle: () => void
+  actions: { icon: ReactNode; title: string; onClick: () => void; disabled?: boolean; danger?: boolean }[]
+  children: ReactNode
+}) {
+  return (
+    <div className="flex flex-col">
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={!collapsed}
+        className="group/chg focus-ring flex items-center gap-1.5 px-1 py-1.5 rounded-md cursor-pointer select-none hover:bg-raised transition-colors"
+        onClick={onToggle}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onToggle()
+          }
+        }}
+      >
+        <IconChevronRight
+          className={`w-3 h-3 text-muted/60 shrink-0 transition-transform duration-150 ${collapsed ? '' : 'rotate-90'}`}
+        />
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">{label}</span>
+        <span className="text-[9px] font-semibold text-muted/60 px-1.5 py-px rounded-full bg-raised leading-4">{count}</span>
+        <div className="flex-1" />
+        <div
+          className="flex items-center gap-0.5 opacity-0 group-hover/chg:opacity-100 transition-opacity"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {actions.map((a) => (
+            <button
+              key={a.title}
+              onClick={a.onClick}
+              disabled={a.disabled}
+              title={a.title}
+              aria-label={a.title}
+              className={`focus-ring cursor-pointer p-1 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                a.danger
+                  ? 'text-muted hover:text-danger hover:bg-raised'
+                  : 'text-muted hover:text-accent-bright hover:bg-raised'
+              }`}
+            >
+              {a.icon}
+            </button>
+          ))}
+        </div>
+      </div>
+      {!collapsed && <div className="flex flex-col gap-px pb-1">{children}</div>}
+    </div>
+  )
 }
 
 function Checkbox({
@@ -120,7 +268,10 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
   const [changedFiles, setChangedFiles] = useState<GitChangedFile[]>([])
   const [changesLoading, setChangesLoading] = useState(true)
 
-  const [stagedFiles, setStagedFiles] = useState<Set<string>>(new Set())
+  const [collapsedGroups, setCollapsedGroups] = useState<{ staged: boolean; changes: boolean }>({
+    staged: false,
+    changes: false,
+  })
   const [commitMessage, setCommitMessage] = useState('')
   const [amendMode, setAmendMode] = useState(false)
   const [pushAfterCommit, setPushAfterCommit] = useState(false)
@@ -136,6 +287,14 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
   const [showRemoteInput, setShowRemoteInput] = useState(false)
 
   const [diffFile, setDiffFile] = useState<string | null>(null)
+
+  const [fileMenu, setFileMenu] = useState<{
+    x: number
+    y: number
+    file: GitChangedFile
+    staged: boolean
+  } | null>(null)
+  const [discardFileTarget, setDiscardFileTarget] = useState<GitChangedFile | null>(null)
 
   const [showMergeConflicts, setShowMergeConflicts] = useState(false)
   const [mergeActive, setMergeActive] = useState(false)
@@ -235,7 +394,6 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
       setBranches(branchList)
       setChangedFiles(files)
       setStashes(stashList)
-      if (files.length === 0) setStagedFiles(new Set())
     } catch { /* fallback */ }
   }, [project.path])
 
@@ -376,39 +534,18 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
     })
   const handleInit = () => doAction('init', async () => { await api.gitInit(project.path) })
 
-  const toggleStage = (filePath: string) => {
-    setStagedFiles((prev) => {
-      const next = new Set(prev)
-      if (next.has(filePath)) next.delete(filePath)
-      else next.add(filePath)
-      return next
-    })
-  }
-
-  const selectAllUnstaged = () => {
-    setStagedFiles((prev) => {
-      const next = new Set(prev)
-      for (const f of unstagedFiles) {
-        next.add(f.path)
-      }
-      return next
-    })
-  }
-
-  const deselectAll = () => {
-    setStagedFiles(new Set())
-  }
-
-  const handleStageFiles = async () => {
-    if (stagedFiles.size === 0) return
-    setBusyAction('stage')
+  /** Stage every remaining change (VS Code: "Stage All Changes"). */
+  const stageAllChanges = async () => {
+    if (unstagedFiles.length === 0) return
+    setBusyAction('stage-all')
     try {
-      for (const f of stagedFiles) {
-        await api.gitStageFile(project.path, f)
+      for (const f of unstagedFiles) {
+        await api.gitStageFile(project.path, f.path)
       }
-      setStagedFiles(new Set())
       await refreshAll()
-      addToast('success', t('git_files_staged', { ns: 'common', count: stagedFiles.size }))
+      onRefresh()
+      window.dispatchEvent(new CustomEvent('app:refresh-git-status'))
+      addToast('success', t('git_files_staged', { ns: 'common', count: unstagedFiles.length }))
     } catch (e) {
       showGitError(String(e))
     } finally {
@@ -416,14 +553,110 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
     }
   }
 
+  /** Unstage every staged change (VS Code: "Unstage All Changes"). */
+  const unstageAllChanges = async () => {
+    if (gitStagedFiles.length === 0) return
+    setBusyAction('unstage-all')
+    try {
+      for (const f of gitStagedFiles) {
+        await api.gitUnstageFile(project.path, f.path)
+      }
+      await refreshAll()
+      onRefresh()
+      window.dispatchEvent(new CustomEvent('app:refresh-git-status'))
+      addToast('success', t('unstaged_all'))
+    } catch (e) {
+      showGitError(String(e))
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
+  /** Stage or unstage a single file directly from its row. */
+  const quickStage = async (filePath: string, staged: boolean) => {
+    setBusyAction(`quick:${filePath}`)
+    try {
+      if (staged) await api.gitUnstageFile(project.path, filePath)
+      else await api.gitStageFile(project.path, filePath)
+      await refreshAll()
+      onRefresh()
+      window.dispatchEvent(new CustomEvent('app:refresh-git-status'))
+    } catch (e) {
+      showGitError(String(e))
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
+  const copyPath = async (filePath: string) => {
+    try {
+      await navigator.clipboard.writeText(filePath)
+      addToast('success', t('path_copied'))
+    } catch {
+      addToast('error', t('path_copy_failed'))
+    }
+  }
+
+  /** Discard a single file: stash it first (matching the all-files discard) so the change can be recovered. */
+  const handleDiscardFile = async (f: GitChangedFile) => {
+    setBusyAction(`discard:${f.path}`)
+    try {
+      await api.gitStashPush(project.path, [f.path])
+      addToast('success', t('file_discarded', { file: f.path }))
+      await refreshAll()
+      onRefresh()
+      window.dispatchEvent(new CustomEvent('app:refresh-git-status'))
+    } catch (e) {
+      showGitError(String(e))
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
+  const buildFileMenuItems = (file: GitChangedFile, staged: boolean): ContextMenuSection[] => {
+    const busy = busyAction !== null
+    return [
+      {
+        label: t('view_diff'),
+        icon: IconCode,
+        onClick: () => setDiffFile(file.path),
+        disabled: file.status.trim().includes('?'),
+      },
+      staged
+        ? {
+            label: t('unstage_file'),
+            icon: IconX,
+            onClick: () => quickStage(file.path, true),
+            disabled: busy,
+          }
+        : {
+            label: t('stage_file'),
+            icon: IconPlus,
+            onClick: () => quickStage(file.path, false),
+            disabled: busy,
+          },
+      { type: 'separator' },
+      {
+        label: t('copy_path'),
+        icon: IconCopy,
+        onClick: () => copyPath(file.path),
+      },
+      {
+        label: t('discard'),
+        icon: IconTrash,
+        variant: 'danger',
+        onClick: () => setDiscardFileTarget(file),
+        disabled: busy,
+      },
+    ]
+  }
+
   const handleCommit = async () => {
     if (!commitMessage.trim()) return
     const msg = commitMessage.trim()
     setBusyAction('commit')
     try {
-      const filesToStage = pendingStageFiles.length > 0
-        ? pendingStageFiles
-        : unstagedFiles.filter((f) => !f.status.trim().includes('?'))
+      const filesToStage = unstagedFiles.filter((f) => !f.status.trim().includes('?'))
       if (filesToStage.length > 0) {
         for (const f of filesToStage) {
           await api.gitStageFile(project.path, f.path)
@@ -456,7 +689,6 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
       setCommitMessage('')
       setAmendMode(false)
       setPushAfterCommit(false)
-      setStagedFiles(new Set())
       await refreshAll()
       onRefresh()
       window.dispatchEvent(new CustomEvent('app:refresh-git-status'))
@@ -545,13 +777,28 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
 
   const currentBranch = branches.find((b) => b.is_current)
 
-  const isStaged = (f: GitChangedFile) => {
-    const s = f.status.trim()
-    return s.length === 2 && s[0] !== ' ' && s[0] !== '?' && s[1] === ' '
-  }
-  const gitStagedFiles = changedFiles.filter((f) => isStaged(f))
-  const unstagedFiles = changedFiles.filter((f) => !isStaged(f) && !stagedFiles.has(f.path))
-  const pendingStageFiles = changedFiles.filter((f) => stagedFiles.has(f.path))
+  const isStaged = (f: GitChangedFile) =>
+    f.status.length >= 2 && f.status[0] !== ' ' && f.status[0] !== '?'
+  const isUnstaged = (f: GitChangedFile) =>
+    f.status.startsWith('??') ||
+    (f.status.length >= 2 ? f.status[1] !== ' ' : f.status.trim() !== '')
+  const gitStagedFiles = changedFiles.filter(isStaged)
+  const unstagedFiles = changedFiles.filter(isUnstaged)
+
+  const prevGroupCounts = useRef({ staged: 0, changes: 0 })
+  useEffect(() => {
+    if (gitStagedFiles.length > 0 && prevGroupCounts.current.staged === 0) {
+      setCollapsedGroups((c) => (c.staged ? { ...c, staged: false } : c))
+    }
+    if (unstagedFiles.length > 0 && prevGroupCounts.current.changes === 0) {
+      setCollapsedGroups((c) => (c.changes ? { ...c, changes: false } : c))
+    }
+    prevGroupCounts.current = { staged: gitStagedFiles.length, changes: unstagedFiles.length }
+  }, [gitStagedFiles.length, unstagedFiles.length])
+
+  const Skeleton = ({ className = 'h-7' }: { className?: string }) => (
+    <div className={`${className} rounded-md bg-raised animate-pulse`} />
+  )
 
   return (
     <div className="w-[380px] h-full flex flex-col overflow-hidden relative">
@@ -708,7 +955,11 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
                 </div>
               )}
               {branchesLoading ? (
-                <div className="flex items-center gap-2 py-2"><IconRefresh className="w-3 h-3 animate-spin text-muted" /><span className="text-[11px] text-muted">{t('loading_branches')}</span></div>
+                <div className="flex flex-col gap-1.5 py-1">
+                  <Skeleton />
+                  <Skeleton />
+                  <Skeleton className="h-6" />
+                </div>
               ) : branches.length === 0 ? (
                 <p className="text-[11px] text-muted/60 py-2">No branches found.</p>
               ) : (
@@ -747,113 +998,147 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
             </div>
 
             
+
+            
+            
+            {(undoHistory.length > 0 || redoHistory.length > 0) && (
+              <div className="px-5 pt-4 pb-3 border-b border-line">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted/60">Actions</h4>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  {redoHistory.slice(0, 3).map((entry) => (
+                    <button key={`redo-${entry.id}`}
+                      onClick={() => handleRedo(entry)}
+                      disabled={busyAction !== null}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-md opacity-40 hover:opacity-100 hover:bg-raised transition-all disabled:opacity-20 disabled:cursor-not-allowed w-full text-left cursor-pointer">
+                      <IconHistory className="w-3 h-3 text-muted shrink-0" />
+                      <span className="text-[11px] text-muted truncate flex-1">{t('redo')} {entry.label}</span>
+                    </button>
+                  ))}
+                  {undoHistory.slice(0, 5).map((entry) => (
+                    <button key={`undo-${entry.id}`}
+                      onClick={() => handleUndo(entry)}
+                      disabled={busyAction !== null}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-md hover:bg-raised transition-all disabled:opacity-40 disabled:cursor-not-allowed w-full text-left cursor-pointer group">
+                      <IconHistory className="w-3 h-3 text-accent-bright shrink-0" />
+                      <span className="text-[11px] text-muted truncate flex-1 group-hover:text-ink transition-colors">{entry.label}</span>
+                      <span className="text-[9px] text-accent-bright font-semibold uppercase shrink-0">{t('undo')}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            
             <div className="px-5 pt-4 pb-2 border-b border-line">
               <div className="flex items-center justify-between mb-2">
-                <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted/60">Changes</h4>
-                {(unstagedFiles.length > 0 || stagedFiles.size > 0) && (
-                  <div className="flex items-center gap-2">
-                    
-                    {stagedFiles.size < unstagedFiles.length && (
-                      <button onClick={selectAllUnstaged}
-                        className="focus-ring cursor-pointer text-[10px] text-accent-bright hover:underline transition-colors">{t('select_all')}</button>
-                    )}
-                    {(stagedFiles.size > 1 || (stagedFiles.size > 0 && unstagedFiles.length === 0)) && (
-                      <button onClick={deselectAll}
-                        className="focus-ring cursor-pointer text-[10px] text-muted hover:text-ink hover:underline transition-colors">{t('deselect_all')}</button>
-                    )}
-                    <span className="text-muted/30">·</span>
-                    {(stagedFiles.size > 1 || (stagedFiles.size > 0 && unstagedFiles.length === 0)) && (
-                      <button onClick={() => setShowDiscardConfirm(true)} disabled={busyAction !== null}
-                        className="focus-ring cursor-pointer text-[10px] text-danger hover:underline disabled:opacity-40 disabled:cursor-not-allowed transition-colors">{t('discard_all')}</button>
-                    )}
-                    {stagedFiles.size > 0 && (
-                      <button onClick={handleStageFiles} disabled={busyAction !== null}
-                        className="focus-ring cursor-pointer text-[10px] text-mint hover:underline disabled:opacity-40 disabled:cursor-not-allowed transition-colors">Stage ({stagedFiles.size})</button>
-                    )}
-                  </div>
-                )}
+                <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted/60">Stashes</h4>
               </div>
+              {stashesLoading ? (
+                <div className="flex flex-col gap-1.5 py-1">
+                  <Skeleton className="h-6" />
+                  <Skeleton className="h-6" />
+                </div>
+              ) : stashes.length === 0 ? (
+                <p className="text-[11px] text-muted/60 py-2">No stashes.</p>
+              ) : (
+                <div className="flex flex-col gap-0.5 max-h-[120px] overflow-y-auto">
+                  {stashes.map((s) => (
+                    <div key={s.index} className="group flex items-center gap-2 px-2.5 py-1.5 rounded-md hover:bg-raised transition-colors">
+                      <IconHistory className="w-3 h-3 text-muted shrink-0" />
+                      <span className="text-[11px] font-mono text-muted truncate flex-1">{s.message}</span>
+                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => handleStashApply(s.index)} disabled={busyAction !== null}
+                          className="focus-ring cursor-pointer p-1 rounded text-muted hover:text-accent-bright transition-colors" title={t('git_apply_stash', { ns: 'common' })}><IconCheck className="w-3 h-3" /></button>
+                        <button onClick={() => handleStashDrop(s.index)} disabled={busyAction !== null}
+                          className="focus-ring cursor-pointer p-1 rounded text-muted hover:text-danger transition-colors" title={t('git_drop_stash', { ns: 'common' })}><IconTrash className="w-3 h-3" /></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
+            
+            <div className="px-5 pt-4 pb-2 border-b border-line">
               {changesLoading ? (
-                <div className="flex items-center gap-2 py-2"><IconRefresh className="w-3 h-3 animate-spin text-muted" /><span className="text-[11px] text-muted">{t('checking_changes')}</span></div>
+                <div className="flex flex-col gap-1.5 py-1">
+                  <Skeleton />
+                  <Skeleton className="h-5" />
+                  <Skeleton className="h-5" />
+                </div>
               ) : changedFiles.length === 0 ? (
                 <p className="text-[11px] text-muted/60 py-2">{t('working_tree_clean')}</p>
               ) : (
-                <div className="flex flex-col gap-0.5 max-h-[220px] overflow-y-auto">
-                  
+                <div className="flex flex-col max-h-[260px] overflow-y-auto -mx-1 px-1">
                   {gitStagedFiles.length > 0 && (
-                    <>
-                      <div className="flex items-center gap-1.5 px-1 py-1 mt-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-mint shrink-0" />
-                        <span className="text-[9px] font-semibold uppercase text-mint tracking-wider">Staged ({gitStagedFiles.length})</span>
-                      </div>
-                      {gitStagedFiles.map((f, i) => {
-                        const info = statusLabel(f.status)
-                        return (
-                          <div key={`git-staged-${f.path}-${i}`}
-                            className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-mint/5 hover:bg-mint/10 transition-colors">
-                            <span className="w-4 h-4 shrink-0" /> 
-                            <span className={`font-mono text-[10px] font-bold w-4 shrink-0 ${info.color}`}>{info.short}</span>
-                            <button onClick={() => setDiffFile(f.path)}
-                              className="flex-1 text-left text-[11px] font-mono text-muted truncate hover:text-accent-bright transition-colors cursor-pointer">{f.path}</button>
-                          </div>
-                        )
-                      })}
-                    </>
+                    <ChangeGroup
+                      label={t('staged_changes')}
+                      count={gitStagedFiles.length}
+                      collapsed={collapsedGroups.staged}
+                      onToggle={() => setCollapsedGroups((c) => ({ ...c, staged: !c.staged }))}
+                      actions={[
+                        {
+                          icon: <IconX className="w-3 h-3" />,
+                          title: t('unstage_all_changes'),
+                          onClick: unstageAllChanges,
+                          disabled: busyAction !== null,
+                        },
+                      ]}
+                    >
+                      {gitStagedFiles.map((f) => (
+                        <FileRow
+                          key={`staged-${f.path}`}
+                          file={f}
+                          staged
+                          busy={busyAction !== null}
+                          onDiff={() => setDiffFile(f.path)}
+                          onToggleStage={() => quickStage(f.path, true)}
+                          onDiscard={() => setDiscardFileTarget(f)}
+                          onContextMenu={(x, y) => setFileMenu({ x, y, file: f, staged: true })}
+                        />
+                      ))}
+                    </ChangeGroup>
                   )}
-
-                  
-                  {pendingStageFiles.length > 0 && (
-                    <>
-                      <div className="flex items-center gap-1.5 px-1 py-1 mt-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-accent-bright shrink-0" />
-                        <span className="text-[9px] font-semibold uppercase text-accent-bright tracking-wider">{t('pending_stage', { count: pendingStageFiles.length })}</span>
-                      </div>
-                      {pendingStageFiles.map((f, i) => {
-                        const info = statusLabel(f.status)
-                        return (
-                          <div key={`staged-${f.path}-${i}`}
-                            className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-accent/5 hover:bg-accent/10 transition-colors">
-                            <Checkbox checked={true} onChange={() => toggleStage(f.path)} />
-                            <span className={`font-mono text-[10px] font-bold w-4 shrink-0 ${info.color}`}>{info.short}</span>
-                            <button onClick={() => setDiffFile(f.path)}
-                              className="flex-1 text-left text-[11px] font-mono text-muted truncate hover:text-accent-bright transition-colors cursor-pointer">{f.path}</button>
-                          </div>
-                        )
-                      })}
-                    </>
-                  )}
-
-                  
                   {unstagedFiles.length > 0 && (
-                    <>
-                      <div className="flex items-center justify-between gap-1.5 px-1 py-1 mt-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber shrink-0" />
-                          <span className="text-[9px] font-semibold uppercase text-amber tracking-wider">
-                            {unstagedFiles.length === changedFiles.length - gitStagedFiles.length - pendingStageFiles.length ? t('unstaged') : t('unstaged_count', { count: unstagedFiles.length })}
-                          </span>
-                        </div>
-                      </div>
-                      {unstagedFiles.map((f, i) => {
-                        const info = statusLabel(f.status)
-                        const checked = stagedFiles.has(f.path)
-                        return (
-                          <div key={`unstaged-${f.path}-${i}`}
-                            className="flex items-center gap-2 px-2.5 py-1.5 rounded-md hover:bg-raised transition-colors">
-                            <Checkbox checked={checked} onChange={() => toggleStage(f.path)} />
-                            <span className={`font-mono text-[10px] font-bold w-4 shrink-0 ${info.color}`}>{info.short}</span>
-                            <button onClick={() => setDiffFile(f.path)}
-                              className="flex-1 text-left text-[11px] font-mono text-muted truncate hover:text-accent-bright transition-colors cursor-pointer">{f.path}</button>
-                          </div>
-                        )
-                      })}
-                    </>
+                    <ChangeGroup
+                      label={t('changes_title')}
+                      count={unstagedFiles.length}
+                      collapsed={collapsedGroups.changes}
+                      onToggle={() => setCollapsedGroups((c) => ({ ...c, changes: !c.changes }))}
+                      actions={[
+                        {
+                          icon: <IconPlus className="w-3 h-3" />,
+                          title: t('stage_all_changes'),
+                          onClick: stageAllChanges,
+                          disabled: busyAction !== null,
+                        },
+                        {
+                          icon: <IconTrash className="w-3 h-3" />,
+                          title: t('discard_all_changes'),
+                          onClick: () => setShowDiscardConfirm(true),
+                          disabled: busyAction !== null,
+                          danger: true,
+                        },
+                      ]}
+                    >
+                      {unstagedFiles.map((f) => (
+                        <FileRow
+                          key={`unstaged-${f.path}`}
+                          file={f}
+                          staged={false}
+                          busy={busyAction !== null}
+                          onDiff={() => setDiffFile(f.path)}
+                          onToggleStage={() => quickStage(f.path, false)}
+                          onDiscard={() => setDiscardFileTarget(f)}
+                          onContextMenu={(x, y) => setFileMenu({ x, y, file: f, staged: false })}
+                        />
+                      ))}
+                    </ChangeGroup>
                   )}
                 </div>
               )}
-
-              
               {changedFiles.length > 0 && (
                 <div className="mt-3 flex flex-col gap-2 pb-1">
                   <textarea
@@ -892,91 +1177,25 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
               )}
             </div>
 
-            
-            {(undoHistory.length > 0 || redoHistory.length > 0) && (
-              <div className="px-5 pt-4 pb-3 border-b border-line">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted/60">Actions</h4>
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  {redoHistory.slice(0, 3).map((entry) => (
-                    <button key={`redo-${entry.id}`}
-                      onClick={() => handleRedo(entry)}
-                      disabled={busyAction !== null}
-                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-md opacity-40 hover:opacity-100 hover:bg-raised transition-all disabled:opacity-20 disabled:cursor-not-allowed w-full text-left cursor-pointer">
-                      <IconHistory className="w-3 h-3 text-muted shrink-0" />
-                      <span className="text-[11px] text-muted truncate flex-1">{t('redo')} {entry.label}</span>
-                    </button>
-                  ))}
-                  {undoHistory.slice(0, 5).map((entry) => (
-                    <button key={`undo-${entry.id}`}
-                      onClick={() => handleUndo(entry)}
-                      disabled={busyAction !== null}
-                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-md hover:bg-raised transition-all disabled:opacity-40 disabled:cursor-not-allowed w-full text-left cursor-pointer group">
-                      <IconHistory className="w-3 h-3 text-accent-bright shrink-0" />
-                      <span className="text-[11px] text-muted truncate flex-1 group-hover:text-ink transition-colors">{entry.label}</span>
-                      <span className="text-[9px] text-accent-bright font-semibold uppercase shrink-0">{t('undo')}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            
-            <div className="px-5 pt-4 pb-2 border-b border-line">
+            <div className="px-5 pt-4 pb-4 border-b border-line">
               <div className="flex items-center justify-between mb-2">
-                <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted/60">Stashes</h4>
+                <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted/60">
+                  {t('commits_title')}
+                </h4>
+                {!logLoading && logEntries.length > 0 && (
+                  <span className="text-[9px] font-semibold text-muted/50">
+                    {t('commits_count', { count: logEntries.length })}
+                  </span>
+                )}
               </div>
-              {stashesLoading ? (
-                <div className="flex items-center gap-2 py-2"><IconRefresh className="w-3 h-3 animate-spin text-muted" /><span className="text-[11px] text-muted">{t('loading_stashes')}</span></div>
-              ) : stashes.length === 0 ? (
-                <p className="text-[11px] text-muted/60 py-2">No stashes.</p>
-              ) : (
-                <div className="flex flex-col gap-0.5 max-h-[120px] overflow-y-auto">
-                  {stashes.map((s) => (
-                    <div key={s.index} className="group flex items-center gap-2 px-2.5 py-1.5 rounded-md hover:bg-raised transition-colors">
-                      <IconHistory className="w-3 h-3 text-muted shrink-0" />
-                      <span className="text-[11px] font-mono text-muted truncate flex-1">{s.message}</span>
-                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => handleStashApply(s.index)} disabled={busyAction !== null}
-                          className="focus-ring cursor-pointer p-1 rounded text-muted hover:text-accent-bright transition-colors" title={t('git_apply_stash', { ns: 'common' })}><IconCheck className="w-3 h-3" /></button>
-                        <button onClick={() => handleStashDrop(s.index)} disabled={busyAction !== null}
-                          className="focus-ring cursor-pointer p-1 rounded text-muted hover:text-danger transition-colors" title={t('git_drop_stash', { ns: 'common' })}><IconTrash className="w-3 h-3" /></button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            
-            <div className="px-5 pt-4 pb-5">
-              <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted/60 mb-3">{t('recent_commits')}</h4>
               {logLoading ? (
-                <div className="flex items-center justify-center py-6"><IconRefresh className="w-4 h-4 animate-spin text-muted" /></div>
-              ) : logEntries.length === 0 ? (
-                <div className="border border-dashed border-line rounded-xl py-6 text-center"><p className="text-xs text-muted">{t('no_commits_found')}</p></div>
-              ) : (
                 <div className="flex flex-col gap-1.5">
-                  {logEntries.map((entry, i) => (
-                    <div key={`${entry.hash}-${i}`}
-                      onClick={() => { if (remoteUrl) { const u = `${remoteUrl.replace(/\/+$/, '')}/commit/${entry.hash}`; window.open(u, '_blank') } }}
-                      className={`group flex items-start gap-3 px-3 py-2 rounded-lg transition-colors ${remoteUrl ? 'cursor-pointer hover:bg-raised' : 'cursor-default'}`}>
-                      <div className="flex flex-col items-center gap-1 shrink-0 pt-1">
-                        <div className="w-1.5 h-1.5 rounded-full bg-accent/60 ring-2 ring-accent/10 shrink-0" />
-                        {i < logEntries.length - 1 && <div className="w-px flex-1 bg-line min-h-[14px]" />}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-[11px] font-mono text-accent-bright font-medium truncate">{entry.hash}</p>
-                          {remoteUrl && <IconExternalLink className="w-2.5 h-2.5 text-muted/40 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />}
-                        </div>
-                        <p className="text-xs text-ink leading-snug mt-0.5 line-clamp-2">{entry.message}</p>
-                        <p className="text-[10px] text-muted mt-0.5">{entry.author} · {entry.date}</p>
-                      </div>
-                    </div>
-                  ))}
+                  <Skeleton className="h-8" />
+                  <Skeleton className="h-8" />
+                  <Skeleton className="h-8" />
                 </div>
+              ) : (
+                <CommitGraph commits={logEntries} remoteUrl={remoteUrl} />
               )}
             </div>
           </div>
@@ -1028,6 +1247,31 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
           onClose={() => setDiffFile(null)}
         />
       )}
+
+      
+      <AnimatePresence>
+        {fileMenu && (
+          <ContextMenu
+            position={{ x: fileMenu.x, y: fileMenu.y }}
+            onClose={() => setFileMenu(null)}
+            items={buildFileMenuItems(fileMenu.file, fileMenu.staged)}
+          />
+        )}
+      </AnimatePresence>
+
+      
+      <AnimatePresence>
+        {discardFileTarget && (
+          <ConfirmDialog
+            title={t('discard_file_title', { file: discardFileTarget.path })}
+            description={t('discard_file_desc')}
+            confirmLabel={t('discard')}
+            variant="danger"
+            onConfirm={() => { const f = discardFileTarget; setDiscardFileTarget(null); handleDiscardFile(f) }}
+            onCancel={() => setDiscardFileTarget(null)}
+          />
+        )}
+      </AnimatePresence>
 
       
       <AnimatePresence>
