@@ -17,7 +17,6 @@ import {
   IconMore,
   IconNode,
   IconPin,
-  IconPlay,
   IconRefresh,
   IconTerminal,
   IconTrash,
