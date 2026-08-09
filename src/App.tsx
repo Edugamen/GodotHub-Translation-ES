@@ -23,6 +23,9 @@ const ChangelogView = lazy(() =>
 const TemplatesView = lazy(() =>
   import('./views/TemplatesView').then((m) => ({ default: m.TemplatesView })),
 )
+const UpdatesView = lazy(() =>
+  import('./views/UpdatesView').then((m) => ({ default: m.UpdatesView })),
+)
 const OnboardingView = lazy(() =>
   import('./views/OnboardingView').then((m) => ({ default: m.OnboardingView })),
 )
@@ -388,7 +391,7 @@ function AppContent() {
   useEffect(() => {
     const handleSwitchTab = (e: Event) => {
       const idx = (e as CustomEvent).detail as number
-      const tabs: Tab[] = ['projects', 'versions', 'news', 'templates', 'asset-store', 'settings', 'changelog']
+      const tabs: Tab[] = ['projects', 'versions', 'news', 'templates', 'asset-store', 'updates', 'settings', 'changelog']
       if (tabs[idx]) setTab(tabs[idx])
     }
     const handleOpenSetting = (e: Event) => {
@@ -532,6 +535,14 @@ function AppContent() {
           <ViewErrorBoundary name="Asset Store">
             <Suspense fallback={<ViewLoading />}>
               <AssetStoreView />
+            </Suspense>
+          </ViewErrorBoundary>
+        )
+      case 'updates':
+        return (
+          <ViewErrorBoundary name="Updates from Dev">
+            <Suspense fallback={<ViewLoading />}>
+              <UpdatesView />
             </Suspense>
           </ViewErrorBoundary>
         )

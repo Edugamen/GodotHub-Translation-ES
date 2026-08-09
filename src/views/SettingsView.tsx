@@ -1916,6 +1916,7 @@ export function SettingsView({
               </motion.button>
             </div>
 
+
             <div className="rounded-xl border border-line bg-surface/60 p-6 flex items-center justify-between gap-6">
               <div className="min-w-0">
                 <h3 className="font-display font-semibold">{t('report_bug_title')}</h3>

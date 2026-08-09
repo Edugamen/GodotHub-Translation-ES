@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { WorkspaceSwitcher } from '../WorkspaceSwitcher'
 import { Tooltip } from './ui/Tooltip'
 import {
+  IconBell,
   IconBookOpen,
   IconChevronsLeft,
   IconChevronsRight,
@@ -15,7 +16,15 @@ import {
   IconStore,
 } from './Icons'
 
-export type Tab = 'projects' | 'versions' | 'news' | 'templates' | 'asset-store' | 'settings' | 'changelog'
+export type Tab =
+  | 'projects'
+  | 'versions'
+  | 'news'
+  | 'templates'
+  | 'asset-store'
+  | 'updates'
+  | 'settings'
+  | 'changelog'
 
 const NAV_ITEMS: { tab: Tab; labelKey: string; icon: typeof IconLayoutGrid }[] = [
   { tab: 'projects', labelKey: 'projects', icon: IconLayoutGrid },
@@ -179,6 +188,7 @@ export function Sidebar({
           </div>
         )}
 
+        {renderNavButton('updates', tNav('updates'), IconBell)}
         {renderNavButton('changelog', tNav('changelog'), IconBookOpen)}
         {renderNavButton('settings', tNav('settings'), IconGear)}
       </div>

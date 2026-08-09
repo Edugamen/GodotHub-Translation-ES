@@ -796,8 +796,6 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
     (f.status.length >= 2 ? f.status[1] !== ' ' : f.status.trim() !== '')
   const gitStagedFiles = changedFiles.filter(isStaged)
   const unstagedFiles = changedFiles.filter(isUnstaged)
-  // Anything not staged yet (edits + untracked) — the button becomes a
-  // "Stage" button until the working tree is fully staged, then a "Commit".
   const needsStaging = unstagedFiles.length > 0
 
   const prevGroupCounts = useRef({ staged: 0, changes: 0 })

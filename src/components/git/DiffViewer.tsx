@@ -17,7 +17,6 @@ interface Seg {
   c: boolean
 }
 
-/** Splits an old/new line pair into unchanged + changed segments (GitHub-style word diff). */
 function splitChanged(oldT: string, newT: string): { old: Seg[]; next: Seg[] } {
   const max = Math.min(oldT.length, newT.length)
   let p = 0
@@ -41,10 +40,6 @@ function splitChanged(oldT: string, newT: string): { old: Seg[]; next: Seg[] } {
   return { old, next }
 }
 
-/**
- * Computes per-line highlight segments for a hunk. Adjacent-ish delete/add
- * pairs get word-level highlighting; everything else is a single segment.
- */
 function computeHighlights(hunk: GitDiffHunk): Map<number, Seg[]> {
   const map = new Map<number, Seg[]>()
   const pendingDeletes: { idx: number; text: string }[] = []
@@ -52,8 +47,6 @@ function computeHighlights(hunk: GitDiffHunk): Map<number, Seg[]> {
     if (line.kind === 'delete') {
       pendingDeletes.push({ idx, text: line.content })
     } else if (line.kind === 'add') {
-      // Only pair with a directly adjacent delete, so the word-level
-      // highlight never spans rows that context lines sit between.
       const d = pendingDeletes[pendingDeletes.length - 1]
       if (d && d.idx === idx - 1) {
         pendingDeletes.pop()

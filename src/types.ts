@@ -42,6 +42,32 @@ export interface ChangelogEntry {
   created_at: number
 }
 
+export type UpdateKind =
+  | 'announcement'
+  | 'new-feature'
+  | 'improvement'
+  | 'breaking-change'
+  | 'known-issue'
+
+export interface UpdateEntry {
+  id: string
+  kind: UpdateKind
+  title: string
+  body: string
+  command?: string | null
+  is_new: boolean
+  featured: boolean
+  link?: string | null
+  created_at: number
+}
+
+export interface UpdatesResponse {
+  entries: UpdateEntry[]
+  from_cache: boolean
+  /** Unix timestamp (seconds) of when the served entries were fetched. 0 = live/seed. */
+  fetched_at: number
+}
+
 export interface Project {
   id: string
   name: string

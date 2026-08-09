@@ -6,6 +6,7 @@ import { templatesApi } from '../api/templates'
 import { categoriesApi } from '../api/categories'
 import { workspacesApi } from '../api/workspaces'
 import { changelogApi } from '../api/changelog'
+import { updatesApi } from '../api/updates'
 import { newsApi } from '../api/news'
 import { assetLibraryApi } from '../api/assetLibrary'
 
@@ -121,6 +122,8 @@ export const api = {
   addChangelogEntry: changelogApi.add,
   updateChangelogEntry: changelogApi.update,
   deleteChangelogEntry: changelogApi.delete,
+
+  fetchUpdates: updatesApi.fetch,
 
   fetchGodotNews: newsApi.fetch,
 

@@ -15,6 +15,7 @@ mod settings;
 mod templates;
 mod terminal;
 mod tray;
+mod updates;
 mod watcher;
 mod workspace;
 
@@ -189,6 +190,7 @@ pub fn run() {
             changelog::add_changelog_entry,
             changelog::update_changelog_entry,
             changelog::delete_changelog_entry,
+            updates::fetch_updates,
             git::clone_repo,
             git::get_git_status,
             git::batch_git_status,
