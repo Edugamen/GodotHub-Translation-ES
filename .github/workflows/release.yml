@@ -115,8 +115,11 @@ jobs:
           releaseName: 'GodotHub ${{ github.ref_name }}'
           releaseBody: ${{ steps.release-notes.outputs.body }}
           releaseDraft: true
-          uploadUpdaterJson: true
-          updaterJsonPreferNsis: true
+          # latest.json is generated deterministically in the generate-latest-json
+          # job below; tauri-action's built-in merge races across the parallel
+          # matrix jobs and can silently drop platform entries.
+          uploadUpdaterJson: false
+          uploadUpdaterSignatures: true
 
       - name: Upload standalone executable (Windows only)
         if: runner.os == 'Windows'
@@ -128,75 +131,135 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  rewrite-updater-urls:
+  # Builds the merged updater manifest (latest.json) in the exact v1.2.5 format:
+  # both base keys ({os}-{arch}) and installer-suffixed keys ({os}-{arch}-{installer})
+  # per platform, so tauri-plugin-updater finds its target on every platform.
+  # This runs after ALL matrix jobs finish, so there is no race.
+  generate-latest-json:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Point latest.json at the release download URLs
+      - name: Generate latest.json in the working updater format
+        shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          release_id=$(gh api --paginate "repos/$REPO/releases" \
-            --jq "map(select(.tag_name == \"$TAG\")) | .[0].id // empty")
-          if [ -z "$release_id" ]; then
-            echo "no release found for tag $TAG" >&2
-            exit 1
-          fi
+          release=$(gh api "repos/$REPO/releases/tags/$TAG")
+          release_id=$(printf '%s' "$release" | jq -r '.id')
           gh api --paginate "repos/$REPO/releases/$release_id/assets" > assets.json
-          asset_id=$(node -e "
-            const a = require('./assets.json').find((a) => a.name === 'latest.json');
-            if (!a) { console.error('latest.json is not attached to the release'); process.exit(1); }
-            console.log(a.id);
-          ")
-          gh api -H "Accept: application/octet-stream" \
-            "repos/$REPO/releases/assets/$asset_id" > latest.json
+          mkdir -p sigs
+          while IFS=$'\t' read -r asset_id asset_name; do
+            gh api -H "Accept: application/octet-stream" \
+              "repos/$REPO/releases/assets/$asset_id" > "sigs/$asset_name"
+          done < <(jq -r '.[] | select(.name | endswith(".sig")) | [.id, .name] | @tsv' assets.json)
+          export NOTES="$(printf '%s' "$release" | jq -r '.body // ""')"
           node - <<'EOF'
           const fs = require('fs');
-          const tag = process.env.TAG;
-          const repo = process.env.REPO;
-          const manifest = JSON.parse(fs.readFileSync('latest.json', 'utf8'));
+          const TAG = process.env.TAG;
+          const REPO = process.env.REPO;
+          const NOTES = process.env.NOTES || '';
+          const version = TAG.replace(/^v/i, '');
           const assets = JSON.parse(fs.readFileSync('assets.json', 'utf8'));
-          const byApiUrl = new Map(assets.map((a) => [a.url, a]));
+          const sigAssets = assets.filter((a) => a.name.endsWith('.sig'));
+          if (sigAssets.length === 0) {
+            throw new Error('no .sig files found on the release; are updater artifacts enabled?');
+          }
+          const signatures = new Map();
+          for (const a of sigAssets) {
+            const artifactName = a.name.slice(0, -'.sig'.length);
+            signatures.set(artifactName, fs.readFileSync(`sigs/${a.name}`, 'utf8').trim());
+          }
           const taggedUrl = (name) =>
-            `https://github.com/${repo}/releases/download/${tag}/${encodeURIComponent(name)}`;
-          let rewritten = 0;
-          let normalized = 0;
-          let alreadyDirect = 0;
-          for (const [platform, data] of Object.entries(manifest.platforms ?? {})) {
-            if (data.url.startsWith('https://api.github.com/')) {
-              // While the release is a draft, browser_download_url points at an
-              // untagged-* path that stops working once the release is published.
-              // Build the final tagged URL from the asset name instead.
-              const asset = byApiUrl.get(data.url);
-              if (!asset) {
-                throw new Error(`no release asset matches ${platform} url ${data.url}`);
+            `https://github.com/${REPO}/releases/download/${TAG}/${encodeURIComponent(name)}`;
+          const normArch = (a) => {
+            if (['amd64', 'x86_64', 'x64'].includes(a)) return 'x86_64';
+            if (['x86', 'i386', 'i686'].includes(a)) return 'i686';
+            if (['arm64', 'aarch64'].includes(a)) return 'aarch64';
+            if (['arm', 'armv7', 'armhf'].includes(a)) return 'armv7';
+            return a;
+          };
+          const classify = (name) => {
+            let m;
+            if ((m = name.match(/_([a-zA-Z0-9]+)\.app\.tar\.gz$/)))
+              return { os: 'darwin', arch: normArch(m[1]), installer: 'app' };
+            if ((m = name.match(/_([a-zA-Z0-9]+)\.AppImage$/)))
+              return { os: 'linux', arch: normArch(m[1]), installer: 'appimage' };
+            if ((m = name.match(/_([a-zA-Z0-9]+)\.deb$/)))
+              return { os: 'linux', arch: normArch(m[1]), installer: 'deb' };
+            if ((m = name.match(/\.([a-zA-Z0-9_]+)\.rpm$/)))
+              return { os: 'linux', arch: normArch(m[1]), installer: 'rpm' };
+            if ((m = name.match(/_([a-zA-Z0-9]+)-setup\.exe$/)))
+              return { os: 'windows', arch: normArch(m[1]), installer: 'nsis' };
+            if ((m = name.match(/_([a-zA-Z0-9]+)(?:_[a-zA-Z-]+)?\.msi$/)))
+              return { os: 'windows', arch: normArch(m[1]), installer: 'msi' };
+            return null;
+          };
+          // Mirrors updaterJsonPreferNsis: the NSIS setup.exe owns the base windows key.
+          const preferNsis = true;
+          const isPreferredBase = (c) => {
+            if (c.os === 'darwin') return c.installer === 'app';
+            if (c.os === 'linux') return c.installer === 'appimage';
+            if (c.os === 'windows') return preferNsis ? c.installer === 'nsis' : c.installer === 'msi';
+            return false;
+          };
+          const artifacts = [];
+          for (const [name, signature] of signatures) {
+            const c = classify(name);
+            if (!c) {
+              // Every .sig on the release is an updater artifact, so failing to
+              // recognize one must fail the job instead of silently publishing
+              // a latest.json that is missing that platform.
+              throw new Error(`unrecognized updater artifact: ${name}`);
+            }
+            artifacts.push({ name, signature, ...c });
+          }
+          const hasNativeArm = artifacts.some((a) => a.os === 'darwin' && a.arch === 'aarch64');
+          const hasNativeX64 = artifacts.some((a) => a.os === 'darwin' && a.arch === 'x86_64');
+          const platforms = {};
+          const set = (key, entry) => { platforms[key] = entry; };
+          // Deterministic ordering (OS, then installer, then name) so the file
+          // looks the same on every runner and matches the old v1.2.5 layout.
+          const osOrder = { darwin: 0, linux: 1, windows: 2 };
+          const installerOrder = { app: 0, appimage: 1, deb: 2, rpm: 3, nsis: 4, msi: 5 };
+          artifacts.sort(
+            (a, b) =>
+              (osOrder[a.os] ?? 9) - (osOrder[b.os] ?? 9) ||
+              (installerOrder[a.installer] ?? 9) - (installerOrder[b.installer] ?? 9) ||
+              (a.name < b.name ? -1 : a.name > b.name ? 1 : 0),
+          );
+          for (const a of artifacts) {
+            const entry = { signature: a.signature, url: taggedUrl(a.name) };
+            if (isPreferredBase(a)) {
+              if (a.os === 'darwin' && a.arch === 'universal') {
+                if (!platforms['darwin-aarch64'] || !hasNativeArm) set('darwin-aarch64', entry);
+                if (!platforms['darwin-x86_64'] || !hasNativeX64) set('darwin-x86_64', entry);
+                set('darwin-universal', entry);
+              } else {
+                set(`${a.os}-${a.arch}`, entry);
               }
-              data.url = taggedUrl(asset.name);
-              rewritten++;
-            } else if (data.url.includes('/download/untagged-')) {
-              // Normalize stale untagged-* URLs from a previously rewritten draft.
-              data.url = data.url.replace(
-                /\/download\/untagged-[^/]+/,
-                `/download/${tag}`,
-              );
-              normalized++;
+            }
+            if (a.os === 'darwin' && a.arch === 'universal') {
+              if (!platforms['darwin-aarch64-app'] || !hasNativeArm) set('darwin-aarch64-app', entry);
+              if (!platforms['darwin-x86_64-app'] || !hasNativeX64) set('darwin-x86_64-app', entry);
+              set('darwin-universal-app', entry);
             } else {
-              alreadyDirect++;
+              set(`${a.os}-${a.arch}-${a.installer}`, entry);
             }
           }
-          if (rewritten + normalized + alreadyDirect === 0) {
-            throw new Error('latest.json has no platform entries');
+          if (Object.keys(platforms).length === 0) {
+            throw new Error('could not derive any platform entries from the release signatures');
           }
+          const manifest = { version, notes: NOTES, pub_date: new Date().toISOString(), platforms };
           fs.writeFileSync('latest.json', JSON.stringify(manifest, null, 2));
-          console.log(`rewrote ${rewritten}, normalized ${normalized}, already direct ${alreadyDirect}`);
+          console.log(`wrote latest.json with ${Object.keys(platforms).length} platform entries`);
           EOF
           gh release upload "$TAG" latest.json --repo "$REPO" --clobber
 
   publish-to-winget:
-    needs: [build, rewrite-updater-urls]
+    needs: [build, generate-latest-json]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     
