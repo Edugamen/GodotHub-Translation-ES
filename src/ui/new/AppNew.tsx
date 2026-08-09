@@ -5,11 +5,6 @@ import { useProjectsContext } from '../../hooks/projectsContext'
 import { useGodotVersionsContext } from '../../hooks/godotVersionsContext'
 import { ScrollToTopButton } from '../../components/ui/ScrollToTopButton'
 
-/**
- * The full set of app views in the New UI. Keep in sync with the classic
- * `Tab` union in `src/components/Sidebar.tsx` — everything here is brand-new
- * code, so the classic shell is never touched by New UI work.
- */
 const TABS = [
   { id: 'projects', navKey: 'projects' },
   { id: 'versions', navKey: 'versions' },
@@ -46,14 +41,6 @@ function PlaceholderView({
   )
 }
 
-/**
- * New UI shell — the entire redesigned app renders through this component
- * when the `new_ui` setting is enabled.
- *
- * New views live in `src/ui/new/views/` as their own files. Register one here
- * by adding a case to `renderView()` below; tabs without a finished view fall
- * back to the placeholder so the shell always works.
- */
 export function AppNew() {
   const { t } = useTranslation('nav')
   const { workspaces, activeId } = useWorkspaces()

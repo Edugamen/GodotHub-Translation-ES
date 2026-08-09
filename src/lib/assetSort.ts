@@ -1,13 +1,5 @@
 import type { AssetLibraryAsset } from '../types'
 
-/**
- * Sort options for browsing the Godot Asset Library.
- *
- * The live API only honors `sort=(updated|name|rating|cost)` plus a `reverse`
- * flag (downloads / added / version / support_level silently fall back to the
- * default "updated" order). "Relevance" has no server-side ranking, so it is
- * approximated client-side by `rankByRelevance` when a search query is active.
- */
 export type AssetSortKey =
   | 'relevance'
   | 'updated_new'
@@ -31,11 +23,6 @@ export const ASSET_SORT_KEYS: AssetSortKey[] = [
   'license_za',
 ]
 
-/**
- * Maps a sort key to the raw `sort`/`reverse` query params.
- * The server defaults dates to descending (newest first) and strings to
- * ascending, so `reverse` is only set for the flipped direction.
- */
 export function assetSortParams(key: AssetSortKey): {
   sort: string | null
   reverse: boolean
@@ -77,25 +64,12 @@ function relevanceScore(asset: AssetLibraryAsset, query: string): number {
   return score
 }
 
-/**
- * Deterministic tie-breaker used whenever the primary comparison is a draw, so
- * the final order never depends on the server response order (the new store
- * returns identical requests in different orders). Title, then asset id.
- */
 function tieBreak(a: AssetLibraryAsset, b: AssetLibraryAsset): number {
   const byTitle = a.title.localeCompare(b.title)
   if (byTitle !== 0) return byTitle
   return a.asset_id.localeCompare(b.asset_id)
 }
 
-/**
- * Client-side relevance ranking used when "Relevance" is selected and a search
- * query is active. The server has no relevance scoring, so we rank the loaded
- * results by how strongly they match the query (title matches weigh the most).
- * With no query there is no relevance signal, so a stable title order is used
- * instead of preserving the (potentially shuffled) server order. Always
- * returns a new array; the input is never mutated.
- */
 export function rankByRelevance(
   assets: AssetLibraryAsset[],
   query: string,
@@ -108,18 +82,8 @@ export function rankByRelevance(
   })
 }
 
-// ---------------------------------------------------------------------------
-// Merged browsing across the old Asset Library and the new Asset Store.
-// The two APIs expose different sort fields, so when browsing both sources at
-// once the combined list is sorted client-side on fields both provide.
-// ---------------------------------------------------------------------------
-
 export type AssetSource = 'all' | 'library' | 'store'
 
-/**
- * Maps a sort key to the new Asset Store's `sort` enum. Name/license are not
- * supported by the store API and fall back to its relevance ordering.
- */
 export function storeServerSort(key: AssetSortKey): string {
   switch (key) {
     case 'updated_new':
@@ -135,11 +99,6 @@ export function storeServerSort(key: AssetSortKey): string {
   }
 }
 
-/**
- * Sort keys offered per source filter. "Updated" relies on server-side dates
- * that the new store does not expose in search results, so it is only
- * available when a single source is selected.
- */
 export function sortKeysForSource(source: AssetSource): AssetSortKey[] {
   const base: AssetSortKey[] = [
     'relevance',
@@ -153,15 +112,6 @@ export function sortKeysForSource(source: AssetSource): AssetSortKey[] {
   return source === 'all' ? base : [...base, 'updated_new', 'updated_old']
 }
 
-/**
- * Whether the loaded results must be re-sorted client-side. The old library
- * sorts deterministically server-side, but the new store returns identical
- * requests in different orders for relevance and name/license (which fall back
- * to relevance), and leaves rating ties in an unstable order - so those are
- * re-sorted locally. "Updated" is served deterministically and can't be
- * computed locally, so it is left untouched. The merged view always sorts
- * client-side.
- */
 export function shouldClientSort(
   source: AssetSource,
   sort: AssetSortKey,
@@ -170,11 +120,6 @@ export function shouldClientSort(
   if (source === 'all') return true
   if (source === 'store') {
     if (!query.trim()) return true
-    // The store's relevance ranking is non-deterministic between requests and
-    // its name/license sorts fall back to that same unstable order, so all of
-    // those are re-sorted locally. Rating is re-sorted to break ties that the
-    // server leaves in an unstable order. "Updated" is served deterministically
-    // and can't be computed locally, so it is left untouched.
     return (
       sort === 'relevance' ||
       sort === 'name_az' ||
@@ -193,11 +138,6 @@ function parseRating(asset: AssetLibraryAsset): number {
   return Number.isFinite(n) ? n : 0
 }
 
-/**
- * Sorts a combined list client-side. Only used for the sorts that can be
- * computed on fields both sources provide; "updated" keys are left untouched
- * (they rely on server ordering in single-source mode).
- */
 export function sortAssets(
   assets: AssetLibraryAsset[],
   sort: AssetSortKey,

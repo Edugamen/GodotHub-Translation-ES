@@ -18,13 +18,9 @@ const SUPPORT_BADGE: Record<string, string> = {
 
 interface AssetCardProps {
   asset: AssetLibraryAsset
-  /** Show the source chip (New Asset Store / Old Asset Library) on the hero. */
   showSource?: boolean
-  /** Render the rating chip when the asset has a rating / review score. */
   showRating?: boolean
-  /** Open the asset's web page. */
   onOpenPage?: () => void
-  /** Bottom action row rendered by the caller. */
   actions?: React.ReactNode
 }
 

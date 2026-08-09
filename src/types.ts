@@ -209,9 +209,7 @@ export interface AssetLibraryAsset {
   download_url: string | null
   browse_url: string | null
   modify_date: string | null
-  /** Rating (old library) or review score (new store), as a string. */
   rating?: string
-  /** "library" = old Godot Asset Library, "store" = new Godot Asset Store. */
   source?: 'library' | 'store'
 }
 
@@ -238,7 +236,6 @@ export interface AssetDownloadError {
 export interface AssetLibraryCategory {
   id: string
   name: string
-  /** "0" = addon categories, "1" = project categories */
   category_type: string
 }
 

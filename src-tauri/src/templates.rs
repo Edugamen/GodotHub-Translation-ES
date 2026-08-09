@@ -127,7 +127,6 @@ pub(crate) fn mirror_dir(src: &Path, dst: &Path, skip_dirs: &[&str]) -> Result<(
     }
 
     fn prune(src: &Path, dst: &Path, skip_dirs: &[&str]) -> Result<(), String> {
-        // Collect the entries of the source to know what should survive.
         let mut src_entries: std::collections::HashMap<String, bool> = std::collections::HashMap::new();
         for entry in fs::read_dir(src).map_err(|e| e.to_string())? {
             let entry = entry.map_err(|e| e.to_string())?;
@@ -139,7 +138,6 @@ pub(crate) fn mirror_dir(src: &Path, dst: &Path, skip_dirs: &[&str]) -> Result<(
             src_entries.insert(name, is_dir);
         }
 
-        // Drop stale entries from the destination, recursing into shared dirs.
         for entry in fs::read_dir(dst).map_err(|e| e.to_string())? {
             let entry = entry.map_err(|e| e.to_string())?;
             let name = entry.file_name().to_string_lossy().to_string();
@@ -149,15 +147,12 @@ pub(crate) fn mirror_dir(src: &Path, dst: &Path, skip_dirs: &[&str]) -> Result<(
             let dst_is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
             match src_entries.get(&name) {
                 None => {
-                    // No longer present in the source folder: remove the stale copy.
                     remove_dir_force(&entry.path())?;
                 }
                 Some(src_is_dir) if *src_is_dir != dst_is_dir => {
-                    // Type mismatch (file <-> dir): drop it, it gets re-created below.
                     remove_dir_force(&entry.path())?;
                 }
                 Some(true) => {
-                    // Directory present on both sides: recurse to drop nested stale files.
                     prune(&src.join(&name), &entry.path(), skip_dirs)?;
                 }
                 _ => {}

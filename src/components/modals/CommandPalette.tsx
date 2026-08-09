@@ -17,12 +17,15 @@ import {
   IconPlay,
   IconClock,
   IconCopy,
+  IconRocket,
 } from '../Icons'
 import { getWorkspaceIcon } from '../../lib/workspaceIcons'
 import { formatLastOpened } from '../../lib/lastOpened'
 import { isMac } from '../../lib/platform'
 import { isReducedMotion } from '../../lib/appearance'
 import type { Project, InstalledGodotVersion, Workspace } from '../../types'
+
+const IS_DEV = import.meta.env.DEV
 
 interface CommandItem {
   id: string
@@ -167,6 +170,21 @@ function buildCommands(mod: string, paletteKey: string): CommandItem[] {
         window.dispatchEvent(new CustomEvent('app:report-bug'))
       },
     },
+    ...(IS_DEV
+      ? [
+          {
+            id: 'preview-update-modal',
+            labelKey: 'preview_update_modal',
+            icon: <IconRocket className="w-4 h-4" />,
+            sectionKey: 'section_help',
+            action: () => {
+              window.dispatchEvent(
+                new CustomEvent('app:preview-update-modal'),
+              )
+            },
+          },
+        ]
+      : []),
 
     {
       id: 'scan-versions',

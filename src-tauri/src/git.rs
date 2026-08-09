@@ -1069,28 +1069,46 @@ pub fn git_file_diff(path: String, file_path: String) -> Result<GitDiffResult, S
         return Err(format!("No diff available for '{}'", file_path));
     }
 
+    Ok(parse_diff_text(&diff_text))
+}
+
+/// Parses the raw `git diff --no-color` output into structured hunks.
+///
+/// Hunk header format: `@@ -old_start[,old_lines] +new_start[,new_lines] @@ [context]`
+fn parse_diff_text(diff_text: &str) -> GitDiffResult {
     let mut result = GitDiffResult { hunks: Vec::new() };
     let mut current_hunk: Option<GitDiffHunk> = None;
 
     for line in diff_text.lines() {
-        if let Some(hunk_header) = line.strip_prefix("@@ ") {
-            if let Some(range_part) = hunk_header.split(" @@").next() {
-                if let Some(range) = range_part.split(' ').nth(1) {
-                    if let Some((old, new)) = range.split_once(' ') {
-                        let old_parts: Vec<&str> = old.split(',').collect();
-                        let new_parts: Vec<&str> = new.split(',').collect();
-                        let old_start = old_parts[0].trim_start_matches('-').parse::<u32>().unwrap_or(1);
-                        let old_lines = old_parts.get(1).and_then(|s| s.parse::<u32>().ok()).unwrap_or(0);
-                        let new_start = new_parts[0].trim_start_matches('+').parse::<u32>().unwrap_or(1);
-                        let new_lines = new_parts.get(1).and_then(|s| s.parse::<u32>().ok()).unwrap_or(0);
+        if let Some(header) = line.strip_prefix("@@ ") {
+            // `header` looks like `-1,3 +1,4 @@ ...`; split off the trailing
+            // ` @@ context` part, then split the ranges on the separating space.
+            let Some((old_range, new_range)) = header
+                .split(" @@")
+                .next()
+                .and_then(|r| r.split_once(' '))
+            else {
+                continue;
+            };
 
-                        if let Some(hunk) = current_hunk.take() { result.hunks.push(hunk); }
-                        current_hunk = Some(GitDiffHunk {
-                            old_start, old_lines, new_start, new_lines, lines: Vec::new(),
-                        });
-                    }
-                }
+            let old_parts: Vec<&str> = old_range.split(',').collect();
+            let new_parts: Vec<&str> = new_range.split(',').collect();
+            let old_start = old_parts[0].trim_start_matches('-').parse::<u32>().unwrap_or(1);
+            // A missing count (e.g. `-1`) means a single line, so default to 1.
+            let old_lines = old_parts.get(1).and_then(|s| s.parse::<u32>().ok()).unwrap_or(1);
+            let new_start = new_parts[0].trim_start_matches('+').parse::<u32>().unwrap_or(1);
+            let new_lines = new_parts.get(1).and_then(|s| s.parse::<u32>().ok()).unwrap_or(1);
+
+            if let Some(hunk) = current_hunk.take() {
+                result.hunks.push(hunk);
             }
+            current_hunk = Some(GitDiffHunk {
+                old_start,
+                old_lines,
+                new_start,
+                new_lines,
+                lines: Vec::new(),
+            });
         } else if let Some(hunk) = &mut current_hunk {
             if line.starts_with('+') {
                 hunk.lines.push(GitDiffLine { kind: "add".into(), content: line.strip_prefix('+').unwrap().to_string() });
@@ -1102,8 +1120,10 @@ pub fn git_file_diff(path: String, file_path: String) -> Result<GitDiffResult, S
         }
     }
 
-    if let Some(hunk) = current_hunk.take() { result.hunks.push(hunk); }
-    Ok(result)
+    if let Some(hunk) = current_hunk.take() {
+        result.hunks.push(hunk);
+    }
+    result
 }
 
 #[cfg(test)]
@@ -1121,6 +1141,63 @@ mod tests {
         assert_eq!(repo_base_name("https://github.com/user/repo.git/"), "repo");
         assert_eq!(repo_base_name("https://github.com/user/"), "user");
         assert_eq!(repo_base_name("https://github.com"), "github.com");
+    }
+
+    #[test]
+    fn parse_diff_text_parses_standard_hunk() {
+        let diff = "\
+@@ -1,3 +1,4 @@
+ line1
+-line2
++CHANGED
+ line3
++NEW LINE";
+        let result = parse_diff_text(diff);
+        assert_eq!(result.hunks.len(), 1);
+        let hunk = &result.hunks[0];
+        assert_eq!((hunk.old_start, hunk.old_lines), (1, 3));
+        assert_eq!((hunk.new_start, hunk.new_lines), (1, 4));
+        assert_eq!(hunk.lines.len(), 5);
+        assert_eq!(hunk.lines[0].kind, "context");
+        assert_eq!(hunk.lines[0].content, "line1");
+        assert_eq!(hunk.lines[1].kind, "delete");
+        assert_eq!(hunk.lines[1].content, "line2");
+        assert_eq!(hunk.lines[2].kind, "add");
+        assert_eq!(hunk.lines[2].content, "CHANGED");
+        assert_eq!(hunk.lines[3].kind, "context");
+        assert_eq!(hunk.lines[4].kind, "add");
+        assert_eq!(hunk.lines[4].content, "NEW LINE");
+    }
+
+    #[test]
+    fn parse_diff_text_handles_multiple_hunks_and_count_defaults() {
+        // `-1` / `+1` without a comma mean a single line (defaults to 1),
+        // and `-0,0` for brand-new files must keep its explicit zero count.
+        let diff = "\
+@@ -1 +1 @@
+ same
+@@ -0,0 +1,5 @@
++added1
++added2";
+        let result = parse_diff_text(diff);
+        assert_eq!(result.hunks.len(), 2);
+        assert_eq!((result.hunks[0].old_lines, result.hunks[0].new_lines), (1, 1));
+        assert_eq!(
+            (result.hunks[1].old_start, result.hunks[1].old_lines),
+            (0, 0)
+        );
+        assert_eq!(
+            (result.hunks[1].new_start, result.hunks[1].new_lines),
+            (1, 5)
+        );
+        assert_eq!(result.hunks[1].lines.len(), 2);
+        assert!(result.hunks[1].lines.iter().all(|l| l.kind == "add"));
+    }
+
+    #[test]
+    fn parse_diff_text_returns_empty_for_headers_without_content() {
+        let result = parse_diff_text("diff --git a/a.txt b/a.txt\nindex 1..2 100644");
+        assert!(result.hunks.is_empty());
     }
 
     #[test]

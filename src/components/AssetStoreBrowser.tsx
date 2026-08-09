@@ -59,7 +59,6 @@ function dirname(path: string): string {
   return idx > 0 ? path.slice(0, idx) : path
 }
 
-/** Splits a store asset id (`store:{publisher}/{slug}`) into its slugs. */
 function parseStoreId(id: string): [string, string] {
   const rest = id.startsWith('store:') ? id.slice('store:'.length) : id
   const idx = rest.indexOf('/')
@@ -89,8 +88,6 @@ export function AssetStoreBrowser() {
   const [notice, setNotice] = useState<string | null>(null)
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // Monotonic request id: responses from older requests are discarded so that
-  // rapidly changing filters can't let a stale response overwrite the list.
   const requestSeq = useRef(0)
 
   useEffect(() => {
@@ -100,8 +97,6 @@ export function AssetStoreBrowser() {
       .catch(() => setCategories([]))
   }, [])
 
-  // The Asset Store only lists add-ons, so show addon categories only
-  // (category_type "0" = addon categories, "1" = project categories).
   const categoryOptions = useMemo(
     () =>
       categories
@@ -110,15 +105,12 @@ export function AssetStoreBrowser() {
     [categories],
   )
 
-  // Keep the selected category valid if the category list changes.
   useEffect(() => {
     if (categoryId && !categoryOptions.some((c) => c.value === categoryId)) {
       setCategoryId('')
     }
   }, [categoryOptions, categoryId])
 
-  // "Updated" sorts are only available for a single source; reset when the
-  // merged view is selected.
   useEffect(() => {
     if (
       source === 'all' &&
@@ -161,10 +153,6 @@ export function AssetStoreBrowser() {
             () =>
               api.searchAssetStore(
                 query.trim() || null,
-                // The store's `compatibility` filter is strict (it requires a
-                // release for that exact version), so only apply it when the
-                // user picks a version explicitly instead of defaulting to the
-                // newest.
                 version || null,
                 nextPage,
                 PAGE_SIZE,
@@ -206,8 +194,6 @@ export function AssetStoreBrowser() {
         if (requestSeq.current !== seq) return seq
         setAssets((prev) => {
           const next = append ? [...prev, ...merged] : merged
-          // The store returns shuffled page contents, so appended pages can
-          // overlap already-loaded ones; dedupe by id before sorting.
           const seen = new Set<string>()
           const deduped = next.filter((a) => {
             if (seen.has(a.asset_id)) return false
@@ -237,7 +223,6 @@ export function AssetStoreBrowser() {
     searchTimer.current = setTimeout(async () => {
       setLoading(true)
       const seq = await load(0, false)
-      // Only clear the loading state if this request is still the latest one.
       if (requestSeq.current === seq) setLoading(false)
     }, 250)
     return () => {

@@ -62,7 +62,6 @@ textarea::placeholder {
   background: transparent;
 }
 
-/* Firefox scrollbar */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--color-line) transparent;
@@ -116,10 +115,6 @@ textarea::placeholder {
 .reduce-motion .theme-transitioning * {
   transition-duration: 0.001ms !important;
 }
-
-/* ---------------------------------------------------------------------- */
-/* Micro-interaction primitives shared across custom controls              */
-/* ---------------------------------------------------------------------- */
 
 @keyframes icon-pop {
   0% {

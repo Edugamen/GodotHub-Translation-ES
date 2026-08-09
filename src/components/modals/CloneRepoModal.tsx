@@ -15,7 +15,6 @@ import {
   IconCheck,
 } from '../Icons'
 
-/** Extracts the repository's base name from a clone URL. Mirrors `repo_base_name` in src-tauri/src/git.rs. */
 function repoBaseName(url: string): string {
   let cleaned = url.trim().replace(/\/+$/, '')
   while (cleaned.endsWith('.git')) {
@@ -25,7 +24,6 @@ function repoBaseName(url: string): string {
   return parts[parts.length - 1] || 'repo'
 }
 
-/** Joins the destination with the folder name using the right separator for the platform-style path. */
 function joinPath(base: string, name: string): string {
   const trimmed = base.replace(/[\\/]+$/, '')
   const sep = trimmed.includes('\\') ? '\\' : '/'

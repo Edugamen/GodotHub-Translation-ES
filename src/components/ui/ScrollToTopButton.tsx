@@ -6,12 +6,6 @@ import { IconChevronUp } from '../Icons'
 
 const SHOW_AFTER = 300
 
-/**
- * Floating "back to top" button that appears once the main content area is
- * scrolled down. Rendered `fixed` at the bottom-right of the viewport so it
- * stays in place on every view — the app scrolls inside `<main>`, not the
- * window. Clicking scrolls to the top instantly.
- */
 export function ScrollToTopButton() {
   const { t } = useTranslation('common')
   const [visible, setVisible] = useState(false)

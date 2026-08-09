@@ -12,9 +12,7 @@ use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager};
 
 const ASSET_LIB_API: &str = "https://godotengine.org/asset-library/api";
-// New Godot Asset Store used by Godot 4.7+, see store.godotengine.org.
 const ASSET_STORE_API: &str = "https://store.godotengine.org/api/v1";
-// Legacy filter applied only to the Templates tab flow (asset_type omitted).
 const ALLOWED_TYPES: &[&str] = &["project"];
 const MAX_PAGE_SKIP: u32 = 8;
 
@@ -80,7 +78,6 @@ pub struct AssetLibraryAsset {
     pub browse_url: Option<String>,
     pub modify_date: Option<String>,
     pub rating: String,
-    /// "library" = old Godot Asset Library, "store" = new Godot Asset Store.
     pub source: String,
 }
 
@@ -96,7 +93,6 @@ pub struct AssetLibraryResponse {
 pub struct AssetLibraryCategory {
     pub id: String,
     pub name: String,
-    /// "0" = addon categories, "1" = project categories.
     #[serde(rename = "type")]
     pub category_type: String,
 }
@@ -142,19 +138,10 @@ async fn fetch_detail(http: &reqwest::Client, asset_id: &str) -> Option<AssetDet
         .ok()
 }
 
-// ---------------------------------------------------------------------------
-// In-memory response caching
-// ---------------------------------------------------------------------------
-// Browsing the old Asset Library is chatty: every search page needs one extra
-// HTTP request per asset to fetch its details (N+1), and the new store returns
-// identical requests in different orders. A small TTL cache keeps repeated
-// navigation and filtering snappy without re-hitting the network.
-
 const DETAIL_CACHE_TTL: Duration = Duration::from_secs(10 * 60);
 const SEARCH_CACHE_TTL: Duration = Duration::from_secs(60);
 const CACHE_MAX_ENTRIES: usize = 256;
 
-/// Thread-safe, bounded, TTL-based cache shared across the asset commands.
 #[derive(Default)]
 pub struct AssetResponseCache {
     details: Mutex<HashMap<String, (Instant, AssetDetail)>>,
@@ -202,7 +189,6 @@ impl AssetResponseCache {
     }
 }
 
-/// Fetch an asset detail, preferring the in-memory cache.
 async fn cached_detail(
     cache: &AssetResponseCache,
     http: &reqwest::Client,
@@ -251,7 +237,6 @@ fn emit_asset_complete(app: &AppHandle, detail: &AssetDetail) {
     );
 }
 
-/// Streams an asset zip into memory while emitting progress events.
 async fn stream_download_bytes(
     app: &AppHandle,
     http: &reqwest::Client,
@@ -311,11 +296,6 @@ pub async fn search_asset_library(
     let max_results = max_results.unwrap_or(20);
     let start_page = page.unwrap_or(0);
 
-    // Legacy behaviour (Templates tab, no asset_type passed): only project-type
-    // assets above the supported minimum version. The Asset Store passes an
-    // explicit type ("any" | "addon" | "project") and skips the version floor.
-    // The API treats a missing `type` param as "addon", so "any" must be sent
-    // explicitly to actually return every asset kind.
     let (type_param, apply_default_filters) = match asset_type.as_deref() {
         None | Some("") => ("project".to_string(), true),
         Some("any") => ("any".to_string(), false),
@@ -461,9 +441,6 @@ pub async fn get_asset_library_categories() -> Result<Vec<AssetLibraryCategory>,
     Ok(cfg.categories)
 }
 
-// ---------------------------------------------------------------------------
-// New Godot Asset Store (store.godotengine.org) integration
-// ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Deserialize)]
 struct StoreSearchResponse {
@@ -552,14 +529,6 @@ fn normalize_store_asset(a: StoreAsset) -> AssetLibraryAsset {
     }
 }
 
-/// Searches the new Godot Asset Store. Add-ons only (`type=0`), matching the
-/// Asset Store view behaviour; project/template assets (`type=1`) stay in the
-/// Templates view flow.
-///
-/// Every request goes through the search endpoint, even without a query. The
-/// plain asset list endpoint ignores `sort` and returns a different ordering
-/// for identical requests (load-balanced replicas), while the search endpoint
-/// honours `sort` deterministically - so this keeps paged results stable.
 #[tauri::command]
 pub async fn search_asset_store(
     state: tauri::State<'_, Arc<AssetResponseCache>>,
@@ -646,8 +615,6 @@ pub async fn install_asset_as_template(
 ) -> Result<ProjectTemplate, String> {
     let http = client()?;
 
-    // Install/download always fetch a fresh detail: cached download URLs could
-    // be time-limited, and a stale link would break the actual download.
     let detail = match fetch_detail(&http, &asset_id).await {
         Some(d) => d,
         None => {
@@ -760,8 +727,6 @@ fn resolve_install_target(
     }
 }
 
-/// Installs a downloaded asset into an existing project or template folder,
-/// merging its contents (addons/, assets/, scripts, ...) into the target.
 #[tauri::command]
 pub async fn install_asset(
     app: AppHandle,
@@ -772,7 +737,6 @@ pub async fn install_asset(
     let target = resolve_install_target(&app, &project_id, &template_id)?;
 
     let http = client()?;
-    // Fresh detail: cached download URLs could be time-limited.
     let detail = match fetch_detail(&http, &asset_id).await {
         Some(d) => d,
         None => {
@@ -836,8 +800,6 @@ async fn download_and_merge(
     merge_result
 }
 
-/// Downloads the raw asset zip to a folder (defaults to the system Downloads
-/// folder, then the configured download dir). Returns the saved file path.
 #[tauri::command]
 pub async fn download_asset(
     app: AppHandle,
@@ -845,7 +807,6 @@ pub async fn download_asset(
     dest_dir: Option<String>,
 ) -> Result<String, String> {
     let http = client()?;
-    // Fresh detail: cached download URLs could be time-limited.
     let detail = match fetch_detail(&http, &asset_id).await {
         Some(d) => d,
         None => {
@@ -890,7 +851,6 @@ pub async fn download_asset(
     result.map(|_| dest.to_string_lossy().to_string())
 }
 
-/// Streams `url` to `dest` while emitting download progress events.
 async fn download_to_file(
     app: &AppHandle,
     http: &reqwest::Client,
@@ -932,8 +892,6 @@ struct StoreRelease {
     stable: bool,
 }
 
-/// Resolves the latest stable release download URL for a new-store asset.
-/// Store download URLs are public, time-limited signed links.
 async fn resolve_store_download_url(
     http: &reqwest::Client,
     publisher_slug: &str,
@@ -957,8 +915,6 @@ async fn resolve_store_download_url(
         .ok_or_else(|| "No downloadable release available for this asset".to_string())
 }
 
-/// Installs a new-store asset into an existing project or template folder,
-/// mirroring the Asset Library `install_asset` flow.
 #[tauri::command]
 pub async fn install_store_asset(
     app: AppHandle,
@@ -1001,8 +957,6 @@ pub async fn install_store_asset(
     result
 }
 
-/// Resolves the latest release of a new-store asset and downloads it to the
-/// Downloads folder (store download URLs are public, time-limited signed links).
 #[tauri::command]
 pub async fn download_store_asset(
     app: AppHandle,
@@ -1158,11 +1112,6 @@ fn find_project_root(dir: &Path) -> Result<PathBuf, String> {
     Ok(dir.to_path_buf())
 }
 
-/// Locates the folder whose contents should be copied into a project:
-/// - the folder holding an `addons/` directory (standard addon layout)
-/// - the folder holding `project.godot` (project-type assets)
-/// - a single nested folder when the archive is wrapped in one top-level folder
-/// - otherwise the extraction root itself
 fn find_content_root(dir: &Path) -> PathBuf {
     if dir.join("addons").is_dir() || dir.join("project.godot").is_file() {
         return dir.to_path_buf();
@@ -1185,8 +1134,6 @@ fn find_content_root(dir: &Path) -> PathBuf {
     dir.to_path_buf()
 }
 
-/// Merges the contents of `src` into `dst`, skipping engine/cache folders and
-/// never overwriting an existing project.godot in the target.
 fn merge_asset_into(src: &Path, dst: &Path) -> Result<(), String> {
     let skip_dirs: &[&str] = &[".godot", ".git", "node_modules"];
     let protect_project_file = dst.join("project.godot").is_file();

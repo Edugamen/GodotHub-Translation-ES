@@ -105,7 +105,9 @@ function AppContent() {
   const [createWorkspaceOpen, setCreateWorkspaceOpen] = useState(false)
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [updatesModalOpen, setUpdatesModalOpen] = useState(false)
-  const [updateModalMode, setUpdateModalMode] = useState<'background' | 'manual'>('manual')
+  const [updateModalMode, setUpdateModalMode] = useState<
+    'background' | 'manual' | 'preview'
+  >('manual')
   const [showTips, setShowTips] = useState(() => {
     try {
       return localStorage.getItem('godothub_tips_shown') !== '1'
@@ -423,6 +425,10 @@ function AppContent() {
       setUpdateModalMode('manual')
       setUpdatesModalOpen(true)
     }
+    const handlePreviewUpdate = () => {
+      setUpdateModalMode('preview')
+      setUpdatesModalOpen(true)
+    }
     const handleReportBug = () => setBugReportOpen(true)
 
     window.addEventListener('app:switch-tab', handleSwitchTab)
@@ -437,6 +443,7 @@ function AppContent() {
     window.addEventListener('app:switch-workspace', handleSwitchWorkspace)
     window.addEventListener('app:show-shortcuts', handleShowShortcuts)
     window.addEventListener('app:check-updates', handleCheckUpdates)
+    window.addEventListener('app:preview-update-modal', handlePreviewUpdate)
     window.addEventListener('app:report-bug', handleReportBug)
 
     return () => {
@@ -452,6 +459,7 @@ function AppContent() {
       window.removeEventListener('app:switch-workspace', handleSwitchWorkspace)
       window.removeEventListener('app:show-shortcuts', handleShowShortcuts)
       window.removeEventListener('app:check-updates', handleCheckUpdates)
+      window.removeEventListener('app:preview-update-modal', handlePreviewUpdate)
       window.removeEventListener('app:report-bug', handleReportBug)
     }
   }, [

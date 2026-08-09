@@ -29,7 +29,6 @@ interface Props {
 
 type Tab = 'project' | 'template'
 
-/** Splits a store asset id (`store:{publisher}/{slug}`) into its slugs. */
 function parseStoreId(id: string): [string, string] {
   const rest = id.startsWith('store:') ? id.slice('store:'.length) : id
   const idx = rest.indexOf('/')
@@ -53,8 +52,6 @@ export function InstallAssetModal({ asset, onClose, onInstalled }: Props) {
       .catch(() => setTemplates([]))
   }, [])
 
-  // Store assets are add-ons in this flow and have no library detail entry,
-  // so the "save as new template" shortcut is only offered for library assets.
   const canCreateTemplate =
     asset.source !== 'store' && asset.asset_type === 'project'
 
