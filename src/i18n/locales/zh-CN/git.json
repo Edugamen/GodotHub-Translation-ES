@@ -108,5 +108,7 @@
   "unwrap_lines": "不换行",
   "copy_diff": "复制差异",
   "loading_diff": "正在加载差异…",
-  "diff_error": "无法加载差异。"
+  "diff_error": "无法加载差异。",
+  "stage_all": "暂存全部",
+  "staging": "暂存中…"
 }

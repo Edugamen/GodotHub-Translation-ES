@@ -535,8 +535,8 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
   const handleInit = () => doAction('init', async () => { await api.gitInit(project.path) })
 
   /** Stage every remaining change (VS Code: "Stage All Changes"). */
-  const stageAllChanges = async () => {
-    if (unstagedFiles.length === 0) return
+  const stageAllChanges = async (): Promise<boolean> => {
+    if (unstagedFiles.length === 0) return true
     setBusyAction('stage-all')
     try {
       for (const f of unstagedFiles) {
@@ -546,8 +546,10 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
       onRefresh()
       window.dispatchEvent(new CustomEvent('app:refresh-git-status'))
       addToast('success', t('git_files_staged', { ns: 'common', count: unstagedFiles.length }))
+      return true
     } catch (e) {
       showGitError(String(e))
+      return false
     } finally {
       setBusyAction(null)
     }
@@ -649,6 +651,16 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
         disabled: busy,
       },
     ]
+  }
+
+  /** Ctrl+Enter: stage everything first, then commit — but only if staging succeeded. */
+  const handleCommitShortcut = async () => {
+    if (busyAction !== null || !commitMessage.trim()) return
+    if (needsStaging) {
+      const ok = await stageAllChanges()
+      if (!ok) return
+    }
+    await handleCommit()
   }
 
   const handleCommit = async () => {
@@ -784,6 +796,9 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
     (f.status.length >= 2 ? f.status[1] !== ' ' : f.status.trim() !== '')
   const gitStagedFiles = changedFiles.filter(isStaged)
   const unstagedFiles = changedFiles.filter(isUnstaged)
+  // Anything not staged yet (edits + untracked) — the button becomes a
+  // "Stage" button until the working tree is fully staged, then a "Commit".
+  const needsStaging = unstagedFiles.length > 0
 
   const prevGroupCounts = useRef({ staged: 0, changes: 0 })
   useEffect(() => {
@@ -1146,7 +1161,11 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
                     onChange={(e) => setCommitMessage(e.target.value)}
                     placeholder={t('git_commit_placeholder', { ns: 'common' })}
                     rows={2}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && commitMessage.trim()) handleCommit() }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && commitMessage.trim()) {
+                        handleCommitShortcut()
+                      }
+                    }}
                     className="focus-ring w-full bg-base border border-line rounded-md px-3 py-2 text-xs text-ink placeholder:text-muted transition-colors focus:border-accent-dim outline-none resize-none"
                   />
                   <div className="flex items-center gap-3">
@@ -1164,13 +1183,22 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
                     <span className="text-[10px] text-muted/60">Ctrl+Enter</span>
                     <button
                       disabled={busyAction !== null || !commitMessage.trim() || changedFiles.length === 0}
-                      onClick={handleCommit}
+                      onClick={() => (needsStaging ? stageAllChanges() : handleCommit())}
+                      title={needsStaging ? t('stage_all') : amendMode ? t('amend') : t('commit')}
                       className="focus-ring cursor-pointer flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-accent hover:bg-accent-bright disabled:opacity-40 disabled:cursor-not-allowed text-xs font-medium text-white transition-colors"
                     >
-                      <IconCheck className="w-3 h-3" />
-                      {busyAction === 'commit'
-                        ? (pushAfterCommit ? t('commit_push') : t('committing'))
-                        : (amendMode ? t('amend') : t('commit'))}
+                      {needsStaging && busyAction !== 'commit' ? (
+                        <IconPlus className="w-3 h-3" />
+                      ) : (
+                        <IconCheck className="w-3 h-3" />
+                      )}
+                      {busyAction === 'stage-all'
+                        ? t('staging')
+                        : busyAction === 'commit'
+                          ? (pushAfterCommit ? t('commit_push') : t('committing'))
+                          : needsStaging
+                            ? t('stage_all')
+                            : (amendMode ? t('amend') : t('commit'))}
                     </button>
                   </div>
                 </div>

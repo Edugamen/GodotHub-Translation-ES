@@ -108,5 +108,7 @@
   "unwrap_lines": "No wrap",
   "copy_diff": "Copy diff",
   "loading_diff": "Loading diff…",
-  "diff_error": "Couldn't load the diff."
+  "diff_error": "Couldn't load the diff.",
+  "stage_all": "Stage All",
+  "staging": "Staging…"
 }
