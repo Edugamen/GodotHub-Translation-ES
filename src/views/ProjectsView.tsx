@@ -964,14 +964,14 @@ export function ProjectsView({
             transition={{ duration: 0.3, ease: 'easeInOut' }}
             className="overflow-hidden"
           >
-            <div className="relative overflow-hidden rounded-2xl border border-accent-dim/40 bg-gradient-to-br from-raised via-surface to-accent-dim/10 px-6 py-5 pr-12">
+            <div className="relative overflow-hidden rounded-2xl border border-accent-dim/40 bg-linear-to-br from-raised via-surface to-accent-dim/10 px-6 py-5 pr-12">
               <div className="absolute -top-20 -right-20 w-56 h-56 rounded-full bg-accent/10 blur-3xl pointer-events-none" />
               <div className="relative flex items-start gap-4">
                 <span className="w-11 h-11 shrink-0 rounded-xl bg-accent/15 border border-accent-dim/40 flex items-center justify-center">
                   <IconPalette className="w-5 h-5 text-accent-bright" />
                 </span>
                 <div className="min-w-0">
-                  <h3 className="font-display font-semibold text-base text-ink">
+                  <h3 className="font-display font-semibold text-ink">
                     {t('ui_rewrite_title')}
                   </h3>
                   <p className="mt-1 text-sm leading-relaxed text-muted max-w-3xl">

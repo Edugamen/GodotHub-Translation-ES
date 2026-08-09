@@ -64,7 +64,6 @@ export interface UpdateEntry {
 export interface UpdatesResponse {
   entries: UpdateEntry[]
   from_cache: boolean
-  /** Unix timestamp (seconds) of when the served entries were fetched. 0 = live/seed. */
   fetched_at: number
 }
 
@@ -99,7 +98,6 @@ export interface GitStatus {
 
 export interface GitLogEntry {
   hash: string
-  /** Full parent hashes (empty for root commits) — used to draw the commit graph. */
   parents: string[]
   message: string
   author: string

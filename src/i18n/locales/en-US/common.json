@@ -323,6 +323,7 @@
   "news_error": "Couldn't load Godot news.",
   "news_empty": "No news to show right now.",
   "show_more": "Show more",
+  "show_less": "Show less",
   "try_again": "Try again",
 
   "asset_subtitle": "Browse, install, and manage Godot assets from the community.",

@@ -149,10 +149,6 @@ function FileRow({
   )
 }
 
-/**
- * VS Code-style collapsible group header: label + count badge, with batch
- * actions revealed on hover (e.g. stage all / unstage all / discard all).
- */
 function ChangeGroup({
   label,
   count,
@@ -534,7 +530,6 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
     })
   const handleInit = () => doAction('init', async () => { await api.gitInit(project.path) })
 
-  /** Stage every remaining change (VS Code: "Stage All Changes"). */
   const stageAllChanges = async (): Promise<boolean> => {
     if (unstagedFiles.length === 0) return true
     setBusyAction('stage-all')
@@ -555,7 +550,6 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
     }
   }
 
-  /** Unstage every staged change (VS Code: "Unstage All Changes"). */
   const unstageAllChanges = async () => {
     if (gitStagedFiles.length === 0) return
     setBusyAction('unstage-all')
@@ -574,7 +568,6 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
     }
   }
 
-  /** Stage or unstage a single file directly from its row. */
   const quickStage = async (filePath: string, staged: boolean) => {
     setBusyAction(`quick:${filePath}`)
     try {
@@ -599,7 +592,6 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
     }
   }
 
-  /** Discard a single file: stash it first (matching the all-files discard) so the change can be recovered. */
   const handleDiscardFile = async (f: GitChangedFile) => {
     setBusyAction(`discard:${f.path}`)
     try {
@@ -653,7 +645,6 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
     ]
   }
 
-  /** Ctrl+Enter: stage everything first, then commit — but only if staging succeeded. */
   const handleCommitShortcut = async () => {
     if (busyAction !== null || !commitMessage.trim()) return
     if (needsStaging) {

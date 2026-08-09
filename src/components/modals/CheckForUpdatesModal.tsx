@@ -487,7 +487,7 @@ export function CheckForUpdatesModal({ onClose, mode = 'manual' }: Props) {
                               className="text-xs text-muted leading-relaxed flex gap-2"
                             >
                               <span className="shrink-0 text-amber-400">•</span>
-                              <span className="whitespace-pre-wrap break-words">
+                              <span className="whitespace-pre-wrap wrap-break-word">
                                 {issue}
                               </span>
                             </li>
@@ -532,7 +532,7 @@ export function CheckForUpdatesModal({ onClose, mode = 'manual' }: Props) {
                                       <span className="shrink-0 text-muted">
                                         •
                                       </span>
-                                      <span className="whitespace-pre-wrap break-words">
+                                      <span className="whitespace-pre-wrap wrap-break-word">
                                         {item}
                                       </span>
                                     </li>
@@ -657,7 +657,7 @@ export function CheckForUpdatesModal({ onClose, mode = 'manual' }: Props) {
                               ? t('check_updates_token_rejected')
                               : t('check_updates_failed')}
                         </p>
-                        <p className="text-xs text-muted mt-1 max-w-xs break-words">
+                        <p className="text-xs text-muted mt-1 max-w-xs wrap-break-word">
                           {state.message}
                         </p>
                       </div>

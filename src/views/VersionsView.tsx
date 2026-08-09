@@ -42,7 +42,23 @@ function versionCore(raw: string): string {
     i++
   }
   const channel = parts[i] ?? 'stable'
-  return `${numeric.join('.')}-${channel}`
+  const channelNum =
+    parts[i + 1] && /^\d+$/.test(parts[i + 1]) ? parts[i + 1] : ''
+  return `${numeric.join('.')}-${channel}${channelNum}`
+}
+
+function hasChannel(raw: string): boolean {
+  const parts = raw
+    .trim()
+    .toLowerCase()
+    .replace(/^v/, '')
+    .split(/[.\-]/)
+    .filter(Boolean)
+  let i = 0
+  while (i < parts.length && /^\d+$/.test(parts[i])) {
+    i++
+  }
+  return i < parts.length
 }
 
 function minorGroup(tag: string): string {
@@ -660,13 +676,16 @@ export function VersionsView() {
                                 const progressKey = asset.is_mono
                                   ? `${tag}-mono`
                                   : tag
-                                const isInstalled = installed.some(
-                                  (v) =>
-                                    (versionCore(v.tag) === versionCore(tag) ||
-                                      versionCore(v.version) ===
-                                        versionCore(tag)) &&
-                                    v.is_mono === asset.is_mono,
-                                )
+                                const isInstalled = installed.some((v) => {
+                                  if (v.is_mono !== asset.is_mono) return false
+                                  if (versionCore(v.tag) === versionCore(tag)) {
+                                    return true
+                                  }
+                                  return (
+                                    hasChannel(v.version) &&
+                                    versionCore(v.version) === versionCore(tag)
+                                  )
+                                })
                                 const dl = downloads[progressKey]
                                 return (
                                   <ScrollReveal key={progressKey} delay={0.02}>

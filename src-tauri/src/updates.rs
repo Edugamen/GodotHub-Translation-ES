@@ -94,8 +94,6 @@ fn to_entry(raw: SanityUpdate) -> UpdateEntry {
 pub struct UpdatesResponse {
     pub entries: Vec<UpdateEntry>,
     pub from_cache: bool,
-    /// Unix timestamp (seconds) of when the served entries were fetched.
-    /// 0 when served live (fetched just now) or from the bundled seed.
     pub fetched_at: i64,
 }
 

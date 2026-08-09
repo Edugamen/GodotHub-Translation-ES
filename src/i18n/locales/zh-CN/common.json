@@ -323,6 +323,7 @@
   "news_error": "无法加载 Godot 新闻。",
   "news_empty": "目前没有要显示的新闻。",
   "show_more": "显示更多",
+  "show_less": "显示更少",
   "try_again": "重试",
 
   "asset_subtitle": "浏览、安装和管理来自社区的 Godot 资源。",

@@ -744,38 +744,49 @@ pub fn console_executable_for(exe: &Path) -> Option<PathBuf> {
     candidate.is_file().then_some(candidate)
 }
 
-pub fn migrate_mono_tags(app: &AppHandle) {
-    let mut list = read_registry(app);
-    let mut changed = false;
+fn migrate_mono_tags_in_place(
+    list: &mut Vec<InstalledGodotVersion>,
+    projects: &mut Vec<Project>,
+) -> (bool, bool) {
+    let mut renamed_old_tags: Vec<String> = Vec::new();
+    let mut registry_changed = false;
     for v in list.iter_mut() {
         if v.is_mono && !v.tag.ends_with("-mono") {
+            renamed_old_tags.push(v.tag.clone());
             v.tag = format!("{}-mono", v.tag);
-            changed = true;
+            registry_changed = true;
         }
-    }
-    if changed {
-        let _ = write_registry(app, &list);
     }
 
-    let mut projects = crate::projects::read_projects(app);
-    let mut project_changed = false;
-    for v in &list {
-        if !v.is_mono || !v.tag.ends_with("-mono") {
-            continue;
-        }
-        let base = v.tag.trim_end_matches("-mono");
-        let has_standard_still = list.iter().any(|other| !other.is_mono && other.tag == base);
+    if !registry_changed {
+        return (false, false);
+    }
+
+    let mut projects_changed = false;
+    for old_tag in &renamed_old_tags {
+        let has_standard_still = list.iter().any(|other| !other.is_mono && other.tag == *old_tag);
         if has_standard_still {
             continue;
         }
+        let new_tag = format!("{}-mono", old_tag);
         for p in projects.iter_mut() {
-            if p.godot_version == base {
-                p.godot_version = v.tag.clone();
-                project_changed = true;
+            if p.godot_version == *old_tag {
+                p.godot_version = new_tag.clone();
+                projects_changed = true;
             }
         }
     }
-    if project_changed {
+    (registry_changed, projects_changed)
+}
+
+pub fn migrate_mono_tags(app: &AppHandle) {
+    let mut list = read_registry(app);
+    let mut projects = crate::projects::read_projects(app);
+    let (registry_changed, projects_changed) = migrate_mono_tags_in_place(&mut list, &mut projects);
+    if registry_changed {
+        let _ = write_registry(app, &list);
+    }
+    if projects_changed {
         let _ = crate::projects::write_projects(app, &projects);
     }
 }
@@ -783,6 +794,7 @@ pub fn migrate_mono_tags(app: &AppHandle) {
 #[tauri::command]
 pub fn list_installed_godot_versions(app: AppHandle) -> Result<Vec<InstalledGodotVersion>, String> {
     migrate_mono_tags(&app);
+    crate::projects::rebind_projects_to_installed(&app);
     Ok(prune_missing(&app))
 }
 
@@ -1172,4 +1184,93 @@ fn supports_console(exe: &Path) -> bool {
 #[cfg(not(target_os = "windows"))]
 fn supports_console(_exe: &Path) -> bool {
     true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::Project;
+
+    fn version(tag: &str, is_mono: bool) -> InstalledGodotVersion {
+        InstalledGodotVersion {
+            tag: tag.into(),
+            version: "4.7.1".into(),
+            executable_path: String::new(),
+            is_mono,
+            installed_at: String::new(),
+            custom_name: None,
+            install_root: None,
+            supports_console: true,
+        }
+    }
+
+    fn project(bound: &str) -> Project {
+        Project {
+            id: "1".into(),
+            name: "Game".into(),
+            path: "/tmp/game".into(),
+            godot_version: bound.into(),
+            created_at: String::new(),
+            last_opened: None,
+            category: None,
+            pinned: false,
+            sort_order: 0,
+            launch_arguments: String::new(),
+            tags: vec![],
+        }
+    }
+
+    #[test]
+    fn fresh_mono_download_does_not_hijack_standard_bindings() {
+        let mut list = vec![version("4.7.1-stable-mono", true)];
+        let mut projects = vec![project("4.7.1-stable"), project("4.7.1-stable-mono")];
+        let (reg, proj) = migrate_mono_tags_in_place(&mut list, &mut projects);
+        assert!(!reg && !proj);
+        assert_eq!(projects[0].godot_version, "4.7.1-stable");
+        assert_eq!(projects[1].godot_version, "4.7.1-stable-mono");
+    }
+
+    #[test]
+    fn legacy_mono_tag_migrates_plain_bindings() {
+        let mut list = vec![version("4.7.1-stable", true)];
+        let mut projects = vec![project("4.7.1-stable"), project("4.7.1-stable-mono")];
+        let (reg, proj) = migrate_mono_tags_in_place(&mut list, &mut projects);
+        assert!(reg && proj);
+        assert_eq!(list[0].tag, "4.7.1-stable-mono");
+        assert_eq!(projects[0].godot_version, "4.7.1-stable-mono");
+        assert_eq!(projects[1].godot_version, "4.7.1-stable-mono");
+    }
+
+    #[test]
+    fn legacy_mono_migration_skips_when_standard_exists() {
+        let mut list = vec![version("4.7.1-stable", true), version("4.7.1-stable", false)];
+        let mut projects = vec![project("4.7.1-stable")];
+        let (reg, proj) = migrate_mono_tags_in_place(&mut list, &mut projects);
+        assert!(reg && !proj);
+        assert_eq!(projects[0].godot_version, "4.7.1-stable");
+    }
+
+    #[test]
+    fn no_mono_versions_no_changes() {
+        let mut list = vec![version("4.7.1-stable", false)];
+        let mut projects = vec![project("4.7.1-stable")];
+        let (reg, proj) = migrate_mono_tags_in_place(&mut list, &mut projects);
+        assert!(!reg && !proj);
+    }
+
+    #[test]
+    fn migration_never_hijacks_standard_bindings_for_any_version() {
+        for ver in ["4.2.2", "4.4", "4.7.1"] {
+            let standard_tag = format!("{}-stable", ver);
+            let mono_tag = format!("{}-stable-mono", ver);
+            let mut list = vec![version(&mono_tag, true)];
+            let mut projects = vec![project(&standard_tag)];
+            let (reg, proj) = migrate_mono_tags_in_place(&mut list, &mut projects);
+            assert!(
+                !reg && !proj,
+                "{ver}: canonical mono download must not touch standard bindings"
+            );
+            assert_eq!(projects[0].godot_version, standard_tag);
+        }
+    }
 }

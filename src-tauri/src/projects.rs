@@ -336,18 +336,57 @@ fn version_feature_tag(tag: &str) -> String {
     }
 }
 
+fn rebind_project_to_spec(
+    p: &mut Project,
+    spec: &crate::godotenv::DetectedVersion,
+    installed: &[InstalledGodotVersion],
+) -> bool {
+    let Some(v) = crate::godotenv::best_match(spec, installed) else {
+        return false;
+    };
+    if p.godot_version == v.tag {
+        return false;
+    }
+    if !p.godot_version.is_empty() {
+        let bound_is_mono = p.godot_version.trim_end().ends_with("-mono");
+        if bound_is_mono == spec.is_dotnet {
+            return false;
+        }
+    }
+    p.godot_version = v.tag.clone();
+    true
+}
+
 pub fn rebind_projects_to_version(app: &AppHandle, version: &InstalledGodotVersion) {
+    let installed = crate::godot_versions::read_registry(app);
     let mut projects = read_projects(app);
     let mut changed = false;
     for p in projects.iter_mut() {
-        if !p.godot_version.is_empty() {
+        let Some(spec) = crate::godotenv::detect_version(&p.path) else {
+            continue;
+        };
+        if !crate::godotenv::matches_detected(&spec, &version.tag) {
             continue;
         }
-        if let Some(spec) = crate::godotenv::detect_version(&p.path) {
-            if crate::godotenv::matches_detected(&spec, &version.tag) {
-                p.godot_version = version.tag.clone();
-                changed = true;
-            }
+        if rebind_project_to_spec(p, &spec, &installed) {
+            changed = true;
+        }
+    }
+    if changed {
+        let _ = write_projects(app, &projects);
+    }
+}
+
+pub fn rebind_projects_to_installed(app: &AppHandle) {
+    let installed = crate::godot_versions::read_registry(app);
+    let mut projects = read_projects(app);
+    let mut changed = false;
+    for p in projects.iter_mut() {
+        let Some(spec) = crate::godotenv::detect_version(&p.path) else {
+            continue;
+        };
+        if rebind_project_to_spec(p, &spec, &installed) {
+            changed = true;
         }
     }
     if changed {
@@ -1416,5 +1455,80 @@ mod tests {
     fn naming_convention_empty_falls_back() {
         assert_eq!(apply_naming_convention("  ", "kebab-case"), "");
         assert_eq!(apply_naming_convention("!!!", "kebab-case"), "!!!");
+    }
+
+    #[test]
+    fn rebind_respects_dotnet_preference() {
+        use crate::godotenv::{DetectedVersion, GodotVersionNumber};
+
+        fn spec(is_dotnet: bool) -> DetectedVersion {
+            DetectedVersion {
+                number: GodotVersionNumber {
+                    major: 4,
+                    minor: 3,
+                    patch: 0,
+                    label: "stable".into(),
+                    label_num: -1,
+                },
+                is_dotnet,
+            }
+        }
+
+        fn version(tag: &str, is_mono: bool) -> InstalledGodotVersion {
+            InstalledGodotVersion {
+                tag: tag.into(),
+                version: "4.3".into(),
+                executable_path: String::new(),
+                is_mono,
+                installed_at: String::new(),
+                custom_name: None,
+                install_root: None,
+                supports_console: true,
+            }
+        }
+
+        fn project(bound: &str) -> Project {
+            Project {
+                id: "1".into(),
+                name: "Game".into(),
+                path: "/tmp/game".into(),
+                godot_version: bound.into(),
+                created_at: String::new(),
+                last_opened: None,
+                category: None,
+                pinned: false,
+                sort_order: 0,
+                launch_arguments: String::new(),
+                tags: vec![],
+            }
+        }
+
+        let standard = version("4.3-stable", false);
+        let mono = version("4.3-stable-mono", true);
+
+        let no_dotnet = spec(false);
+        let mut p = project("");
+        assert!(rebind_project_to_spec(&mut p, &no_dotnet, &[mono.clone(), standard.clone()]));
+        assert_eq!(p.godot_version, "4.3-stable");
+
+        let mut p = project("4.3-stable-mono");
+        assert!(rebind_project_to_spec(&mut p, &no_dotnet, &[mono.clone(), standard.clone()]));
+        assert_eq!(p.godot_version, "4.3-stable");
+
+        let mut p = project("4.3-stable");
+        assert!(!rebind_project_to_spec(&mut p, &no_dotnet, &[mono.clone(), standard.clone()]));
+        assert_eq!(p.godot_version, "4.3-stable");
+
+        let dotnet = spec(true);
+        let mut p = project("");
+        assert!(rebind_project_to_spec(&mut p, &dotnet, &[standard.clone(), mono.clone()]));
+        assert_eq!(p.godot_version, "4.3-stable-mono");
+
+        let mut p = project("4.3-stable-mono");
+        assert!(!rebind_project_to_spec(&mut p, &dotnet, &[standard.clone(), mono.clone()]));
+
+        let mut p = project("");
+        assert!(rebind_project_to_spec(&mut p, &no_dotnet, &[mono]));
+        assert_eq!(p.godot_version, "4.3-stable-mono");
     }
 }

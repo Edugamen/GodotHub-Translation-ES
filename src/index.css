@@ -186,7 +186,6 @@ textarea::placeholder {
   }
 }
 
-/* Updates from Dev — markdown body */
 .markdown-body {
   font-size: 0.875rem;
   line-height: 1.65;
