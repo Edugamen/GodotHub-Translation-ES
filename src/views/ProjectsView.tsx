@@ -695,13 +695,26 @@ export function ProjectsView({
 
   const fetchGitStatuses = useCallback(async () => {
     if (fetchingGitRef.current) return
+    if (document.visibilityState === 'hidden') return
     const list = projectsRef.current
     if (list.length === 0) return
     fetchingGitRef.current = true
     try {
       const paths = list.map((p) => p.path)
       const statuses = await api.batchGitStatus(paths)
-      setGitStatusMap(statuses)
+      setGitStatusMap((prev) => {
+        const prevKeys = Object.keys(prev)
+        const nextKeys = Object.keys(statuses)
+        if (prevKeys.length !== nextKeys.length) return statuses
+        for (const k of nextKeys) {
+          const a = prev[k]
+          const b = statuses[k]
+          if (!a || a.branch !== b.branch || a.has_uncommitted !== b.has_uncommitted || a.is_repo !== b.is_repo) {
+            return statuses
+          }
+        }
+        return prev
+      })
     } catch {
     } finally {
       fetchingGitRef.current = false

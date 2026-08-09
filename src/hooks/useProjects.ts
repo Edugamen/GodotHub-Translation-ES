@@ -47,14 +47,8 @@ export function useProjects() {
 
   const updateVersion = useCallback(
     async (id: string, godot_version: string) => {
-      const t0 = performance.now()
       await api.updateProject(id, { godot_version })
-      const t1 = performance.now()
       await refresh()
-      const t2 = performance.now()
-      console.log(
-        `[timing] updateVersion update_ipc=${(t1 - t0).toFixed(1)}ms refresh=${(t2 - t1).toFixed(1)}ms total=${(t2 - t0).toFixed(1)}ms`,
-      )
     },
     [refresh],
   )

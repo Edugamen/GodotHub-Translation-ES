@@ -15,6 +15,11 @@ export interface DownloadState extends DownloadProgress {
 const keyOf = (tag: string, assetName: string) =>
   assetName.toLowerCase().includes('mono') ? `${tag}-mono` : tag
 
+const sameInstalled = (
+  a: InstalledGodotVersion[],
+  b: InstalledGodotVersion[],
+) => JSON.stringify(a) === JSON.stringify(b)
+
 export function useGodotVersions() {
   const { activeId } = useWorkspaces()
   const [installed, setInstalled] = useState<InstalledGodotVersion[]>([])
@@ -27,10 +32,10 @@ export function useGodotVersions() {
     total: number
   } | null>(null)
 
-  const refreshInstalled = useCallback(
-    async () => setInstalled(await api.listInstalledGodotVersions()),
-    [],
-  )
+  const refreshInstalled = useCallback(async () => {
+    const next = await api.listInstalledGodotVersions()
+    setInstalled((prev) => (sameInstalled(prev, next) ? prev : next))
+  }, [])
 
   const refreshAvailable = useCallback(async () => {
     setLoadingAvailable(true)

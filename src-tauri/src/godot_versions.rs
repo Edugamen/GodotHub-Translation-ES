@@ -791,10 +791,62 @@ pub fn migrate_mono_tags(app: &AppHandle) {
     }
 }
 
+/// Signature of the registry contents from the last full reconcile. The
+/// frontend polls `list_installed_godot_versions` every few seconds; when the
+/// registry hasn't changed we skip the whole migrate/rebind pass (which
+/// re-scans every project directory via `detect_version`).
+fn installed_signature() -> &'static Mutex<Option<String>> {
+    static SIG: OnceLock<Mutex<Option<String>>> = OnceLock::new();
+    SIG.get_or_init(|| Mutex::new(None))
+}
+
+fn registry_signature(raw: &str) -> String {
+    let Ok(value) = serde_json::from_str::<serde_json::Value>(raw) else {
+        // Unparseable file — fall back to the raw bytes so any change
+        // invalidates the cache.
+        return raw.to_string();
+    };
+    let arr = value.as_array().map(|a| a.as_slice()).unwrap_or(&[]);
+    let mut parts: Vec<String> = arr
+        .iter()
+        .filter_map(|e| {
+            let tag = e.get("tag")?.as_str()?;
+            let path = e.get("executable_path").and_then(|x| x.as_str()).unwrap_or("");
+            let mono = e.get("is_mono").and_then(|x| x.as_bool()).unwrap_or(false);
+            let custom = e.get("custom_name").and_then(|x| x.as_str()).unwrap_or("");
+            Some(format!("{tag}|{path}|{mono}|{custom}"))
+        })
+        .collect();
+    parts.sort();
+    parts.join("\n")
+}
+
 #[tauri::command]
 pub fn list_installed_godot_versions(app: AppHandle) -> Result<Vec<InstalledGodotVersion>, String> {
-    migrate_mono_tags(&app);
-    crate::projects::rebind_projects_to_installed(&app);
+    let file = registry_file(&app);
+    let raw = fs::read_to_string(&file).unwrap_or_default();
+    let sig = registry_signature(&raw);
+
+    let needs_reconcile = {
+        let sig_lock = installed_signature().lock().unwrap();
+        match sig_lock.as_ref() {
+            Some(cached) => cached != &sig,
+            None => true,
+        }
+    };
+
+    if needs_reconcile {
+        // Registry changed (or first call): re-run the one-time corrections
+        // and rebind projects against the current installed set.
+        migrate_mono_tags(&app);
+        crate::projects::rebind_projects_to_installed(&app);
+        // Re-read after migration/prune may have rewritten the file, then
+        // record the new signature so the next poll takes the fast path.
+        let raw = fs::read_to_string(&file).unwrap_or_default();
+        *installed_signature().lock().unwrap() = Some(registry_signature(&raw));
+    }
+
+    // Cheap steady-state check: stat each executable to drop deleted ones.
     Ok(prune_missing(&app))
 }
 
