@@ -155,32 +155,43 @@ jobs:
             "repos/$REPO/releases/assets/$asset_id" > latest.json
           node - <<'EOF'
           const fs = require('fs');
+          const tag = process.env.TAG;
+          const repo = process.env.REPO;
           const manifest = JSON.parse(fs.readFileSync('latest.json', 'utf8'));
-          const downloadUrls = new Map(
-            JSON.parse(fs.readFileSync('assets.json', 'utf8')).map((a) => [
-              a.url,
-              a.browser_download_url,
-            ]),
-          );
+          const assets = JSON.parse(fs.readFileSync('assets.json', 'utf8'));
+          const byApiUrl = new Map(assets.map((a) => [a.url, a]));
+          const taggedUrl = (name) =>
+            `https://github.com/${repo}/releases/download/${tag}/${encodeURIComponent(name)}`;
           let rewritten = 0;
+          let normalized = 0;
           let alreadyDirect = 0;
           for (const [platform, data] of Object.entries(manifest.platforms ?? {})) {
-            if (!data.url.startsWith('https://api.github.com/')) {
+            if (data.url.startsWith('https://api.github.com/')) {
+              // While the release is a draft, browser_download_url points at an
+              // untagged-* path that stops working once the release is published.
+              // Build the final tagged URL from the asset name instead.
+              const asset = byApiUrl.get(data.url);
+              if (!asset) {
+                throw new Error(`no release asset matches ${platform} url ${data.url}`);
+              }
+              data.url = taggedUrl(asset.name);
+              rewritten++;
+            } else if (data.url.includes('/download/untagged-')) {
+              // Normalize stale untagged-* URLs from a previously rewritten draft.
+              data.url = data.url.replace(
+                /\/download\/untagged-[^/]+/,
+                `/download/${tag}`,
+              );
+              normalized++;
+            } else {
               alreadyDirect++;
-              continue;
             }
-            const downloadUrl = downloadUrls.get(data.url);
-            if (!downloadUrl) {
-              throw new Error(`no release asset matches ${platform} url ${data.url}`);
-            }
-            data.url = downloadUrl;
-            rewritten++;
           }
-          if (rewritten + alreadyDirect === 0) {
+          if (rewritten + normalized + alreadyDirect === 0) {
             throw new Error('latest.json has no platform entries');
           }
           fs.writeFileSync('latest.json', JSON.stringify(manifest, null, 2));
-          console.log(`rewrote ${rewritten} urls, ${alreadyDirect} already direct`);
+          console.log(`rewrote ${rewritten}, normalized ${normalized}, already direct ${alreadyDirect}`);
           EOF
           gh release upload "$TAG" latest.json --repo "$REPO" --clobber
 

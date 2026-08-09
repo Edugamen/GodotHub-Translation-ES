@@ -149,6 +149,7 @@ export function CheckForUpdatesModal({ onClose, mode = 'manual' }: Props) {
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
   const simulateRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const lastReleaseUrlRef = useRef<string | null>(null)
 
   const isPreview = mode === 'preview'
   const githubToken = settings.github_token?.trim() || null
@@ -212,6 +213,7 @@ export function CheckForUpdatesModal({ onClose, mode = 'manual' }: Props) {
           typeof rawHtmlUrl === 'string' && rawHtmlUrl.trim()
             ? rawHtmlUrl
             : releaseUrlForVersion(update.version)
+        lastReleaseUrlRef.current = releaseUrl
         setState({
           type: 'available',
           version: update.version,
@@ -677,6 +679,22 @@ export function CheckForUpdatesModal({ onClose, mode = 'manual' }: Props) {
                             {hint === 'token-rejected'
                               ? t('check_updates_open_token_settings')
                               : t('check_updates_add_token')}
+                          </motion.button>
+                        </div>
+                      )}
+                      {/404/.test(state.message) && lastReleaseUrlRef.current && (
+                        <div className="w-full bg-raised rounded-xl border border-line p-4 flex flex-col gap-3">
+                          <p className="text-[11px] text-muted leading-relaxed">
+                            {t('check_updates_404_hint')}
+                          </p>
+                          <motion.button
+                            whileHover={{ y: -1 }}
+                            whileTap={{ scale: 0.96 }}
+                            onClick={() => openUrl(lastReleaseUrlRef.current!)}
+                            className="focus-ring cursor-pointer flex items-center gap-2 self-start px-4 py-2 rounded-lg bg-accent hover:bg-accent-bright text-xs font-medium text-white transition-colors"
+                          >
+                            <IconExternalLink className="w-3.5 h-3.5" />
+                            {t('check_updates_download_from_github')}
                           </motion.button>
                         </div>
                       )}

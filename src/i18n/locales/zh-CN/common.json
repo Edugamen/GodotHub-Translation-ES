@@ -590,6 +590,7 @@
   "check_updates_update_available_title": "发现新版本",
   "check_updates_known_issues": "已知问题",
   "check_updates_download_from_github": "从 GitHub 下载",
+  "check_updates_404_hint": "自动下载链接当前已失效（404）。你可以直接从 GitHub 发布页面下载安装程序。",
   "check_updates_preview_badge": "预览",
   "check_updates_preview_mode_hint": "预览模式 —— 不会真正下载更新。切换状态以检查界面。",
   "preview_state_checking": "检查中",
