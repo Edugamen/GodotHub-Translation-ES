@@ -289,8 +289,9 @@ GodotHub is available as a desktop application for:
 
 GodotHub is now available on the **Windows Package Manager (winget)**! If you're on Windows 10 or 11, you can install GodotHub with a single command:
 
-powershell >
-```winget install RykoTheDev.GodotHub```
+> Winget is unreliable for latest updates as maintainers dont merge the update for days..
+
+powershell > ```winget install RykoTheDev.GodotHub```
 
 and to manually update > ```winget upgrade RykoTheDev.GodotHub```
 
