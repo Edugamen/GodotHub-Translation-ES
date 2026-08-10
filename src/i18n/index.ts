@@ -48,10 +48,7 @@ const resources = {
     onboarding: enUSOnboarding,
     versions: enUSVersions,
   },
-  'zh-CN': {
-    zhCNResources,
-    zh: zhCNResources,
-  },
+  'zh-CN': zhCNResources,
   'ru-RU': {
     nav: ruRUNav,
     common: ruRuCommon,

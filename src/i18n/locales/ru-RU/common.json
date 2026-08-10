@@ -324,6 +324,7 @@
   "news_error": "Не удалось загрузить новости Godot.",
   "news_empty": "Пока никаких новостей.",
   "show_more": "Показать больше",
+  "show_less": "Показать меньше",
   "try_again": "Попробуйте еще раз",
 
   "asset_subtitle": "Просматривайте, устанавливайте и управляйте ассетами Godot из сообщества.",
@@ -588,6 +589,12 @@
   "check_updates_update_available_title": "Обновление доступно",
   "check_updates_known_issues": "Известные проблемы",
   "check_updates_download_from_github": "Скачать с GitHub",
+  "check_updates_404_hint": "Ссылка на автоматическую загрузку в данный момент не работает (404). Вы можете скачать установщик напрямую с релиза на GitHub.",
+  "check_updates_portable_badge": "Portable",
+  "check_updates_portable_desc": "Вы используете автономную версию GodotHub (.exe), которую нельзя обновить автоматически.",
+  "check_updates_portable_hint_title": "Требуется ручное обновление",
+  "check_updates_portable_hint": "Скачайте последний .exe со страницы релиза на GitHub, затем замените им ваш текущий GodotHub.exe. Ваши настройки и данные хранятся в отдельной папке, поэтому ничего не потеряется.",
+  "check_updates_go_to_release": "Перейти к релизу на GitHub",
   "check_updates_preview_badge": "Превью",
   "check_updates_preview_mode_hint": "Режим превью",
   "preview_state_checking": "Проверка",
@@ -596,6 +603,7 @@
   "preview_state_done": "Готово",
   "preview_state_uptodate": "Актуально",
   "preview_state_error": "Ошибка",
+  "preview_state_portable": "Portable",
   "preview_update_modal": "Модальное окно превью обновления",
   
   "clone_repo_title": "Клонировать репозиторий",
@@ -706,7 +714,6 @@
   "found_dismissed_title_other": "Найдены {{count}} ранее удалённых проектов",
   "found_dismissed_desc_one": "Сканер обнаружил 1 проект, который вы ранее удаляли из библиотеки. Добавить обратно?",
   "found_dismissed_desc_other": "Сканер обнаружил {{count}} проектов, которые вы ранее удаляли из библиотеки. Добавить обратно?",
-  "readd_all": "Добавить все обратно",
-  "skip_all": "Пропустить всё"
-
+  "readd_all": "Добавить все обратно",  "skip_all": "Пропустить всё",
+  "language_settings": "Настройки языка…"
 }

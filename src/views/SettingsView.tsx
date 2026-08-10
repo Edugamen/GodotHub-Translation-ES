@@ -433,6 +433,7 @@ export function SettingsView({
       command_palette_keybind: { tab: 'behavior', section: 'behavior' },
       last_opened_time_format: { tab: 'display', section: 'display' },
       last_opened_date_format: { tab: 'display', section: 'display' },
+      language: { tab: 'display', section: 'display' },
       theme_mode: { tab: 'appearance', section: 'appearance' },
       accent_color: { tab: 'appearance', section: 'appearance' },
       background_color: { tab: 'appearance', section: 'appearance' },
@@ -1345,6 +1346,7 @@ export function SettingsView({
                   {[
                     { value: 'en-US', label: 'English' },
                     { value: 'zh-CN', label: '简体中文' },
+                    { value: 'ru-RU', label: 'Русский' },
                   ].map(({ value, label }) => {
                     const active = i18n.language === value || i18n.language.startsWith(value.split('-')[0])
                     return (

@@ -712,5 +712,6 @@
   "found_dismissed_desc_one": "Scanner found 1 project that you previously removed from the library. Would you like to re-add it?",
   "found_dismissed_desc_other": "Scanner found {{count}} projects that you previously removed from the library. Would you like to re-add them?",
   "readd_all": "Re-add All",
-  "skip_all": "Skip All"
+  "skip_all": "Skip All",
+  "language_settings": "Language settings…"
 }

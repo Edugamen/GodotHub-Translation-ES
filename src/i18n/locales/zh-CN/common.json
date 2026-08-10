@@ -711,5 +711,6 @@
   "found_dismissed_desc_one": "扫描发现 1 个您之前从库中移除的项目。要重新添加吗？",
   "found_dismissed_desc_other": "扫描发现 {{count}} 个您之前从库中移除的项目。要重新添加吗？",
   "readd_all": "全部重新添加",
-  "skip_all": "全部跳过"
+  "skip_all": "全部跳过",
+  "language_settings": "语言设置…"
 }

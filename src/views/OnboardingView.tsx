@@ -419,6 +419,7 @@ export function OnboardingView({ settings, onComplete }: Props) {
                       {[
                         { value: 'en-US', label: 'English' },
                         { value: 'zh-CN', label: '简体中文' },
+                        { value: 'ru-RU', label: 'Русский' },
                       ].map(({ value, label }) => {
                         const active = i18n.language === value || i18n.language.startsWith(value.split('-')[0])
                         return (
