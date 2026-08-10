@@ -9,6 +9,7 @@ import enUSGit from './locales/en-US/git.json'
 import enUSChangelog from './locales/en-US/changelog.json'
 import enUSOnboarding from './locales/en-US/onboarding.json'
 import enUSVersions from './locales/en-US/versions.json'
+
 import zhCNNav from './locales/zh-CN/nav.json'
 import zhCNCommon from './locales/zh-CN/common.json'
 import zhCNSettings from './locales/zh-CN/settings.json'
@@ -16,6 +17,16 @@ import zhCNGit from './locales/zh-CN/git.json'
 import zhCNChangelog from './locales/zh-CN/changelog.json'
 import zhCNOnboarding from './locales/zh-CN/onboarding.json'
 import zhCNVersions from './locales/zh-CN/versions.json'
+
+import ruRUNav from './locales/ru-RU/nav.json'
+import ruRuCommon from './locales/ru-RU/common.json'
+import ruRUSettings from './locales/ru-RU/settings.json'
+import ruRUGit from './locales/ru-RU/git.json'
+import ruRUChangelog from './locales/ru-RU/changelog.json'
+import ruRUOnboarding from './locales/ru-RU/onboarding.json'
+import ruRUVersions from './locales/ru-RU/versions.json'
+
+
 
 const zhCNResources = {
   nav: zhCNNav,
@@ -37,8 +48,19 @@ const resources = {
     onboarding: enUSOnboarding,
     versions: enUSVersions,
   },
-  'zh-CN': zhCNResources,
-  zh: zhCNResources,
+  'zh-CN': {
+    zhCNResources,
+    zh: zhCNResources,
+  },
+  'ru-RU': {
+    nav: ruRUNav,
+    common: ruRuCommon,
+    settings: ruRUSettings,
+    git: ruRUGit,
+    changelog: ruRUChangelog,
+    onboarding: ruRUOnboarding,
+    versions: ruRUVersions,
+  },
 }
 
 i18n
