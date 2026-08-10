@@ -6,6 +6,7 @@ mod git;
 mod git_helpers;
 mod godot_versions;
 mod godotenv;
+mod install_mode;
 mod models;
 mod news;
 mod persist;
@@ -191,6 +192,7 @@ pub fn run() {
             changelog::update_changelog_entry,
             changelog::delete_changelog_entry,
             updates::fetch_updates,
+            install_mode::is_portable_install,
             git::clone_repo,
             git::get_git_status,
             git::batch_git_status,

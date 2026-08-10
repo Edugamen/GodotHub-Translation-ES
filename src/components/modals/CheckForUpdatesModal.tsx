@@ -16,6 +16,7 @@ import {
   IconExternalLink,
 } from '../Icons'
 import { useSettings } from '../../hooks/useSettings'
+import { api } from '../../lib/api'
 
 type UpdateState =
   | { type: 'checking' }
@@ -24,6 +25,7 @@ type UpdateState =
       version: string
       notes: string | null
       releaseUrl: string | null
+      portable?: boolean
       downloadAndInstall: () => Promise<void>
     }
   | { type: 'downloading'; progress: number }
@@ -136,6 +138,7 @@ function releaseUrlForVersion(version: string): string {
 const PREVIEW_STATES = [
   'checking',
   'available',
+  'portable',
   'downloading',
   'done',
   'uptodate',
@@ -161,6 +164,7 @@ export function CheckForUpdatesModal({ onClose, mode = 'manual' }: Props) {
           version: PREVIEW_VERSION,
           notes: PREVIEW_NOTES,
           releaseUrl: releaseUrlForVersion(PREVIEW_VERSION),
+          portable: false,
           downloadAndInstall: () => Promise.resolve(),
         }
       : { type: 'checking' },
@@ -199,13 +203,17 @@ export function CheckForUpdatesModal({ onClose, mode = 'manual' }: Props) {
         version: PREVIEW_VERSION,
         notes: PREVIEW_NOTES,
         releaseUrl: releaseUrlForVersion(PREVIEW_VERSION),
+        portable: false,
         downloadAndInstall: simulateDownload,
       })
       return
     }
     setState({ type: 'checking' })
     try {
-      const update = await check()
+      const [update, portable] = await Promise.all([
+        check(),
+        api.isPortableInstall().catch(() => false),
+      ])
       if (update) {
         const rawHtmlUrl = (update.rawJson as Record<string, unknown> | undefined)
           ?.html_url
@@ -219,6 +227,7 @@ export function CheckForUpdatesModal({ onClose, mode = 'manual' }: Props) {
           version: update.version,
           notes: update.body ?? null,
           releaseUrl,
+          portable,
           downloadAndInstall: async () => {
             setState({ type: 'downloading', progress: 0 })
             let downloaded = 0
@@ -290,6 +299,17 @@ export function CheckForUpdatesModal({ onClose, mode = 'manual' }: Props) {
           version: PREVIEW_VERSION,
           notes: PREVIEW_NOTES,
           releaseUrl: releaseUrlForVersion(PREVIEW_VERSION),
+          portable: false,
+          downloadAndInstall: simulateDownload,
+        })
+        break
+      case 'portable':
+        setState({
+          type: 'available',
+          version: PREVIEW_VERSION,
+          notes: PREVIEW_NOTES,
+          releaseUrl: releaseUrlForVersion(PREVIEW_VERSION),
+          portable: true,
           downloadAndInstall: simulateDownload,
         })
         break
@@ -374,6 +394,12 @@ export function CheckForUpdatesModal({ onClose, mode = 'manual' }: Props) {
                 {t('check_updates_preview_badge')}
               </span>
             )}
+            {state.type === 'available' && state.portable && (
+              <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-md bg-amber/15 text-amber text-[10px] font-semibold uppercase tracking-wider">
+                <IconExternalLink className="w-3 h-3" />
+                {t('check_updates_portable_badge')}
+              </span>
+            )}
           </div>
           <button
             type="button"
@@ -443,11 +469,15 @@ export function CheckForUpdatesModal({ onClose, mode = 'manual' }: Props) {
                   <div className="flex flex-col gap-5 min-w-0">
                     <div className="flex items-center gap-3.5">
                       <div className="relative w-12 h-12 shrink-0">
-                        <div className="absolute inset-0 rounded-xl bg-accent/25 animate-ping opacity-30" />
-                        <div className="relative w-12 h-12 rounded-xl bg-linear-to-br from-accent/25 to-accent-bright/25 border border-accent/30 flex items-center justify-center">
-                          <IconDownload className="w-5 h-5 text-accent-bright" />
+                          <div className="absolute inset-0 rounded-xl bg-accent/25 animate-ping opacity-30" />
+                          <div className="relative w-12 h-12 rounded-xl bg-linear-to-br from-accent/25 to-accent-bright/25 border border-accent/30 flex items-center justify-center">
+                            {state.portable ? (
+                              <IconExternalLink className="w-5 h-5 text-accent-bright" />
+                            ) : (
+                              <IconDownload className="w-5 h-5 text-accent-bright" />
+                            )}
+                          </div>
                         </div>
-                      </div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-ink leading-snug">
                           {t('check_updates_version_available', {
@@ -455,7 +485,9 @@ export function CheckForUpdatesModal({ onClose, mode = 'manual' }: Props) {
                           })}
                         </p>
                         <p className="text-xs text-muted mt-0.5">
-                          {t('check_updates_ask_download')}
+                          {state.portable
+                            ? t('check_updates_portable_desc')
+                            : t('check_updates_ask_download')}
                         </p>
                       </div>
                     </div>
@@ -475,6 +507,18 @@ export function CheckForUpdatesModal({ onClose, mode = 'manual' }: Props) {
                         </span>
                       </span>
                     </div>
+
+                    {state.portable && (
+                      <div className="w-full rounded-xl border border-amber/30 bg-amber/10 p-4">
+                        <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-400 mb-2">
+                          <IconAlertTriangle className="w-3.5 h-3.5" />
+                          {t('check_updates_portable_hint_title')}
+                        </p>
+                        <p className="text-xs text-muted leading-relaxed">
+                          {t('check_updates_portable_hint')}
+                        </p>
+                      </div>
+                    )}
 
                     {knownIssues.length > 0 && (
                       <div className="w-full rounded-xl border border-amber/30 bg-amber/10 p-4">
@@ -548,28 +592,46 @@ export function CheckForUpdatesModal({ onClose, mode = 'manual' }: Props) {
                   </div>
                 </div>
                 <div className="flex items-center justify-center gap-2.5 flex-wrap">
-                  <motion.button
-                    whileHover={{ y: -1 }}
-                    whileTap={{ scale: 0.96 }}
-                    onClick={handleInstall}
-                    className="focus-ring cursor-pointer flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent hover:bg-accent-bright text-sm font-medium text-white transition-colors"
-                  >
-                    <IconDownload className="w-4 h-4" />
-                    {t('install_update')}
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ y: -1 }}
-                    whileTap={{ scale: 0.96 }}
-                    onClick={() => {
-                      if (state.type === 'available' && state.releaseUrl) {
-                        openUrl(state.releaseUrl)
-                      }
-                    }}
-                    className="focus-ring cursor-pointer flex items-center gap-2 px-5 py-2.5 rounded-lg border border-line hover:border-accent-dim hover:bg-raised text-sm font-medium text-ink transition-colors"
-                  >
-                    <IconExternalLink className="w-4 h-4" />
-                    {t('check_updates_download_from_github')}
-                  </motion.button>
+                  {state.portable ? (
+                    <motion.button
+                      whileHover={{ y: -1 }}
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => {
+                        if (state.type === 'available' && state.releaseUrl) {
+                          openUrl(state.releaseUrl)
+                        }
+                      }}
+                      className="focus-ring cursor-pointer flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent hover:bg-accent-bright text-sm font-medium text-white transition-colors"
+                    >
+                      <IconExternalLink className="w-4 h-4" />
+                      {t('check_updates_go_to_release')}
+                    </motion.button>
+                  ) : (
+                    <>
+                      <motion.button
+                        whileHover={{ y: -1 }}
+                        whileTap={{ scale: 0.96 }}
+                        onClick={handleInstall}
+                        className="focus-ring cursor-pointer flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent hover:bg-accent-bright text-sm font-medium text-white transition-colors"
+                      >
+                        <IconDownload className="w-4 h-4" />
+                        {t('install_update')}
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ y: -1 }}
+                        whileTap={{ scale: 0.96 }}
+                        onClick={() => {
+                          if (state.type === 'available' && state.releaseUrl) {
+                            openUrl(state.releaseUrl)
+                          }
+                        }}
+                        className="focus-ring cursor-pointer flex items-center gap-2 px-5 py-2.5 rounded-lg border border-line hover:border-accent-dim hover:bg-raised text-sm font-medium text-ink transition-colors"
+                      >
+                        <IconExternalLink className="w-4 h-4" />
+                        {t('check_updates_download_from_github')}
+                      </motion.button>
+                    </>
+                  )}
                 </div>
                 </>
               )}

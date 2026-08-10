@@ -124,6 +124,7 @@ export const api = {
   deleteChangelogEntry: changelogApi.delete,
 
   fetchUpdates: updatesApi.fetch,
+  isPortableInstall: updatesApi.isPortableInstall,
 
   fetchGodotNews: newsApi.fetch,
 
