@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
@@ -23,6 +24,17 @@ export function ConfirmDialog({
   cancelLabel,
 }: Props) {
   const { t } = useTranslation('common')
+
+  // Announce the modal so floating overlays (e.g. the back-to-top button in
+  // the New UI's OverlayScrollArea) can hide while the backdrop is up. The
+  // cleanup fires on unmount, after the exit animation completes.
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('app:dialog-open'))
+    return () => {
+      window.dispatchEvent(new CustomEvent('app:dialog-close'))
+    }
+  }, [])
+
   return createPortal(
     <motion.div
       initial={{ opacity: 0 }}

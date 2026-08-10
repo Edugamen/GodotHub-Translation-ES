@@ -18,3 +18,13 @@
   --font-body: 'Onest', sans-serif;
 }
 
+/* Overlay scroll viewport (see OverlayScrollArea): the native scrollbar is
+   hidden so it takes zero layout space; a custom thumb floats over the
+   content instead, keeping every other element's position stable. */
+.new-ui .new-ui-scroll-viewport::-webkit-scrollbar {
+  display: none;
+}
+.new-ui .new-ui-scroll-viewport {
+  scrollbar-width: none;
+}
+

@@ -1,34 +1,16 @@
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Toggle } from '../../../components/ui/Toggle'
+import { Slider } from '../../../components/ui/Slider'
 import { useSettings } from '../../../hooks/useSettings'
-
-const STICKY_HEADER_KEY = 'godothub_new_ui_sticky_header'
 
 /**
  * Temporary settings view for the new UI. Currently exposes the app-wide
- * scrollbar visibility toggle and the projects "sticky header" toggle that
- * used to live in the projects toolbar.
+ * scrollbar visibility toggle and the project-list animation threshold.
  */
 export function SettingsViewNew() {
   const { t } = useTranslation('nav')
   const { t: ts } = useTranslation('settings')
   const { settings, update } = useSettings()
-
-  const [stickyHeader, setStickyHeader] = useState(() => {
-    try {
-      return localStorage.getItem(STICKY_HEADER_KEY) === '1'
-    } catch {
-      return false
-    }
-  })
-
-  const toggleStickyHeader = (checked: boolean) => {
-    setStickyHeader(checked)
-    try {
-      localStorage.setItem(STICKY_HEADER_KEY, checked ? '1' : '0')
-    } catch {}
-  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -60,17 +42,27 @@ export function SettingsViewNew() {
         <div className="flex items-center justify-between gap-4 rounded-item bg-overlay px-4 py-3.5">
           <div>
             <span className="text-sm font-medium text-ink block">
-              {ts('sticky_header')}
+              {ts('animation_threshold_label')}
             </span>
             <p className="text-xs text-muted mt-1 leading-relaxed">
-              {ts('sticky_header_desc')}
+              {ts('animation_threshold_desc')}
             </p>
           </div>
-          <Toggle
-            checked={stickyHeader}
-            onChange={toggleStickyHeader}
-            label={ts('sticky_header')}
-          />
+          <div className="w-56 shrink-0">
+            <div className="text-right text-xs font-medium text-ink tabular-nums mb-1">
+              {ts('n_projects', { count: settings.animation_threshold })}
+            </div>
+            <Slider
+              value={settings.animation_threshold}
+              min={10}
+              max={100}
+              step={5}
+              onChange={(value) =>
+                update({ ...settings, animation_threshold: value })
+              }
+              label={ts('animation_threshold_label')}
+            />
+          </div>
         </div>
       </div>
     </div>

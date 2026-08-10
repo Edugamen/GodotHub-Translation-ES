@@ -190,6 +190,8 @@ pub struct AppSettings {
     pub show_scrollbars: bool,
     #[serde(default = "default_project_icon_opacity")]
     pub project_icon_opacity: u32,
+    #[serde(default = "default_animation_threshold")]
+    pub animation_threshold: u32,
     #[serde(default = "default_language")]
     pub language: String,
     #[serde(default = "default_os_decorations")]
@@ -214,6 +216,10 @@ fn default_naming_convention() -> String {
 
 fn default_project_icon_opacity() -> u32 {
     14
+}
+
+fn default_animation_threshold() -> u32 {
+    20
 }
 
 fn default_true() -> bool {
@@ -401,6 +407,7 @@ tooltip_delay: default_tooltip_delay(),
             show_star_button: true,
             show_scrollbars: true,
             project_icon_opacity: 14,
+            animation_threshold: default_animation_threshold(),
             language: default_language(),
             use_os_decorations: default_os_decorations(),
             dismissed_project_paths: vec![],

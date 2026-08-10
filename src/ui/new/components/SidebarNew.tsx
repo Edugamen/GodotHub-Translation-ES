@@ -201,6 +201,31 @@ export function SidebarNew({
         transition={dragging ? { duration: 0 } : { type: 'spring', stiffness: 650, damping: 38 }}
         className="flex flex-col h-full rounded-card bg-raised overflow-hidden"
       >
+      {/* Sidebar header — app title with the collapse control on the same row */}
+      <div
+        className={`shrink-0 flex items-center gap-2 h-12 border-b border-line ${
+          collapsed ? 'justify-center px-0' : 'px-3'
+        }`}
+      >
+        {!collapsed && (
+          <>
+            <span className="font-display font-semibold tracking-tight text-ink min-w-0 truncate">
+              GodotHub
+            </span>
+            <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-tag bg-accent/15 text-accent-bright border border-accent-dim/40">
+              New UI
+            </span>
+          </>
+        )}
+        {collapsed ? (
+          <Tooltip content={t('expand_sidebar')} side="right">
+            {collapseBtn}
+          </Tooltip>
+        ) : (
+          collapseBtn
+        )}
+      </div>
+
       <nav className={`flex-1 p-3 flex flex-col gap-1 ${collapsed ? 'items-center' : ''}`}>
         {mainTabs.map((tab) =>
           renderTabButton(
@@ -212,13 +237,6 @@ export function SidebarNew({
       </nav>
       {footerTabs.length > 0 && (
         <nav className={`shrink-0 p-3 flex flex-col gap-1.5 ${collapsed ? 'items-center' : 'items-stretch'}`}>
-          {collapsed ? (
-            <Tooltip content={t('expand_sidebar')} side="right">
-              {collapseBtn}
-            </Tooltip>
-          ) : (
-            collapseBtn
-          )}
           <div
             className={`flex ${
               collapsed ? 'flex-col gap-1 items-center' : 'flex-row gap-1.5 items-stretch'
@@ -252,7 +270,7 @@ export function SidebarNew({
           setRevealed(false)
           setKnobY(null)
         }}
-        className="absolute inset-y-0 -right-5 w-7 cursor-col-resize group/edge z-10"
+        className="absolute inset-y-0 -right-3.5 w-7 cursor-col-resize group/edge z-10"
       >
         <div
           className={`absolute left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none transition-[top,opacity] duration-200 ease-out ${

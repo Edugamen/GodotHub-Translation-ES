@@ -33,6 +33,20 @@ sidebar, and its own view area. It reuses only the **data hooks**
 - `src/App.tsx` only touches the one-line shell swap. Everything else in the
   classic app stays untouched.
 
+## Scroll containers
+
+Use `OverlayScrollArea` (from `./components/OverlayScrollArea`) for any
+scrollable view. It hides the native scrollbar and renders a floating thumb
+over the content's right edge, so the scrollbar **never takes layout space**
+and other elements don't shift when it appears or disappears. Pass
+`hideThumb` when the user has disabled scrollbars (see `ProjectsViewNew` and
+`AppNew` for the pattern). It handles re-measuring on resize/content growth,
+supports click-to-jump + dragging on the thumb track, and ships a back-to-top
+button with a scroll progress ring (hidden while dropdown menus or dialogs
+are open). Pass `scrollToTopOn` a value to watch — whenever it changes (after
+mount), the view scrolls back to the top (used by the projects view's tag
+filter so a narrowed list always starts at the first card).
+
 ## Adding a new view
 
 1. Create `src/ui/new/views/FooViewNew.tsx` exporting `FooViewNew`.

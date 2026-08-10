@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Category, GitStatus, InstalledGodotVersion, Project } from '../../types'
+import { tagColor } from '../../lib/colors'
 import { api, getCachedProjectIcon, getCachedProjectName } from '../../lib/api'
 import { Dropdown } from './Dropdown'
 import { ConfirmDialog } from '../modals/ConfirmDialog'
@@ -55,21 +56,6 @@ interface Props {
 
 const MORE_MENU_OPEN_UP_THRESHOLD = 210
 const MORE_MENU_GAP = 8
-
-const TAG_COLORS = [
-  '#457ff2', '#f28b45', '#45c97f', '#e74c8a', '#a855f7',
-  '#22d3ee', '#f59e0b', '#ef4444', '#10b981', '#6366f1',
-  '#ec4899', '#14b8a6', '#f97316', '#8b5cf6', '#06b6d4',
-  '#84cc16', '#d946ef', '#0ea5e9', '#eab308', '#3b82f6',
-]
-
-function tagColor(tag: string): string {
-  let hash = 0
-  for (let i = 0; i < tag.length; i++) {
-    hash = tag.charCodeAt(i) + ((hash << 5) - hash)
-  }
-  return TAG_COLORS[Math.abs(hash) % TAG_COLORS.length]
-}
 
 function getInitials(name: string): string {
   const words = name

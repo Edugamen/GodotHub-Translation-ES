@@ -1,11 +1,16 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useWorkspaces } from '../../hooks/useWorkspaces'
 import { useGodotVersionsContext } from '../../hooks/godotVersionsContext'
+import { useProjectsContext } from '../../hooks/projectsContext'
+import { api } from '../../lib/api'
 
 import { SidebarNew } from './components/SidebarNew'
+import { OverlayScrollArea } from './components/OverlayScrollArea'
+import { RunningProjectsChip } from './components/RunningProjectsChip'
 import { ProjectsViewNew } from './views/ProjectsViewNew'
 import { SettingsViewNew } from './views/SettingsViewNew'
+import { useSettings } from '../../hooks/useSettings'
 import {
   IconBookOpen,
   IconCloudArrowDown,
@@ -57,7 +62,32 @@ export function AppNew() {
   const { t } = useTranslation('nav')
   const { workspaces, activeId } = useWorkspaces()
   const { installed } = useGodotVersionsContext()
+  const { settings } = useSettings()
+  const { refresh: refreshProjects } = useProjectsContext()
   const [tab, setTab] = useState<NewTab>('projects')
+
+  // Launch projects opened from a card (or elsewhere): the classic app shell
+  // handles `app:open-project` in AppContent, but the new UI renders its own
+  // shell, so the handler lives here — including the console flag from the
+  // card's console toggle.
+  useEffect(() => {
+    const handleOpenProject = async (e: Event) => {
+      const detail = (e as CustomEvent).detail as
+        | string
+        | { id: string; console?: boolean }
+      const projectId = typeof detail === 'string' ? detail : detail.id
+      const withConsole = typeof detail === 'string' ? undefined : detail.console
+      try {
+        await api.openProject(projectId, true, withConsole)
+        refreshProjects()
+      } catch (err) {
+        alert(String(err))
+      }
+    }
+    window.addEventListener('app:open-project', handleOpenProject)
+    return () =>
+      window.removeEventListener('app:open-project', handleOpenProject)
+  }, [refreshProjects])
 
   const tabs = TABS.map((tab) => ({
     id: tab.id,
@@ -120,15 +150,12 @@ export function AppNew() {
 
   return (
     <div className="new-ui h-screen w-screen flex flex-col bg-base text-ink font-body">
-      {/* New top bar */}
+      {/* Slim drag region — the app title lives in the sidebar header now */}
       <header
         data-tauri-drag-region
         className="shrink-0 h-12 px-5 flex items-center gap-3 border-b border-line select-none"
       >
-        <span className="font-display font-semibold tracking-tight">GodotHub</span>
-        <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-tag bg-accent/15 text-accent-bright border border-accent-dim/40">
-          New UI
-        </span>
+        <RunningProjectsChip />
         <span className="ml-auto text-xs text-muted truncate">
           {activeWorkspace}
         </span>
@@ -142,8 +169,15 @@ export function AppNew() {
         {tab === 'projects' ? (
           renderView()
         ) : (
-          <main className="flex-1 self-start min-w-0 px-6 py-4 relative rounded-card bg-raised">
-            {renderView()}
+          <main className="flex-1 min-w-0 relative rounded-card bg-raised overflow-hidden">
+            <OverlayScrollArea
+              className="absolute inset-0"
+              hideThumb={!settings.show_scrollbars}
+            >
+              <div className="min-h-full px-6 py-4">
+                {renderView()}
+              </div>
+            </OverlayScrollArea>
           </main>
         )}
       </div>

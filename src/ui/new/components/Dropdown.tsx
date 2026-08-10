@@ -50,6 +50,17 @@ export function Dropdown({
 
   const toggle = useCallback(() => setOpen((v) => !v), [])
 
+  // Announce open/close on the window so floating overlays (e.g. the
+  // back-to-top button in OverlayScrollArea) can stay out of the menu's way.
+  // The cleanup also fires on unmount, covering menus closed by teardown.
+  useEffect(() => {
+    if (!open) return
+    window.dispatchEvent(new CustomEvent('app:dropdown-open'))
+    return () => {
+      window.dispatchEvent(new CustomEvent('app:dropdown-close'))
+    }
+  }, [open])
+
   // Open the menu upward when there isn't enough room below the trigger
   // (e.g. for cards near the bottom of a scroll container).
   const measureOpenUp = useCallback(() => {

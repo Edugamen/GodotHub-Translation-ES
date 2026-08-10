@@ -295,6 +295,7 @@ export interface AppSettings {
   show_star_button: boolean
   show_scrollbars: boolean
   project_icon_opacity: number
+  animation_threshold: number
   language: string
   use_os_decorations: boolean
   directory_naming_convention: NamingConvention

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import type { Project } from '../../types'
@@ -28,6 +29,15 @@ function tagColor(tag: string): string {
 
 export function TagManagerModal({ project, onClose, onSaved }: Props) {
   const { t } = useTranslation('common')
+
+  // Announce the modal so floating overlays (e.g. the New UI's back-to-top
+  // button) can hide while the backdrop is up. Cleanup fires on unmount.
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('app:dialog-open'))
+    return () => {
+      window.dispatchEvent(new CustomEvent('app:dialog-close'))
+    }
+  }, [])
   const [tags, setTags] = useState<string[]>(project.tags)
   const [newTag, setNewTag] = useState('')
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
@@ -123,7 +133,9 @@ export function TagManagerModal({ project, onClose, onSaved }: Props) {
     }
   }
 
-  return (
+  // Portal to the body so the modal escapes any transformed/overflow-hidden
+  // ancestor (e.g. the New UI's overlay scroll wrapper).
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -331,6 +343,7 @@ export function TagManagerModal({ project, onClose, onSaved }: Props) {
           </div>
         </div>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body,
   )
 }

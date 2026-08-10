@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import NumberFlow from '@number-flow/react'
@@ -8,13 +15,17 @@ import { useGodotVersionsContext } from '../../../hooks/godotVersionsContext'
 import {
   IconArrowUpDown,
   IconFilter,
-  IconNode,
   IconPlus,
+  IconX,
 } from '../../../components/Icons'
+import { tagColor } from '../../../lib/colors'
 import { Dropdown } from '../components/Dropdown'
 import { ImportButton } from '../components/ImportButton'
+import { OverlayScrollArea } from '../components/OverlayScrollArea'
 import { ProjectCard } from '../components/ProjectCard'
+import { ProjectCardList } from '../components/ProjectCardList'
 import { useSettings } from '../../../hooks/useSettings'
+import { useScrollCompensation } from '../../../hooks/useScrollCompensation'
 import { api } from '../../../lib/api'
 import type { GitStatus } from '../../../types'
 import {
@@ -26,7 +37,6 @@ import { ScanButton } from '../components/ScanButton'
 import { SearchBar } from '../components/SearchBar'
 
 const UNCATEGORIZED = '__uncategorized__'
-const STICKY_HEADER_KEY = 'godothub_new_ui_sticky_header'
 
 export function ProjectsViewNew({
   onOpenSettings,
@@ -35,12 +45,30 @@ export function ProjectsViewNew({
 }) {
   const { t } = useTranslation('nav')
   const { t: tc } = useTranslation('common')
-  const { projects, remove, updateVersion, setPinned } = useProjectsContext()
+  const { projects, remove, updateVersion, setPinned, updateTags } =
+    useProjectsContext()
   const { categories } = useCategoriesContext()
   const { installed } = useGodotVersionsContext()
   const { settings } = useSettings()
   const [query, setQuery] = useState('')
+  // Debounced copy of the search query drives filtering, so typing doesn't
+  // re-render (and re-animate) the whole list on every keystroke — the input
+  // itself stays instant.
+  const [debouncedQuery, setDebouncedQuery] = useState('')
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedQuery(query), 150)
+    return () => clearTimeout(id)
+  }, [query])
   const [filterBy, setFilterBy] = useState<string>('all')
+  // Session-only: survives tab switches (view remounts) but resets on app
+  // launch, since the webview (and its sessionStorage) is recreated each run.
+  const [tagFilter, setTagFilter] = useState<string | null>(() => {
+    try {
+      const raw = sessionStorage.getItem('godothub_projects_tag_filter')
+      if (raw) return raw
+    } catch {}
+    return null
+  })
   const [sortBy, setSortBy] = useState<ProjectSortOption>(() => {
     try {
       const raw = localStorage.getItem('godothub_projects_sort_by')
@@ -48,17 +76,20 @@ export function ProjectsViewNew({
     } catch {}
     return 'categories'
   })
-  const [stickyHeader] = useState(() => {
-    try {
-      return localStorage.getItem(STICKY_HEADER_KEY) === '1'
-    } catch {
-      return false
-    }
-  })
-
   // Git status for the project cards (repo? branch? dirty?), refreshed on a timer.
   const [gitStatusMap, setGitStatusMap] = useState<Record<string, GitStatus>>({})
   const fetchingGitRef = useRef(false)
+  // Scroll compensation for pin toggles and tag filter changes: the hook
+  // tracks the live position and restores it (clamped to the new bounds) after
+  // the list height changes, so the view never snaps while it settles.
+  const { viewportRef, restoreScroll } = useScrollCompensation()
+  const pinnedSignature = useMemo(
+    () => projects.filter((p) => p.pinned).map((p) => p.id).join(','),
+    [projects],
+  )
+  useLayoutEffect(() => {
+    restoreScroll()
+  }, [pinnedSignature, tagFilter, restoreScroll])
   const projectsRef = useRef(projects)
   projectsRef.current = projects
   // Re-fetch immediately whenever the project list itself changes (e.g. import).
@@ -107,6 +138,27 @@ export function ProjectsViewNew({
     } catch {}
   }, [sortBy])
 
+  // Persist the active tag filter to sessionStorage (not localStorage, so it
+  // doesn't survive app restarts). A stale tag (removed elsewhere) is dropped
+  // by the auto-clear effect below, which also clears the stored value.
+  useEffect(() => {
+    try {
+      if (tagFilter) {
+        sessionStorage.setItem('godothub_projects_tag_filter', tagFilter)
+      } else {
+        sessionStorage.removeItem('godothub_projects_tag_filter')
+      }
+    } catch {}
+  }, [tagFilter])
+
+  // One-time cleanup: drop the localStorage key the older (restart-persisting)
+  // implementation used, so stale filters never linger between storage areas.
+  useEffect(() => {
+    try {
+      localStorage.removeItem('godothub_projects_tag_filter')
+    } catch {}
+  }, [])
+
   // If the persisted sort isn't available (e.g. categories got disabled),
   // fall back to the first available option instead of showing a stale state.
   useEffect(() => {
@@ -122,8 +174,15 @@ export function ProjectsViewNew({
     }
   }, [filterOptions, filterBy])
 
+  // Drop the tag filter if no project carries that tag anymore.
+  useEffect(() => {
+    if (tagFilter && !projects.some((p) => p.tags.includes(tagFilter))) {
+      setTagFilter(null)
+    }
+  }, [projects, tagFilter])
+
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
+    const q = debouncedQuery.trim().toLowerCase()
     let list = projects
     if (q) {
       list = list.filter(
@@ -137,20 +196,34 @@ export function ProjectsViewNew({
         filterBy === UNCATEGORIZED ? !p.category : p.category === filterBy,
       )
     }
+    if (tagFilter) {
+      list = list.filter((p) => p.tags.includes(tagFilter))
+    }
     const cmp = comparatorFor(sortBy)
-    return cmp ? [...list].sort(cmp) : list
-  }, [projects, query, sortBy, filterBy])
+    // Pinned projects always float to the top in every sort mode and are
+    // ordered by name; the active comparator (recency, name, created, …)
+    // applies to the unpinned group below. The category sort keeps the
+    // natural (category/sort_order) order for that group.
+    return [...list].sort((a, b) => {
+      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
+      if (a.pinned) return a.name.localeCompare(b.name)
+      return cmp ? cmp(a, b) : 0
+    })
+  }, [projects, debouncedQuery, sortBy, filterBy, tagFilter])
 
-  const hasActiveFilters = query.trim() !== '' || filterBy !== 'all'
+  const hasActiveFilters =
+    query.trim() !== '' || filterBy !== 'all' || tagFilter !== null
 
   return (
-    <div className="flex-1 min-w-0 -mr-4 -mb-4 pr-4 pb-4 overflow-y-auto flex flex-col gap-2">
-      {/* Sticky-capable header block (header card + toolbar) */}
-      <div
-        className={`flex flex-col gap-2 ${
-          stickyHeader ? 'sticky top-0 z-10 bg-base' : ''
-        }`}
-      >
+    <OverlayScrollArea
+      className="flex-1 min-w-0 -mr-4 -mb-4"
+      hideThumb={!settings.show_scrollbars}
+      scrollToTopOn={tagFilter}
+      scrollRef={viewportRef}
+    >
+      <div className="h-full pr-5 pb-4 flex flex-col gap-2">
+      {/* Header block (header card + toolbar) */}
+      <div className="flex flex-col gap-2">
       {/* Projects card — header, search, and the future list live inside */}
       <section className="shrink-0 rounded-card bg-raised px-6 py-4 flex flex-col gap-2">
         <header className="shrink-0 flex flex-row items-center gap-3">
@@ -245,36 +318,49 @@ export function ProjectsViewNew({
           }))}
         />
 
+        {tagFilter && (
+          <button
+            type="button"
+            onClick={() => setTagFilter(null)}
+            title={tc('clear_tag_filter')}
+            className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-8 px-3 rounded-item bg-accent/15 text-accent-bright ring-1 ring-accent-dim/70 hover:bg-accent/25 transition-colors"
+          >
+            <span
+              className="w-1.5 h-1.5 rounded-full shrink-0"
+              style={{ backgroundColor: tagColor(tagFilter) }}
+            />
+            <span className="text-[16px] font-medium">{tagFilter}</span>
+            <IconX className="w-3 h-3" />
+          </button>
+        )}
+
       </div>
       </div>
 
       {/* Project cards */}
-      <div className="flex-1">
-        {filtered.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center gap-2 text-center">
-            <IconNode className="w-5 h-5 text-muted/50" />
-            <p className="text-sm text-muted">
-              {hasActiveFilters ? tc('no_projects_match') : tc('no_projects_yet')}
-            </p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2 pb-1">
-            {filtered.map((p) => (
-              <ProjectCard
-                key={p.id}
-                project={p}
-                installedVersions={installed}
-                categories={categories}
-                gitStatus={gitStatusMap[p.path] ?? null}
-                onTogglePin={() => setPinned(p.id, !p.pinned)}
-                onVersionChange={(tag) => updateVersion(p.id, tag)}
-                onRemove={() => remove(p.id, false)}
-                onDelete={() => remove(p.id, true)}
-              />
-            ))}
-          </div>
+      <ProjectCardList
+        projects={filtered}
+        totalCount={projects.length}
+        animationThreshold={settings.animation_threshold}
+        hasActiveFilters={hasActiveFilters}
+        renderCard={(p) => (
+          <ProjectCard
+            project={p}
+            installedVersions={installed}
+            categories={categories}
+            gitStatus={gitStatusMap[p.path] ?? null}
+            launchWithConsole={settings.launch_with_console}
+            onTogglePin={() => setPinned(p.id, !p.pinned)}
+            onVersionChange={(tag) => updateVersion(p.id, tag)}
+            onRemove={() => remove(p.id, false)}
+            onDelete={() => remove(p.id, true)}
+            onTagsSaved={(updated) => updateTags(updated.id, updated.tags)}
+            onTagClick={(tag) => setTagFilter((cur) => (cur === tag ? null : tag))}
+            activeTag={tagFilter}
+          />
         )}
+      />
       </div>
-    </div>
+    </OverlayScrollArea>
   )
 }
