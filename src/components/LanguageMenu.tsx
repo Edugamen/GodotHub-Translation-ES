@@ -11,6 +11,7 @@ const LANGUAGES = [
   { value: 'en-US', label: 'English' },
   { value: 'zh-CN', label: '简体中文' },
   { value: 'ru-RU', label: 'Русский' },
+  { value: 'ar-MA', label: 'العربية' },
 ]
 
 const GAP = 8
@@ -80,6 +81,7 @@ export function LanguageMenu() {
 
   const select = (value: string) => {
     i18n.changeLanguage(value)
+    document.documentElement.setAttribute("dir", i18n.dir())
     update({ ...settings, language: value })
     setOpen(false)
   }

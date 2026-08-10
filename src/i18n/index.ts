@@ -2,6 +2,14 @@ import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
 
+import arMANav from './locales/ar-MA/nav.json'
+import arMACommon from './locales/ar-MA/common.json'
+import arMASettings from './locales/ar-MA/settings.json'
+import arMAGit from './locales/ar-MA/git.json'
+import arMAChangelog from './locales/ar-MA/changelog.json'
+import arMAOnboarding from './locales/ar-MA/onboarding.json'
+import arMAVersions from './locales/ar-MA/versions.json'
+
 import enUSNav from './locales/en-US/nav.json'
 import enUSCommon from './locales/en-US/common.json'
 import enUSSettings from './locales/en-US/settings.json'
@@ -28,6 +36,16 @@ import ruRUVersions from './locales/ru-RU/versions.json'
 
 
 
+const arMAResources = {
+  nav: arMANav,
+  common: arMACommon,
+  settings: arMASettings,
+  git: arMAGit,
+  changelog: arMAChangelog,
+  onboarding: arMAOnboarding,
+  versions: arMAVersions,
+}
+
 const zhCNResources = {
   nav: zhCNNav,
   common: zhCNCommon,
@@ -48,7 +66,10 @@ const resources = {
     onboarding: enUSOnboarding,
     versions: enUSVersions,
   },
+
   'zh-CN': zhCNResources,
+  zh: zhCNResources,
+  
   'ru-RU': {
     nav: ruRUNav,
     common: ruRuCommon,
@@ -58,6 +79,9 @@ const resources = {
     onboarding: ruRUOnboarding,
     versions: ruRUVersions,
   },
+
+  'ar-MA': arMAResources,
+  ar: arMAResources,
 }
 
 i18n
