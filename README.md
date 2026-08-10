@@ -463,6 +463,17 @@ godothub/
 
 ---
 
+## Languages
+In beta phase (languages other than english might be incomplete)
+
+| Languages | Status          |
+| ------- | ------------------ |
+| English   | :white_check_mark: |
+| Chinese   | :white_check_mark:               |
+| Russian   | :white_check_mark:               |
+
+---
+
 ## 📄 License
 
 This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
