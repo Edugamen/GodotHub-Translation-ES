@@ -1347,6 +1347,7 @@ export function SettingsView({
                     { value: 'en-US', label: 'English' },
                     { value: 'zh-CN', label: '简体中文' },
                     { value: 'ru-RU', label: 'Русский' },
+                    { value: 'ar-MA', label: 'العربية' },
                   ].map(({ value, label }) => {
                     const active = i18n.language === value || i18n.language.startsWith(value.split('-')[0])
                     return (
@@ -1355,6 +1356,7 @@ export function SettingsView({
                         whileTap={{ scale: 0.96 }}
                         onClick={() => {
                           i18n.changeLanguage(value)
+                          document.documentElement.setAttribute("dir", i18n.dir())
                           setField('language', value)
                         }}
                         className={
