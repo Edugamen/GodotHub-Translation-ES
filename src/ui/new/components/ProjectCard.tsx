@@ -765,6 +765,17 @@ export function ProjectCard({
               onClick: onTogglePin,
               dividerAfter: true,
             },
+            ...(gitStatus?.is_repo
+              ? [
+                  {
+                    key: 'git-sidebar',
+                    label: t('git_sidebar'),
+                    icon: IconGitBranch,
+                    onClick: onShowGitSidebar,
+                    dividerAfter: true,
+                  },
+                ]
+              : []),
             {
               key: 'remove',
               label: t('project_card_remove_library'),
