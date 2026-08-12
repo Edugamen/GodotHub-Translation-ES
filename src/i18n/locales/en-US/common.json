@@ -301,6 +301,7 @@
   "sort_name_desc": "Name (Z–A)",
   "sort_created_desc": "Date added (newest)",
   "sort_created_asc": "Date added (oldest)",
+  "sort_time_desc": "Total time",
   "filter": "Filter",
   "filter_all": "All projects",
   "no_templates_yet": "No templates yet. Right-click a project or open its \"More\" menu and select <1>Save as Template</1> to create one.",
@@ -480,7 +481,7 @@
   "onboarding_custom_category_placeholder": "Custom category name…",
   "onboarding_your_categories": "Your categories",
   "onboarding_customize_title": "Make it yours",
-  "onboarding_customize_desc": "Pick an accent and background color to start. Corner roundness, density, text size, and light/dark mode are all in Settings whenever you want to fine-tune further.",
+  "onboarding_customize_desc": "Pick a full theme preset, or choose Custom and set your own accent and background. Corner roundness, density, text size, and light/dark mode are all in Settings whenever you want to fine-tune further.",
   "onboarding_finish_title": "You're all set",
   "onboarding_finish_desc": "GodotHub is ready to go. You can revisit any of this, folders, categories, and appearance, from the Settings tab at any time.",
   "onboarding_setting_up_title": "Setting things up",
@@ -536,6 +537,10 @@
   "project_pin_aria": "Pin project",
   "project_unpin_aria": "Unpin project",
   "project_last_opened_tooltip": "Last opened {{label}}",
+  "project_total_time_tooltip": "Opened for {{label}} in total",
+  "time_today": "Today",
+  "time_this_week": "This week",
+  "time_all_time": "All time",
   "project_git_dirty_tooltip": "{{branch}} has uncommitted changes (click for details)",
   "project_git_clean_tooltip": "{{branch}} > clean (click for details)",
   "project_more_aria": "More actions",
@@ -581,7 +586,7 @@
   "check_updates_add_token": "Add GitHub Token",
   "check_updates_open_token_settings": "Open Token Settings",
   
-  "clone_repo_title": "Clone Repository",
+  "clone_repo_title": "Clone Existing Repository",
   "clone_repo_desc": "Clone a Git repository and import it as a Godot project. The folder must contain a project.godot file.",
   "clone_repo_url_label": "Repository URL",
   "clone_repo_url_placeholder": "https://github.com/user/my-game.git",
@@ -593,6 +598,7 @@
   "clone_repo_resolved_path": "Will be created at",
   "clone_repo_error_url": "Please enter a repository URL.",
   "clone_repo_error_location": "Please choose where to clone the repository.",
+  "clone_repo_open_after": "Open it right after importing",
   "clone_repo_cancel": "Cancel",
   
   "git_beta_tooltip": "This feature is in beta, some operations may not work as expected. Click to see changelog.",
@@ -686,5 +692,9 @@
   "found_dismissed_desc_one": "Scanner found 1 project that you previously removed from the library. Would you like to re-add it?",
   "found_dismissed_desc_other": "Scanner found {{count}} projects that you previously removed from the library. Would you like to re-add them?",
   "readd_all": "Re-add All",
-  "skip_all": "Skip All"
+  "skip_all": "Skip All",
+  "project_already_open_title": "Project already open",
+  "project_already_open_desc": "{{name}} is already running. Opening it again launches a second editor instance. Open anyway?",
+  "project_open_anyway": "Open anyway",
+  "git_sidebar": "Git sidebar"
 }

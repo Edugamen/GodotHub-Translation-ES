@@ -96,7 +96,6 @@ export function TaskTrayProvider({ children }: { children: ReactNode }) {
     [clearTimer],
   )
 
-
   useTauriEvent<[number, number]>('project-scan-progress', ([current, total]) => {
     if (current < total) {
       registerTask({
@@ -178,7 +177,6 @@ export function TaskTrayProvider({ children }: { children: ReactNode }) {
     updateTask(`download-${key}`, { status: 'completed' })
     scheduleRemoval(`download-${key}`, 3000)
   })
-
 
   useTauriEvent<AssetDownloadProgress>('asset-download-queued', (payload) => {
     registerTask({

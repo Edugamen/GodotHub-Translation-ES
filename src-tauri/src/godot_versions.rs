@@ -1173,3 +1173,4 @@ fn supports_console(exe: &Path) -> bool {
 fn supports_console(_exe: &Path) -> bool {
     true
 }
+

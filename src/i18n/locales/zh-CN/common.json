@@ -272,6 +272,7 @@
   "sort_name_asc": "名称 (A–Z)",
   "sort_name_desc": "名称 (Z–A)",
   "sort_created_desc": "添加日期（最新）",
+  "sort_time_desc": "总时长",
   "sort_created_asc": "添加日期（最早）",
   "filter": "筛选",
   "filter_all": "全部项目",
@@ -480,7 +481,7 @@
   "onboarding_custom_category_placeholder": "自定义分类名称…",
   "onboarding_your_categories": "我的分类",
   "onboarding_customize_title": "个性化设置",
-  "onboarding_customize_desc": "选择强调色和背景色开始。圆角、密度、文字大小和深色/浅色模式均可随时在设置中调整。",
+  "onboarding_customize_desc": "选择一个完整的主题预设，或选择「自定义」来设置您自己的强调色和背景色。圆角、密度、文字大小和深色/浅色模式均可随时在设置中调整。",
   "onboarding_finish_title": "准备就绪",
   "onboarding_finish_desc": "GodotHub 已准备就绪。您可以随时在设置标签中重新访问这些设置。",
   "onboarding_setting_up_title": "正在设置",
@@ -536,6 +537,10 @@
   "project_pin_aria": "置顶项目",
   "project_unpin_aria": "取消置顶项目",
   "project_last_opened_tooltip": "上次打开 {{label}}",
+  "project_total_time_tooltip": "累计打开 {{label}}",
+  "time_today": "今天",
+  "time_this_week": "本周",
+  "time_all_time": "全部",
   "project_git_dirty_tooltip": "{{branch}} 有未提交的更改（点击查看详情）",
   "project_git_clean_tooltip": "{{branch}} 干净（点击查看详情）",
   "project_more_aria": "更多操作",
@@ -685,5 +690,9 @@
   "found_dismissed_desc_one": "扫描发现 1 个您之前从库中移除的项目。要重新添加吗？",
   "found_dismissed_desc_other": "扫描发现 {{count}} 个您之前从库中移除的项目。要重新添加吗？",
   "readd_all": "全部重新添加",
-  "skip_all": "全部跳过"
+  "skip_all": "全部跳过",
+  "project_already_open_title": "项目已在运行",
+  "project_already_open_desc": "{{name}} 已在运行。再次打开将启动第二个编辑器实例。仍要打开吗？",
+  "project_open_anyway": "仍要打开",
+  "git_sidebar": "Git 侧边栏"
 }

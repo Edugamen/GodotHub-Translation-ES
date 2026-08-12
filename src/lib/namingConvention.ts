@@ -4,10 +4,6 @@ function capitalizeWord(word: string): string {
   return word ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : word
 }
 
-/**
- * Splits a name into words on non-alphanumeric characters and camelCase
- * boundaries. Mirrors `split_naming_words` in src-tauri/src/projects.rs.
- */
 function splitNamingWords(name: string): string[] {
   const words: string[] = []
   let current = ''
@@ -40,11 +36,6 @@ function splitNamingWords(name: string): string[] {
   return words
 }
 
-/**
- * Transforms a project name into a folder name using the configured
- * convention. Mirrors `apply_naming_convention` in src-tauri/src/projects.rs,
- * so the preview always matches what gets created on disk.
- */
 export function applyNamingConvention(
   name: string,
   convention: NamingConvention,

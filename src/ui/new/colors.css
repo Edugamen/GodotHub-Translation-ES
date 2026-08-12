@@ -1,26 +1,8 @@
 .new-ui {
-  --color-base: #131415;
-  --color-surface: #1e2129;
-  --color-raised: #1A1C1F;
-  --color-overlay: #212326;
-  --color-line: #383838;
-  --color-outline: #383838;
-  --color-ink: #fff;
-  --color-muted: #9aa3b2;
-  --color-accent: #444ADE;
-  --color-accent-dim: #3b64d6;
-  --color-accent-bright: #5e89ff;
-  --color-mint: #2fbf71;
-  --color-amber: #f0b132;
-  --color-danger: #f2555a;
-
-  --font-display: 'Onest', sans-serif;
-  --font-body: 'Onest', sans-serif;
+  --font-display: var(--app-font-display, 'Onest');
+  --font-body: var(--app-font-body, 'Onest');
 }
 
-/* Overlay scroll viewport (see OverlayScrollArea): the native scrollbar is
-   hidden so it takes zero layout space; a custom thumb floats over the
-   content instead, keeping every other element's position stable. */
 .new-ui .new-ui-scroll-viewport::-webkit-scrollbar {
   display: none;
 }

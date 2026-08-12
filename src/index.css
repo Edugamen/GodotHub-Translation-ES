@@ -2,39 +2,51 @@
 @plugin './corner-shape.config.js';
 
 @theme {
-  --color-base: #1e1f22;
-  --color-surface: #2b2d31;
-  --color-raised: #323339;
-  --color-overlay: #3a3c43;
-  --color-line: #3f4147;
-  --color-outline: #3f4147;
-  --color-ink: #f2f3f5;
-  --color-muted: #949ba4;
-  --color-accent: #5865f2;
-  --color-accent-dim: #3c45a5;
-  --color-accent-bright: #7983f5;
-  --color-mint: #23a55a;
+
+  --color-base: #17181c;
+  --color-surface: #212228;
+  --color-raised: #292b32;
+  --color-overlay: #27282E;
+  --color-line: #3a3d46;
+  --color-outline: #3a3d46;
+  --color-ink: #f4f5f7;
+  --color-muted: #9aa3b2;
+  --color-accent: #4f7cff;
+  --color-accent-dim: #3a5fd0;
+  --color-accent-bright: #7aa0ff;
+  --color-mint: #2fbf71;
   --color-amber: #f0b132;
-  --color-danger: #f23f42;
+  --color-danger: #f2555a;
+
   --font-display: 'Space Grotesk', sans-serif;
   --font-body: 'Inter', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
-  --radius-sm: 8px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 20px;
-  /* Semantic radius tokens — tune once here, used across the new UI.
-     NOTE: the corner-shape plugin bakes these at build time; runtime
-     overrides (scoped to .new-ui) will NOT apply to squircle utilities. */
-  --radius-tag: 10px; /* badges, tags, small pills */
-  --radius-btn: 16px; /* buttons, icon chips */
-  --radius-dropdown-btn: 13px; /* buttons, icon chips */
-  --radius-dropdown: 13px; /* buttons, icon chips */
-  --radius-item: 22px; /* nav items, icon buttons, menu items */
-  --radius-tile: 16px; /* icon tiles */
-  --radius-menu: 24px; /* dropdown menus, popovers */
-  --radius-card: 24px; /* cards */
+
+  --radius-sm: 9.6px;
+  --radius-md: 12px;
+  --radius-lg: 16.8px;
+  --radius-xl: 24px;
+  --radius-tag: 12px;
+  --radius-btn: 19.2px;
+  --radius-dropdown-btn: 15.6px;
+  --radius-dropdown: 15.6px;
+  --radius-item: 26.4px;
+  --radius-tile: 19.2px;
+  --radius-menu: 28.8px;
+  --radius-card: 28.8px;
+  --radius-modal: 36px;
+
   --spacing: 4.5px;
+}
+
+@property --spacing {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 4.5px;
+}
+
+html.ui-scaling {
+  transition: --spacing 0.2s ease, font-size 0.2s ease;
 }
 
 body {
@@ -74,7 +86,6 @@ textarea::placeholder {
   background: transparent;
 }
 
-/* Firefox scrollbar */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--color-line) transparent;
@@ -129,10 +140,6 @@ textarea::placeholder {
   transition-duration: 0.001ms !important;
 }
 
-/* ---------------------------------------------------------------------- */
-/* Micro-interaction primitives shared across custom controls              */
-/* ---------------------------------------------------------------------- */
-
 @keyframes icon-pop {
   0% {
     transform: scale(1) rotate(0deg);
@@ -155,8 +162,6 @@ textarea::placeholder {
   transform: scale(0.92);
 }
 
-/* Remove the browser's default focus outline app-wide; interactive elements
-   that need a visible focus state use the .focus-ring box-shadow instead. */
 *:focus,
 *:focus-visible {
   outline: none;

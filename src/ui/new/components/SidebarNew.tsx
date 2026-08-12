@@ -2,9 +2,10 @@ import { motion } from 'framer-motion'
 import { useRef, useState } from 'react'
 import type { ComponentType } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconChevronsLeft } from '../../../components/Icons'
-import type { IconProps } from '../../../components/Icons'
-import { Tooltip } from '../../../components/ui/Tooltip'
+import { IconChevronsLeft } from '../lib/icons'
+import type { IconProps } from '../lib/icons'
+import { Tooltip } from './Tooltip'
+import { RevertToClassicButton } from './RevertToClassicButton'
 
 export interface SidebarTab {
   id: string
@@ -201,7 +202,6 @@ export function SidebarNew({
         transition={dragging ? { duration: 0 } : { type: 'spring', stiffness: 650, damping: 38 }}
         className="flex flex-col h-full rounded-card bg-raised overflow-hidden"
       >
-      {/* Sidebar header — app title with the collapse control on the same row */}
       <div
         className={`shrink-0 flex items-center gap-2 h-12 border-b border-line ${
           collapsed ? 'justify-center px-0' : 'px-3'
@@ -254,6 +254,14 @@ export function SidebarNew({
           </div>
         </nav>
       )}
+      <nav className={`shrink-0 p-3 pt-0 flex flex-col gap-1.5 ${collapsed ? 'items-center' : 'items-stretch'}`}>
+        <div
+          className={`shrink-0 ${
+            collapsed ? 'w-px h-6 bg-line/40' : 'h-px w-full bg-line/40'
+          }`}
+        />
+        <RevertToClassicButton variant="sidebar" collapsed={collapsed} />
+      </nav>
       </motion.div>
       {!collapsed && (
       <div

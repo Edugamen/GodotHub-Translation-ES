@@ -1,6 +1,7 @@
 {
   "standard": "标准版",
   "mono": "Mono",
+  "console_label": "控制台",
   "both": "两者",
   "stable": "稳定版",
   "unstable": "不稳定版",
@@ -28,6 +29,7 @@
   "available_title": "可用版本",
   "available_subtitle": "从 Godot 官方发布版本中获取。",
   "no_versions_match": "没有匹配的已安装版本",
+  "no_available_versions_match": "没有匹配的可下载版本",
   "open": "打开",
   "retry": "重试",
   "install": "安装",

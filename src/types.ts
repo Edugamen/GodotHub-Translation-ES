@@ -54,6 +54,10 @@ export interface Project {
   sort_order: number
   launch_arguments: string
   tags: string[]
+  total_time_seconds: number
+  session_started_at_ms: number | null
+  time_today_seconds: number
+  time_week_seconds: number
 }
 
 export interface ProjectUpdate {
@@ -209,9 +213,7 @@ export interface AssetLibraryAsset {
   download_url: string | null
   browse_url: string | null
   modify_date: string | null
-  /** Rating (old library) or review score (new store), as a string. */
   rating?: string
-  /** "library" = old Godot Asset Library, "store" = new Godot Asset Store. */
   source?: 'library' | 'store'
 }
 
@@ -238,7 +240,6 @@ export interface AssetDownloadError {
 export interface AssetLibraryCategory {
   id: string
   name: string
-  /** "0" = addon categories, "1" = project categories */
   category_type: string
 }
 
@@ -268,10 +269,13 @@ export interface AppSettings {
   accent_color: string
   background_color: string
   corner_radius: number
+  raised_contrast: number
   ui_density: number
   font_scale: number
-  reduce_motion: boolean
-  theme_mode: 'dark' | 'light'
+  theme_mode: 'dark' | 'light' | 'system'
+  custom_css: string
+  animation_intensity: 'full' | 'subtle' | 'none'
+  view_entrance: 'fade' | 'slide' | 'scale' | 'none'
   launch_with_console: boolean
   close_on_project_open: boolean
   minimize_to_tray: boolean
@@ -299,7 +303,9 @@ export interface AppSettings {
   language: string
   use_os_decorations: boolean
   directory_naming_convention: NamingConvention
+  theme_preset: string
   git_init_new_projects: boolean
+  open_after_import: boolean
   new_ui: boolean
 }
 
@@ -307,3 +313,4 @@ export interface ScanResult {
   added: Project[]
   found_dismissed: string[]
 }
+

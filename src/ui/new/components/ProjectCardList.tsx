@@ -2,7 +2,7 @@ import { type ReactNode } from 'react'
 import { AnimatePresence, motion, type Transition } from 'framer-motion'
 import NumberFlow from '@number-flow/react'
 import { useTranslation } from 'react-i18next'
-import { IconNode, IconPin } from '../../../components/Icons'
+import { IconNode, IconPin } from '../lib/icons'
 import { isReducedMotion } from '../../../lib/appearance'
 import type { Project } from '../../../types'
 

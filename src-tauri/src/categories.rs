@@ -41,7 +41,7 @@ pub fn create_category(app: AppHandle, name: String, color: Option<String>) -> R
         .max()
         .map(|m| m + 1)
         .unwrap_or(0);
-    let effective_color = color.unwrap_or_else(|| "#457ff2".to_string());
+    let effective_color = color.unwrap_or_else(default_accent);
     let category = Category {
         id: Uuid::new_v4().to_string(),
         name: trimmed,

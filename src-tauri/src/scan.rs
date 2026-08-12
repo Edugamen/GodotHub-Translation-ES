@@ -128,10 +128,6 @@ fn register_version_candidate(
     }
 }
 
-// ---------------------------------------------------------------------------
-// Projects scan
-// ---------------------------------------------------------------------------
-
 #[tauri::command]
 pub async fn scan_for_projects(
     app: AppHandle,
@@ -214,10 +210,6 @@ pub fn scan_for_projects_blocking(
     let _ = app.emit("watcher:project-scan-done", ());
     Ok(ScanProjectsResult { added, found_dismissed })
 }
-
-// ---------------------------------------------------------------------------
-// Versions scan
-// ---------------------------------------------------------------------------
 
 fn looks_like_executable(path: &Path) -> bool {
     let name = path
@@ -346,10 +338,6 @@ pub fn scan_for_versions_blocking(
     }
     Ok(added)
 }
-
-// ---------------------------------------------------------------------------
-// Import version from a folder
-// ---------------------------------------------------------------------------
 
 #[tauri::command]
 pub async fn import_version(

@@ -9,38 +9,38 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../../lib/api'
 import { useTauriEvent } from '../../../lib/useTauriEvent'
-import { IconPlay, IconTerminal, IconX } from '../../../components/Icons'
+import { formatDuration } from '../lib/duration'
+import { IconPlay, IconTerminal, IconX } from '../lib/icons'
+
+const TIMER_START_DELAY_MS = 3000
 
 interface RunningProject {
   id: string
   name: string
   version: string
+  startedAt: number
 }
 
-/**
- * Shows which projects are currently running (launched via a card or
- * elsewhere) as a chip in the new UI header. The chip pulses while projects
- * are active and opens a small tray listing each running project with a stop
- * button — the new-UI equivalent of the classic task tray, scoped to running
- * projects. Hides (with an exit animation) when nothing is running.
- *
- * Lives inside the app header's drag region, so every interactive surface
- * stops mousedown propagation — otherwise pressing in the tray would drag the
- * window instead of clicking (Tauri v2 only excludes real buttons/inputs).
- */
 export function RunningProjectsChip() {
   const { t } = useTranslation('common')
   const [running, setRunning] = useState<RunningProject[]>([])
   const [open, setOpen] = useState(false)
-  // Open the tray upward when there isn't enough room below the chip (e.g. a
-  // tall list on a short window) instead of spawning off-screen.
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (running.length === 0) return
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [running.length])
   const [openUp, setOpenUp] = useState(false)
+  const [openLeft, setOpenLeft] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
   useTauriEvent<RunningProject>('project:launched', (p) => {
     setRunning((prev) =>
-      prev.some((x) => x.id === p.id) ? prev : [...prev, p],
+      prev.some((x) => x.id === p.id)
+        ? prev
+        : [...prev, { ...p, startedAt: Date.now() + TIMER_START_DELAY_MS }],
     )
   })
 
@@ -48,7 +48,7 @@ export function RunningProjectsChip() {
     setRunning((prev) => prev.filter((x) => x.id !== id))
   })
 
-  const measureOpenUp = useCallback(() => {
+  const measure = useCallback(() => {
     const el = ref.current
     if (!el) return
     const r = el.getBoundingClientRect()
@@ -56,40 +56,75 @@ export function RunningProjectsChip() {
     const spaceBelow = window.innerHeight - r.bottom
     const spaceAbove = r.top
     setOpenUp(spaceBelow < mh && spaceAbove > spaceBelow)
+
+    const mw = menuRef.current?.offsetWidth ?? 288
+    const spaceRight = window.innerWidth - r.left
+    const spaceLeft = r.right
+    setOpenLeft(spaceRight < mw && spaceLeft > spaceRight)
   }, [])
 
   useLayoutEffect(() => {
-    if (open) measureOpenUp()
-  }, [open, measureOpenUp])
+    if (open) measure()
+  }, [open, measure])
 
-  // Re-evaluate while open (resizing the window can change the room available).
   useEffect(() => {
     if (!open) return
-    window.addEventListener('scroll', measureOpenUp, true)
-    window.addEventListener('resize', measureOpenUp)
+    window.addEventListener('scroll', measure, true)
+    window.addEventListener('resize', measure)
     return () => {
-      window.removeEventListener('scroll', measureOpenUp, true)
-      window.removeEventListener('resize', measureOpenUp)
+      window.removeEventListener('scroll', measure, true)
+      window.removeEventListener('resize', measure)
     }
-  }, [open, measureOpenUp])
+  }, [open, measure])
 
-  // Close the tray when clicking anywhere outside it.
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
+    if (!open) return
+    const onDown = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         setOpen(false)
       }
     }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    const first = menuRef.current?.querySelector<HTMLButtonElement>(
+      'button[role="menuitem"]:not(:disabled)',
+    )
+    first?.focus()
+  }, [open])
+
+  const handleMenuKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const items = Array.from(
+      menuRef.current?.querySelectorAll<HTMLButtonElement>(
+        'button[role="menuitem"]',
+      ) ?? [],
+    ).filter((b) => !b.disabled)
+    if (items.length === 0) return
+    const idx = items.indexOf(document.activeElement as HTMLButtonElement)
+    let next = idx
+    if (e.key === 'ArrowDown') next = (idx + 1) % items.length
+    else if (e.key === 'ArrowUp') next = (idx - 1 + items.length) % items.length
+    else if (e.key === 'Home') next = 0
+    else if (e.key === 'End') next = items.length - 1
+    else return
+    e.preventDefault()
+    items[next]?.focus()
+  }
 
   const stop = (id: string) => {
     api.stopProject(id).catch((e) => alert(String(e)))
   }
 
-  // Everything inside the drag-region header must stop mousedown so a press
-  // here never starts a window drag.
   const noDrag = (e: React.MouseEvent) => e.stopPropagation()
 
   return (
@@ -135,13 +170,15 @@ export function RunningProjectsChip() {
                   exit={{ opacity: 0, y: openUp ? 6 : -6, scale: 0.96 }}
                   transition={{ duration: 0.15, ease: 'easeOut' }}
                   onMouseDown={noDrag}
-                  className={`absolute right-0 z-50 w-72 rounded-card bg-surface border border-line shadow-2xl shadow-black/40 p-1.5 origin-top-right ${
+                  role="menu"
+                  onKeyDown={handleMenuKey}
+                  className={`absolute z-50 w-72 rounded-menu border border-outline/50 bg-overlay shadow-md shadow-black/10 p-1.5 ${
                     openUp
                       ? 'bottom-full mb-2 origin-bottom'
-                      : 'top-full mt-2 origin-top'
-                  }`}
+                      : `top-full mt-2 ${openLeft ? 'origin-top-right' : 'origin-top-left'}`
+                  } ${openLeft ? 'right-0' : 'left-0'}`}
                 >
-                  <div className="px-3 py-2 border-b border-line/50 mb-1">
+                  <div className="px-2.5 py-2 border-b border-outline/50 mb-1">
                     <h3 className="text-xs font-semibold text-muted uppercase tracking-wide">
                       {t('running')}
                     </h3>
@@ -159,25 +196,27 @@ export function RunningProjectsChip() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -6 }}
                           transition={{ duration: 0.15, ease: 'easeOut' }}
-                          className="flex items-center gap-2.5 px-3 py-2 rounded-item hover:bg-raised transition-colors"
+                          className="flex items-center gap-1 px-2.5 py-2 rounded-item text-muted transition-colors hover:bg-raised"
                         >
-                          <IconTerminal className="w-3.5 h-3.5 text-mint shrink-0" />
+                          <span className="w-7 h-7 rounded-btn flex items-center justify-center shrink-0 bg-mint/10">
+                            <IconTerminal className="w-3.5 h-3.5 text-mint" />
+                          </span>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-ink truncate">
+                            <p className="text-xs font-medium text-ink truncate">
                               {p.name}
                             </p>
-                            {p.version && (
-                              <p className="text-[10px] text-muted/60 font-mono truncate">
-                                Godot {p.version}
-                              </p>
-                            )}
+                            <p className="text-[10px] text-muted/60 font-mono truncate">
+                              {p.version ? `Godot ${p.version} · ` : ''}
+                              {formatDuration(now - p.startedAt)}
+                            </p>
                           </div>
                           <button
                             type="button"
+                            role="menuitem"
                             onClick={() => stop(p.id)}
-                            aria-label={t('stop')}
+                            aria-label={`${t('stop')} ${p.name}`}
                             title={t('stop')}
-                            className="focus-ring cursor-pointer w-6 h-6 rounded-item inline-flex items-center justify-center text-muted/50 hover:text-danger hover:bg-danger/10 transition-colors shrink-0"
+                            className="focus-ring cursor-pointer w-6 h-6 rounded-btn inline-flex items-center justify-center text-muted/50 hover:text-danger hover:bg-danger/10 transition-colors shrink-0"
                           >
                             <IconX className="w-3.5 h-3.5" />
                           </button>

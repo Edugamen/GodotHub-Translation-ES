@@ -1,0 +1,334 @@
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { motion } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
+import { check } from '@tauri-apps/plugin-updater'
+import { getVersion } from '@tauri-apps/api/app'
+import { IconRefresh, IconDownload, IconCheck, IconX } from '../Icons'
+import { useSettings } from '../../../../hooks/useSettings'
+
+type UpdateState =
+  | { type: 'checking' }
+  | { type: 'available'; version: string; notes: string | null; downloadAndInstall: () => Promise<void> }
+  | { type: 'downloading'; progress: number }
+  | { type: 'done' }
+  | { type: 'uptodate' }
+  | { type: 'error'; message: string }
+
+interface Props {
+  onClose: () => void
+  mode?: 'background' | 'manual'
+}
+
+type TokenHint = 'rate-limited' | 'token-rejected'
+
+function githubTokenHint(message: string, hasToken: boolean): TokenHint | null {
+  if (/\b401\b/.test(message)) return 'token-rejected'
+  if (/\b403\b/.test(message) || /rate limit/i.test(message)) {
+    return hasToken ? 'token-rejected' : 'rate-limited'
+  }
+  return null
+}
+
+function downloadsFromGithubApi(rawJson: Record<string, unknown> | undefined) {
+  const platforms = rawJson?.platforms as
+    | Record<string, { url?: unknown }>
+    | undefined
+  if (!platforms) return false
+  const urls = Object.values(platforms)
+    .map((p) => p?.url)
+    .filter((u): u is string => typeof u === 'string')
+  if (urls.length === 0) return false
+  return urls.every((u) => {
+    try {
+      return new URL(u).host === 'api.github.com'
+    } catch {
+      return false
+    }
+  })
+}
+
+export function CheckForUpdatesModal({ onClose, mode = 'manual' }: Props) {
+  const { t } = useTranslation('common')
+  const { settings } = useSettings()
+  const [state, setState] = useState<UpdateState>({ type: 'checking' })
+  const [currentVersion, setCurrentVersion] = useState<string | null>(null)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
+
+  const githubToken = settings.github_token?.trim() || null
+
+  const doCheck = useCallback(async () => {
+    setState({ type: 'checking' })
+    try {
+      const update = await check()
+      if (update) {
+        setState({
+          type: 'available',
+          version: update.version,
+          notes: update.body ?? null,
+          downloadAndInstall: async () => {
+            setState({ type: 'downloading', progress: 0 })
+            let downloaded = 0
+            let total: number | null = null
+            try {
+              const sendToken =
+                githubToken && downloadsFromGithubApi(update.rawJson)
+              await update.downloadAndInstall(
+                (progressEvent) => {
+                  if (progressEvent.event === 'Started') {
+                    downloaded = 0
+                    total = progressEvent.data.contentLength ?? null
+                  } else if (progressEvent.event === 'Progress') {
+                    downloaded += progressEvent.data.chunkLength
+                    if (total) {
+                      setState({
+                        type: 'downloading',
+                        progress: Math.min(downloaded / total, 1),
+                      })
+                    }
+                  } else if (progressEvent.event === 'Finished') {
+                    setState({ type: 'downloading', progress: 1 })
+                  }
+                },
+                sendToken
+                  ? { headers: { Authorization: `Bearer ${githubToken}` } }
+                  : undefined,
+              )
+              setState({ type: 'done' })
+            } catch (e) {
+              setState({ type: 'error', message: String(e) })
+            }
+          },
+        })
+      } else if (mode === 'background') {
+        onCloseRef.current()
+        return
+      } else {
+        setState({ type: 'uptodate' })
+      }
+    } catch (e) {
+      if (mode === 'background') {
+        onCloseRef.current()
+        return
+      }
+      setState({ type: 'error', message: String(e) })
+    }
+  }, [mode, githubToken])
+
+  useEffect(() => {
+    getVersion().then(setCurrentVersion).catch(() => setCurrentVersion(null))
+  }, [])
+
+  useEffect(() => {
+    doCheck()
+  }, [doCheck])
+
+  const handleInstall = async () => {
+    if (state.type === 'available') {
+      await state.downloadAndInstall()
+    }
+  }
+
+  const openTokenSettings = () => {
+    onClose()
+    window.dispatchEvent(
+      new CustomEvent('app:open-setting', { detail: 'github_token' }),
+    )
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.12 }}
+      className="fixed inset-0 z-100 flex items-center justify-center"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 10 }}
+        transition={{ duration: 0.15, ease: 'easeOut' }}
+        className="relative w-full max-w-md bg-surface border border-line rounded-2xl shadow-2xl shadow-black/40 p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="font-display font-semibold text-lg text-ink">
+            {t('check_updates_title_modal')}
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="focus-ring cursor-pointer p-1.5 rounded-lg text-muted hover:text-ink hover:bg-raised transition-colors"
+            aria-label={t('check_updates_close_aria')}
+          >
+            <IconX className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="flex flex-col items-center gap-5 py-8">
+          {state.type === 'checking' && (
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center">
+                <IconRefresh className="w-6 h-6 text-accent animate-spin" />
+              </div>
+              <p className="text-sm text-muted">{t('checking_updates')}</p>
+            </div>
+          )}
+
+          {state.type === 'uptodate' && (
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-14 h-14 rounded-full bg-mint/10 flex items-center justify-center">
+                <IconCheck className="w-6 h-6 text-mint" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium text-ink">{t('up_to_date')}</p>
+                <p className="text-xs text-muted mt-1">
+                  {t('is_latest', { version: currentVersion ?? '?' })}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {state.type === 'available' && (
+            <div className="flex flex-col items-center gap-4 w-full">
+              <div className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center">
+                <IconDownload className="w-6 h-6 text-accent" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium text-ink">
+                  {t('check_updates_version_available', { version: state.version })}
+                </p>
+                <p className="text-xs text-muted mt-1">
+                  {t('check_updates_ask_download')}
+                </p>
+              </div>
+              {state.notes && (
+                <div className="w-full bg-raised rounded-xl border border-line p-4 max-h-32 overflow-y-auto">
+                  <p className="text-[11px] font-medium text-muted uppercase tracking-wider mb-2">
+                    {t('check_updates_release_notes')}
+                  </p>
+                  <pre className="text-xs text-ink whitespace-pre-wrap font-sans leading-relaxed">
+                    {state.notes}
+                  </pre>
+                </div>
+              )}
+              <motion.button
+                whileHover={{ y: -1 }}
+                whileTap={{ scale: 0.96 }}
+                onClick={handleInstall}
+                className="focus-ring cursor-pointer flex items-center gap-2 px-6 py-2.5 rounded-lg bg-accent hover:bg-accent-bright text-sm font-medium text-white transition-colors"
+              >
+                <IconDownload className="w-4 h-4" />
+                {t('install_update')}
+              </motion.button>
+            </div>
+          )}
+
+          {state.type === 'downloading' && (
+            <div className="flex flex-col items-center gap-4 w-full">
+              <div className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center">
+                <IconDownload className="w-6 h-6 text-accent animate-pulse" />
+              </div>
+              <div className="text-center w-full">
+                <p className="text-sm font-medium text-ink">{t('downloading_update')}</p>
+                <p className="text-xs text-muted mt-1">
+                  {t('percent_complete', { percent: Math.round(state.progress * 100) })}
+                </p>
+              </div>
+              <div className="w-full h-2 rounded-full bg-line overflow-hidden">
+                <motion.div
+                  className="h-full bg-accent rounded-full"
+                  initial={{ width: '0%' }}
+                  animate={{ width: `${Math.round(state.progress * 100)}%` }}
+                  transition={{ duration: 0.3 }}
+                />
+              </div>
+            </div>
+          )}
+
+          {state.type === 'done' && (
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-14 h-14 rounded-full bg-mint/10 flex items-center justify-center">
+                <IconCheck className="w-6 h-6 text-mint" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium text-ink">{t('update_downloaded')}</p>
+                <p className="text-xs text-muted mt-1">
+                  {t('restart_to_apply')}
+                </p>
+              </div>
+              <p className="text-[11px] text-muted/70 text-center max-w-xs">
+                {t('update_applied_desc')}
+              </p>
+            </div>
+          )}
+
+          {state.type === 'error' && (() => {
+            const hint = githubTokenHint(state.message, !!githubToken)
+            return (
+            <div className="flex flex-col items-center gap-4 w-full">
+              <div className="w-14 h-14 rounded-full bg-danger/10 flex items-center justify-center">
+                <IconX className="w-6 h-6 text-danger" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium text-ink">
+                  {hint === 'rate-limited'
+                    ? t('check_updates_rate_limited')
+                    : hint === 'token-rejected'
+                      ? t('check_updates_token_rejected')
+                      : t('check_updates_failed')}
+                </p>
+                <p className="text-xs text-muted mt-1 max-w-xs">
+                  {state.message}
+                </p>
+              </div>
+              {hint && (
+                <div className="w-full bg-raised rounded-xl border border-line p-4 flex flex-col gap-3">
+                  <p className="text-[11px] text-muted leading-relaxed">
+                    {hint === 'token-rejected'
+                      ? t('check_updates_rate_limited_token_hint')
+                      : t('check_updates_rate_limited_hint')}
+                  </p>
+                  <motion.button
+                    whileHover={{ y: -1 }}
+                    whileTap={{ scale: 0.96 }}
+                    onClick={openTokenSettings}
+                    className="focus-ring cursor-pointer self-start px-4 py-2 rounded-lg bg-accent hover:bg-accent-bright text-xs font-medium text-white transition-colors"
+                  >
+                    {hint === 'token-rejected'
+                      ? t('check_updates_open_token_settings')
+                      : t('check_updates_add_token')}
+                  </motion.button>
+                </div>
+              )}
+              <motion.button
+                whileHover={{ y: -1 }}
+                whileTap={{ scale: 0.96 }}
+                onClick={doCheck}
+                className="focus-ring cursor-pointer flex items-center gap-2 px-5 py-2.5 rounded-lg border border-line hover:border-accent-dim hover:bg-raised text-sm font-medium text-ink transition-colors"
+              >
+                <IconRefresh className="w-4 h-4" />
+                {t('check_updates_try_again')}
+              </motion.button>
+            </div>
+            )
+          })()}
+        </div>
+
+        <div className="flex justify-end pt-3 border-t border-line">
+          <motion.button
+            whileTap={{ scale: 0.96 }}
+            onClick={onClose}
+            className="focus-ring cursor-pointer px-4 py-2 rounded-lg text-xs font-medium text-muted hover:text-ink hover:bg-raised transition-colors"
+          >
+            {t('check_updates_close_btn')}
+          </motion.button>
+        </div>
+      </motion.div>
+    </motion.div>
+  )
+}

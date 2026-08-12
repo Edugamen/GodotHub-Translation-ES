@@ -1,6 +1,7 @@
 {
   "standard": "Standard",
   "mono": "Mono",
+  "console_label": "Console",
   "both": "Both",
   "stable": "Stable",
   "unstable": "Unstable",
@@ -28,6 +29,7 @@
   "available_title": "AVAILABLE VERSIONS",
   "available_subtitle": "Pulled from Godot's official release builds.",
   "no_versions_match": "No installed versions match",
+  "no_available_versions_match": "No available versions match",
   "open": "Open",
   "retry": "Retry",
   "install": "Install",

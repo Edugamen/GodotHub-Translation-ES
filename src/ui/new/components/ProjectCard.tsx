@@ -4,49 +4,71 @@ import { useTranslation } from 'react-i18next'
 import type { Category, GitStatus, InstalledGodotVersion, Project } from '../../../types'
 import { api, getCachedProjectIcon, getCachedProjectName } from '../../../lib/api'
 import { formatLastOpened } from '../../../lib/lastOpened'
+import { formatDuration } from '../lib/duration'
+import { effectiveTotalMs } from '../../../lib/projectSort'
 import { tagColor } from '../../../lib/colors'
 import { isReducedMotion } from '../../../lib/appearance'
 import { useSettings } from '../../../hooks/useSettings'
-import { ConfirmDialog } from '../../../components/modals/ConfirmDialog'
-import { TagManagerModal } from '../../../components/modals/TagManagerModal'
+import { ConfirmDialog } from './modals/ConfirmDialog'
+import { TagManagerModal } from './modals/TagManagerModal'
 import { Dropdown } from './Dropdown'
+import { Tooltip } from './Tooltip'
 import {
   IconChevronDown,
   IconChevronRight,
   IconClock,
   IconCode,
-  IconDownload,
   IconExternalLink,
   IconGitBranch,
+  IconHistory,
   IconMore,
   IconNode,
   IconPencil,
   IconPin,
   IconPlus,
-  IconRefresh,
+  IconStopwatch,
   IconTags,
   IconTerminal,
   IconTrash,
   IconX,
-} from '../../../components/Icons'
+} from '../lib/icons'
 
 interface ProjectCardProps {
   project: Project
   installedVersions: InstalledGodotVersion[]
   categories: Category[]
   gitStatus?: GitStatus | null
-  /** Default the console toggle on when the launch-with-console setting is on. */
   launchWithConsole?: boolean
   onTogglePin: () => void
   onVersionChange: (tag: string) => void
   onRemove: () => void
   onDelete: () => void
-  /** Called after tag edits are persisted; receives the updated project. */
   onTagsSaved?: (project: Project) => void
-  /** Clicking a tag pill filters the projects view to that tag. */
   onTagClick?: (tag: string) => void
-  /** The tag currently filtering the projects view (highlighted on pills). */
+  onShowGitSidebar?: () => void
   activeTag?: string | null
+}
+
+function isSameLocalDay(aMs: number, bMs: number): boolean {
+  const a = new Date(aMs)
+  const b = new Date(bMs)
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  )
+}
+
+function startOfLocalWeek(ms: number): number {
+  const d = new Date(ms)
+  const day = (d.getDay() + 6) % 7
+  d.setHours(0, 0, 0, 0)
+  d.setDate(d.getDate() - day)
+  return d.getTime()
+}
+
+function isSameLocalWeek(aMs: number, bMs: number): boolean {
+  return startOfLocalWeek(aMs) === startOfLocalWeek(bMs)
 }
 
 function getInitials(name: string): string {
@@ -70,10 +92,10 @@ export function ProjectCard({
   onDelete,
   onTagsSaved,
   onTagClick,
+  onShowGitSidebar,
   activeTag,
 }: ProjectCardProps) {
   const { t } = useTranslation('common')
-  const { t: tg } = useTranslation('git')
   const { settings } = useSettings()
   const [icon, setIcon] = useState<string | null>(() =>
     getCachedProjectIcon(project.path),
@@ -101,10 +123,7 @@ export function ProjectCard({
   const addInputRef = useRef<HTMLInputElement>(null)
 
   const displayName = settingsName ?? project.name
-  // Pin slides out from the left while the card is hovered or the button is
-  // focused (or always for pinned projects).
   const pinOpen = cardHovered || pinFocused || project.pinned
-  // Shared spring for the row's slide-in controls (pin, git, add-tag).
   const springTransition: Transition = isReducedMotion()
     ? { duration: 0 }
     : { type: 'spring', stiffness: 460, damping: 34 }
@@ -137,8 +156,6 @@ export function ProjectCard({
     }
   }, [project.path])
 
-  // Keep focus in the rename input when a duplicate-tag error is shown, so the
-  // user can fix the name without clicking back in.
   useEffect(() => {
     if (tagError) editInputRef.current?.focus()
   }, [tagError])
@@ -149,6 +166,27 @@ export function ProjectCard({
     settings.last_opened_date_format,
   )
 
+  const sessionStart = project.session_started_at_ms
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!sessionStart) return
+    setNow(Date.now())
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [sessionStart])
+  const liveElapsed = sessionStart ? Math.max(0, now - sessionStart) : 0
+  const allMs = effectiveTotalMs(project, now)
+  const todayMs =
+    (project.time_today_seconds ?? 0) * 1000 +
+    (sessionStart && isSameLocalDay(sessionStart, Date.now())
+      ? liveElapsed
+      : 0)
+  const weekMs =
+    (project.time_week_seconds ?? 0) * 1000 +
+    (sessionStart && isSameLocalWeek(sessionStart, Date.now())
+      ? liveElapsed
+      : 0)
+
   const openFolder = () =>
     api.openProjectFolder(project.path).catch((e) => alert(e))
   const openInIde = () => api.openInEditor(project.path).catch((e) => alert(e))
@@ -158,8 +196,6 @@ export function ProjectCard({
         detail: { id: project.id, console: withConsole },
       }),
     )
-  const openTerminal = () =>
-    api.openTerminal(project.path).catch((e) => alert(e))
   const saveTags = async (newTags: string[]) => {
     setSavingTags(true)
     try {
@@ -223,29 +259,12 @@ export function ProjectCard({
     saveTags(newTags)
   }
 
-  const runGitAction = async (action: 'pull' | 'push' | 'fetch') => {
-    try {
-      if (action === 'pull') {
-        const result = await api.gitPull(project.path)
-        alert(result || t('pull_completed'))
-      } else if (action === 'push') {
-        const result = await api.gitPush(project.path)
-        alert(result || t('push_completed'))
-      } else {
-        await api.gitFetch(project.path)
-      }
-    } catch (e) {
-      alert(String(e))
-    }
-  }
-
   return (
     <div
       onMouseEnter={() => setCardHovered(true)}
       onMouseLeave={() => setCardHovered(false)}
       className="group relative flex items-end gap-3.5 p-3.5 rounded-item bg-overlay border border-outline/50 hover:bg-raised hover:border-accent-dim/60 transition-colors"
     >
-      {/* Watermark background */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-item isolate">
         {icon ? (
           <img
@@ -278,74 +297,36 @@ export function ProjectCard({
         )}
       </div>
 
-      {/* Info */}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5 flex-wrap min-w-0">
           <h3 className="font-display font-medium text-xl text-ink truncate">
             {displayName}
           </h3>
           {gitStatus?.is_repo && (
-            <Dropdown
-              align="left"
-              trigger={({ open, toggle }) => (
-                <button
-                  type="button"
-                  aria-expanded={open}
-                  onClick={toggle}
-                  aria-label={
-                    gitStatus.has_uncommitted
-                      ? t('project_git_dirty_tooltip', {
-                          branch: gitStatus.branch ?? 'HEAD',
-                        })
-                      : t('project_git_clean_tooltip', {
-                          branch: gitStatus.branch ?? 'HEAD',
-                        })
-                  }
-                  title={
-                    gitStatus.has_uncommitted
-                      ? t('project_git_dirty_tooltip', {
-                          branch: gitStatus.branch ?? 'HEAD',
-                        })
-                      : t('project_git_clean_tooltip', {
-                          branch: gitStatus.branch ?? 'HEAD',
-                        })
-                  }
-                  className={`shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-item transition-colors cursor-pointer ${
-                    gitStatus.has_uncommitted
-                      ? 'bg-amber/10 text-amber'
-                      : 'text-muted hover:text-ink hover:bg-raised'
-                  }`}
-                >
-                  <IconGitBranch className="w-3 h-3 shrink-0" />
-                </button>
-              )}
-              items={[
-                {
-                  key: 'terminal',
-                  label: tg('terminal'),
-                  icon: IconTerminal,
-                  onClick: openTerminal,
-                },
-                {
-                  key: 'pull',
-                  label: tg('pull'),
-                  icon: IconDownload,
-                  onClick: () => runGitAction('pull'),
-                },
-                {
-                  key: 'push',
-                  label: tg('push'),
-                  icon: IconGitBranch,
-                  onClick: () => runGitAction('push'),
-                },
-                {
-                  key: 'fetch',
-                  label: tg('fetch'),
-                  icon: IconRefresh,
-                  onClick: () => runGitAction('fetch'),
-                },
-              ]}
-            />
+            <Tooltip
+              content={
+                gitStatus.has_uncommitted
+                  ? t('project_git_dirty_tooltip', {
+                      branch: gitStatus.branch ?? 'HEAD',
+                    })
+                  : t('project_git_clean_tooltip', {
+                      branch: gitStatus.branch ?? 'HEAD',
+                    })
+              }
+            >
+              <button
+                type="button"
+                onClick={onShowGitSidebar}
+                aria-label={t('git_sidebar')}
+                className={`shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-item transition-colors cursor-pointer ${
+                  gitStatus.has_uncommitted
+                    ? 'bg-amber/10 text-amber'
+                    : 'text-muted hover:text-ink hover:bg-raised'
+                }`}
+              >
+                <IconGitBranch className="w-3 h-3 shrink-0" />
+              </button>
+            </Tooltip>
           )}
           {project.tags.length > 0 && (
             <div
@@ -450,13 +431,9 @@ export function ProjectCard({
                 </button>
               )}
               {tagsExpanded && project.tags.length > 3 && (
-                // Hidden by default, springs in on card hover / focus like
-                // the add-tag and pin icons; a touch smaller than them.
                 <motion.span
                   initial={false}
                   animate={{
-                    // Visible while the tags row itself is hovered (or the
-                    // button focused), not just the whole card.
                     width: tagsRowHovered || showLessFocused ? 20 : 0,
                     marginRight: tagsRowHovered || showLessFocused ? 6 : 0,
                     opacity: tagsRowHovered || showLessFocused ? 1 : 0,
@@ -473,7 +450,6 @@ export function ProjectCard({
                     title={t('show_fewer_tags')}
                     className="focus-ring cursor-pointer inline-flex items-center justify-center w-5 h-5 rounded-full text-muted hover:text-ink hover:bg-raised transition-colors"
                   >
-                    {/* Tags extend to the right, so collapsing points left. */}
                     <IconChevronRight className="w-2 h-2 rotate-180" />
                   </button>
                 </motion.span>
@@ -585,9 +561,18 @@ export function ProjectCard({
                 className="inline-flex items-center gap-1.5 px-3 py-3 rounded-btn bg-raised border border-outline/50 font-mono text-[10px] text-muted hover:text-ink hover:border-accent-dim cursor-pointer transition-colors shrink-0"
               >
                 <IconNode className="w-2.5 h-2.5" />
-                {boundVersion
-                  ? boundVersion.custom_name || boundVersion.tag
-                  : t('no_version_selected')}
+                {boundVersion ? (
+                  <>
+                    {boundVersion.custom_name || boundVersion.tag}
+                    {boundVersion.is_mono && (
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-tag bg-accent/10 text-accent-bright border border-accent-dim/40 shrink-0">
+                        {t('version_mono_badge')}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  t('no_version_selected')
+                )}
                 <IconChevronDown
                   className={`w-2.5 h-2.5 transition-transform duration-200 ${
                     open ? 'rotate-180 text-ink' : ''
@@ -600,9 +585,9 @@ export function ProjectCard({
               label: v.custom_name || v.tag,
               active: v.tag === project.godot_version,
               onClick: () => onVersionChange(v.tag),
+              badge: v.is_mono ? t('version_mono_badge') : undefined,
             }))}
           />
-          {/* Pin springs in next to the version select on hover. */}
           <motion.span
             initial={false}
             animate={{
@@ -645,20 +630,51 @@ export function ProjectCard({
               title={t('project_last_opened_tooltip', {
                 label: lastOpenedLabel,
               })}
-              // Informational only — a soft tint with no border or raised
-              // surface so it reads as a static label, not a clickable
-              // control like the version dropdown beside it.
               className="inline-flex items-center gap-1.5 rounded-btn px-3 py-3 bg-black/10 font-mono text-[10px] text-muted shrink-0"
             >
               <IconClock className="w-3 h-3 text-muted/60 shrink-0" />
               {lastOpenedLabel}
             </span>
           )}
+          {allMs > 0 && (
+            <Dropdown
+              align="left"
+              trigger={({ open, toggle }) => (
+                <button
+                  type="button"
+                  onClick={toggle}
+                  aria-expanded={open}
+                  title={t('project_total_time_tooltip', {
+                    label: formatDuration(allMs),
+                  })}
+                  className="focus-ring cursor-pointer inline-flex items-center gap-1.5 rounded-btn px-3 py-3 bg-black/10 font-mono text-[10px] text-muted hover:text-ink hover:bg-raised transition-colors shrink-0"
+                >
+                  <IconStopwatch className="w-3 h-3 text-muted/60 shrink-0" />
+                  {formatDuration(allMs)}
+                </button>
+              )}
+              items={[
+                {
+                  key: 'today',
+                  label: `${t('time_today')} · ${formatDuration(todayMs)}`,
+                  icon: IconClock,
+                },
+                {
+                  key: 'week',
+                  label: `${t('time_this_week')} · ${formatDuration(weekMs)}`,
+                  icon: IconHistory,
+                },
+                {
+                  key: 'all',
+                  label: `${t('time_all_time')} · ${formatDuration(allMs)}`,
+                  icon: IconStopwatch,
+                },
+              ]}
+            />
+          )}
         </div>
       </div>
 
-      {/* Actions — bottom right of the card. Open + console + ⋯ form a
-          split-button group styled like the Import button + its dropdown. */}
       <div className="flex items-stretch gap-1 shrink-0 justify-end">
         <motion.button
           whileHover={versionInstalled ? { scale: 1.04 } : undefined}
@@ -689,11 +705,7 @@ export function ProjectCard({
             aria-label={t('open_with_console')}
             aria-pressed={useConsole}
             title={t('open_with_console')}
-            // Squared inner corners (4px) on both sides so it reads as the
-            // middle member of the split group between Open and ⋯.
             className={`focus-ring cursor-pointer p-2 h-12 rounded-[4px] font-semibold text-[17px] shadow-md shadow-black/10 border transition-colors duration-200 ${
-              // ON adopts the split-button member look (like the ⋯ button's
-              // open state); the terminal icon stays green as the signal.
               useConsole
                 ? 'bg-raised text-ink border-green-500'
                 : 'bg-overlay text-muted border-outline/50 hover:text-green-500 hover:border-green-500/50'

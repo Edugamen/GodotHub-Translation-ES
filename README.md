@@ -366,24 +366,27 @@ bun tauri build
 godothub/
 ├── assets/                         # Screenshots & media
 ├── src/                            # Frontend (React + TypeScript)
-│   ├── App.tsx                     # Root application component
 │   ├── main.tsx                    # Entry point
 │   ├── types.ts                    # TypeScript type definitions
 │   ├── index.css                   # Global styles (Tailwind)
-│   ├── components/
-│   │   ├── git/                    # Git sidebar, diff viewer, result dialog
-│   │   ├── modals/                 # All modal dialogs
-│   │   ├── ui/                     # Primitive UI components
-│   │   ├── Icons.tsx               # SVG icon components
-│   │   ├── Titlebar.tsx            # Custom window title bar
-│   │   ├── SplashScreen.tsx        # Startup splash animation
-│   │   └── OnboardingTips.tsx      # First-time user tips
-│   ├── hooks/                      # Custom React hooks
-│   ├── lib/                        # Utility libraries & API bindings
-│   └── views/                      # Main application views
-│
-├── WorkspaceSwitcher.tsx           # Workspace switching component
-│
+│   ├── api/                        # Tauri command bindings
+│   ├── hooks/                      # Custom React hooks & contexts
+│   ├── lib/                        # Utility libraries & shared helpers
+│   ├── i18n/                       # Localization (en-US, zh-CN)
+│   ├── ui/
+│   │   ├── classic/                # The original (classic) UI
+│   │   │   ├── App.tsx             # Classic app shell + root component
+│   │   │   ├── WorkspaceSwitcher.tsx
+│   │   │   ├── components/
+│   │   │   │   ├── git/            # Git sidebar, diff viewer, result dialog
+│   │   │   │   ├── modals/         # All modal dialogs
+│   │   │   │   ├── ui/             # Primitive UI components
+│   │   │   │   ├── Icons.tsx       # SVG icon components
+│   │   │   │   └── …               # Titlebar, SplashScreen, etc.
+│   │   │   ├── lib/                # Classic-only helpers (workspaceIcons)
+│   │   │   └── views/              # Main application views
+│   │   └── new/                    # Experimental New UI (isolated, beta)
+│   └── …
 ├── src-tauri/                      # Backend (Rust)
 │   ├── src/
 │   │   ├── main.rs                 # Application entry point

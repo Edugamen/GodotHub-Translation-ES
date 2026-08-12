@@ -10,26 +10,16 @@ import {
 } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { IconChevronUp } from '../../../components/Icons'
-import { Tooltip } from '../../../components/ui/Tooltip'
+import { IconChevronUp } from '../lib/icons'
+import { Tooltip } from './Tooltip'
 import { isReducedMotion } from '../../../lib/appearance'
 
 interface OverlayScrollAreaProps {
   children: ReactNode
   className?: string
-  /** Hides the floating thumb (e.g. when the user disabled scrollbars in settings). */
   hideThumb?: boolean
-  /**
-   * Whenever this value changes (after mount), the viewport scrolls back to
-   * the top. Handy for filter changes — e.g. pass the active tag filter so
-   * the narrowed list always starts at the first card.
-   */
+  hideTopButton?: boolean
   scrollToTopOn?: unknown
-  /**
-   * Receives the scroll viewport element so callers can read/restore the
-   * scroll position (e.g. compensating for list reorders that change the
-   * container height).
-   */
   scrollRef?: RefObject<HTMLDivElement | null>
 }
 
@@ -39,27 +29,16 @@ interface Metrics {
   visible: boolean
 }
 
-/** Show the floating "back to top" button once scrolled past this many px. */
 const SHOW_AFTER = 200
 
-/** Progress ring geometry around the back-to-top button (viewBox is 60×60). */
 const RING_RADIUS = 28
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS
 
-/**
- * Scroll container whose scrollbar floats *over* the content instead of taking
- * layout space, so nothing shifts when the scrollbar appears or disappears.
- *
- * The native scrollbar is hidden for the viewport (see `.new-ui-scroll-viewport`
- * in colors.css) and a custom thumb is rendered in an absolutely-positioned
- * track on the right edge. The thumb fades in only when the content is
- * actually scrollable; pressing the track jumps to that position and can be
- * dragged from there.
- */
 export function OverlayScrollArea({
   children,
   className = '',
   hideThumb = false,
+  hideTopButton = false,
   scrollToTopOn,
   scrollRef,
 }: OverlayScrollAreaProps) {
@@ -80,8 +59,6 @@ export function OverlayScrollArea({
   const draggingRef = useRef(false)
   const dragRef = useRef({ startY: 0, startScrollTop: 0 })
 
-  // Scroll back to the top whenever the watched value changes (e.g. the tag
-  // filter), but not on the initial mount.
   const prevScrollToTopOn = useRef(scrollToTopOn)
   useEffect(() => {
     if (prevScrollToTopOn.current === scrollToTopOn) return
@@ -92,7 +69,6 @@ export function OverlayScrollArea({
     })
   }, [scrollToTopOn])
 
-  // Keep the internal ref and the caller's ref pointing at the same viewport.
   const setViewport = (node: HTMLDivElement | null) => {
     viewportRef.current = node
     if (scrollRef) scrollRef.current = node
@@ -119,16 +95,12 @@ export function OverlayScrollArea({
     setMetrics({ thumbHeight, offset, visible: true })
   }, [])
 
-  // Measure once on mount and whenever the viewport is resized (window resize,
-  // sidebar drag, list growing past the fold, …).
   useLayoutEffect(() => {
     update()
     const el = viewportRef.current
     if (!el) return
     const ro = new ResizeObserver(update)
     ro.observe(el)
-    // Content can grow/shrink without resizing the viewport or scrolling
-    // (e.g. projects added/removed while at the top) — re-measure then too.
     const mo = new MutationObserver(update)
     mo.observe(el, { childList: true, subtree: true })
     return () => {
@@ -139,8 +111,6 @@ export function OverlayScrollArea({
 
   useEffect(() => () => cancelAnimationFrame(rafRef.current), [])
 
-  // Hide the back-to-top button while any dropdown menu or dialog is open so
-  // it never sits on top of (or visually collides with) the overlay.
   useEffect(() => {
     const open = () => {
       overlayCountRef.current += 1
@@ -170,8 +140,6 @@ export function OverlayScrollArea({
     })
   }
 
-  // Pressing the track jumps so the thumb centers on the press point, then
-  // keeps dragging from there (pressing the thumb itself is a ~no-op jump).
   const handleTrackDown = (e: PointerEvent<HTMLDivElement>) => {
     const el = viewportRef.current
     const track = trackRef.current
@@ -215,7 +183,6 @@ export function OverlayScrollArea({
     try {
       e.currentTarget.releasePointerCapture(e.pointerId)
     } catch {
-      // Pointer capture may already be gone — nothing to release.
     }
   }
 
@@ -265,10 +232,8 @@ export function OverlayScrollArea({
         />
       </div>
 
-      {/* Floating back-to-top button, shown once the content is scrolled down
-          (and hidden while a dropdown menu is open) */}
       <AnimatePresence>
-        {showTopBtn && !overlayOpen && (
+        {!hideTopButton && showTopBtn && !overlayOpen && (
           <motion.div
             key="scroll-to-top"
             initial={{ opacity: 0, y: 12, scale: 0.85 }}
@@ -279,7 +244,6 @@ export function OverlayScrollArea({
           >
             <Tooltip content={t('scroll_to_top')} side="left" delay={250}>
               <div className="relative">
-                {/* Scroll progress ring — fills up as you go down the list */}
                 <svg
                   aria-hidden="true"
                   viewBox="0 0 60 60"

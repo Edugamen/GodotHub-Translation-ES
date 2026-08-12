@@ -68,10 +68,6 @@ pub struct GitDiffLine {
     pub content: String,
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 fn check_is_repo(path: &str) -> bool {
     let dir = PathBuf::from(path);
     let mut current = Some(dir.as_path());
@@ -292,10 +288,6 @@ fn repo_base_name(url: &str) -> String {
         .to_string()
 }
 
-// ---------------------------------------------------------------------------
-// Status (custom parsing)
-// ---------------------------------------------------------------------------
-
 fn get_git_status_for_path(path: &str) -> GitStatus {
     if !check_is_repo(path) {
         return GitStatus { branch: None, has_uncommitted: false, is_repo: false };
@@ -334,10 +326,6 @@ fn get_git_status_for_path(path: &str) -> GitStatus {
         None => GitStatus { branch: None, has_uncommitted: false, is_repo: true },
     }
 }
-
-// ---------------------------------------------------------------------------
-// Commands
-// ---------------------------------------------------------------------------
 
 #[tauri::command]
 pub fn get_git_status(path: String) -> GitStatus {
@@ -950,10 +938,6 @@ pub fn clone_repo(app: tauri::AppHandle, url: String, dest: String) -> Result<St
     Ok(clone_target.to_string_lossy().to_string())
 }
 
-// ---------------------------------------------------------------------------
-// Terminal / log opening (not git commands per se)
-// ---------------------------------------------------------------------------
-
 #[tauri::command]
 pub fn open_terminal(_app: tauri::AppHandle, path: String) -> Result<(), String> {
     let dir = PathBuf::from(&path);
@@ -1039,10 +1023,6 @@ pub fn git_log(_app: tauri::AppHandle, path: String) -> Result<(), String> {
 
     Ok(())
 }
-
-// ---------------------------------------------------------------------------
-// Diff (complex parsing)
-// ---------------------------------------------------------------------------
 
 #[tauri::command]
 pub fn git_file_diff(path: String, file_path: String) -> Result<GitDiffResult, String> {

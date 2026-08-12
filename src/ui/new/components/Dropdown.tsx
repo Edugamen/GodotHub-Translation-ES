@@ -9,7 +9,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from 'react'
-import type { IconProps } from '../../../components/Icons'
+import type { IconProps } from '../lib/icons'
 
 export interface NewDropdownItem {
   key: string
@@ -18,24 +18,23 @@ export interface NewDropdownItem {
   onClick?: () => void
   disabled?: boolean
   danger?: boolean
-  /** Highlights the item with the accent color to mark the active selection. */
   active?: boolean
-  /** Small color dot rendered before the label (e.g. category color). */
   dotColor?: string
   shortcut?: string
   dividerAfter?: boolean
+  badge?: string
 }
 
 interface NewDropdownProps {
-  /** Render-prop for the trigger element; receives open state + toggle. */
   trigger: (props: { open: boolean; toggle: () => void }) => ReactNode
   items: NewDropdownItem[]
   align?: 'left' | 'right'
   menuClassName?: string
 }
 
-/** Fallback menu height used when the menu isn't measurable yet. */
 const MENU_FALLBACK_HEIGHT = 220
+
+const MENU_FALLBACK_WIDTH = 240
 
 export function Dropdown({
   trigger,
@@ -45,14 +44,12 @@ export function Dropdown({
 }: NewDropdownProps) {
   const [open, setOpen] = useState(false)
   const [openUp, setOpenUp] = useState(false)
+  const [openLeft, setOpenLeft] = useState(align === 'right')
   const ref = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
   const toggle = useCallback(() => setOpen((v) => !v), [])
 
-  // Announce open/close on the window so floating overlays (e.g. the
-  // back-to-top button in OverlayScrollArea) can stay out of the menu's way.
-  // The cleanup also fires on unmount, covering menus closed by teardown.
   useEffect(() => {
     if (!open) return
     window.dispatchEvent(new CustomEvent('app:dropdown-open'))
@@ -61,9 +58,7 @@ export function Dropdown({
     }
   }, [open])
 
-  // Open the menu upward when there isn't enough room below the trigger
-  // (e.g. for cards near the bottom of a scroll container).
-  const measureOpenUp = useCallback(() => {
+  const measure = useCallback(() => {
     const el = ref.current
     if (!el) return
     const r = el.getBoundingClientRect()
@@ -71,23 +66,30 @@ export function Dropdown({
     const spaceBelow = window.innerHeight - r.bottom
     const spaceAbove = r.top
     setOpenUp(spaceBelow < mh && spaceAbove > spaceBelow)
-  }, [])
+
+    const mw = menuRef.current?.offsetWidth ?? MENU_FALLBACK_WIDTH
+    const spaceLeft = r.right
+    const spaceRight = window.innerWidth - r.left
+    if (align === 'right') {
+      setOpenLeft(!(spaceLeft < mw && spaceRight > spaceLeft))
+    } else {
+      setOpenLeft(spaceRight < mw && spaceLeft > spaceRight)
+    }
+  }, [align])
 
   useLayoutEffect(() => {
-    if (open) measureOpenUp()
-  }, [open, measureOpenUp])
+    if (open) measure()
+  }, [open, measure])
 
-  // Re-evaluate while open (scrolling the container or resizing the window
-  // can change how much room is available below the trigger).
   useEffect(() => {
     if (!open) return
-    window.addEventListener('scroll', measureOpenUp, true)
-    window.addEventListener('resize', measureOpenUp)
+    window.addEventListener('scroll', measure, true)
+    window.addEventListener('resize', measure)
     return () => {
-      window.removeEventListener('scroll', measureOpenUp, true)
-      window.removeEventListener('resize', measureOpenUp)
+      window.removeEventListener('scroll', measure, true)
+      window.removeEventListener('resize', measure)
     }
-  }, [open, measureOpenUp])
+  }, [open, measure])
 
   useEffect(() => {
     if (!open) return
@@ -130,7 +132,7 @@ export function Dropdown({
   }
 
   return (
-    <div ref={ref} className="relative flex items-stretch">
+    <div ref={ref} className="relative flex items-stretch w-fit">
       {trigger({ open, toggle })}
 
       <AnimatePresence>
@@ -144,8 +146,10 @@ export function Dropdown({
             role="menu"
             onKeyDown={handleMenuKey}
             className={`absolute z-40 rounded-menu border border-outline/50 bg-overlay shadow-md shadow-black/10 p-1.5 min-w-60 ${
-              openUp ? 'bottom-full mb-2 origin-bottom' : 'top-full mt-2 origin-top'
-            } ${align === 'right' ? 'right-0' : 'left-0'} ${menuClassName}`}
+              openUp
+                ? 'bottom-full mb-2 origin-bottom'
+                : `top-full mt-2 ${openLeft ? 'origin-top-right' : 'origin-top-left'}`
+            } ${openLeft ? 'right-0' : 'left-0'} ${menuClassName}`}
           >
             {items.map((item) => (
               <div key={item.key}>
@@ -188,6 +192,17 @@ export function Dropdown({
                     />
                   )}
                   <span className="flex-1 text-left truncate">{item.label}</span>
+                  {item.badge && (
+                    <span
+                      className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-tag border ${
+                        item.active
+                          ? 'bg-black/15 text-ink border-black/10'
+                          : 'bg-accent/10 text-accent-bright border-accent-dim/40'
+                      }`}
+                    >
+                      {item.badge}
+                    </span>
+                  )}
                   {item.shortcut && (
                     <span className="text-[10px] text-muted font-mono shrink-0">{item.shortcut}</span>
                   )}

@@ -4,10 +4,10 @@ import { useTranslation } from 'react-i18next'
 import { useProjectsContext } from '../../../hooks/projectsContext'
 import { useSettings } from '../../../hooks/useSettings'
 import { useCategoriesContext } from '../../../hooks/categoriesContext'
-import { IconChevronDown, IconGitBranch } from '../../../components/Icons'
+import { IconChevronDown, IconGitBranch } from '../lib/icons'
 import { api } from '../../../lib/api'
-import { ImportOverlay } from '../../../components/ImportOverlay'
-import { CloneRepoModal } from '../../../components/modals/CloneRepoModal'
+import { ImportOverlay } from './ImportOverlay'
+import { CloneRepoModal } from './modals/CloneRepoModal'
 import { Dropdown } from './Dropdown'
 
 const TOOL_BUTTON_CLASS =

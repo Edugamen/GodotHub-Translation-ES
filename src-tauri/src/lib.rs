@@ -14,6 +14,7 @@ mod scan;
 mod settings;
 mod templates;
 mod terminal;
+mod time_stats;
 mod tray;
 mod watcher;
 mod workspace;
@@ -27,6 +28,32 @@ async fn pick_folder(app: tauri::AppHandle) -> Option<String> {
     app.dialog().file().pick_folder(move |folder| {
         let _ = tx.send(folder);
     });
+    rx.recv().ok().flatten().map(|p| p.to_string())
+}
+
+#[tauri::command]
+async fn pick_save_path(app: tauri::AppHandle, default_name: String) -> Option<String> {
+    use tauri_plugin_dialog::DialogExt;
+    let (tx, rx) = std::sync::mpsc::channel();
+    app.dialog()
+        .file()
+        .set_file_name(&default_name)
+        .save_file(move |file| {
+            let _ = tx.send(file);
+        });
+    rx.recv().ok().flatten().map(|p| p.to_string())
+}
+
+#[tauri::command]
+async fn pick_data_file(app: tauri::AppHandle) -> Option<String> {
+    use tauri_plugin_dialog::DialogExt;
+    let (tx, rx) = std::sync::mpsc::channel();
+    app.dialog()
+        .file()
+        .add_filter("JSON", &["json"])
+        .pick_file(move |file| {
+            let _ = tx.send(file);
+        });
     rx.recv().ok().flatten().map(|p| p.to_string())
 }
 
@@ -109,6 +136,17 @@ pub fn run() {
                     return;
                 }
 
+                {
+                    use tauri_plugin_window_state::AppHandleExt as _;
+                    let _ = window
+                        .app_handle()
+                        .save_window_state(
+                            tauri_plugin_window_state::StateFlags::SIZE
+                                | tauri_plugin_window_state::StateFlags::POSITION
+                                | tauri_plugin_window_state::StateFlags::MAXIMIZED,
+                        );
+                }
+
                 #[cfg(target_os = "macos")]
                 let keep_alive = true;
                 #[cfg(not(target_os = "macos"))]
@@ -150,6 +188,8 @@ pub fn run() {
             projects::pick_file,
             projects::read_image_file,
             projects::write_project_tags,
+            projects::export_project_stats,
+            projects::import_project_stats,
             categories::list_categories,
             categories::create_category,
             categories::update_category,
@@ -228,6 +268,8 @@ pub fn run() {
             git::git_is_merging,
             tray::refresh_tray_menu,
             pick_folder,
+            pick_save_path,
+            pick_data_file,
             watcher::restart_watchers,
         ])
         .build(tauri::generate_context!())

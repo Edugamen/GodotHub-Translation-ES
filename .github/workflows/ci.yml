@@ -64,6 +64,9 @@ jobs:
       - name: TypeScript typecheck
         run: bun run tsc --noEmit
 
+      - name: ESLint (New UI isolation)
+        run: bun run lint
+
       - name: Rust cargo check
         run: cargo check --manifest-path src-tauri/Cargo.toml
 

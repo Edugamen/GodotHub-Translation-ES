@@ -1,11 +1,9 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconRefresh } from '../../../components/Icons'
-import { api } from '../../../lib/api'
-import { useSettings } from '../../../hooks/useSettings'
-import { useProjectsContext } from '../../../hooks/projectsContext'
+import { IconRefresh } from '../lib/icons'
 import { isReducedMotion } from '../../../lib/appearance'
+import { ConfirmDialog } from './modals/ConfirmDialog'
 
 type Phase = 'idle' | 'scanning' | 'done' | 'error'
 const MIN_SCAN_TIME = 800
@@ -73,12 +71,31 @@ function DrawGlyph({
   )
 }
 
-export function ScanButton({ onOpenSettings }: { onOpenSettings?: () => void }) {
+interface ScanButtonProps {
+  onOpenSettings?: () => void
+  scanDirs: string[]
+  scan: () => Promise<unknown>
+  onComplete?: () => void
+  onReadd?: (paths: string[]) => Promise<void> | void
+  onScanStart?: () => void
+  onScanEnd?: () => void
+  disabled?: boolean
+}
+
+export function ScanButton({
+  onOpenSettings,
+  scanDirs,
+  scan,
+  onComplete,
+  onReadd,
+  onScanStart,
+  onScanEnd,
+  disabled = false,
+}: ScanButtonProps) {
   const { t } = useTranslation('common')
-  const { settings } = useSettings()
-  const { refresh } = useProjectsContext()
   const [phase, setPhase] = useState<Phase>('idle')
   const phaseTimerRef = useRef<number | null>(null)
+  const [foundDismissed, setFoundDismissed] = useState<string[] | null>(null)
   const reduced = isReducedMotion()
 
   useEffect(
@@ -101,11 +118,12 @@ export function ScanButton({ onOpenSettings }: { onOpenSettings?: () => void }) 
 
   const handleScan = async () => {
     if (phase !== 'idle') return
-    if (settings.project_scan_dirs.length === 0) {
+    if (scanDirs.length === 0) {
       onOpenSettings?.()
       return
     }
     setPhase('scanning')
+    onScanStart?.()
     const start = performance.now()
     const hold = (next: Phase) => {
       const remaining = MIN_SCAN_TIME - (performance.now() - start)
@@ -117,15 +135,32 @@ export function ScanButton({ onOpenSettings }: { onOpenSettings?: () => void }) 
       }
     }
     try {
-      await api.scanForProjectsWithInfo(
-        settings.project_scan_dirs,
-        settings.scan_depth,
-      )
-      refresh().catch(() => {})
+      const result = await scan()
+      const dismissed =
+        typeof result === 'object' && result !== null
+          ? (result as { found_dismissed?: string[] }).found_dismissed
+          : undefined
+      if (dismissed?.length && onReadd) {
+        setFoundDismissed(dismissed)
+      }
+      onComplete?.()
       hold('done')
     } catch (e) {
       console.error('[new-ui] scan failed:', e)
       hold('error')
+    } finally {
+      onScanEnd?.()
+    }
+  }
+
+  const handleReaddDismissed = async () => {
+    if (!foundDismissed || !onReadd) return
+    const paths = foundDismissed
+    setFoundDismissed(null)
+    try {
+      await onReadd(paths)
+    } catch (e) {
+      console.error('[new-ui] re-adding dismissed projects failed:', e)
     }
   }
 
@@ -137,10 +172,11 @@ export function ScanButton({ onOpenSettings }: { onOpenSettings?: () => void }) 
   } as const
 
   return (
+    <>
       <motion.button
         type="button"
         onClick={handleScan}
-        disabled={phase !== 'idle'}
+        disabled={phase !== 'idle' || disabled}
         aria-label={
           phase === 'idle'
             ? t('scan_for_projects')
@@ -195,5 +231,35 @@ export function ScanButton({ onOpenSettings }: { onOpenSettings?: () => void }) 
           </motion.span>
         </AnimatePresence>
       </motion.button>
+
+      <AnimatePresence>
+        {foundDismissed && (
+          <ConfirmDialog
+            title={t('found_dismissed_title', { count: foundDismissed.length })}
+            description={
+              <div className="flex flex-col gap-2">
+                <p>
+                  {t('found_dismissed_desc', { count: foundDismissed.length })}
+                </p>
+                <ul className="flex flex-wrap gap-1.5 mt-1">
+                  {foundDismissed.map((p) => (
+                    <li
+                      key={p}
+                      className="text-xs px-2 py-1 rounded-md bg-raised border border-line/50 text-muted truncate max-w-48"
+                    >
+                      {p.split(/[\\/]/).pop()}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            }
+            confirmLabel={t('readd_all')}
+            cancelLabel={t('skip_all')}
+            onConfirm={handleReaddDismissed}
+            onCancel={() => setFoundDismissed(null)}
+          />
+        )}
+      </AnimatePresence>
+    </>
   )
 }
