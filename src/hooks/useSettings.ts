@@ -3,16 +3,38 @@ import {
   createElement,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
 import { api } from '../lib/api'
-import { applyTheme } from '../lib/colors'
-import { applyAppearance } from '../lib/appearance'
+import {
+  applyTheme,
+  getThemePreset,
+  isDarkColor,
+  resolveThemeMode,
+  DEFAULT_ACCENT,
+  DEFAULT_BG,
+  DEFAULT_BG_LIGHT,
+} from '../lib/colors'
+import {
+  applyAppearance,
+  applyAnimationIntensity,
+  applyCustomCss,
+  applyDensity,
+  applyFontScale,
+  applyNewUi,
+  applyProjectIconOpacity,
+  applyRadius,
+  applyScrollbars,
+} from '../lib/appearance'
+import { registerPendingSave } from '../lib/pendingSave'
 import { useWorkspaces } from './useWorkspaces'
 import { defaultCornerRadius } from '../lib/platform'
 import i18n from 'i18next'
 import type { AppSettings } from '../types'
+
+const SAVE_DEBOUNCE_MS = 250
 
 const DEFAULTS: AppSettings = {
   download_dir: null,
@@ -21,13 +43,16 @@ const DEFAULTS: AppSettings = {
   version_scan_dirs: [],
   scan_depth: 2,
   download_concurrency: 3,
-  accent_color: '#457ff2',
-  background_color: '#15171c',
+  accent_color: DEFAULT_ACCENT,
+  background_color: DEFAULT_BG,
   corner_radius: defaultCornerRadius,
+  raised_contrast: 8,
   ui_density: 1.05,
   font_scale: 1.0,
-  reduce_motion: false,
   theme_mode: 'dark',
+  custom_css: '',
+  animation_intensity: 'full',
+  view_entrance: 'fade',
   launch_with_console: false,
   close_on_project_open: false,
   minimize_to_tray: false,
@@ -51,10 +76,13 @@ const DEFAULTS: AppSettings = {
   show_star_button: true,
   show_scrollbars: true,
   project_icon_opacity: 14,
+  animation_threshold: 20,
   language: 'en-US',
   use_os_decorations: false,
   directory_naming_convention: 'keep',
+  theme_preset: 'custom',
   git_init_new_projects: false,
+  open_after_import: true,
   new_ui: false,
 }
 
@@ -68,11 +96,50 @@ interface SettingsContextValue {
 
 const SettingsContext = createContext<SettingsContextValue | null>(null)
 
+function applySettingsAppearance(prev: AppSettings, next: AppSettings) {
+  if (
+    next.accent_color !== prev.accent_color ||
+    next.background_color !== prev.background_color ||
+    next.theme_mode !== prev.theme_mode ||
+    next.theme_preset !== prev.theme_preset ||
+    next.raised_contrast !== prev.raised_contrast
+  ) {
+    applyTheme(
+      next.accent_color,
+      next.background_color,
+      resolveThemeMode(next.theme_mode),
+      getThemePreset(next.theme_preset),
+      next.raised_contrast,
+    )
+  }
+  if (next.corner_radius !== prev.corner_radius) applyRadius(next.corner_radius)
+  if (next.ui_density !== prev.ui_density) applyDensity(next.ui_density)
+  if (next.font_scale !== prev.font_scale) applyFontScale(next.font_scale)
+  if (next.animation_intensity !== prev.animation_intensity) {
+    applyAnimationIntensity(next.animation_intensity)
+  }
+  if (next.custom_css !== prev.custom_css) applyCustomCss(next.custom_css)
+  if (next.show_scrollbars !== prev.show_scrollbars) applyScrollbars(next.show_scrollbars)
+  if (next.project_icon_opacity !== prev.project_icon_opacity) {
+    applyProjectIconOpacity(next.project_icon_opacity)
+  }
+  if (next.new_ui !== prev.new_ui) applyNewUi(next.new_ui)
+  if (next.language && next.language !== prev.language) {
+    localStorage.setItem('i18nextLng', next.language)
+    if (next.language !== i18n.language) i18n.changeLanguage(next.language)
+  }
+}
+
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const { activeId } = useWorkspaces()
   const [settings, setSettings] = useState<AppSettings>(DEFAULTS)
   const [loaded, setLoaded] = useState(false)
   const [settingsWorkspaceId, setSettingsWorkspaceId] = useState('')
+
+  const pendingSettingsRef = useRef<AppSettings | null>(null)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const savingSettingsRef = useRef(false)
+  const savePromiseRef = useRef<Promise<void> | null>(null)
 
   useEffect(() => {
     if (!activeId) return
@@ -81,7 +148,13 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       if (cancelled) return
       setSettings(s)
       setSettingsWorkspaceId(activeId)
-      applyTheme(s.accent_color, s.background_color, s.theme_mode)
+      applyTheme(
+        s.accent_color,
+        s.background_color,
+        resolveThemeMode(s.theme_mode),
+        getThemePreset(s.theme_preset),
+        s.raised_contrast,
+      )
       applyAppearance(s)
       if (s.language && s.language !== i18n.language) {
         i18n.changeLanguage(s.language)
@@ -91,27 +164,123 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     })
     return () => {
       cancelled = true
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current)
+        saveTimerRef.current = null
+      }
+      pendingSettingsRef.current = null
     }
   }, [activeId])
 
-  const update = async (next: AppSettings) => {
-    const saved = await api.updateSettings(next)
-    setSettings(saved)
-    applyTheme(saved.accent_color, saved.background_color, saved.theme_mode)
-    if (saved.language) {
-      localStorage.setItem('i18nextLng', saved.language)
+  useEffect(() => {
+    if (settings.theme_mode !== 'system') return
+    const mq = window.matchMedia('(prefers-color-scheme: light)')
+    const apply = () => {
+      const resolved = resolveThemeMode('system')
+      const targetDark = resolved === 'dark'
+      const clash =
+        settings.theme_preset === 'custom' &&
+        isDarkColor(settings.background_color) !== targetDark
+      if (clash) {
+        update({
+          ...settings,
+          background_color: targetDark ? DEFAULT_BG : DEFAULT_BG_LIGHT,
+        })
+        return
+      }
+      applyTheme(
+        settings.accent_color,
+        settings.background_color,
+        resolved,
+        getThemePreset(settings.theme_preset),
+        settings.raised_contrast,
+      )
     }
-    applyAppearance(saved)
-    return saved
+    apply()
+    const handler = () => apply()
+    if (typeof mq.addEventListener === 'function') {
+      mq.addEventListener('change', handler)
+      return () => mq.removeEventListener('change', handler)
+    }
+    mq.addListener(handler)
+    return () => mq.removeListener(handler)
+  }, [
+    settings.theme_mode,
+    settings.accent_color,
+    settings.background_color,
+    settings.theme_preset,
+    settings.raised_contrast,
+  ])
+
+  const flushPending = (): Promise<void> => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
+    }
+    if (savingSettingsRef.current) {
+      return savePromiseRef.current ?? Promise.resolve()
+    }
+    const pending = pendingSettingsRef.current
+    if (!pending) return Promise.resolve()
+    pendingSettingsRef.current = null
+    const cycle = (async () => {
+      savingSettingsRef.current = true
+      try {
+        const saved = await api.updateSettings(pending)
+        if (pendingSettingsRef.current === null) {
+          setSettings(saved)
+          applyTheme(
+            saved.accent_color,
+            saved.background_color,
+            resolveThemeMode(saved.theme_mode),
+            getThemePreset(saved.theme_preset),
+            saved.raised_contrast,
+          )
+          if (saved.language) {
+            localStorage.setItem('i18nextLng', saved.language)
+          }
+          applyAppearance(saved)
+        }
+      } finally {
+        savingSettingsRef.current = false
+      }
+    })()
+    savePromiseRef.current = cycle
+    return cycle
+  }
+
+  const update = async (next: AppSettings) => {
+    setSettings(next)
+    applySettingsAppearance(settings, next)
+
+    pendingSettingsRef.current = next
+    registerPendingSave(flushPending)
+    if (savingSettingsRef.current) {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = setTimeout(() => {
+        void flushPending()
+      }, SAVE_DEBOUNCE_MS)
+      return next
+    }
+    await flushPending()
+    return next
   }
 
   const resetToDefaults = async () => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
+    }
+    if (savePromiseRef.current) await savePromiseRef.current
+    pendingSettingsRef.current = null
     const defaults = await api.resetSettings()
     setSettings(defaults)
     applyTheme(
       defaults.accent_color,
       defaults.background_color,
-      defaults.theme_mode,
+      resolveThemeMode(defaults.theme_mode),
+      getThemePreset(defaults.theme_preset),
+      defaults.raised_contrast,
     )
     applyAppearance(defaults)
     return defaults

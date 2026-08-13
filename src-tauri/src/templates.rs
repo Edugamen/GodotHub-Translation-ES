@@ -165,7 +165,6 @@ pub(crate) fn mirror_dir(src: &Path, dst: &Path, skip_dirs: &[&str]) -> Result<(
     copy_dir(src, dst, skip_dirs)
 }
 
-
 pub(crate) fn install_downloaded_asset(
     app: &AppHandle,
     name: String,

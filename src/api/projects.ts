@@ -40,6 +40,13 @@ export const projectsApi = {
     invoke<ProjectSizeInfo>('get_project_size', { path }),
   pickFolder: () => invoke<string | null>('pick_folder'),
   pickFile: () => invoke<string | null>('pick_file'),
+  pickSavePath: (defaultName: string) =>
+    invoke<string | null>('pick_save_path', { defaultName }),
+  pickDataFile: () => invoke<string | null>('pick_data_file'),
+  exportProjectStats: (path: string) =>
+    invoke<void>('export_project_stats', { path }),
+  importProjectStats: (path: string) =>
+    invoke<number>('import_project_stats', { path }),
   readImageFile: (path: string) =>
     invoke<string | null>('read_image_file', { path }),
   getIcon: (path: string) => {

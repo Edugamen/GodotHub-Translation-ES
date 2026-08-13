@@ -76,7 +76,7 @@ pub fn read_state(app: &AppHandle) -> WorkspacesState {
         id: id.clone(),
         name: "Default".to_string(),
         icon: "briefcase".to_string(),
-        color: "#457ff2".to_string(),
+        color: crate::models::default_accent(),
         created_at: chrono::Utc::now().to_rfc3339(),
     };
     let state = WorkspacesState {

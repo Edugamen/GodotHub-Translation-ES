@@ -441,7 +441,6 @@ pub async fn get_asset_library_categories() -> Result<Vec<AssetLibraryCategory>,
     Ok(cfg.categories)
 }
 
-
 #[derive(Debug, Clone, Deserialize)]
 struct StoreSearchResponse {
     #[serde(default)]

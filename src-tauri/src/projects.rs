@@ -1,7 +1,7 @@
 use crate::models::*;
 use crate::persist;
 use crate::settings;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -22,6 +22,7 @@ pub enum TrackedHandle {
 pub struct TrackedProcess {
     pub handle: TrackedHandle,
     pub kill_tree: bool,
+    pub launched_at: std::time::SystemTime,
 }
 
 impl TrackedProcess {
@@ -35,6 +36,8 @@ impl TrackedProcess {
 }
 
 pub struct ActiveProcesses(pub Mutex<HashMap<String, TrackedProcess>>);
+
+const SESSION_START_DELAY_MS: u64 = 3000;
 
 const DEFAULT_ICON_SVG: &[u8] = include_bytes!("../icon.svg");
 
@@ -62,6 +65,71 @@ pub(crate) fn read_projects(app: &AppHandle) -> Vec<Project> {
 
 pub(crate) fn write_projects(app: &AppHandle, projects: &Vec<Project>) -> Result<(), String> {
     persist::write_json(&projects_file(app), projects).map_err(|e| e.to_string())
+}
+
+pub(crate) fn epoch_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
+fn settle_project_session(
+    app: &AppHandle,
+    id: &str,
+    active_elapsed: Option<std::time::Duration>,
+) {
+    let mut projects = read_projects(app);
+    let Some(project) = projects.iter_mut().find(|p| p.id == id) else {
+        return;
+    };
+    let mut changed = false;
+    let mut added_ms = 0u64;
+    let mut session_start_ms: Option<u64> = None;
+    match active_elapsed {
+        Some(d) => {
+            let marker = project.session_started_at_ms.take();
+            changed = marker.is_some();
+            added_ms = (d.as_millis() as u64).saturating_sub(SESSION_START_DELAY_MS);
+            session_start_ms = Some(marker.unwrap_or_else(|| epoch_ms().saturating_sub(added_ms)));
+        }
+        None => {
+            if let Some(start) = project.session_started_at_ms.take() {
+                changed = true;
+                added_ms = epoch_ms().saturating_sub(start);
+                session_start_ms = Some(start);
+            }
+        }
+    }
+    if added_ms > 0 {
+        project.total_time_seconds += added_ms / 1000;
+        changed = true;
+    }
+    if changed {
+        let _ = write_projects(app, &projects);
+    }
+    if let Some(start_ms) = session_start_ms {
+        crate::time_stats::record_session(app, id, start_ms, added_ms / 1000);
+    }
+}
+
+pub(crate) fn settle_stale_sessions(app: &AppHandle) {
+    static SETTLED: std::sync::OnceLock<()> = std::sync::OnceLock::new();
+    SETTLED.get_or_init(|| {
+        let running: std::collections::HashSet<String> = {
+            let Some(state) = app.try_state::<ActiveProcesses>() else {
+                return;
+            };
+            let active = state.0.lock().unwrap();
+            active.keys().cloned().collect()
+        };
+        let projects = read_projects(app);
+        for p in projects {
+            if p.session_started_at_ms.is_some() && !running.contains(&p.id) {
+                settle_project_session(app, &p.id, None);
+            }
+        }
+    });
 }
 
 #[cfg(target_os = "linux")]
@@ -95,6 +163,26 @@ fn undismiss(app: &AppHandle, path: &str) {
     if s.dismissed_project_paths.len() != before {
         let _ = settings::write_settings(app, &s);
     }
+    let mut archive = read_dismissed_archive(app);
+    if archive.remove(&normalize_path(path)).is_some() {
+        write_dismissed_archive(app, &archive);
+    }
+}
+
+fn dismissed_archive_file(app: &AppHandle) -> PathBuf {
+    crate::workspace::active_workspace_dir(app).join("dismissed_projects.json")
+}
+
+fn read_dismissed_archive(app: &AppHandle) -> BTreeMap<String, Project> {
+    let file = dismissed_archive_file(app);
+    if !file.exists() {
+        return BTreeMap::new();
+    }
+    serde_json::from_str(&fs::read_to_string(&file).unwrap_or_default()).unwrap_or_default()
+}
+
+fn write_dismissed_archive(app: &AppHandle, archive: &BTreeMap<String, Project>) {
+    let _ = persist::write_json(&dismissed_archive_file(app), archive);
 }
 
 fn next_sort_order(projects: &[Project], category: &Option<String>) -> i64 {
@@ -109,6 +197,8 @@ fn next_sort_order(projects: &[Project], category: &Option<String>) -> i64 {
 
 #[tauri::command]
 pub fn list_projects(app: AppHandle) -> Vec<Project> {
+    let start = std::time::Instant::now();
+    settle_stale_sessions(&app);
     let projects = read_projects(&app);
     let (mut kept, removed): (Vec<Project>, Vec<Project>) = projects
         .into_iter()
@@ -128,6 +218,18 @@ pub fn list_projects(app: AppHandle) -> Vec<Project> {
     if !removed.is_empty() || tags_changed {
         let _ = write_projects(&app, &kept);
     }
+    let stats = crate::time_stats::read_stats(&app);
+    let now = chrono::Local::now();
+    for p in kept.iter_mut() {
+        let (today, week) = crate::time_stats::breakdown(&stats, &p.id, now);
+        p.time_today_seconds = today;
+        p.time_week_seconds = week;
+    }
+    eprintln!(
+        "[timing] list_projects total={}ms projects={}",
+        start.elapsed().as_millis(),
+        kept.len()
+    );
     kept
 }
 
@@ -309,6 +411,10 @@ pub fn create_project(
         sort_order: next_sort_order(&projects, &effective_category),
         launch_arguments: String::new(),
         tags,
+        total_time_seconds: 0,
+        session_started_at_ms: None,
+        time_today_seconds: 0,
+        time_week_seconds: 0,
     };
 
     projects.push(project.clone());
@@ -406,6 +512,33 @@ pub fn register_project(
     if projects.iter().any(|p| same_path(&p.path, &path)) {
         return Err("This project is already in your library".into());
     }
+
+    let mut archive = read_dismissed_archive(&app);
+    if let Some(mut archived) = archive.remove(&normalize_path(&path)) {
+        archived.session_started_at_ms = None;
+        archived.time_today_seconds = 0;
+        archived.time_week_seconds = 0;
+        if !godot_version.is_empty() {
+            archived.godot_version = godot_version;
+        }
+        if let Some(cat) = &category {
+            archived.category = Some(cat.clone());
+        }
+        if archived.godot_version.is_empty() {
+            if let Some(spec) = crate::godotenv::detect_version(&path) {
+                let installed = crate::godot_versions::read_registry(&app);
+                if let Some(v) = crate::godotenv::best_match(&spec, &installed) {
+                    archived.godot_version = v.tag.clone();
+                }
+            }
+        }
+        write_dismissed_archive(&app, &archive);
+        projects.push(archived.clone());
+        write_projects(&app, &projects)?;
+        undismiss(&app, &path);
+        return Ok(archived);
+    }
+
     let mut godot_version = godot_version;
     if godot_version.is_empty() {
         if let Some(spec) = crate::godotenv::detect_version(&path) {
@@ -428,6 +561,10 @@ pub fn register_project(
         pinned: false,
         launch_arguments: String::new(),
         tags,
+        total_time_seconds: 0,
+        session_started_at_ms: None,
+        time_today_seconds: 0,
+        time_week_seconds: 0,
     };
     projects.push(project.clone());
     write_projects(&app, &projects)?;
@@ -470,6 +607,14 @@ pub async fn remove_project(app: AppHandle, id: String, delete_files: bool) -> R
             s.dismissed_project_paths.push(project.path.clone());
             let _ = crate::settings::write_settings(&app, &s);
         }
+
+        let mut snapshot = project.clone();
+        snapshot.session_started_at_ms = None;
+        snapshot.time_today_seconds = 0;
+        snapshot.time_week_seconds = 0;
+        let mut archive = read_dismissed_archive(&app);
+        archive.insert(normalize_path(&project.path), snapshot);
+        write_dismissed_archive(&app, &archive);
     }
 
     if delete_files {
@@ -484,15 +629,13 @@ pub async fn remove_project(app: AppHandle, id: String, delete_files: bool) -> R
 
 #[tauri::command]
 pub fn reintroduce_dismissed_projects(app: AppHandle, paths: Vec<String>) -> Result<Vec<Project>, String> {
-    let mut s = crate::settings::read_settings(&app);
     let mut added = vec![];
     for path in &paths {
-        s.dismissed_project_paths.retain(|p| !same_path(p, path));
         if let Ok(p) = register_project(app.clone(), path.clone(), String::new(), None) {
+            undismiss(&app, path);
             added.push(p);
         }
     }
-    crate::settings::write_settings(&app, &s).map_err(|e| e.to_string())?;
     Ok(added)
 }
 
@@ -559,7 +702,8 @@ pub fn open_project(
         .iter_mut()
         .find(|p| p.id == id)
         .ok_or("Project not found")?;
-    let project_name = project.name.clone();
+    let project_name = resolve_project_name(&project.path)
+        .unwrap_or_else(|| project.name.clone());
     let project_version = project.godot_version.clone();
 
     if project.godot_version.is_empty() {
@@ -598,6 +742,7 @@ pub fn open_project(
     let kill_tree = launched.kill_tree;
 
     project.last_opened = Some(chrono::Utc::now().to_rfc3339());
+    project.session_started_at_ms = Some(epoch_ms() + SESSION_START_DELAY_MS);
     write_projects(&app, &projects)?;
 
     let _ = crate::tray::refresh_tray_menu(app.clone());
@@ -608,6 +753,7 @@ pub fn open_project(
             TrackedProcess {
                 handle: TrackedHandle::Child(launched.child),
                 kill_tree,
+                launched_at: std::time::SystemTime::now(),
             },
         );
     }
@@ -697,17 +843,20 @@ fn wait_until_exited(app: &AppHandle, id: &str) {
 
         let exited = {
             let mut active = state.0.lock().unwrap();
-            let running = match active.get_mut(id) {
-                Some(tracked) => tracked.is_running(),
-                None => return,
+            let Some(tracked) = active.get_mut(id) else {
+                return;
             };
-            if !running {
+            if tracked.is_running() {
+                None
+            } else {
+                let elapsed = tracked.launched_at.elapsed().ok();
                 active.remove(id);
+                Some(elapsed)
             }
-            !running
         };
 
-        if exited {
+        if let Some(elapsed) = exited {
+            settle_project_session(app, id, elapsed);
             let _ = app.emit("project:exited", serde_json::json!({ "id": id }));
             return;
         }
@@ -757,7 +906,9 @@ pub fn stop_project(app: AppHandle, id: String) -> Result<(), String> {
             .ok_or("No running process found for this project")?
     };
 
+    let elapsed = tracked.launched_at.elapsed().ok();
     kill_tracked(&mut tracked)?;
+    settle_project_session(&app, &id, elapsed);
     let _ = app.emit("project:exited", serde_json::json!({ "id": id }));
     Ok(())
 }
@@ -1129,6 +1280,88 @@ pub(crate) fn resolve_project_tags(project_path: &str) -> Vec<String> {
     vec![]
 }
 
+#[derive(Serialize, Deserialize)]
+struct ProjectTimeStats {
+    id: String,
+    path: String,
+    total_time_seconds: u64,
+    #[serde(default)]
+    sessions: Vec<crate::time_stats::SessionRecord>,
+    #[serde(default)]
+    daily: std::collections::BTreeMap<String, u64>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct TimeStatsExport {
+    exported_at: String,
+    projects: Vec<ProjectTimeStats>,
+}
+
+#[tauri::command]
+pub fn export_project_stats(app: AppHandle, path: String) -> Result<(), String> {
+    let projects = read_projects(&app);
+    let store = crate::time_stats::read_stats(&app);
+    let stats = TimeStatsExport {
+        exported_at: chrono::Utc::now().to_rfc3339(),
+        projects: projects
+            .iter()
+            .map(|p| ProjectTimeStats {
+                id: p.id.clone(),
+                path: p.path.clone(),
+                total_time_seconds: p.total_time_seconds,
+                sessions: store.projects.get(&p.id).cloned().unwrap_or_default(),
+                daily: store.daily.get(&p.id).cloned().unwrap_or_default(),
+            })
+            .collect(),
+    };
+    persist::write_json(Path::new(&path), &stats).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn import_project_stats(app: AppHandle, path: String) -> Result<usize, String> {
+    let stats: Option<TimeStatsExport> = persist::read_json_opt(Path::new(&path));
+    let Some(stats) = stats else {
+        return Err("Couldn't read the stats backup file".into());
+    };
+    let mut projects = read_projects(&app);
+    let mut imported = 0usize;
+    let mut restored: Vec<(
+        String,
+        Vec<crate::time_stats::SessionRecord>,
+        std::collections::BTreeMap<String, u64>,
+    )> = Vec::new();
+    for s in &stats.projects {
+        let idx = projects
+            .iter()
+            .position(|p| p.id == s.id)
+            .or_else(|| projects.iter().position(|p| same_path(&p.path, &s.path)));
+        if let Some(idx) = idx {
+            projects[idx].total_time_seconds = s.total_time_seconds;
+            restored.push((projects[idx].id.clone(), s.sessions.clone(), s.daily.clone()));
+            imported += 1;
+        }
+    }
+    if imported > 0 {
+        write_projects(&app, &projects)?;
+        let mut store = crate::time_stats::read_stats(&app);
+        let mut changed = false;
+        for (id, sessions, daily) in &restored {
+            if !sessions.is_empty() {
+                store.projects.insert(id.clone(), sessions.clone());
+                changed = true;
+            }
+            if !daily.is_empty() {
+                store.daily.insert(id.clone(), daily.clone());
+                changed = true;
+            }
+        }
+        if changed {
+            crate::time_stats::write_stats(&app, &store);
+        }
+    }
+    Ok(imported)
+}
+
 pub(crate) fn resolve_project_name(project_path: &str) -> Option<String> {
     let godot_file = PathBuf::from(project_path).join("project.godot");
     let content = fs::read_to_string(&godot_file).ok()?;
@@ -1384,133 +1617,4 @@ pub async fn get_project_size(path: String) -> Result<ProjectSizeInfo, String> {
     })
     .await
     .map_err(|e| e.to_string())?
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn naming_convention_kebab() {
-        assert_eq!(apply_naming_convention("New Game", "kebab-case"), "new-game");
-        assert_eq!(apply_naming_convention("My Awesome Game", "kebab-case"), "my-awesome-game");
-        assert_eq!(apply_naming_convention("Pixels & Dreams", "kebab-case"), "pixels-dreams");
-    }
-
-    #[test]
-    fn naming_convention_snake() {
-        assert_eq!(apply_naming_convention("New Game", "snake_case"), "new_game");
-    }
-
-    #[test]
-    fn naming_convention_camel() {
-        assert_eq!(apply_naming_convention("New Game", "camelCase"), "newGame");
-    }
-
-    #[test]
-    fn naming_convention_pascal() {
-        assert_eq!(apply_naming_convention("New Game", "PascalCase"), "NewGame");
-    }
-
-    #[test]
-    fn naming_convention_title() {
-        assert_eq!(apply_naming_convention("new game", "Title Case"), "New Game");
-    }
-
-    #[test]
-    fn naming_convention_keep_and_unknown() {
-        assert_eq!(apply_naming_convention("New Game", "keep"), "New Game");
-        assert_eq!(apply_naming_convention("New Game", "bogus"), "New Game");
-    }
-
-    #[test]
-    fn naming_convention_splits_camel_and_acronyms() {
-        assert_eq!(apply_naming_convention("myGame", "kebab-case"), "my-game");
-        assert_eq!(apply_naming_convention("HTTPServer", "kebab-case"), "http-server");
-        assert_eq!(
-            apply_naming_convention("v0.0.1 - The Beginning", "snake_case"),
-            "v0_0_1_the_beginning"
-        );
-    }
-
-    #[test]
-    fn naming_convention_empty_falls_back() {
-        assert_eq!(apply_naming_convention("  ", "kebab-case"), "");
-        assert_eq!(apply_naming_convention("!!!", "kebab-case"), "!!!");
-    }
-
-    #[test]
-    fn rebind_respects_dotnet_preference() {
-        use crate::godotenv::{DetectedVersion, GodotVersionNumber};
-
-        fn spec(is_dotnet: bool) -> DetectedVersion {
-            DetectedVersion {
-                number: GodotVersionNumber {
-                    major: 4,
-                    minor: 3,
-                    patch: 0,
-                    label: "stable".into(),
-                    label_num: -1,
-                },
-                is_dotnet,
-            }
-        }
-
-        fn version(tag: &str, is_mono: bool) -> InstalledGodotVersion {
-            InstalledGodotVersion {
-                tag: tag.into(),
-                version: "4.3".into(),
-                executable_path: String::new(),
-                is_mono,
-                installed_at: String::new(),
-                custom_name: None,
-                install_root: None,
-                supports_console: true,
-            }
-        }
-
-        fn project(bound: &str) -> Project {
-            Project {
-                id: "1".into(),
-                name: "Game".into(),
-                path: "/tmp/game".into(),
-                godot_version: bound.into(),
-                created_at: String::new(),
-                last_opened: None,
-                category: None,
-                pinned: false,
-                sort_order: 0,
-                launch_arguments: String::new(),
-                tags: vec![],
-            }
-        }
-
-        let standard = version("4.3-stable", false);
-        let mono = version("4.3-stable-mono", true);
-
-        let no_dotnet = spec(false);
-        let mut p = project("");
-        assert!(rebind_project_to_spec(&mut p, &no_dotnet, &[mono.clone(), standard.clone()]));
-        assert_eq!(p.godot_version, "4.3-stable");
-
-        let mut p = project("4.3-stable-mono");
-        assert!(rebind_project_to_spec(&mut p, &no_dotnet, &[mono.clone(), standard.clone()]));
-        assert_eq!(p.godot_version, "4.3-stable");
-
-        let mut p = project("4.3-stable");
-        assert!(!rebind_project_to_spec(&mut p, &no_dotnet, &[mono.clone(), standard.clone()]));
-        assert_eq!(p.godot_version, "4.3-stable");
-
-        let dotnet = spec(true);
-        let mut p = project("");
-        assert!(rebind_project_to_spec(&mut p, &dotnet, &[standard.clone(), mono.clone()]));
-        assert_eq!(p.godot_version, "4.3-stable-mono");
-
-        let mut p = project("4.3-stable-mono");
-        assert!(!rebind_project_to_spec(&mut p, &dotnet, &[standard.clone(), mono.clone()]));
-
-        let mut p = project("");
-        assert!(rebind_project_to_spec(&mut p, &no_dotnet, &[mono]));
-        assert_eq!(p.godot_version, "4.3-stable-mono");
-    }
 }

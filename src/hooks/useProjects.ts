@@ -69,6 +69,16 @@ export function useProjects() {
     [refresh, setData],
   )
 
+  const updateTags = useCallback(
+    async (id: string, tags: string[]) => {
+      setData((prev) => {
+        if (!Array.isArray(prev)) return prev
+        return prev.map((p) => (p.id === id ? { ...p, tags } : p))
+      })
+    },
+    [setData],
+  )
+
   const setCategory = useCallback(
     async (id: string, category: string) => {
       setData((prev) => {
@@ -124,6 +134,7 @@ export function useProjects() {
     remove,
     updateVersion,
     setPinned,
+    updateTags,
     setCategory,
     moveProject,
     reorder,

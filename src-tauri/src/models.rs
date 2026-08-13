@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::sync::OnceLock;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InstalledGodotVersion {
@@ -60,6 +61,14 @@ pub struct Project {
     pub launch_arguments: String,
     #[serde(default)]
     pub tags: Vec<String>,
+    #[serde(default)]
+    pub total_time_seconds: u64,
+    #[serde(default)]
+    pub session_started_at_ms: Option<u64>,
+    #[serde(default)]
+    pub time_today_seconds: u64,
+    #[serde(default)]
+    pub time_week_seconds: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -73,7 +82,7 @@ pub struct Category {
 }
 
 fn default_category_color() -> String {
-    "#457ff2".to_string()
+    default_accent()
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -154,14 +163,20 @@ pub struct AppSettings {
     pub background_color: String,
     #[serde(default = "default_corner_radius")]
     pub corner_radius: f64,
+    #[serde(default = "default_raised_contrast")]
+    pub raised_contrast: u32,
     #[serde(default = "default_ui_density")]
     pub ui_density: f64,
     #[serde(default = "default_font_scale")]
     pub font_scale: f64,
-    #[serde(default)]
-    pub reduce_motion: bool,
     #[serde(default = "default_theme_mode")]
     pub theme_mode: String,
+    #[serde(default)]
+    pub custom_css: String,
+    #[serde(default = "default_animation_intensity")]
+    pub animation_intensity: String,
+    #[serde(default = "default_view_entrance")]
+    pub view_entrance: String,
     #[serde(default)]
     pub launch_with_console: bool,
     #[serde(default)]
@@ -208,6 +223,8 @@ pub struct AppSettings {
     pub show_scrollbars: bool,
     #[serde(default = "default_project_icon_opacity")]
     pub project_icon_opacity: u32,
+    #[serde(default = "default_animation_threshold")]
+    pub animation_threshold: u32,
     #[serde(default = "default_language")]
     pub language: String,
     #[serde(default = "default_os_decorations")]
@@ -216,8 +233,12 @@ pub struct AppSettings {
     pub dismissed_project_paths: Vec<String>,
     #[serde(default = "default_naming_convention")]
     pub directory_naming_convention: String,
+    #[serde(default = "default_theme_preset")]
+    pub theme_preset: String,
     #[serde(default)]
     pub git_init_new_projects: bool,
+    #[serde(default = "default_true")]
+    pub open_after_import: bool,
     #[serde(default)]
     pub new_ui: bool,
 }
@@ -230,8 +251,16 @@ fn default_naming_convention() -> String {
     "keep".to_string()
 }
 
+fn default_theme_preset() -> String {
+    "custom".to_string()
+}
+
 fn default_project_icon_opacity() -> u32 {
     14
+}
+
+fn default_animation_threshold() -> u32 {
+    20
 }
 
 fn default_true() -> bool {
@@ -242,8 +271,24 @@ fn default_tray_recent_projects_count() -> u32 {
     5
 }
 
-fn default_accent() -> String {
-    "#457ff2".to_string()
+#[derive(Debug, Clone, Deserialize)]
+struct ThemeDefaults {
+    accent: String,
+    background: String,
+}
+
+const THEME_DEFAULTS_JSON: &str = include_str!("../theme-defaults.json");
+
+fn theme_defaults() -> &'static ThemeDefaults {
+    static DEFAULTS: OnceLock<ThemeDefaults> = OnceLock::new();
+    DEFAULTS.get_or_init(|| {
+        serde_json::from_str(THEME_DEFAULTS_JSON)
+            .expect("theme-defaults.json must be valid JSON")
+    })
+}
+
+pub(crate) fn default_accent() -> String {
+    theme_defaults().accent.clone()
 }
 fn default_scan_depth() -> u32 {
     2
@@ -252,14 +297,13 @@ fn default_download_concurrency() -> u32 {
     3
 }
 fn default_background() -> String {
-    "#15171c".to_string()
+    theme_defaults().background.clone()
 }
 fn default_corner_radius() -> f64 {
-    if cfg!(any(target_os = "linux", target_os = "macos")) {
-        5.0
-    } else {
-        10.0
-    }
+    12.0
+}
+fn default_raised_contrast() -> u32 {
+    8
 }
 fn default_ui_density() -> f64 {
     1.05
@@ -269,6 +313,12 @@ fn default_font_scale() -> f64 {
 }
 fn default_theme_mode() -> String {
     "dark".to_string()
+}
+fn default_animation_intensity() -> String {
+    "full".to_string()
+}
+fn default_view_entrance() -> String {
+    "fade".to_string()
 }
 fn default_last_opened_time_format() -> String {
     "12h".to_string()
@@ -392,11 +442,14 @@ impl Default for AppSettings {
             accent_color: default_accent(),
             background_color: default_background(),
             corner_radius: default_corner_radius(),
+            raised_contrast: default_raised_contrast(),
             ui_density: default_ui_density(),
             font_scale: default_font_scale(),
             launch_with_console: false,
-            reduce_motion: false,
             theme_mode: default_theme_mode(),
+            custom_css: String::new(),
+            animation_intensity: default_animation_intensity(),
+            view_entrance: default_view_entrance(),
             close_on_project_open: false,
             minimize_to_tray: false,
             reopen_after_godot_closes: false,
@@ -419,11 +472,14 @@ tooltip_delay: default_tooltip_delay(),
             show_star_button: true,
             show_scrollbars: true,
             project_icon_opacity: 14,
+            animation_threshold: default_animation_threshold(),
             language: default_language(),
             use_os_decorations: default_os_decorations(),
             dismissed_project_paths: vec![],
             directory_naming_convention: default_naming_convention(),
+            theme_preset: default_theme_preset(),
             git_init_new_projects: false,
+            open_after_import: true,
             new_ui: false,
         }
     }

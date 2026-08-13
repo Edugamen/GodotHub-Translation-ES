@@ -2,27 +2,51 @@
 @plugin './corner-shape.config.js';
 
 @theme {
-  --color-base: #1e1f22;
-  --color-surface: #2b2d31;
-  --color-raised: #323339;
-  --color-overlay: #3a3c43;
-  --color-line: #3f4147;
-  --color-ink: #f2f3f5;
-  --color-muted: #949ba4;
-  --color-accent: #5865f2;
-  --color-accent-dim: #3c45a5;
-  --color-accent-bright: #7983f5;
-  --color-mint: #23a55a;
+
+  --color-base: #17181c;
+  --color-surface: #212228;
+  --color-raised: #292b32;
+  --color-overlay: #27282E;
+  --color-line: #3a3d46;
+  --color-outline: #3a3d46;
+  --color-ink: #f4f5f7;
+  --color-muted: #9aa3b2;
+  --color-accent: #4f7cff;
+  --color-accent-dim: #3a5fd0;
+  --color-accent-bright: #7aa0ff;
+  --color-mint: #2fbf71;
   --color-amber: #f0b132;
-  --color-danger: #f23f42;
+  --color-danger: #f2555a;
+
   --font-display: 'Space Grotesk', sans-serif;
   --font-body: 'Inter', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
-  --radius-sm: 8px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 20px;
+
+  --radius-sm: 9.6px;
+  --radius-md: 12px;
+  --radius-lg: 16.8px;
+  --radius-xl: 24px;
+  --radius-tag: 12px;
+  --radius-btn: 19.2px;
+  --radius-dropdown-btn: 15.6px;
+  --radius-dropdown: 15.6px;
+  --radius-item: 26.4px;
+  --radius-tile: 19.2px;
+  --radius-menu: 28.8px;
+  --radius-card: 28.8px;
+  --radius-modal: 36px;
+
   --spacing: 4.5px;
+}
+
+@property --spacing {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 4.5px;
+}
+
+html.ui-scaling {
+  transition: --spacing 0.2s ease, font-size 0.2s ease;
 }
 
 body {
@@ -160,6 +184,11 @@ textarea::placeholder {
 }
 .icon-wiggle:active svg {
   transform: scale(0.92);
+}
+
+*:focus,
+*:focus-visible {
+  outline: none;
 }
 
 .focus-ring {

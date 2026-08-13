@@ -79,6 +79,10 @@ export interface Project {
   sort_order: number
   launch_arguments: string
   tags: string[]
+  total_time_seconds: number
+  session_started_at_ms: number | null
+  time_today_seconds: number
+  time_week_seconds: number
 }
 
 export interface ProjectUpdate {
@@ -291,10 +295,13 @@ export interface AppSettings {
   accent_color: string
   background_color: string
   corner_radius: number
+  raised_contrast: number
   ui_density: number
   font_scale: number
-  reduce_motion: boolean
-  theme_mode: 'dark' | 'light'
+  theme_mode: 'dark' | 'light' | 'system'
+  custom_css: string
+  animation_intensity: 'full' | 'subtle' | 'none'
+  view_entrance: 'fade' | 'slide' | 'scale' | 'none'
   launch_with_console: boolean
   close_on_project_open: boolean
   minimize_to_tray: boolean
@@ -318,10 +325,13 @@ export interface AppSettings {
   show_star_button: boolean
   show_scrollbars: boolean
   project_icon_opacity: number
+  animation_threshold: number
   language: string
   use_os_decorations: boolean
   directory_naming_convention: NamingConvention
+  theme_preset: string
   git_init_new_projects: boolean
+  open_after_import: boolean
   new_ui: boolean
 }
 
@@ -329,3 +339,4 @@ export interface ScanResult {
   added: Project[]
   found_dismissed: string[]
 }
+
