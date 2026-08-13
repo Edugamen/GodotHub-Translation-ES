@@ -105,7 +105,7 @@ function DiffLineRow({
       >
         {segs.map((seg, i) =>
           seg.c && seg.t !== '' ? (
-            <mark key={i} className={`${markCls} rounded-[2px] px-px`}>
+            <mark key={i} className={`${markCls} rounded-xs px-px`}>
               {seg.t}
             </mark>
           ) : (
@@ -277,7 +277,7 @@ export function DiffViewer({ projectPath, filePath, onClose }: Props) {
           )}
 
           {/* Body */}
-          <div className={`flex-1 font-mono text-xs leading-[1.5] ${wrap ? 'overflow-y-auto' : 'overflow-auto'}`}>
+          <div className={`flex-1 font-mono text-xs leading-normal ${wrap ? 'overflow-y-auto' : 'overflow-auto'}`}>
             {loading ? (
               <div className="flex flex-col items-center justify-center gap-3 py-20 text-muted">
                 <IconRefresh className="w-5 h-5 animate-spin" />

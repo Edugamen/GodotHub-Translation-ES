@@ -20,7 +20,6 @@ import {
   IconPause,
   IconPlay,
   IconRefresh,
-  IconRocket,
   IconSearch,
   IconSpinner,
   IconX,
