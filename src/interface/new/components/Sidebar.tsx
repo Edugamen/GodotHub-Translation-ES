@@ -1,0 +1,326 @@
+import { motion } from 'framer-motion'
+import { useRef, useState } from 'react'
+import type { ComponentType } from 'react'
+import { useTranslation } from 'react-i18next'
+import { IconChevronsLeft } from '../lib/icons'
+import type { IconProps } from '../lib/icons'
+import { Tooltip } from './reusables/Tooltip'
+import { RevertToClassicButton } from './ui/RevertToClassicButton'
+
+export interface SidebarTab {
+  id: string
+  label: string
+  icon: ComponentType<IconProps>
+  footer?: boolean
+  iconOnly?: boolean
+}
+
+const COLLAPSED_WIDTH = 68
+const KNOB_HEIGHT = 40
+const KNOB_MIN_TOP = 36
+const KNOB_TRACK_DIST = 56
+const KNOB_RESET_DIST = 72
+
+export function Sidebar({
+  tabs,
+  activeTab,
+  onTabChange,
+}: {
+  tabs: SidebarTab[]
+  activeTab: string
+  onTabChange: (id: string) => void
+}) {
+  const { t } = useTranslation('nav')
+  const [width, setWidth] = useState(() => {
+    try {
+      return Math.min(
+        420,
+        Math.max(180, Number(localStorage.getItem('new_ui_sidebar_width')) || 256),
+      )
+    } catch {
+      return 256
+    }
+  })
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('new_ui_sidebar_collapsed') === '1'
+    } catch {
+      return false
+    }
+  })
+  const [dragging, setDragging] = useState(false)
+  const [revealed, setRevealed] = useState(false)
+  const [knobY, setKnobY] = useState<number | null>(null)
+  const showKnob = revealed || dragging
+  const toggleCollapsed = () => {
+    setKnobY(null)
+    setCollapsed((prev) => {
+      try {
+        localStorage.setItem('new_ui_sidebar_collapsed', prev ? '0' : '1')
+      } catch {}
+      return !prev
+    })
+  }
+  const widthRef = useRef(width)
+  widthRef.current = width
+  const startXRef = useRef(0)
+  const startWidthRef = useRef(0)
+
+  const mainTabs = tabs.filter((t) => !t.footer)
+  const footerTabs = tabs.filter((t) => t.footer)
+
+  const beginDrag = (e: React.PointerEvent) => {
+    e.preventDefault()
+    startXRef.current = e.clientX
+    startWidthRef.current = widthRef.current
+    setDragging(true)
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {}
+  }
+
+  const finishDrag = (e: React.PointerEvent) => {
+    setDragging(false)
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    } catch {}
+    try {
+      localStorage.setItem('new_ui_sidebar_width', String(widthRef.current))
+    } catch {}
+  }
+
+  const clampKnobY = (y: number, height: number) =>
+    Math.min(Math.max(KNOB_MIN_TOP, y), Math.max(KNOB_MIN_TOP, height - KNOB_HEIGHT))
+
+  const handleStripMove = (e: React.PointerEvent) => {
+    if (dragging) {
+      if (e.buttons === 0) {
+        finishDrag(e)
+        return
+      }
+      const next = startWidthRef.current + (e.clientX - startXRef.current)
+      setWidth(Math.min(420, Math.max(180, Math.round(next))))
+      return
+    }
+    const rect = e.currentTarget.getBoundingClientRect()
+    const y = e.clientY - rect.top
+    setKnobY(clampKnobY(y, rect.height))
+  }
+
+  const endDrag = (e: React.PointerEvent) => {
+    if (!dragging) return
+    finishDrag(e)
+  }
+
+  const handleWrapperMove = (e: React.MouseEvent) => {
+    if (dragging || collapsed) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const dist = rect.right - e.clientX
+    if (dist > KNOB_RESET_DIST) {
+      setKnobY(null)
+      return
+    }
+    if (dist <= KNOB_TRACK_DIST) {
+      const y = e.clientY - rect.top
+      setKnobY(clampKnobY(y, rect.height))
+    }
+  }
+
+  const renderTabButton = (tab: SidebarTab, layoutClass: string, collapsedView = false) => {
+    const active = activeTab === tab.id
+    const Icon = tab.icon
+    const hideLabel = collapsedView || !!tab.iconOnly
+    const btn = (
+      <button
+        key={tab.id}
+        type="button"
+        onClick={() => onTabChange(tab.id)}
+        aria-label={hideLabel ? tab.label : undefined}
+        className={`focus-ring cursor-pointer relative flex items-center rounded-item text-sm font-medium transition-colors ${layoutClass} ${
+          active
+            ? 'text-ink border border-transparent'
+            : 'text-muted border border-transparent hover:text-ink hover:bg-raised/60'
+        }`}
+      >
+        {active && (
+          <motion.span
+            layoutId="new-ui-nav-pill"
+            transition={{ type: 'spring', stiffness: 650, damping: 38 }}
+            className="absolute inset-0 rounded-item bg-overlay border border-outline/50 shadow-md shadow-black/10 pointer-events-none"
+          />
+        )}
+        <Icon
+          className={`relative w-4 h-4 shrink-0 transition-colors duration-200 ${active ? 'text-accent' : 'text-muted'}`}
+        />
+        {!hideLabel && (
+          <span className={`relative transition-colors duration-200 ${active ? 'text-ink' : ''}`}>{tab.label}</span>
+        )}
+      </button>
+    )
+    return collapsedView ? (
+      <Tooltip key={tab.id} content={tab.label} side="right">
+        {btn}
+      </Tooltip>
+    ) : (
+      btn
+    )
+  }
+
+  const collapseBtn = (
+    <button
+      type="button"
+      onClick={toggleCollapsed}
+      aria-label={collapsed ? t('expand_sidebar') : t('collapse_sidebar')}
+      className={`focus-ring cursor-pointer relative flex items-center justify-center rounded-item text-sm font-medium transition-colors border border-transparent text-muted hover:text-ink hover:bg-raised/60 ${
+        collapsed ? 'w-11 h-11 shrink-0' : 'w-9 h-9 ml-auto shrink-0'
+      }`}
+    >
+      <motion.span
+        className="inline-flex"
+        initial={false}
+        animate={{ rotate: collapsed ? 180 : 0 }}
+        transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+      >
+        <IconChevronsLeft className={`w-4 h-4 ${collapsed ? 'pr-0' : 'pr-2'}`} />
+      </motion.span>
+    </button>
+  )
+
+  return (
+    <div
+      className={`relative shrink-0 h-full ${dragging ? 'select-none' : ''}`}
+      onMouseEnter={() => setRevealed(true)}
+      onMouseMove={handleWrapperMove}
+      onMouseLeave={(e) => {
+        if (e.relatedTarget instanceof Node && e.currentTarget.contains(e.relatedTarget)) return
+        setRevealed(false)
+        setKnobY(null)
+      }}
+    >
+      <motion.div
+        animate={{ width: collapsed ? COLLAPSED_WIDTH : width }}
+        transition={dragging ? { duration: 0 } : { type: 'spring', stiffness: 650, damping: 38 }}
+        className="flex flex-col h-full rounded-card bg-raised overflow-hidden"
+      >
+      <div
+        className={`shrink-0 flex items-center gap-2 h-12 border-b border-line ${
+          collapsed ? 'justify-center px-0' : 'px-3'
+        }`}
+      >
+        {!collapsed && (
+          <>
+            <span className="font-display font-semibold tracking-tight text-ink min-w-0 truncate">
+              GodotHub
+            </span>
+            <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-tag bg-accent/15 text-accent-bright border border-accent-dim/40">
+              New UI
+            </span>
+          </>
+        )}
+        {collapsed ? (
+          <Tooltip content={t('expand_sidebar')} side="right">
+            {collapseBtn}
+          </Tooltip>
+        ) : (
+          collapseBtn
+        )}
+      </div>
+
+      <nav className={`flex-1 p-3 flex flex-col gap-1 ${collapsed ? 'items-center' : ''}`}>
+        {mainTabs.map((tab) =>
+          renderTabButton(
+            tab,
+            collapsed ? 'w-11 h-11 shrink-0 justify-center' : 'w-full gap-2.5 px-3 py-2.5',
+            collapsed,
+          ),
+        )}
+      </nav>
+      {footerTabs.length > 0 && (
+        <nav className={`shrink-0 p-3 flex flex-col gap-1.5 ${collapsed ? 'items-center' : 'items-stretch'}`}>
+          <div
+            className={`flex ${
+              collapsed ? 'flex-col gap-1 items-center' : 'flex-row gap-1.5 items-stretch'
+            }`}
+          >
+            {footerTabs.map((tab) =>
+              renderTabButton(
+                tab,
+                collapsed || tab.iconOnly
+                  ? 'w-11 h-11 shrink-0 justify-center'
+                  : 'flex-1 gap-2.5 px-3 py-2.5',
+                collapsed,
+              ),
+            )}
+          </div>
+        </nav>
+      )}
+      <nav className={`shrink-0 p-3 pt-0 flex flex-col gap-1.5 ${collapsed ? 'items-center' : 'items-stretch'}`}>
+        <div
+          className={`shrink-0 ${
+            collapsed ? 'w-px h-6 bg-line/40' : 'h-px w-full bg-line/40'
+          }`}
+        />
+        <RevertToClassicButton variant="sidebar" collapsed={collapsed} />
+      </nav>
+      </motion.div>
+      {!collapsed && (
+      <div
+        onPointerDown={beginDrag}
+        onPointerMove={handleStripMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        role="separator"
+        aria-orientation="vertical"
+        style={{ touchAction: 'none' }}
+        onMouseEnter={() => setRevealed(true)}
+        onMouseLeave={(e) => {
+          if (e.relatedTarget instanceof Node && e.currentTarget.parentElement?.contains(e.relatedTarget)) return
+          setRevealed(false)
+          setKnobY(null)
+        }}
+        className="absolute inset-y-0 -right-3.5 w-7 cursor-col-resize group/edge z-10"
+      >
+        <div
+          className={`absolute left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none transition-[top,opacity] duration-200 ease-out ${
+            knobY != null ? '' : 'top-1/2'
+          } ${showKnob ? 'opacity-100' : 'opacity-0'}`}
+          style={knobY != null ? { top: knobY } : undefined}
+        >
+          <div
+            className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 rounded-tag bg-raised border border-line shadow-md shadow-base text-[10px] font-mono text-muted tabular-nums whitespace-nowrap transition-all duration-200 ${
+              dragging ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'
+            }`}
+          >
+            {width}px
+          </div>
+          <div
+            className={`flex items-center justify-center w-5 h-10 rounded-full border shadow-md shadow-base transition-all duration-200 ${
+            dragging
+              ? 'bg-accent border-accent scale-110 shadow-accent/30'
+              : 'bg-raised border-line shadow-base group-hover/edge:border-accent-dim group-hover/edge:scale-110'
+          }`}
+        >
+            <div className="flex flex-col items-center justify-center gap-1">
+          <div
+            className={`w-1 h-1 rounded-full transition-colors duration-200 ${
+              dragging ? 'bg-white' : 'bg-line group-hover/edge:bg-accent'
+            }`}
+          />
+          <div
+            className={`w-1 h-1 rounded-full transition-colors duration-200 ${
+              dragging ? 'bg-white' : 'bg-line group-hover/edge:bg-accent'
+            }`}
+          />
+          <div
+            className={`w-1 h-1 rounded-full transition-colors duration-200 ${
+              dragging ? 'bg-white' : 'bg-line group-hover/edge:bg-accent'
+            }`}
+          />
+            </div>
+        </div>
+        </div>
+      </div>
+      )}
+    </div>
+  )
+}

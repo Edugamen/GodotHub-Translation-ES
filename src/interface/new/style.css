@@ -1,0 +1,12 @@
+.new-ui {
+  --font-display: var(--app-font-display, 'Onest');
+  --font-body: var(--app-font-body, 'Onest');
+}
+
+.new-ui .new-ui-scroll-viewport::-webkit-scrollbar {
+  display: none;
+}
+.new-ui .new-ui-scroll-viewport {
+  scrollbar-width: none;
+}
+
