@@ -42,6 +42,31 @@ export interface ChangelogEntry {
   created_at: number
 }
 
+export type UpdateKind =
+  | 'announcement'
+  | 'new-feature'
+  | 'improvement'
+  | 'breaking-change'
+  | 'known-issue'
+
+export interface UpdateEntry {
+  id: string
+  kind: UpdateKind
+  title: string
+  body: string
+  command?: string | null
+  is_new: boolean
+  featured: boolean
+  link?: string | null
+  created_at: number
+}
+
+export interface UpdatesResponse {
+  entries: UpdateEntry[]
+  from_cache: boolean
+  fetched_at: number
+}
+
 export interface Project {
   id: string
   name: string
@@ -77,6 +102,7 @@ export interface GitStatus {
 
 export interface GitLogEntry {
   hash: string
+  parents: string[]
   message: string
   author: string
   date: string

@@ -12,6 +12,7 @@ import { isMac } from '../../../../lib/platform'
 import { TaskTray } from './TaskTray'
 import { Tooltip } from '../reusables/Tooltip'
 import { useSettings } from '../../../../hooks/useSettings'
+import { LanguageMenu } from './LanguageMenu'
 
 export function TitleBar() {
   const { t } = useTranslation('common')
@@ -95,6 +96,7 @@ export function TitleBar() {
 
       <div className={`flex items-stretch gap-1 ${isMac ? 'pr-3' : ''}`}>
         <div className="flex items-center gap-1 pl-3 pr-5">
+          <LanguageMenu />
           {showSupport && (
             <Tooltip content={t('support_dev')} side="bottom">
               <motion.button

@@ -63,7 +63,16 @@ textarea::placeholder {
   width: 8px;
   height: 8px;
 }
+::-webkit-scrollbar:vertical {
+  width: 8px;
+}
+::-webkit-scrollbar:horizontal {
+  height: 8px;
+}
 ::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-track:horizontal {
   background: transparent;
 }
 
@@ -74,11 +83,26 @@ textarea::placeholder {
   background-clip: padding-box;
   transition: background 0.2s ease;
 }
+::-webkit-scrollbar-thumb:horizontal {
+  background: var(--color-line);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background 0.2s ease;
+}
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-accent-dim);
   background-clip: padding-box;
 }
+::-webkit-scrollbar-thumb:horizontal:hover {
+  background: var(--color-accent-dim);
+  background-clip: padding-box;
+}
 ::-webkit-scrollbar-thumb:active {
+  background: var(--color-accent);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:horizontal:active {
   background: var(--color-accent);
   background-clip: padding-box;
 }
@@ -189,4 +213,101 @@ textarea::placeholder {
   100% {
     box-shadow: 0 0 0 0 rgba(69, 127, 242, 0);
   }
+}
+
+.markdown-body {
+  font-size: 0.875rem;
+  line-height: 1.65;
+  color: var(--color-muted);
+}
+.markdown-body > :first-child {
+  margin-top: 0;
+}
+.markdown-body > :last-child {
+  margin-bottom: 0;
+}
+.markdown-body p {
+  margin: 0.5rem 0;
+}
+.markdown-body a {
+  color: var(--color-accent-bright);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.markdown-body a:hover {
+  color: var(--color-ink);
+}
+.markdown-body strong {
+  color: var(--color-ink);
+  font-weight: 600;
+}
+.markdown-body em {
+  color: var(--color-ink);
+}
+.markdown-body ul,
+.markdown-body ol {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.markdown-body ul {
+  list-style: disc;
+}
+.markdown-body ol {
+  list-style: decimal;
+}
+.markdown-body code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8em;
+  background: var(--color-raised);
+  border: 1px solid var(--color-line);
+  border-radius: 0.375rem;
+  padding: 0.1em 0.35em;
+  color: var(--color-ink);
+}
+.markdown-body pre {
+  margin: 0.6rem 0;
+  background: var(--color-base);
+  border: 1px solid var(--color-line);
+  border-radius: 0.625rem;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+}
+.markdown-body pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4 {
+  color: var(--color-ink);
+  font-weight: 600;
+  margin: 0.9rem 0 0.4rem;
+}
+.markdown-body h1 {
+  font-size: 1.125rem;
+}
+.markdown-body h2 {
+  font-size: 1.05rem;
+}
+.markdown-body h3 {
+  font-size: 1rem;
+}
+.markdown-body h4 {
+  font-size: 0.925rem;
+}
+.markdown-body blockquote {
+  margin: 0.6rem 0;
+  padding: 0.25rem 0 0.25rem 0.75rem;
+  border-left: 3px solid var(--color-accent-dim);
+  color: var(--color-muted);
+}
+.markdown-body hr {
+  margin: 0.9rem 0;
+  border: none;
+  border-top: 1px solid var(--color-line);
 }

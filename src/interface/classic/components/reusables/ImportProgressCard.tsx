@@ -32,7 +32,7 @@ export function ImportProgressCard({
             {icon}
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="font-display font-semibold text-base leading-snug">
+            <h3 className="font-display font-semibold text-muted leading-snug">
               {title}
             </h3>
             {label && (

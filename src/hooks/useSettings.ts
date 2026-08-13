@@ -159,6 +159,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       if (s.language && s.language !== i18n.language) {
         i18n.changeLanguage(s.language)
       }
+      document.documentElement.setAttribute("dir", i18n.dir())
       setLoaded(true)
     })
     return () => {

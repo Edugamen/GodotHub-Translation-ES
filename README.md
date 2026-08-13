@@ -2,11 +2,11 @@
   <img src="https://raw.githubusercontent.com/RykoTheDev/godothub/main/src-tauri/icons/128x128@2x.png" alt="GodotHub Logo" width="128" height="128" style="border-radius: 24px;">
 </p>
 
-<h1 align="center">🎮 GodotHub</h1>
+<h1 align="center">GodotHub</h1>
 <h3 align="center">The Ultimate Project Manager for Godot Engine</h3>
 
 <p align="center">
-  <strong>Manage projects, versions, templates, and Git - all in one place.</strong>
+  <strong>Manage projects, versions, assets, templates, and Git, all in one place.</strong>
 </p>
 
 <p align="center">
@@ -20,31 +20,27 @@
   <img src="https://img.shields.io/badge/winget-available-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Winget Available">
 </p>
 
-<p align="center">
-  <i>"What if Unity Hub and GitHub Desktop had a baby, but it's adopted?" - Yeah.. That's exactly it.</i>
-</p>
-
-> ⚠️ **Note:** This app has only been tested on **Windows, Arch Linux Hyprland and Newest MacOS Version (by a contributor)**. I cannot guarantee how it runs or behaves on other Linux Distros or test personally on Mac. If you find a bug, please [report it on Issues](https://github.com/RykoTheDev/godothub/issues) or contact me if you'd like to help with cross-platform testing or contributions.
-
-> ⚠️ **Another Note:** In Linux, AppImage won't work for most distros due to it being a backend "linuxdeploy" issue that i can't fix myself this happens with almost all Tauri Apps on Linux. when they push a fix to this, I will update it immediately.
 
 <p align="center">
-  <a href="https://github.com/RykoTheDev/godothub/releases/latest">
-    <kbd>⬇️ Download Now</kbd>
-  </a>
-  &nbsp;&nbsp;&nbsp;
-  <a href="#screenshots"><kbd>📸 Screenshots</kbd></a>
-  &nbsp;&nbsp;&nbsp;
-  <a href="#features"><kbd>📖 Features</kbd></a>
-  &nbsp;&nbsp;&nbsp;
-  <a href="#installation"><kbd>🛠️ Installation</kbd></a>
-  &nbsp;&nbsp;&nbsp;
-  <a href="#keyboard-shortcuts"><kbd>⌨️ Shortcuts</kbd></a>
+  <a href="https://github.com/RykoTheDev/godothub/releases/latest"><kbd>⬇️ Download Now</kbd></a>
+  &nbsp;&nbsp;
+  <a href="#-screenshots"><kbd>📸 Screenshots</kbd></a>
+  &nbsp;&nbsp;
+  <a href="#-features"><kbd>📖 Features</kbd></a>
+  &nbsp;&nbsp;
+  <a href="#-installation"><kbd>🛠️ Installation</kbd></a>
+  &nbsp;&nbsp;
+  <a href="#️-keyboard-shortcuts"><kbd>⌨️ Shortcuts</kbd></a>
 </p>
+
+> [!WARNING]
+> This app has only been tested on **Windows**, **Arch Linux (Hyprland)**, and the **newest macOS version** (thanks to a contributor). I can't guarantee how it behaves on other Linux distros, and I don't have a Mac to test on personally. Found a bug? [Open an issue](https://github.com/RykoTheDev/godothub/issues), or reach out if you'd like to help with cross-platform testing.
+>
+> On Linux, AppImage doesn't work for most distros right now. It's an upstream `linuxdeploy` issue that affects nearly all Tauri apps, so it's not something I can fix on my end. I'll update as soon as a fix lands upstream.
 
 ---
 
-## Screenshots
+## 📸 Screenshots
 
 <p align="center">
   <img src="assets/hero-screenshot.png" alt="GodotHub Main Window" width="820">
@@ -58,54 +54,42 @@
   <tr>
     <td width="50%" align="center">
       <img src="assets/versions-view.png" alt="Versions View" width="400">
-      <br>
-      <strong>🎯 Versions</strong>
-      <br>
-      <sub>Browse, download, and manage Godot versions</sub>
+      <br><strong>🎯 Versions</strong>
+      <br><sub>Browse, download, and manage Godot versions</sub>
     </td>
     <td width="50%" align="center">
       <img src="assets/templates-view.png" alt="Templates View" width="400">
-      <br>
-      <strong>📦 Templates</strong>
-      <br>
-      <sub>Save and reuse project templates</sub>
+      <br><strong>📦 Templates</strong>
+      <br><sub>Save and reuse project templates</sub>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
       <img src="assets/asset-store-view.png" alt="Asset Store View" width="400">
-      <br>
-      <strong>📦 Asset Store</strong>
-      <br>
-      <sub>Install assets from old and new asset store directly in your projects or templates</sub>
+      <br><strong>🛒 Asset Store</strong>
+      <br><sub>Install assets from old and new asset store directly into projects or templates</sub>
     </td>
     <td width="50%" align="center">
       <img src="assets/git-view.png" alt="Git Integration" width="400">
-      <br>
-      <strong>🔄 Git Integration</strong>
-      <br>
-      <sub>Full Git management inside GodotHub</sub>
+      <br><strong>🔄 Git Integration</strong>
+      <br><sub>Full Git management inside GodotHub</sub>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
       <img src="assets/settings-appearance-view.png" alt="Settings & Appearance" width="400">
-      <br>
-      <strong>🎨 Appearance & Settings</strong>
-      <br>
-      <sub>Deep customization with themes, accent colors, corner radius, and more</sub>
+      <br><strong>🎨 Appearance & Settings</strong>
+      <br><sub>Deep customization with themes, accent colors, corner radius, and more</sub>
     </td>
     <td width="50%" align="center">
       <img src="assets/news-view.png" alt="News Feed" width="400">
-      <br>
-      <strong>📰 News Feed</strong>
-      <br>
-      <sub>Stay up to date with Godot community news</sub>
+      <br><strong>📰 News Feed</strong>
+      <br><sub>Stay up to date with Godot community news</sub>
     </td>
   </tr>
 </table>
 
-> <sub>💡 Screenshots show the dark theme with default accent color. All visuals are customizable.</sub>
+<p align="center"><sub>💡 Screenshots show the dark theme with the default accent color. Every visual is customizable.</sub></p>
 
 ---
 
@@ -121,45 +105,57 @@
   </a>
 </p>
 
-
 ---
 
-## Features
+## 📖 Features
 
-### Project Management
+### 🗂️ Project Management
 
 Take full control of your Godot projects with a rich, intuitive interface.
+
+<details>
+<summary><strong>See all Project Management features</strong></summary>
 
 | Feature | Description |
 |---|---|
 | **Create & Import** | Create new projects from scratch or from templates, import existing ones from disk, or clone directly from Git repositories. |
 | **Drag & Drop Reorder** | Rearrange projects with smooth drag-and-drop. Reorder within categories, or move between them. |
 | **Pin Projects** | Pin your most important projects to a dedicated Pinned section at the top. |
-| **Tags Support** | Tags get fetched directly from project.godot so they are in sync with your godot launcher. You can edit, Add more or delete them and they will sync |
+| **Tags Support** | Tags are fetched directly from `project.godot`, so they stay in sync with your Godot launcher. Edit, add, or delete them and the sync follows. |
 | **Batch Operations** | Select multiple projects at once to change versions, assign categories, toggle pins, or remove from the library. |
 | **Search & Filter** | Search by name or path, filter by category, and sort by custom order, name, date, last opened, or project size. |
 | **Version Warnings** | Visual indicators when a project's bound Godot version is missing or has a major version mismatch. |
-| **Project Properties** | Inspect detailed project info including file breakdown by type (scripts, scenes, images, audio, 3D models, etc.) with sizes and counts. |
+| **Project Properties** | Inspect detailed project info including a file breakdown by type (scripts, scenes, images, audio, 3D models, etc.) with sizes and counts. |
 | **Custom Launch Args** | Add custom command-line arguments when launching projects. |
-| **Quick Actions** | Open project folder, open in external editor, open terminal at project path - all from the project card. |
+| **Quick Actions** | Open project folder, open in external editor, or open a terminal at the project path, all from the project card. |
 
-### Godot Version Management
+</details>
+
+### 🎯 Godot Version Management
 
 Download, install, and manage any Godot version effortlessly.
+
+<details>
+<summary><strong>See all Version Management features</strong></summary>
 
 | Feature | Description |
 |---|---|
 | **Browse Releases** | Fetch the full list of official Godot builds directly from GitHub, filtered for your platform. |
 | **Download & Install** | Download with progress tracking, resume support, and concurrent downloading (configurable up to 10 simultaneous). |
-| **Import Versions** | Import existing Godot installations from any folder or drag-and-drop a `.zip` archive. |
+| **Import Versions** | Import existing Godot installations from any folder, or drag-and-drop a `.zip` archive. |
 | **Grouped Display** | Versions are grouped by `major.minor` with collapsible sections for easy browsing. |
 | **Filtering** | Filter by build type (Standard / Mono / Both) and channel (Stable / Unstable / Both). |
 | **Custom Names** | Give your installed versions friendly, custom names. |
-| **Auto-Cleanup** | Prunes missing executables automatically from the registry. |
+| **Auto-Cleanup** | Automatically prunes missing executables from the registry. |
 
-### Templates
+</details>
+
+### 📦 Templates
 
 Save time by reusing project structures.
+
+<details>
+<summary><strong>See all Templates features</strong></summary>
 
 | Feature | Description |
 |---|---|
@@ -167,11 +163,16 @@ Save time by reusing project structures.
 | **Create from Template** | Start new projects pre-populated with template content. |
 | **Preview Contents** | Browse the full directory tree of any template before using it. |
 | **Sync from Directory** | Automatically import templates from a configured scan folder. |
-| **File Watcher** | The template directory is watched for changes. Edit a template folder and the library updates automatically. |
+| **File Watcher** | The template directory is watched for changes, so editing a template folder updates the library automatically. |
 
-### Git Integration
+</details>
+
+### 🔄 Git Integration
 
 Full-featured Git management right inside GodotHub.
+
+<details>
+<summary><strong>See all Git Integration features</strong></summary>
 
 | Feature | Description |
 |---|---|
@@ -187,9 +188,14 @@ Full-featured Git management right inside GodotHub.
 | **Undo** | Undo the last commit or undo a pull. |
 | **Auto-Refresh** | Git status is polled every 30 seconds automatically. |
 
-### Workspaces
+</details>
+
+### 🧭 Workspaces
 
 Keep your projects organized with multiple workspaces.
+
+<details>
+<summary><strong>See all Workspaces features</strong></summary>
 
 | Feature | Description |
 |---|---|
@@ -197,21 +203,31 @@ Keep your projects organized with multiple workspaces.
 | **Custom Icons & Colors** | Each workspace gets a unique icon and color for quick visual identification. |
 | **Quick Switch** | Switch between workspaces from the sidebar dropdown. |
 
-### Categories
+</details>
+
+### 🏷️ Categories
 
 Organize projects with flexible, colorful categories.
+
+<details>
+<summary><strong>See all Categories features</strong></summary>
 
 | Feature | Description |
 |---|---|
 | **Create & Customize** | Create categories with custom names and colors from a rich palette. |
 | **Collapsible Sections** | Collapse and expand category sections to keep the view clean. |
-| **Drag Between Categories** | Drag projects between categories using `@dnd-kit` powered sorting. |
+| **Drag Between Categories** | Drag projects between categories using `@dnd-kit`-powered sorting. |
 | **Filter by Category** | Filter the project list by any category. |
 | **Enable / Disable** | Turn categories on or off globally from Settings. |
 
-### News Feed
+</details>
+
+### 📰 News Feed
 
 Stay up to date with the Godot community.
+
+<details>
+<summary><strong>See all News Feed features</strong></summary>
 
 | Feature | Description |
 |---|---|
@@ -219,9 +235,14 @@ Stay up to date with the Godot community.
 | **Cached** | Feed data is cached for performance. |
 | **Open in Browser** | Click any news item to open the full article. |
 
-### Appearance & Customization
+</details>
+
+### 🎨 Appearance & Customization
 
 Make GodotHub truly yours.
+
+<details>
+<summary><strong>See all Appearance features</strong></summary>
 
 | Feature | Description |
 |---|---|
@@ -229,15 +250,20 @@ Make GodotHub truly yours.
 | **Accent Color** | Choose from 18 preset accent colors or pick any custom hex color. |
 | **Background Color** | Customize the background with presets or random generation. |
 | **"Feeling Lucky"** | Randomly generate a unique color scheme in one click. |
-| **Corner Radius** | Adjust from 0 (sharp) to 20px (rounded) - applies to every element. |
+| **Corner Radius** | Adjust from 0 (sharp) to 20px (rounded), applied to every element. |
 | **UI Density** | Scale padding and spacing from 75% (compact) to 125% (spacious). |
 | **Font Scale** | Scale all text from 85% to 130%. |
 | **Reduce Motion** | Minimize animations for accessibility. |
 | **Sidebar Width** | Independently adjust expanded and collapsed sidebar widths. |
 
-### Settings & Preferences
+</details>
+
+### ⚙️ Settings & Preferences
 
 Deep configuration options for every aspect of the app.
+
+<details>
+<summary><strong>See all Settings features</strong></summary>
 
 | Feature | Description |
 |---|---|
@@ -250,11 +276,16 @@ Deep configuration options for every aspect of the app.
 | **Reopen After Godot Closes** | Automatically restore GodotHub when the editor closes. |
 | **Tray Menu** | Recent projects in the system tray context menu (configurable count). |
 | **Tooltip Delay** | Adjust tooltip hover delay from 100ms to 1000ms. |
-| **Command Palette Keybind** | Rebinds `Ctrl/Cmd + <key>` to your preferred key. |
+| **Command Palette Keybind** | Rebind `Ctrl/Cmd + <key>` to your preferred key. |
 | **Export / Import** | Back up or transfer all settings as JSON. |
 | **Reset & Wipe** | Reset settings to defaults or wipe all app data entirely. |
 
-### Other Highlights
+</details>
+
+### ✨ Other Highlights
+
+<details open>
+<summary><strong>See more</strong></summary>
 
 | Feature | Description |
 |---|---|
@@ -264,14 +295,16 @@ Deep configuration options for every aspect of the app.
 | **Custom Titlebar** | A frameless window with a custom title bar for a polished, modern feel. |
 | **Splash Screen** | An animated splash screen greets you on startup. |
 | **Onboarding Wizard** | Guided first-time setup to configure scan folders, categories, and appearance. |
-| **Auto-Updates** | Checks for updates on startup and downloads new versions automatically via Tauri updater. |
+| **Auto-Updates** | Checks for updates on startup and downloads new versions automatically via the Tauri updater. |
 | **Bug Reporting** | Report issues directly from the app. |
 | **Changelog Viewer** | Track what's new in each GodotHub release. |
 | **Keyboard Shortcuts** | Full shortcut cheatsheet available at any time. |
 
+</details>
+
 ---
 
-## Installation
+## 🛠️ Installation
 
 ### Download Prebuilt Binaries
 
@@ -279,32 +312,41 @@ GodotHub is available as a desktop application for:
 
 | Platform | Package Types |
 |---|---|
-| **Windows** | `.msi` or `.exe` installer |
-| **macOS** | `.dmg` or `.app` bundle |
-| **Linux** | `.deb`, `.AppImage`, or `.rpm` packages |
+| 🪟 **Windows** | `.msi` or `.exe` installer |
+| 🍎 **macOS** | `.dmg` or `.app` bundle |
+| 🐧 **Linux** | `.deb`, `.AppImage`, or `.rpm` packages |
 
-> [⬇️ Download the latest release](https://github.com/RykoTheDev/godothub/releases/latest)
+<p align="center"><a href="https://github.com/RykoTheDev/godothub/releases/latest"><strong>⬇️ Download the latest release</strong></a></p>
 
 ### Install via Winget (Windows)
 
-GodotHub is now available on the **Windows Package Manager (winget)**! If you're on Windows 10 or 11, you can install GodotHub with a single command:
+GodotHub is available on the **Windows Package Manager (winget)**. On Windows 10 or 11, install it with a single command:
 
-powershell >
-```winget install RykoTheDev.GodotHub```
+> [!NOTE]
+> Winget can lag behind the latest release since maintainers don't always merge the update promptly.
 
-and to manually update > ```winget upgrade RykoTheDev.GodotHub```
+```powershell
+winget install Ryko.GodotHub
+```
+
+To update manually:
+
+```powershell
+winget upgrade Ryko.GodotHub
+```
 
 ### Build from Source
 
-#### Prerequisites
+<details>
+<summary><strong>Prerequisites</strong></summary>
 
 | Dependency | Version | Purpose |
 |---|---|---|
 | [Bun](https://bun.sh) | >= 1.0 | JavaScript runtime & package manager |
 | [Rust](https://rustup.rs) | Latest stable | Backend compilation |
-| [Tauri 2 Prerequisites](https://v2.tauri.app/start/prerequisites/) | - | Platform-specific build tools |
+| [Tauri 2 Prerequisites](https://v2.tauri.app/start/prerequisites/) | n/a | Platform-specific build tools |
 
-#### Steps
+</details>
 
 ```bash
 # Clone the repository
@@ -321,12 +363,12 @@ bun tauri dev
 bun tauri build
 ```
 
-> The built application will be available in `src-tauri/target/release/bundle/`.
+> [!TIP]
+> You'll find the built app in `src-tauri/target/release/bundle/`.
 
 ---
 
-
-## Keyboard Shortcuts
+## ⌨️ Keyboard Shortcuts
 
 | Shortcut | Action |
 |---|---|
@@ -343,7 +385,10 @@ bun tauri build
 
 ---
 
-## Tech Stack
+## 🧰 Tech Stack
+
+<details>
+<summary><strong>View full tech stack</strong></summary>
 
 | Layer | Technology |
 |---|---|
@@ -358,9 +403,14 @@ bun tauri build
 | **RSS Parsing** | [feed-rs](https://docs.rs/feed-rs/) (Rust) |
 | **Build Tool** | [Vite](https://vitejs.dev) + [Bun](https://bun.sh) |
 
+</details>
+
 ---
 
-## Project Structure
+## 📁 Project Structure
+
+<details>
+<summary><strong>Click to expand the full directory tree</strong></summary>
 
 ```
 godothub/
@@ -433,15 +483,28 @@ godothub/
 └── README.md                       # This file
 ```
 
+</details>
+
 ---
 
-## License
+## Languages
+In beta phase (languages other than english might be incomplete)
+
+| Languages | Status          |
+| ------- | ------------------ |
+| English   | :white_check_mark: |
+| Chinese   | :white_check_mark:               |
+| Russian   | :white_check_mark:               |
+
+---
+
+## 📄 License
 
 This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
 
 ---
 
-## Acknowledgements
+## 🙏 Acknowledgements
 
 | Project | Why We're Grateful |
 |---|---|
@@ -451,22 +514,23 @@ This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) f
 | [Tailwind CSS](https://tailwindcss.com) | The utility-first CSS framework for styling. |
 | [Font Awesome](https://fontawesome.com) | The icon library we use throughout the app. |
 
-And every open-source library that makes GodotHub possible (see `package.json` and `Cargo.toml` for the full list).
+And every other open-source library that makes GodotHub possible, see `package.json` and `Cargo.toml` for the full list.
 
 ---
 
-> 🤖 **AI Notice:** Some parts of this codebase have been restructured and small bugs have been fixed with the assistance of AI. All changes are reviewed and tested before being merged. If you notice anything unusual, feel free to [open an issue](https://github.com/RykoTheDev/godothub/issues). oh and Copilot is not being used here on github.. it activated automatically so now its in contributers list and its annoying.. I disabled it and it doesnt have any authority over this repository even reviewing..
+> [!NOTE]
+> **AI Notice:** Some parts of this codebase have been restructured and small bugs fixed with the assistance of AI. All changes are reviewed and tested before being merged. If you notice anything unusual, feel free to [open an issue](https://github.com/RykoTheDev/godothub/issues).
+>
+> Copilot is **not** used here. It activated automatically at some point, which is why it shows up in the contributors list. I've disabled it, and it has no authority over this repository, including reviews.
 
 ---
 
-<p align="center">
-  Made with ❤️ by <a href="https://github.com/RykoTheDev">RykoTheDev</a>
-</p>
+<p align="center">Made with ❤️ by <a href="https://github.com/RykoTheDev">RykoTheDev</a></p>
 
 <p align="center">
   <a href="https://github.com/RykoTheDev/godothub/releases/latest">⬇️ Download GodotHub</a>
-  &nbsp;&middot;&nbsp;
+  &nbsp;·&nbsp;
   <a href="https://github.com/RykoTheDev/godothub/issues">🐛 Report a Bug</a>
-  &nbsp;&middot;&nbsp;
+  &nbsp;·&nbsp;
   <a href="https://github.com/RykoTheDev/godothub/discussions">💬 Discussions</a>
 </p>

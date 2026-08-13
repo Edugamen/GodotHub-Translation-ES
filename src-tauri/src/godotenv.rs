@@ -254,14 +254,23 @@ fn parse_godotrc(path: &Path) -> Option<DetectedVersion> {
     if line.is_empty() {
         return None;
     }
-    const NO_DOTNET: [&str; 3] = [" no-dotnet", " non-dotnet", " not-dotnet"];
+    const NO_DOTNET: [&str; 4] = [" no-dotnet", " non-dotnet", " not-dotnet", " no dotnet"];
+    const DOTNET: [&str; 2] = [" mono", " dotnet"];
     let mut is_dotnet = true;
     let mut version = line;
     for suffix in NO_DOTNET {
-        if version.ends_with(suffix) {
+        if version.to_lowercase().ends_with(suffix) {
             is_dotnet = false;
             version = &version[..version.len() - suffix.len()];
             break;
+        }
+    }
+    if is_dotnet {
+        for suffix in DOTNET {
+            if version.to_lowercase().ends_with(suffix) {
+                version = &version[..version.len() - suffix.len()];
+                break;
+            }
         }
     }
     let number = parse_version(version)?;
@@ -293,14 +302,47 @@ pub fn pin_version(project_dir: &str, tag: &str) -> Result<(), String> {
     let number = match parse_installed_tag(tag) {
         Some(n) => n,
         None => return Ok(()),
+        None => return Ok(()),
     };
     let is_mono = tag.trim().ends_with("-mono");
     let root = Path::new(project_dir);
     if is_mono {
-        write_global_json_pin(root, &number)
+        write_global_json_pin(root, &number)?;
+        if parse_global_json(&root.join("global.json")).is_some() {
+            let _ = fs::remove_file(root.join(".godotrc"));
+        }
+        Ok(())
     } else {
-        write_godotrc_pin(root, &number)
+        write_godotrc_pin(root, &number)?;
+        remove_godot_sdk_pin(root);
+        Ok(())
     }
+}
+
+fn remove_godot_sdk_pin(root: &Path) {
+    let path = root.join("global.json");
+    let Ok(existing) = fs::read_to_string(&path) else {
+        return;
+    };
+    let Ok(mut json) = serde_json::from_str::<serde_json::Value>(&existing) else {
+        return;
+    };
+    let Some(obj) = json.as_object_mut() else {
+        return;
+    };
+    let Some(msbuild) = obj.get_mut("msbuild-sdks").and_then(|v| v.as_object_mut()) else {
+        return;
+    };
+    if msbuild.remove("Godot.NET.Sdk").is_none() {
+        return;
+    }
+    if msbuild.is_empty() {
+        obj.remove("msbuild-sdks");
+    }
+    let Ok(out) = serde_json::to_string_pretty(&json) else {
+        return;
+    };
+    let _ = fs::write(&path, out + "\n");
 }
 
 fn write_godotrc_pin(root: &Path, number: &GodotVersionNumber) -> Result<(), String> {

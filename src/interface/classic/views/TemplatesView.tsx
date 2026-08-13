@@ -299,7 +299,7 @@ export function TemplatesView() {
                           {tmpl.name}
                         </h4>
                         {tmpl.description && (
-                          <p className="text-xs text-muted mt-1 leading-relaxed">
+                          <p className="text-xs text-muted mt-1 leading-relaxed line-clamp-3">
                             {tmpl.description}
                           </p>
                         )}

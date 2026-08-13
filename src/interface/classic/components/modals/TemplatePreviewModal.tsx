@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../../../lib/api'
@@ -129,6 +129,9 @@ export function TemplatePreviewModal({ template, onClose }: Props) {
   const [entries, setEntries] = useState<TemplateFileEntry[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [descExpanded, setDescExpanded] = useState(false)
+  const [descOverflows, setDescOverflows] = useState(false)
+  const descRef = useRef<HTMLParagraphElement>(null)
 
   useEffect(() => {
     setLoading(true)
@@ -139,6 +142,26 @@ export function TemplatePreviewModal({ template, onClose }: Props) {
       .catch((e) => setError(String(e)))
       .finally(() => setLoading(false))
   }, [template.id])
+
+  // Show the toggle only when the description is long enough to be clamped.
+  useEffect(() => {
+    setDescExpanded(false)
+    // Only ever confirm overflow, never clear it: while the description is
+    // expanded the element is unclamped and would measure as not overflowing,
+    // which must not hide the "Show less" button.
+    const measure = () => {
+      const el = descRef.current
+      if (el && el.scrollHeight > el.clientHeight + 1) {
+        setDescOverflows(true)
+      }
+    }
+    const raf = requestAnimationFrame(measure)
+    window.addEventListener('resize', measure)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('resize', measure)
+    }
+  }, [template.id, template.description])
 
   const fileCount = entries.filter((e) => !e.is_dir).length
   const dirCount = entries.filter((e) => e.is_dir).length
@@ -156,11 +179,11 @@ export function TemplatePreviewModal({ template, onClose }: Props) {
         initial={{ opacity: 0, y: 12, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-        className="bg-surface border border-line rounded-2xl w-full max-w-lg max-h-[80vh] flex flex-col shadow-2xl"
+        className="bg-surface border border-line rounded-2xl w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-
-        <div className="flex items-start justify-between gap-4 p-6 pb-4 border-b border-line">
+        
+        <div className="flex items-start justify-between gap-4 p-6 pb-4 border-b border-line shrink-0 overflow-hidden">
           <div className="flex items-start gap-3 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
               <IconCopy className="w-4 h-4 text-accent-bright" />
@@ -170,9 +193,27 @@ export function TemplatePreviewModal({ template, onClose }: Props) {
                 {template.name}
               </h3>
               {template.description && (
-                <p className="text-xs text-muted mt-0.5 leading-relaxed">
-                  {template.description}
-                </p>
+                <>
+                  <p
+                    ref={descRef}
+                    className={`text-xs text-muted mt-0.5 leading-relaxed whitespace-pre-wrap ${
+                      descExpanded
+                        ? 'max-h-[45vh] overflow-y-auto pr-1'
+                        : 'line-clamp-3'
+                    }`}
+                  >
+                    {template.description}
+                  </p>
+                  {descOverflows && (
+                    <button
+                      type="button"
+                      onClick={() => setDescExpanded((v) => !v)}
+                      className="focus-ring cursor-pointer mt-1 text-[10px] font-semibold uppercase tracking-wide text-accent-bright hover:text-accent transition-colors"
+                    >
+                      {descExpanded ? t('show_less') : t('show_more')}
+                    </button>
+                  )}
+                </>
               )}
               <div className="flex items-center gap-2 mt-1.5 text-[10px] text-muted/50 font-mono">
                 <IconInfo className="w-3 h-3" />
@@ -192,7 +233,8 @@ export function TemplatePreviewModal({ template, onClose }: Props) {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4">
+        
+        <div className="flex-1 min-h-32 overflow-y-auto p-4">
           {loading ? (
             <div className="flex items-center justify-center py-12 text-sm text-muted">
               {t('loading')}

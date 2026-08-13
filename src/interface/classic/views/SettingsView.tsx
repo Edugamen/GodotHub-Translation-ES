@@ -341,6 +341,7 @@ export function SettingsView({
       command_palette_keybind: { tab: 'behavior', section: 'behavior' },
       last_opened_time_format: { tab: 'display', section: 'display' },
       last_opened_date_format: { tab: 'display', section: 'display' },
+      language: { tab: 'display', section: 'display' },
       theme_mode: { tab: 'appearance', section: 'appearance' },
       accent_color: { tab: 'appearance', section: 'appearance' },
       background_color: { tab: 'appearance', section: 'appearance' },
@@ -1277,6 +1278,8 @@ export function SettingsView({
                   {[
                     { value: 'en-US', label: 'English' },
                     { value: 'zh-CN', label: '简体中文' },
+                    { value: 'ru-RU', label: 'Русский' },
+                    { value: 'ar-MA', label: 'العربية' },
                   ].map(({ value, label }) => {
                     const active = i18n.language === value || i18n.language.startsWith(value.split('-')[0])
                     return (
@@ -1285,6 +1288,7 @@ export function SettingsView({
                         whileTap={{ scale: 0.96 }}
                         onClick={() => {
                           i18n.changeLanguage(value)
+                          document.documentElement.setAttribute("dir", i18n.dir())
                           setField('language', value)
                         }}
                         className={
@@ -2094,6 +2098,7 @@ export function SettingsView({
                 {t('check_updates')}
               </motion.button>
             </div>
+
 
             <div className="rounded-xl border border-line bg-surface/60 p-6 flex items-center justify-between gap-6">
               <div className="min-w-0">

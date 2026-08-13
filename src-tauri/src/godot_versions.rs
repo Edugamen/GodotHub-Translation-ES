@@ -744,45 +744,109 @@ pub fn console_executable_for(exe: &Path) -> Option<PathBuf> {
     candidate.is_file().then_some(candidate)
 }
 
-pub fn migrate_mono_tags(app: &AppHandle) {
-    let mut list = read_registry(app);
-    let mut changed = false;
+fn migrate_mono_tags_in_place(
+    list: &mut Vec<InstalledGodotVersion>,
+    projects: &mut Vec<Project>,
+) -> (bool, bool) {
+    let mut renamed_old_tags: Vec<String> = Vec::new();
+    let mut registry_changed = false;
     for v in list.iter_mut() {
         if v.is_mono && !v.tag.ends_with("-mono") {
+            renamed_old_tags.push(v.tag.clone());
             v.tag = format!("{}-mono", v.tag);
-            changed = true;
+            registry_changed = true;
         }
-    }
-    if changed {
-        let _ = write_registry(app, &list);
     }
 
-    let mut projects = crate::projects::read_projects(app);
-    let mut project_changed = false;
-    for v in &list {
-        if !v.is_mono || !v.tag.ends_with("-mono") {
-            continue;
-        }
-        let base = v.tag.trim_end_matches("-mono");
-        let has_standard_still = list.iter().any(|other| !other.is_mono && other.tag == base);
+    if !registry_changed {
+        return (false, false);
+    }
+
+    let mut projects_changed = false;
+    for old_tag in &renamed_old_tags {
+        let has_standard_still = list.iter().any(|other| !other.is_mono && other.tag == *old_tag);
         if has_standard_still {
             continue;
         }
+        let new_tag = format!("{}-mono", old_tag);
         for p in projects.iter_mut() {
-            if p.godot_version == base {
-                p.godot_version = v.tag.clone();
-                project_changed = true;
+            if p.godot_version == *old_tag {
+                p.godot_version = new_tag.clone();
+                projects_changed = true;
             }
         }
     }
-    if project_changed {
+    (registry_changed, projects_changed)
+}
+
+pub fn migrate_mono_tags(app: &AppHandle) {
+    let mut list = read_registry(app);
+    let mut projects = crate::projects::read_projects(app);
+    let (registry_changed, projects_changed) = migrate_mono_tags_in_place(&mut list, &mut projects);
+    if registry_changed {
+        let _ = write_registry(app, &list);
+    }
+    if projects_changed {
         let _ = crate::projects::write_projects(app, &projects);
     }
 }
 
+/// Signature of the registry contents from the last full reconcile. The
+/// frontend polls `list_installed_godot_versions` every few seconds; when the
+/// registry hasn't changed we skip the whole migrate/rebind pass (which
+/// re-scans every project directory via `detect_version`).
+fn installed_signature() -> &'static Mutex<Option<String>> {
+    static SIG: OnceLock<Mutex<Option<String>>> = OnceLock::new();
+    SIG.get_or_init(|| Mutex::new(None))
+}
+
+fn registry_signature(raw: &str) -> String {
+    let Ok(value) = serde_json::from_str::<serde_json::Value>(raw) else {
+        // Unparseable file — fall back to the raw bytes so any change
+        // invalidates the cache.
+        return raw.to_string();
+    };
+    let arr = value.as_array().map(|a| a.as_slice()).unwrap_or(&[]);
+    let mut parts: Vec<String> = arr
+        .iter()
+        .filter_map(|e| {
+            let tag = e.get("tag")?.as_str()?;
+            let path = e.get("executable_path").and_then(|x| x.as_str()).unwrap_or("");
+            let mono = e.get("is_mono").and_then(|x| x.as_bool()).unwrap_or(false);
+            let custom = e.get("custom_name").and_then(|x| x.as_str()).unwrap_or("");
+            Some(format!("{tag}|{path}|{mono}|{custom}"))
+        })
+        .collect();
+    parts.sort();
+    parts.join("\n")
+}
+
 #[tauri::command]
 pub fn list_installed_godot_versions(app: AppHandle) -> Result<Vec<InstalledGodotVersion>, String> {
-    migrate_mono_tags(&app);
+    let file = registry_file(&app);
+    let raw = fs::read_to_string(&file).unwrap_or_default();
+    let sig = registry_signature(&raw);
+
+    let needs_reconcile = {
+        let sig_lock = installed_signature().lock().unwrap();
+        match sig_lock.as_ref() {
+            Some(cached) => cached != &sig,
+            None => true,
+        }
+    };
+
+    if needs_reconcile {
+        // Registry changed (or first call): re-run the one-time corrections
+        // and rebind projects against the current installed set.
+        migrate_mono_tags(&app);
+        crate::projects::rebind_projects_to_installed(&app);
+        // Re-read after migration/prune may have rewritten the file, then
+        // record the new signature so the next poll takes the fast path.
+        let raw = fs::read_to_string(&file).unwrap_or_default();
+        *installed_signature().lock().unwrap() = Some(registry_signature(&raw));
+    }
+
+    // Cheap steady-state check: stat each executable to drop deleted ones.
     Ok(prune_missing(&app))
 }
 

@@ -66,6 +66,7 @@ import {
   faCircleXmark,
   faStar,
   faStore,
+  faLanguage,
   faStopwatch,
   faFont,
   faDesktop,
@@ -149,6 +150,7 @@ export const IconCircleCheck = solid(faCircleCheck)
 export const IconCircleX = solid(faCircleXmark)
 export const IconStar = solid(faStar)
 export const IconStore = solid(faStore)
+export const IconLanguage = solid(faLanguage)
 export const IconStopwatch = solid(faStopwatch)
 export const IconType = solid(faFont)
 export const IconMonitor = solid(faDesktop)

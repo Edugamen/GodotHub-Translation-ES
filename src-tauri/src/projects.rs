@@ -436,18 +436,57 @@ fn version_feature_tag(tag: &str) -> String {
     }
 }
 
+fn rebind_project_to_spec(
+    p: &mut Project,
+    spec: &crate::godotenv::DetectedVersion,
+    installed: &[InstalledGodotVersion],
+) -> bool {
+    let Some(v) = crate::godotenv::best_match(spec, installed) else {
+        return false;
+    };
+    if p.godot_version == v.tag {
+        return false;
+    }
+    if !p.godot_version.is_empty() {
+        let bound_is_mono = p.godot_version.trim_end().ends_with("-mono");
+        if bound_is_mono == spec.is_dotnet {
+            return false;
+        }
+    }
+    p.godot_version = v.tag.clone();
+    true
+}
+
 pub fn rebind_projects_to_version(app: &AppHandle, version: &InstalledGodotVersion) {
+    let installed = crate::godot_versions::read_registry(app);
     let mut projects = read_projects(app);
     let mut changed = false;
     for p in projects.iter_mut() {
-        if !p.godot_version.is_empty() {
+        let Some(spec) = crate::godotenv::detect_version(&p.path) else {
+            continue;
+        };
+        if !crate::godotenv::matches_detected(&spec, &version.tag) {
             continue;
         }
-        if let Some(spec) = crate::godotenv::detect_version(&p.path) {
-            if crate::godotenv::matches_detected(&spec, &version.tag) {
-                p.godot_version = version.tag.clone();
-                changed = true;
-            }
+        if rebind_project_to_spec(p, &spec, &installed) {
+            changed = true;
+        }
+    }
+    if changed {
+        let _ = write_projects(app, &projects);
+    }
+}
+
+pub fn rebind_projects_to_installed(app: &AppHandle) {
+    let installed = crate::godot_versions::read_registry(app);
+    let mut projects = read_projects(app);
+    let mut changed = false;
+    for p in projects.iter_mut() {
+        let Some(spec) = crate::godotenv::detect_version(&p.path) else {
+            continue;
+        };
+        if rebind_project_to_spec(p, &spec, &installed) {
+            changed = true;
         }
     }
     if changed {
@@ -606,7 +645,6 @@ pub fn update_project(
     id: String,
     updates: ProjectUpdate,
 ) -> Result<Project, String> {
-    let start = std::time::Instant::now();
     let mut projects = read_projects(&app);
     let project = projects
         .iter_mut()
@@ -619,12 +657,7 @@ pub fn update_project(
         if project.godot_version != v {
             project.godot_version = v.clone();
             if !v.is_empty() {
-                let pin_start = std::time::Instant::now();
                 let _ = crate::godotenv::pin_version(&project.path, &v);
-                eprintln!(
-                    "[timing] update_project.pin_version={}ms",
-                    pin_start.elapsed().as_millis()
-                );
             }
         }
     }
@@ -642,13 +675,7 @@ pub fn update_project(
         project.launch_arguments = launch_arguments;
     }
     let updated = project.clone();
-    let write_start = std::time::Instant::now();
     write_projects(&app, &projects)?;
-    eprintln!(
-        "[timing] update_project id={id} write={}ms total={}ms",
-        write_start.elapsed().as_millis(),
-        start.elapsed().as_millis()
-    );
     Ok(updated)
 }
 
