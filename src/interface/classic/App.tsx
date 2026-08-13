@@ -46,6 +46,12 @@ import { CreateWorkspaceModal } from './components/modals/CreateWorkspaceModal'
 import { api } from '../../lib/api'
 import { setPendingAction } from '../../lib/pendingAction'
 import { isMac } from '../../lib/platform'
+import {
+  clearUiSwitchToSettings,
+  markSplashConsumed,
+  shouldOpenSettingsAfterSwitch,
+  shouldShowSplash,
+} from '../../lib/uiTransition'
 import { TitleBar } from './components/titlebar/Titlebar'
 import { SplashScreen, type SplashPhase } from './components/reusables/SplashScreen'
 import { OnboardingTips } from './components/reusables/OnboardingTips'
@@ -78,7 +84,8 @@ function ViewLoading() {
 }
 
 function AppContent() {
-  const [tab, setTab] = useState<Tab>('projects')
+  const [uiSwitchIntent] = useState(() => shouldOpenSettingsAfterSwitch())
+  const [tab, setTab] = useState<Tab>(uiSwitchIntent ? 'settings' : 'projects')
   const tabRef = useRef(tab)
   tabRef.current = tab
 
@@ -100,7 +107,9 @@ function AppContent() {
 
   const [bugReportOpen, setBugReportOpen] = useState(false)
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
-  const [highlightSetting, setHighlightSetting] = useState<string | null>(null)
+  const [highlightSetting, setHighlightSetting] = useState<string | null>(
+    uiSwitchIntent ? 'new_ui' : null,
+  )
   const [createWorkspaceOpen, setCreateWorkspaceOpen] = useState(false)
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [updatesModalOpen, setUpdatesModalOpen] = useState(false)
@@ -114,7 +123,9 @@ function AppContent() {
       return false
     }
   })
-  const [splashPhase, setSplashPhase] = useState<SplashPhase | 'done'>('enter')
+  const [splashPhase, setSplashPhase] = useState<SplashPhase | 'done'>(() =>
+    shouldShowSplash() ? 'enter' : 'done',
+  )
   const scannedWorkspaceRef = useRef<string | null>(null)
   const [errorNotification, setErrorNotification] = useState<string | null>(null)
   const [successNotification, setSuccessNotification] = useState<{
@@ -164,10 +175,17 @@ function AppContent() {
       return () => clearTimeout(t)
     }
     if (splashPhase === 'fade') {
-      const t = setTimeout(() => setSplashPhase('done'), 400)
+      const t = setTimeout(() => {
+        markSplashConsumed()
+        setSplashPhase('done')
+      }, 400)
       return () => clearTimeout(t)
     }
   }, [splashPhase])
+
+  useEffect(() => {
+    if (uiSwitchIntent) clearUiSwitchToSettings()
+  }, [uiSwitchIntent])
 
   const requestNewProject = useCallback(() => {
     if (tabRef.current === 'projects') {

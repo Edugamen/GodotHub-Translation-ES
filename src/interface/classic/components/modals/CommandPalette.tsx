@@ -17,12 +17,13 @@ import {
   IconPlay,
   IconClock,
   IconCopy,
+  IconRocket,
 } from '../../lib/Icons'
 import { getWorkspaceIcon } from '../../lib/workspaceIcons'
-import { formatLastOpened } from '../../lib/lastOpened'
-import { isMac } from '../../lib/platform'
-import { isReducedMotion } from '../../lib/appearance'
-import type { Project, InstalledGodotVersion, Workspace } from '../../types'
+import { formatLastOpened } from '../../../../lib/lastOpened'
+import { isMac } from '../../../../lib/platform'
+import { isReducedMotion } from '../../../../lib/appearance'
+import type { Project, InstalledGodotVersion, Workspace } from '../../../../types'
 
 const IS_DEV = import.meta.env.DEV
 

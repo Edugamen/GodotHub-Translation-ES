@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import i18n from 'i18next'
 import { IconLanguage, IconCheck, IconGear } from '../lib/Icons'
 import { useSettings } from '../../../hooks/useSettings'
-import { Tooltip } from '../reusables/Tooltip'
+import { Tooltip } from './reusables/Tooltip'
 
 const LANGUAGES = [
   { value: 'en-US', label: 'English' },

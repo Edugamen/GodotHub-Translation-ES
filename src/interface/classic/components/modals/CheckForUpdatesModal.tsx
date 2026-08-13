@@ -16,7 +16,7 @@ import {
   IconExternalLink,
 } from '../../lib/Icons'
 import { useSettings } from '../../../../hooks/useSettings'
-import { api } from '../../lib/api'
+import { api } from '../../../../lib/api'
 
 type UpdateState =
   | { type: 'checking' }

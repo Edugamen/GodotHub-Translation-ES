@@ -58,6 +58,15 @@ const noClassicUiImports = {
 
 export default [
   {
+    ignores: [
+      'src-tauri/target/**',
+      'src-tauri/gen/**',
+      'node_modules/**',
+      'dist/**',
+      'src-tauri/.tauri/**',
+    ],
+  },
+  {
     files: ['src/interface/new/**/*.{ts,tsx}'],
     languageOptions: {
       parser: tsParser,

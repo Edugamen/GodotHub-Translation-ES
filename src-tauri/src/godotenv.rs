@@ -301,8 +301,7 @@ pub fn sharp_string(n: &GodotVersionNumber) -> String {
 pub fn pin_version(project_dir: &str, tag: &str) -> Result<(), String> {
     let number = match parse_installed_tag(tag) {
         Some(n) => n,
-        None => return Ok(()),
-        None => return Ok(()),
+        None => return Ok(())
     };
     let is_mono = tag.trim().ends_with("-mono");
     let root = Path::new(project_dir);

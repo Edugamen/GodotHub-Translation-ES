@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Toggle } from '../components/ui/Toggle'
 import { Slider } from '../components/ui/Slider'
 import { viewTransition } from '../../../lib/motion'
+import { markUiSwitchToSettings } from '../../../lib/uiTransition'
 import { useSettings } from '../../../hooks/useSettings'
 import { useProjectsContext } from '../../../hooks/projectsContext'
 import { api } from '../../../lib/api'
@@ -92,14 +93,19 @@ function Subsection({
   onMatch,
 }: {
   id: string
-  title: string
+  title: ReactNode
   description?: string
   children: ReactNode
   searchText?: string
   query: string
   onMatch?: (id: string, matched: boolean) => void
 }) {
-  const matches = matchesSearch(query, title, description, searchText)
+  const matches = matchesSearch(
+    query,
+    typeof title === 'string' ? title : undefined,
+    description,
+    searchText,
+  )
 
   useEffect(() => {
     onMatch?.(id, matches)
@@ -494,6 +500,33 @@ export function SettingsView() {
 
   const renderAppearance = () => (
     <div className="flex flex-col gap-3">
+      <Subsection
+        id="appearance-ui"
+        title={
+          <span className="inline-flex items-center gap-2">
+            {ts('new_ui_label')}
+            <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-tag bg-amber/15 text-amber border border-amber/30">
+              {ts('git_beta_badge', { ns: 'common' })}
+            </span>
+          </span>
+        }
+        description={ts('new_ui_desc')}
+        searchText={`${ts('new_ui_label')} ${ts('new_ui_desc')} ${ts('new_ui_tooltip')}`}
+        query={searchQuery}
+        onMatch={reportMatch}
+      >
+        <SettingRow label={ts('new_ui_label')}>
+          <Toggle
+            checked={settings.new_ui}
+            onChange={(checked) => {
+              update({ ...settings, new_ui: checked })
+              markUiSwitchToSettings()
+            }}
+            label={ts('new_ui_label')}
+          />
+        </SettingRow>
+      </Subsection>
+
       <Subsection
         id="appearance-presets"
         title={ts('theme_preset_label')}

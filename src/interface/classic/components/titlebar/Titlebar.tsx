@@ -12,7 +12,7 @@ import { isMac } from '../../../../lib/platform'
 import { TaskTray } from './TaskTray'
 import { Tooltip } from '../reusables/Tooltip'
 import { useSettings } from '../../../../hooks/useSettings'
-import { LanguageMenu } from './LanguageMenu'
+import { LanguageMenu } from '../LanguageMenu'
 
 export function TitleBar() {
   const { t } = useTranslation('common')

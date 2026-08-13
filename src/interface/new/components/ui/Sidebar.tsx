@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next'
 import { IconChevronsLeft } from '../../lib/icons'
 import type { IconProps } from '../../lib/icons'
 import { Tooltip } from '../reusables/Tooltip'
-import { RevertToClassicButton } from './RevertToClassicButton'
 
 export interface SidebarTab {
   id: string
@@ -254,14 +253,6 @@ export function Sidebar({
           </div>
         </nav>
       )}
-      <nav className={`shrink-0 p-3 pt-0 flex flex-col gap-1.5 ${collapsed ? 'items-center' : 'items-stretch'}`}>
-        <div
-          className={`shrink-0 ${
-            collapsed ? 'w-px h-6 bg-line/40' : 'h-px w-full bg-line/40'
-          }`}
-        />
-        <RevertToClassicButton variant="sidebar" collapsed={collapsed} />
-      </nav>
       </motion.div>
       {!collapsed && (
       <div

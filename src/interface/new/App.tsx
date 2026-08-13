@@ -17,6 +17,11 @@ import { SettingsView } from './views/SettingsView'
 import { useSettings } from '../../hooks/useSettings'
 import { useTauriEvent } from '../../lib/useTauriEvent'
 import {
+  clearUiSwitchToSettings,
+  markSplashConsumed,
+  shouldOpenSettingsAfterSwitch,
+} from '../../lib/uiTransition'
+import {
   IconBookOpen,
   IconCloudArrowDown,
   IconFolder,
@@ -85,7 +90,8 @@ export function App() {
   const { projects, refresh: refreshProjects } = useProjectsContext()
   const projectsRef = useRef(projects)
   projectsRef.current = projects
-  const [tab, setTab] = useState<NewTab>('projects')
+  const [uiSwitchIntent] = useState(() => shouldOpenSettingsAfterSwitch())
+  const [tab, setTab] = useState<NewTab>(uiSwitchIntent ? 'settings' : 'projects')
   const [pendingLaunch, setPendingLaunch] = useState<{
     id: string
     console?: boolean
@@ -127,6 +133,11 @@ export function App() {
   }, [openProject])
 
   useTauriEvent<{ id: string }>('project:exited', () => refreshProjects())
+
+  useEffect(() => {
+    markSplashConsumed()
+    if (uiSwitchIntent) clearUiSwitchToSettings()
+  }, [uiSwitchIntent])
 
   useEffect(() => {
     const handleShowGitSidebar = (e: Event) => {

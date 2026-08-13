@@ -262,11 +262,6 @@ export function VersionsView({
       <div className="h-full pr-5 pb-4 flex flex-col gap-2">
         <ViewHeader
           title={t('versions')}
-          leadingAction={
-            <span className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full bg-accent text-ink">
-              <IconRocket className="w-4.5 h-4.5" />
-            </span>
-          }
           metric={
             <>
               <h2 className="text-4xl font-bold text-muted">

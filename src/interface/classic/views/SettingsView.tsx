@@ -35,6 +35,7 @@ import {
 } from '../../../lib/colors'
 import { isReducedMotion } from '../../../lib/appearance'
 import { isMac, isWindows, defaultCornerRadius } from '../../../lib/platform'
+import { markUiSwitchToSettings } from '../../../lib/uiTransition'
 import {
   applyRadius,
   applyDensity,
@@ -1353,6 +1354,7 @@ export function SettingsView({
                       onChange={(checked) => {
                         setField('new_ui', checked)
                         applyNewUi(checked)
+                        markUiSwitchToSettings()
                       }}
                       label={t('new_ui_label')}
                     />

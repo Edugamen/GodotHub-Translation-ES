@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import type { GitDiffHunk, GitDiffResult, GitDiffLine } from '../../types'
-import { api } from '../../lib/api'
-import { IconCheck, IconCode, IconCopy, IconRefresh, IconX } from '../Icons'
-import { Tooltip } from '../ui/Tooltip'
+import type { GitDiffHunk, GitDiffResult, GitDiffLine } from '../../../../types'
+import { api } from '../../../../lib/api'
+import { IconCheck, IconCode, IconCopy, IconRefresh, IconX } from '../../lib/Icons'
+import { Tooltip } from '../reusables/Tooltip'
 
 interface Props {
   projectPath: string
