@@ -6,7 +6,7 @@ import {
   IconExternalLink,
   IconStar,
   IconStore,
-} from '../Icons'
+} from '../../lib/Icons'
 
 const SUPPORT_BADGE: Record<string, string> = {
   official: 'bg-mint/10 text-mint border-mint/20',

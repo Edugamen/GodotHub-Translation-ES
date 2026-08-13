@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Tooltip } from './Tooltip'
-import { IconChevronUp } from '../Icons'
+import { Tooltip } from '../reusables/Tooltip'
+import { IconChevronUp } from '../../lib/Icons'
 
 const SHOW_AFTER = 300
 

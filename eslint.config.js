@@ -9,20 +9,20 @@ const noClassicUiImports = {
   meta: {
     type: 'problem',
     docs: {
-      description: 'Forbid New UI files from importing classic UI code (src/ui/classic)',
+      description: 'Forbid New UI files from importing classic UI code (src/interface/classic)',
     },
     messages: {
       forbidden:
-        'New UI must not import classic UI from "{{source}}". Move shared components into src/ui/new/ instead.',
+        'New UI must not import classic UI from "{{source}}". Move shared components into src/interface/new/ instead.',
     },
     schema: [],
   },
   create(context) {
     const filename = (context.filename ?? context.getFilename()).replace(/\\/g, '/')
-    if (!filename.includes('/src/ui/new/')) return {}
+    if (!filename.includes('/src/interface/new/')) return {}
 
     const fileDir = path.dirname(context.filename ?? context.getFilename())
-    const blockedDirs = [path.join(srcDir, 'ui', 'classic')]
+    const blockedDirs = [path.join(srcDir, 'interface', 'classic')]
 
     const isBlocked = (resolved) =>
       blockedDirs.some(
@@ -58,7 +58,7 @@ const noClassicUiImports = {
 
 export default [
   {
-    files: ['src/ui/new/**/*.{ts,tsx}'],
+    files: ['src/interface/new/**/*.{ts,tsx}'],
     languageOptions: {
       parser: tsParser,
       parserOptions: {

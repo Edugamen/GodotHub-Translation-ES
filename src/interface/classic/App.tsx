@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { listen } from '@tauri-apps/api/event'
 
 const ProjectsView = lazy(() =>
   import('./views/ProjectsView').then((m) => ({ default: m.ProjectsView })),
@@ -29,7 +28,7 @@ const OnboardingView = lazy(() =>
 const AssetStoreView = lazy(() =>
   import('./views/AssetStoreView').then((m) => ({ default: m.AssetStoreView })),
 )
-const AppNew = lazy(() => import('../../ui/new').then((m) => ({ default: m.App })))
+const AppNew = lazy(() => import('../new').then((m) => ({ default: m.App })))
 import { useSettings } from '../../hooks/useSettings'
 import { useWorkspaces } from '../../hooks/useWorkspaces'
 import { useProjectsContext } from '../../hooks/projectsContext'
@@ -44,17 +43,14 @@ import { CreateWorkspaceModal } from './components/modals/CreateWorkspaceModal'
 import { api } from '../../lib/api'
 import { setPendingAction } from '../../lib/pendingAction'
 import { isMac } from '../../lib/platform'
-import { TitleBar } from './components/Titlebar'
-import { SplashScreen, type SplashPhase } from './components/SplashScreen'
-import { OnboardingTips } from './components/OnboardingTips'
-import { ViewErrorBoundary } from './components/ViewErrorBoundary'
+import { TitleBar } from './components/titlebar/Titlebar'
+import { SplashScreen, type SplashPhase } from './components/reusables/SplashScreen'
+import { OnboardingTips } from './components/reusables/OnboardingTips'
+import { ViewErrorBoundary } from './components/reusables/ViewErrorBoundary'
 import { ScrollToTopButton } from './components/ui/ScrollToTopButton'
 import { GitSidebar } from './components/git/GitSidebar'
-import { Sidebar, type Tab } from './components/Sidebar'
-import { SuccessToast, ErrorToast } from './components/ToastNotification'
-import { DragDropOverlay } from './components/DragDropOverlay'
-import { LaunchOverlay } from './components/LaunchOverlay'
-import { ImportOverlay } from './components/ImportOverlay'
+import { Sidebar, type Tab } from './components/ui/Sidebar'
+import { SuccessToast, ErrorToast } from './components/reusables/ToastNotification'
 import { useTauriEvent } from '../../lib/useTauriEvent'
 
 import '../../index.css'
@@ -115,22 +111,6 @@ function AppContent() {
   })
   const [splashPhase, setSplashPhase] = useState<SplashPhase | 'done'>('enter')
   const scannedWorkspaceRef = useRef<string | null>(null)
-  const [dragOver, setDragOver] = useState(false)
-  const [dragType, setDragType] = useState<'project' | 'version'>('project')
-  const [importingOverlay, setImportingOverlay] = useState<{
-    type: 'project' | 'version'
-    total: number
-    current: number
-    label?: string | null
-  } | null>(null)
-  const projectsRef = useRef(projects)
-  projectsRef.current = projects
-  const [launchingProject, setLaunchingProject] = useState<{
-    id: string
-    name: string
-    version: string
-  } | null>(null)
-  const [confirmingStop, setConfirmingStop] = useState(false)
   const [errorNotification, setErrorNotification] = useState<string | null>(null)
   const [successNotification, setSuccessNotification] = useState<{
     count: number
@@ -239,22 +219,7 @@ function AppContent() {
     const unlistenPromise = appWindow.onDragDropEvent((event) => {
       const { type } = event.payload
 
-      if (type === 'enter' || type === 'over') {
-        setDragOver(true)
-        if (type === 'enter') {
-          const paths = (event.payload as { paths: string[] }).paths
-          if (paths && paths.length > 0) {
-            setDragType(
-              paths[0].toLowerCase().endsWith('.zip')
-                ? 'version'
-                : 'project',
-            )
-          }
-        }
-      } else if (type === 'leave') {
-        setDragOver(false)
-      } else if (type === 'drop') {
-        setDragOver(false)
+      if (type === 'drop') {
         const paths = (event.payload as { paths: string[] }).paths
         if (!paths || paths.length === 0) return
 
@@ -264,10 +229,8 @@ function AppContent() {
           paths[0].toLowerCase().endsWith('.zip')
 
         if (isVersionZipDrop) {
-          setImportingOverlay({ type: 'version', total: 1, current: 0, label: paths[0] })
           ;(async () => {
             try {
-              setImportingOverlay({ type: 'version', total: 1, current: 1, label: paths[0] })
               const version = await api.importVersionZip(paths[0])
               await refreshInstalled()
               setSuccessNotification({
@@ -277,35 +240,20 @@ function AppContent() {
               })
             } catch (e) {
               setErrorNotification(String(e))
-            } finally {
-              setImportingOverlay(null)
             }
           })()
         } else {
           const imported: Project[] = []
           const errors: unknown[] = []
 
-          setImportingOverlay({
-            type: 'project',
-            total: paths.length,
-            current: 0,
-            label: paths[0],
-          })
-
           ;(async () => {
-            for (const [i, p] of paths.entries()) {
+            for (const p of paths) {
               try {
                 const project = await api.importProject(p, '')
                 imported.push(project)
               } catch (e) {
                 errors.push(e)
               }
-              setImportingOverlay({
-                type: 'project',
-                total: paths.length,
-                current: i + 1,
-                label: p,
-              })
             }
 
             await refreshProjects()
@@ -328,7 +276,6 @@ function AppContent() {
             if (imported.length === 0 && errors.length > 0) {
               setErrorNotification(String(errors[0]))
             }
-            setImportingOverlay(null)
           })()
         }
       }
@@ -351,24 +298,6 @@ function AppContent() {
       } catch {}
     })()
     return () => { cancelled = true }
-  }, [])
-
-  useEffect(() => {
-    const dismissTimeout: { current: ReturnType<typeof setTimeout> | null } = { current: null }
-    const unlistenLaunched = listen<{ id: string; name: string; version: string }>('project:launched', (event) => {
-      setLaunchingProject(event.payload)
-      if (dismissTimeout.current) clearTimeout(dismissTimeout.current)
-      dismissTimeout.current = setTimeout(() => setLaunchingProject(null), 3000)
-    })
-    const unlistenExited = listen('project:exited', () => {
-      if (dismissTimeout.current) clearTimeout(dismissTimeout.current)
-      setLaunchingProject(null)
-    })
-    return () => {
-      if (dismissTimeout.current) clearTimeout(dismissTimeout.current)
-      unlistenLaunched.then((fn) => fn())
-      unlistenExited.then((fn) => fn())
-    }
   }, [])
 
   useEffect(() => {
@@ -398,19 +327,10 @@ function AppContent() {
       const detail = (e as CustomEvent).detail as string | { id: string; console?: boolean }
       const projectId = typeof detail === 'string' ? detail : detail.id
       const withConsole = typeof detail === 'string' ? undefined : detail.console
-      const proj = projectsRef.current.find((p) => p.id === projectId)
-      if (proj) {
-        setLaunchingProject({
-          id: proj.id,
-          name: proj.name,
-          version: proj.godot_version,
-        })
-      }
       try {
         await api.openProject(projectId, true, withConsole)
         refreshProjects()
       } catch (e) {
-        setLaunchingProject(null)
         alert(String(e))
       }
     }
@@ -551,14 +471,6 @@ function AppContent() {
     }
   }
 
-  const handleStopLaunch = () => {
-    if (launchingProject) {
-      api.stopProject(launchingProject.id).catch(() => {})
-      setLaunchingProject(null)
-      setConfirmingStop(false)
-    }
-  }
-
   return (
     <div className="h-screen w-screen flex flex-col bg-base text-ink font-body">
       <div className="shrink-0">
@@ -686,7 +598,6 @@ function AppContent() {
         )}
       </AnimatePresence>
 
-      <DragDropOverlay visible={dragOver} type={dragType} />
       <SuccessToast
         notification={successNotification}
         onDismiss={() => setSuccessNotification(null)}
@@ -694,17 +605,6 @@ function AppContent() {
       <ErrorToast
         message={errorNotification}
         onDismiss={() => setErrorNotification(null)}
-      />
-      <LaunchOverlay
-        launching={launchingProject}
-        confirmingStop={confirmingStop}
-        onStop={handleStopLaunch}
-        onCancelStop={() => setConfirmingStop(false)}
-        onDismiss={() => setConfirmingStop(true)}
-      />
-      <ImportOverlay
-        importing={importingOverlay}
-        onDismiss={() => setImportingOverlay(null)}
       />
     </div>
   )

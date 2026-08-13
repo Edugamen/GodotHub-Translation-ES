@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { IconX } from '../Icons'
+import { IconX } from '../../lib/Icons'
 
 interface ShortcutGroup {
   label: string

@@ -45,7 +45,7 @@ import {
   IconMoon,
   IconMonitor,
   IconChevronDown,
-} from '../components/Icons'
+} from '../lib/Icons'
 import type { AppSettings } from '../../../types'
 
 const STARTER_CATEGORIES = [

@@ -2,10 +2,10 @@ import { motion } from 'framer-motion'
 import { useRef, useState } from 'react'
 import type { ComponentType } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconChevronsLeft } from '../lib/icons'
-import type { IconProps } from '../lib/icons'
-import { Tooltip } from './reusables/Tooltip'
-import { RevertToClassicButton } from './ui/RevertToClassicButton'
+import { IconChevronsLeft } from '../../lib/icons'
+import type { IconProps } from '../../lib/icons'
+import { Tooltip } from '../reusables/Tooltip'
+import { RevertToClassicButton } from './RevertToClassicButton'
 
 export interface SidebarTab {
   id: string

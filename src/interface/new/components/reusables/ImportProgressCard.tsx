@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconSpinner } from './Icons'
+import { IconSpinner } from '../../lib/icons'
 
 interface ImportProgressCardProps {
   icon: ReactNode

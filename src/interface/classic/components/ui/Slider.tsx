@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { IconRefresh } from '../Icons'
+import { IconRefresh } from '../../lib/Icons'
 import { beginScaleSmoothing } from '../../../../lib/appearance'
 
 interface Props {

@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
-import { IconStore } from '../components/Icons'
-import { AssetStoreBrowser } from '../components/AssetStoreBrowser'
+import { IconStore } from '../lib/Icons'
+import { AssetStoreBrowser } from '../components/asset-library/AssetStoreBrowser'
 
 export function AssetStoreView() {
   const { t } = useTranslation('common')

@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { api } from '../../../lib/api'
-import { useProjectsContext } from '../../../hooks/projectsContext'
+import { api } from '../../../../lib/api'
+import { useProjectsContext } from '../../../../hooks/projectsContext'
 import {
   assetSortParams,
   shouldClientSort,
@@ -12,17 +12,17 @@ import {
   storeServerSort,
   type AssetSortKey,
   type AssetSource,
-} from '../../../lib/assetSort'
+} from '../../../../lib/assetSort'
 import type {
   AssetLibraryAsset,
   AssetLibraryCategory,
-} from '../../../types'
-import { cachedAssetSearch } from '../../../lib/assetSearchCache'
-import { Dropdown } from './ui/Dropdown'
+} from '../../../../types'
+import { cachedAssetSearch } from '../../../../lib/assetSearchCache'
+import { Dropdown } from '../ui/Dropdown'
 import {
   InstallAssetModal,
   type AssetInstallOutcome,
-} from './modals/InstallAssetModal'
+} from '../modals/InstallAssetModal'
 import {
   IconSearch,
   IconStore,
@@ -32,9 +32,9 @@ import {
   IconCloudArrowDown,
   IconSpinner,
   IconX,
-} from './Icons'
-import { Tooltip } from './ui/Tooltip'
-import { AssetCard } from './ui/AssetCard'
+} from '../../lib/Icons'
+import { Tooltip } from '../reusables/Tooltip'
+import { AssetCard } from '../ui/AssetCard'
 
 const PAGE_SIZE = 12
 
@@ -367,7 +367,7 @@ export function AssetStoreBrowser() {
             className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-mint/20 bg-mint/10 text-xs text-mint"
           >
             <IconCheck className="w-3.5 h-3.5 shrink-0" />
-            <span className="min-w-0 break-words">{notice}</span>
+            <span className="min-w-0 wrap-break-word">{notice}</span>
           </motion.div>
         )}
       </AnimatePresence>

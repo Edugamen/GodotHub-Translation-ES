@@ -373,19 +373,35 @@ godothub/
 │   ├── hooks/                      # Custom React hooks & contexts
 │   ├── lib/                        # Utility libraries & shared helpers
 │   ├── i18n/                       # Localization (en-US, zh-CN)
-│   ├── ui/
+│   ├── interface/                  # All UI code (classic + new)
 │   │   ├── classic/                # The original (classic) UI
 │   │   │   ├── App.tsx             # Classic app shell + root component
 │   │   │   ├── WorkspaceSwitcher.tsx
 │   │   │   ├── components/
+│   │   │   │   ├── cards/          # Card components (ProjectCard)
 │   │   │   │   ├── git/            # Git sidebar, diff viewer, result dialog
 │   │   │   │   ├── modals/         # All modal dialogs
+│   │   │   │   ├── reusables/      # App-level reuse (Tooltip, Toasts, SplashScreen…)
+│   │   │   │   ├── titlebar/       # Titlebar, TaskTray
 │   │   │   │   ├── ui/             # Primitive UI components
-│   │   │   │   ├── Icons.tsx       # SVG icon components
-│   │   │   │   └── …               # Titlebar, SplashScreen, etc.
-│   │   │   ├── lib/                # Classic-only helpers (workspaceIcons)
+│   │   │   │   └── …               # AssetLibraryBrowser, AssetStoreBrowser, Sidebar, etc.
+│   │   │   ├── lib/                # Classic-only helpers (Icons, workspaceIcons)
 │   │   │   └── views/              # Main application views
 │   │   └── new/                    # Experimental New UI (isolated, beta)
+│   │       ├── App.tsx             # New UI shell (self-contained)
+│   │       ├── index.ts            # Public exports
+│   │       ├── style.css           # New UI design tokens (scoped)
+│   │       ├── components/
+│   │       │   ├── cards/          # Card components (ProjectCard, InstalledVersionCard)
+│   │       │   ├── git/            # Git sidebar, diff viewer, result dialog
+│   │       │   ├── modals/         # Modal dialogs
+│   │       │   ├── reusables/      # App-level reuse (Tooltip, ScanButton, ViewHeader)
+│   │       │   ├── titlebar/       # Titlebar, TaskTray, RunningProjectsChip
+│   │       │   ├── ui/             # Form controls & primitives (Checkbox, Dropdown, Slider…)
+│   │       │   └── …               # DirList, ImportProgressCard, OverlayScrollArea, Sidebar, etc.
+│   │       ├── hooks/              # New-UI-only React hooks
+│   │       ├── lib/                # New-UI helpers (duration, icons)
+│   │       └── views/              # Main application views
 │   └── …
 ├── src-tauri/                      # Backend (Rust)
 │   ├── src/
@@ -394,6 +410,7 @@ godothub/
 │   │   ├── models.rs               # Data models (serde)
 │   │   ├── projects.rs             # Project CRUD, launch, icon resolution
 │   │   ├── godot_versions.rs       # Version download, install, manage
+│   │   ├── godotenv.rs             # Godot version detection & pinning (.godotrc, global.json)
 │   │   ├── git.rs                  # Git operations
 │   │   ├── settings.rs             # Settings persistence
 │   │   ├── templates.rs            # Template management
@@ -402,7 +419,11 @@ godothub/
 │   │   ├── workspace.rs            # Workspace management
 │   │   ├── news.rs                 # RSS news fetching
 │   │   ├── scan.rs                 # File system scanning
-│   │   └── watcher.rs              # File system watchers
+│   │   ├── watcher.rs              # File system watchers
+│   │   ├── asset_library.rs        # Asset library fetching
+│   │   ├── time_stats.rs           # Project time tracking
+│   │   ├── tray.rs                 # System tray menu
+│   │   └── …                       # error, git_helpers, persist, terminal, etc.
 │   ├── Cargo.toml                  # Rust dependencies
 │   └── tauri.conf.json             # Tauri configuration
 │

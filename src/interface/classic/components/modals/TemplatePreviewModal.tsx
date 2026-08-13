@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../../../lib/api'
 import type { ProjectTemplate, TemplateFileEntry } from '../../../../types'
-import { IconCopy, IconInfo, IconX, IconChevronDown, IconChevronRight } from '../Icons'
+import { IconCopy, IconInfo, IconX, IconChevronDown, IconChevronRight } from '../../lib/Icons'
 
 function formatSize(bytes: number): string {
   if (bytes === 0) return ''

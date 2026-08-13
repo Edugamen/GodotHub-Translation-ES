@@ -6,9 +6,9 @@ import { useProjectsContext } from '../../hooks/projectsContext'
 import { api } from '../../lib/api'
 import type { GitStatus, Project } from '../../types'
 
-import { Sidebar } from './components/Sidebar'
+import { Sidebar } from './components/ui/Sidebar'
 import { Titlebar } from './components/titlebar/Titlebar'
-import { OverlayScrollArea } from './components/OverlayScrollArea'
+import { OverlayScrollArea } from './components/reusables/OverlayScrollArea'
 import { ConfirmDialog } from './components/modals/ConfirmDialog'
 import { GitSidebar } from './components/git/GitSidebar'
 import { ProjectsView } from './views/ProjectsView'
@@ -169,7 +169,7 @@ export function App() {
           <PlaceholderView
             title={t('news')}
             icon={IconNews}
-            description="The redesigned News view will live here as its own file in src/ui/new/views/."
+            description="The redesigned News view will live here as its own file in src/interface/new/views/."
           />
         )
       case 'templates':
@@ -177,7 +177,7 @@ export function App() {
           <PlaceholderView
             title={t('templates')}
             icon={IconRocket}
-            description="The redesigned Templates view will live here as its own file in src/ui/new/views/."
+            description="The redesigned Templates view will live here as its own file in src/interface/new/views/."
           />
         )
       case 'asset-store':
@@ -185,7 +185,7 @@ export function App() {
           <PlaceholderView
             title={t('asset_store')}
             icon={IconStore}
-            description="The redesigned Asset Store view will live here as its own file in src/ui/new/views/."
+            description="The redesigned Asset Store view will live here as its own file in src/interface/new/views/."
           />
         )
       case 'settings':
@@ -195,7 +195,7 @@ export function App() {
           <PlaceholderView
             title={t('changelog')}
             icon={IconBookOpen}
-            description="The redesigned Changelog view will live here as its own file in src/ui/new/views/."
+            description="The redesigned Changelog view will live here as its own file in src/interface/new/views/."
           />
         )
     }

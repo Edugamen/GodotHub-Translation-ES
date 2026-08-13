@@ -8,7 +8,7 @@ import {
   IconExternalLink,
   IconRefresh,
   IconWifiOff,
-} from '../components/Icons'
+} from '../lib/Icons'
 import { ScrollReveal } from '../components/ui/ScrollReveal'
 import type { NewsItem } from '../../../types'
 

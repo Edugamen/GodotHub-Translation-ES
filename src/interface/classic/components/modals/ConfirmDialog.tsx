@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { IconTrash } from '../Icons'
+import { IconTrash } from '../../lib/Icons'
 
 interface Props {
   title: string

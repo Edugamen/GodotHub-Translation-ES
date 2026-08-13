@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { api } from '../../../lib/api'
-import { IconPlus, IconTrash, IconCheck } from '../lib/icons'
+import { api } from '../../../../lib/api'
+import { IconPlus, IconTrash, IconCheck } from '../../lib/icons'
 
 interface Props {
   dirs: string[]

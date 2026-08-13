@@ -6,7 +6,7 @@ import { api } from '../../../lib/api'
 import { consumePendingAction } from '../../../lib/pendingAction'
 import { VersionBadge } from '../components/ui/VersionBadge'
 import { ContextMenu, type ContextMenuSection } from '../components/ui/ContextMenu'
-import { Tooltip } from '../components/ui/Tooltip'
+import { Tooltip } from '../components/reusables/Tooltip'
 import {
   IconDownload,
   IconTrash,
@@ -21,12 +21,12 @@ import {
   IconExternalLink,
   IconRocket,
   IconTerminal,
-} from '../components/Icons'
+} from '../lib/Icons'
 
 import { ScrollReveal } from '../components/ui/ScrollReveal'
 import { useGodotVersionsContext } from '../../../hooks/godotVersionsContext'
 import { ConfirmDialog } from '../components/modals/ConfirmDialog'
-import { ImportProgressCard } from '../components/ImportProgressCard'
+import { ImportProgressCard } from '../components/reusables/ImportProgressCard'
 
 function versionCore(raw: string): string {
   const parts = raw

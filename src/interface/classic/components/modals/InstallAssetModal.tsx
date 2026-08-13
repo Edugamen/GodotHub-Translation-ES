@@ -13,7 +13,7 @@ import {
   IconStore,
   IconDownload,
   IconAlertTriangle,
-} from '../Icons'
+} from '../../lib/Icons'
 
 export interface AssetInstallOutcome {
   assetId: string

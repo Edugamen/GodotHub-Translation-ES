@@ -17,7 +17,7 @@ import {
   IconPlay,
   IconClock,
   IconCopy,
-} from '../Icons'
+} from '../../lib/Icons'
 import { getWorkspaceIcon } from '../../lib/workspaceIcons'
 import { formatLastOpened } from '../../../../lib/lastOpened'
 import { isMac } from '../../../../lib/platform'

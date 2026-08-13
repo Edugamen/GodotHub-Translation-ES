@@ -15,7 +15,7 @@ import {
   IconAlertTriangle,
   IconSpinner,
   IconGitBranch,
-} from '../Icons'
+} from '../../lib/Icons'
 
 interface Props {
   installedVersions: InstalledGodotVersion[]

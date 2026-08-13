@@ -10,9 +10,9 @@ import type { GodotReleaseAsset } from '../../../types'
 import { ViewHeader } from '../components/reusables/ViewHeader'
 import { SearchBar } from '../components/ui/SearchBar'
 import { Dropdown } from '../components/ui/Dropdown'
-import { OverlayScrollArea } from '../components/OverlayScrollArea'
+import { OverlayScrollArea } from '../components/reusables/OverlayScrollArea'
 import { ScanButton } from '../components/reusables/ScanButton'
-import { ImportProgressCard } from '../components/ImportProgressCard'
+import { ImportProgressCard } from '../components/reusables/ImportProgressCard'
 import { InstalledVersionCard } from '../components/cards/InstalledVersionCard'
 import {
   IconChevronDown,

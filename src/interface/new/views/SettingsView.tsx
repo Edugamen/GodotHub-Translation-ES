@@ -31,8 +31,8 @@ import {
   type ThemePreset,
 } from '../../../lib/colors'
 import { ColorSwatchPicker } from '../components/ui/ColorSwatchPicker'
-import { OverlayScrollArea } from '../components/OverlayScrollArea'
-import { DirList } from '../components/DirList'
+import { OverlayScrollArea } from '../components/reusables/OverlayScrollArea'
+import { DirList } from '../components/reusables/DirList'
 import { KeyRecorder } from '../components/ui/KeyRecorder'
 import { matchesSearch, useSectionSearch } from '../hooks/useSectionSearch'
 import { Dropdown } from '../components/ui/Dropdown'

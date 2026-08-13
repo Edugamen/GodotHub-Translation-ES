@@ -10,10 +10,10 @@ import { CreateProjectModal } from '../components/modals/CreateProjectModal'
 import { useGodotVersionsContext } from '../../../hooks/godotVersionsContext'
 import { useCategoriesContext } from '../../../hooks/categoriesContext'
 import { useProjectsContext } from '../../../hooks/projectsContext'
-import { IconCopy, IconTrash, IconAlertTriangle, IconRefresh, IconExternalLink, IconSearch, IconX, IconStore, IconFolderPlus } from '../components/Icons'
-import { Tooltip } from '../components/ui/Tooltip'
+import { IconCopy, IconTrash, IconAlertTriangle, IconRefresh, IconExternalLink, IconSearch, IconX, IconStore, IconFolderPlus } from '../lib/Icons'
+import { Tooltip } from '../components/reusables/Tooltip'
 import { TemplatePreviewModal } from '../components/modals/TemplatePreviewModal'
-import { AssetLibraryBrowser } from '../components/AssetLibraryBrowser'
+import { AssetLibraryBrowser } from '../components/asset-library/AssetLibraryBrowser'
 import { useTaskTray } from '../../../hooks/useTaskTray'
 
 export function TemplatesView() {

@@ -5,7 +5,7 @@ import {
   IconSearch,
   IconDownload,
   IconX,
-} from './Icons'
+} from '../../lib/Icons'
 
 interface Tip {
   titleKey: string

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { IconChevronDown } from '../Icons'
+import { IconChevronDown } from '../../lib/Icons'
 
 export interface DropdownOption {
   value: string

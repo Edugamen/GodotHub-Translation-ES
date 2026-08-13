@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { IconX, IconCheckCircle, IconAlertTriangle, IconTerminal, IconChevronDown, IconCopy } from '../Icons'
+import { IconX, IconCheckCircle, IconAlertTriangle, IconTerminal, IconChevronDown, IconCopy } from '../../lib/Icons'
 
 interface GitResultDialogProps {
   type: 'success' | 'error'

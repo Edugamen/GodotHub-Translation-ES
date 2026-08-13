@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { check } from '@tauri-apps/plugin-updater'
 import { getVersion } from '@tauri-apps/api/app'
-import { IconRefresh, IconDownload, IconCheck, IconX } from '../Icons'
+import { IconRefresh, IconDownload, IconCheck, IconX } from '../../lib/Icons'
 import { useSettings } from '../../../../hooks/useSettings'
 
 type UpdateState =

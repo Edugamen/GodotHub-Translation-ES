@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import type { GitDiffResult } from '../../../../types'
 import { api } from '../../../../lib/api'
-import { IconX, IconRefresh } from '../Icons'
+import { IconX, IconRefresh } from '../../lib/Icons'
 
 interface Props {
   projectPath: string

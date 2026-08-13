@@ -6,12 +6,12 @@ import {
 } from '@tauri-apps/api/window'
 import { motion } from 'framer-motion'
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { version } from '../../../../package.json'
-import { IconStar, IconHeart } from './Icons'
-import { isMac } from '../../../lib/platform'
+import { version } from '../../../../../package.json'
+import { IconStar, IconHeart } from '../../lib/Icons'
+import { isMac } from '../../../../lib/platform'
 import { TaskTray } from './TaskTray'
-import { Tooltip } from './ui/Tooltip'
-import { useSettings } from '../../../hooks/useSettings'
+import { Tooltip } from '../reusables/Tooltip'
+import { useSettings } from '../../../../hooks/useSettings'
 
 export function TitleBar() {
   const { t } = useTranslation('common')

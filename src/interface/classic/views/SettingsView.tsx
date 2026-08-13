@@ -7,11 +7,11 @@ import { registerPendingSave, flushPendingSave } from '../../../lib/pendingSave'
 import { DirList } from '../components/ui/DirList'
 import { Dropdown } from '../components/ui/Dropdown'
 import { Toggle } from '../components/ui/Toggle'
-import { Tooltip } from '../components/ui/Tooltip'
+import { Tooltip } from '../components/reusables/Tooltip'
 import { Slider } from '../components/ui/Slider'
 import { ColorSwatchPicker } from '../components/ui/ColorSwatchPicker'
 import { ConfirmDialog } from '../components/modals/ConfirmDialog'
-import { IconSun, IconMoon, IconMonitor, IconHeart, IconBug, IconCheck } from '../components/Icons'
+import { IconSun, IconMoon, IconMonitor, IconHeart, IconBug, IconCheck } from '../lib/Icons'
 import { viewTransition } from '../../../lib/motion'
 import { api } from '../../../lib/api'
 import {
@@ -43,7 +43,7 @@ import {
   applyNewUi,
 } from '../../../lib/appearance'
 import { SETTINGS_SEARCH_ITEMS } from '../components/modals/CommandPalette'
-import { IconSearch, IconX, IconRefresh, IconChevronDown } from '../components/Icons'
+import { IconSearch, IconX, IconRefresh, IconChevronDown } from '../lib/Icons'
 import { relaunch } from '@tauri-apps/plugin-process'
 import type { AppSettings } from '../../../types'
 

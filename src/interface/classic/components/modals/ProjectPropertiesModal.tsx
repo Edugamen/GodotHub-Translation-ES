@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import type { Project, ProjectSizeInfo } from '../../../../types'
 import { api } from '../../../../lib/api'
-import { IconX, IconHardDrive } from '../Icons'
+import { IconX, IconHardDrive } from '../../lib/Icons'
 
 interface Props {
   project: Project

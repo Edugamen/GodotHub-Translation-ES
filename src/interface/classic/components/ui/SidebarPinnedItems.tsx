@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../../../lib/api'
-import { Tooltip } from './Tooltip'
-import { IconPlay, IconX } from '../Icons'
+import { Tooltip } from '../reusables/Tooltip'
+import { IconPlay, IconX } from '../../lib/Icons'
 import type { Project } from '../../../../types'
 
 interface Props {

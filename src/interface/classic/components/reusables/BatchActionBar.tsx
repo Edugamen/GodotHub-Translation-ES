@@ -1,10 +1,10 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Tooltip } from './ui/Tooltip'
-import { Dropdown } from './ui/Dropdown'
-import { ConfirmDialog } from './modals/ConfirmDialog'
-import { IconPin, IconX, IconRefresh } from './Icons'
-import type { InstalledGodotVersion } from '../../../types'
+import { Tooltip } from '../reusables/Tooltip'
+import { Dropdown } from '../ui/Dropdown'
+import { ConfirmDialog } from '../modals/ConfirmDialog'
+import { IconPin, IconX, IconRefresh } from '../../lib/Icons'
+import type { InstalledGodotVersion } from '../../../../types'
 
 const UNCATEGORIZED = '__uncategorized__'
 

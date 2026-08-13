@@ -2,18 +2,18 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { api } from '../../../lib/api'
-import type { AssetLibraryAsset } from '../../../types'
-import { cachedAssetSearch } from '../../../lib/assetSearchCache'
+import { api } from '../../../../lib/api'
+import type { AssetLibraryAsset } from '../../../../types'
+import { cachedAssetSearch } from '../../../../lib/assetSearchCache'
 import {
   ASSET_SORT_KEYS,
   assetSortParams,
   rankByRelevance,
   type AssetSortKey,
-} from '../../../lib/assetSort'
-import { IconSearch, IconStore, IconDownload, IconCheck, IconSpinner, IconX } from './Icons'
-import { Dropdown } from './ui/Dropdown'
-import { AssetCard } from './ui/AssetCard'
+} from '../../../../lib/assetSort'
+import { IconSearch, IconStore, IconDownload, IconCheck, IconSpinner, IconX } from '../../lib/Icons'
+import { Dropdown } from '../ui/Dropdown'
+import { AssetCard } from '../ui/AssetCard'
 
 const PAGE_SIZE = 12
 

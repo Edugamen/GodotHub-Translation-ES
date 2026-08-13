@@ -1,6 +1,6 @@
 import { Component, type ReactNode } from 'react'
-import { IconAlertTriangle, IconRefresh, IconBug } from './Icons'
-import i18n from '../../../i18n'
+import { IconAlertTriangle, IconRefresh, IconBug } from '../../lib/Icons'
+import i18n from '../../../../i18n'
 
 interface Props {
   children: ReactNode

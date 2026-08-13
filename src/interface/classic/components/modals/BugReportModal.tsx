@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { version } from '../../../../../package.json'
-import { IconBug, IconCopy, IconDownload, IconExternalLink, IconRefresh } from '../Icons'
+import { IconBug, IconCopy, IconDownload, IconExternalLink, IconRefresh } from '../../lib/Icons'
 
 interface Props {
   onClose: () => void

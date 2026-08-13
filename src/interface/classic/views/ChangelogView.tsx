@@ -10,7 +10,7 @@ import {
   IconPencil,
   IconPlus,
   IconTrash,
-} from '../components/Icons'
+} from '../lib/Icons'
 import type { ChangelogEntry, ChangelogNote } from '../../../types'
 
 const IS_DEV = import.meta.env.DEV

@@ -30,9 +30,9 @@ import { CSS } from '@dnd-kit/utilities'
 import { useProjectsContext } from '../../../hooks/projectsContext'
 import { useCategoriesContext } from '../../../hooks/categoriesContext'
 import { useSettings } from '../../../hooks/useSettings'
-import { ProjectCard } from '../components/ui/ProjectCard'
-import { Tooltip } from '../components/ui/Tooltip'
-import { ImportProgressCard } from '../components/ImportProgressCard'
+import { ProjectCard } from '../components/cards/ProjectCard'
+import { Tooltip } from '../components/reusables/Tooltip'
+import { ImportProgressCard } from '../components/reusables/ImportProgressCard'
 import { CreateProjectModal } from '../components/modals/CreateProjectModal'
 import { CloneRepoModal } from '../components/modals/CloneRepoModal'
 import { CategoryManagerModal } from '../components/modals/CategoryManagerModal'
@@ -57,7 +57,7 @@ import {
   IconArrowUpDown,
   IconLayoutGrid,
   IconLayoutList,
-} from '../components/Icons'
+} from '../lib/Icons'
 import {
   comparatorFor,
   SORT_OPTIONS,

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import type { Project } from '../../../../types'
 import { api } from '../../../../lib/api'
-import { IconX, IconPlus, IconCheck, IconPencil, IconTags } from '../Icons'
+import { IconX, IconPlus, IconCheck, IconPencil, IconTags } from '../../lib/Icons'
 
 interface Props {
   project: Project

@@ -10,9 +10,9 @@ import {
 } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { IconChevronUp } from '../lib/icons'
-import { Tooltip } from './reusables/Tooltip'
-import { isReducedMotion } from '../../../lib/appearance'
+import { IconChevronUp } from '../../lib/icons'
+import { Tooltip } from './Tooltip'
+import { isReducedMotion } from '../../../../lib/appearance'
 
 interface OverlayScrollAreaProps {
   children: ReactNode

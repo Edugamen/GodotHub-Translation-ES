@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { IconCheck, IconX } from './Icons'
+import { IconCheck, IconX } from '../../lib/Icons'
 
 interface SuccessNotificationData {
   count: number

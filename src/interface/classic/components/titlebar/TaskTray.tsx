@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useTaskTray, type Task } from '../../../hooks/useTaskTray'
-import { Tooltip } from './ui/Tooltip'
+import { useTaskTray, type Task } from '../../../../hooks/useTaskTray'
+import { Tooltip } from '../reusables/Tooltip'
 import {
   IconBell,
   IconDownload,
@@ -17,7 +17,7 @@ import {
   IconCircleCheck,
   IconStore,
   IconX,
-} from './Icons'
+} from '../../lib/Icons'
 
 function TaskIcon({ task }: { task: Task }) {
   const iconClass = 'w-4 h-4 shrink-0'

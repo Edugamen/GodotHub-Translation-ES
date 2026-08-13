@@ -13,7 +13,7 @@ import {
   IconSpinner,
   IconFolderPlus,
   IconCheck,
-} from '../Icons'
+} from '../../lib/Icons'
 
 function repoBaseName(url: string): string {
   let cleaned = url.trim().replace(/\/+$/, '')

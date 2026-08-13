@@ -16,7 +16,7 @@ import { MergeConflictDialog } from './MergeConflictDialog'
 import { Tooltip } from '../reusables/Tooltip'
 import { Checkbox } from '../ui/Checkbox'
 import { ConfirmDialog } from '../modals/ConfirmDialog'
-import { OverlayScrollArea } from '../OverlayScrollArea'
+import { OverlayScrollArea } from '../reusables/OverlayScrollArea'
 import { useSettings } from '../../../../hooks/useSettings'
 import {
   IconX,

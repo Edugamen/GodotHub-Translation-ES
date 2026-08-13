@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { IconChevronDown } from '../Icons'
+import { IconChevronDown } from '../../lib/Icons'
 
 export interface SplitButtonItem {
   label: string

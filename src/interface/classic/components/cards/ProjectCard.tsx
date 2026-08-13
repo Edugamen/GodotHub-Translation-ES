@@ -5,16 +5,16 @@ import { motion, AnimatePresence } from 'framer-motion'
 import type { Category, GitStatus, InstalledGodotVersion, Project } from '../../../../types'
 import { tagColor } from '../../../../lib/colors'
 import { api, getCachedProjectIcon, getCachedProjectName } from '../../../../lib/api'
-import { Dropdown } from './Dropdown'
+import { Dropdown } from '../ui/Dropdown'
 import { ConfirmDialog } from '../modals/ConfirmDialog'
 import { LaunchArgsModal } from '../modals/LaunchArgsModal'
 import {
   ContextMenu,
   type ContextMenuSection,
-} from './ContextMenu'
-import { Tooltip } from './Tooltip'
+} from '../ui/ContextMenu'
+import { Tooltip } from '../reusables/Tooltip'
 
-import { IconGrip, IconMore, IconPin, IconPlay, IconTrash, IconClock, IconExternalLink, IconCode, IconGitBranch, IconX, IconTags, IconCopy, IconHardDrive, IconCheckCircle, IconTerminal } from '../Icons'
+import { IconGrip, IconMore, IconPin, IconPlay, IconTrash, IconClock, IconExternalLink, IconCode, IconGitBranch, IconX, IconTags, IconCopy, IconHardDrive, IconCheckCircle, IconTerminal } from '../../lib/Icons'
 import {
   formatLastOpened,
   type LastOpenedTimeFormat,

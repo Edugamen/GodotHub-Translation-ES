@@ -6,7 +6,6 @@ import { useSettings } from '../../../../hooks/useSettings'
 import { useCategoriesContext } from '../../../../hooks/categoriesContext'
 import { IconChevronDown, IconGitBranch } from '../../lib/icons'
 import { api } from '../../../../lib/api'
-import { ImportOverlay } from '../ImportOverlay'
 import { CloneRepoModal } from '../modals/CloneRepoModal'
 import { Dropdown } from '../ui/Dropdown'
 
@@ -21,44 +20,31 @@ const TOOL_BUTTON_ANIMATION = {
   transition: TOOL_BUTTON_SPRING,
 } as const
 
-const MIN_IMPORT_TIME = 700
-
 export function ImportButton() {
   const { t } = useTranslation('common')
   const { refresh } = useProjectsContext()
   const { settings } = useSettings()
   const { categories } = useCategoriesContext()
-  const [importing, setImporting] = useState<{
-    type: 'project' | 'version'
-    total: number
-    current: number
-    label?: string | null
-  } | null>(null)
+  const [importing, setImporting] = useState(false)
   const [picking, setPicking] = useState(false)
   const [cloneRepoOpen, setCloneRepoOpen] = useState(false)
 
   const handleImport = async () => {
     if (importing || picking) return
     setPicking(true)
+    setImporting(true)
     try {
       const folder = await api.pickFolder()
       if (!folder) return
-      const started = performance.now()
-      setImporting({ type: 'project', total: 1, current: 0, label: folder })
       try {
         await api.importProject(folder, '')
         await refresh()
       } catch (e) {
         console.error('[new-ui] import failed:', e)
         alert(String(e))
-      } finally {
-        const remaining = MIN_IMPORT_TIME - (performance.now() - started)
-        if (remaining > 0) {
-          await new Promise((r) => setTimeout(r, remaining))
-        }
-        setImporting(null)
       }
     } finally {
+      setImporting(false)
       setPicking(false)
     }
   }
@@ -108,8 +94,6 @@ export function ImportButton() {
           ]}
         />
       </div>
-
-      <ImportOverlay importing={importing} onDismiss={() => setImporting(null)} />
 
       <AnimatePresence>
         {cloneRepoOpen && (

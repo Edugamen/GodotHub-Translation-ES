@@ -13,7 +13,7 @@ import { api } from '../../../../lib/api'
 import { DiffViewer } from './DiffViewer'
 import { GitResultDialog, parseGitError } from './GitResultDialog'
 import { MergeConflictDialog } from './MergeConflictDialog'
-import { Tooltip } from '../ui/Tooltip'
+import { Tooltip } from '../reusables/Tooltip'
 import {
   IconX,
   IconGitBranch,
@@ -30,7 +30,7 @@ import {
   IconAlertTriangle,
   IconInfo,
   IconBomb,
-} from '../Icons'
+} from '../../lib/Icons'
 import { ConfirmDialog } from '../modals/ConfirmDialog'
 
 interface Props {

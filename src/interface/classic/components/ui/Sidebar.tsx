@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'framer-motion'
-import { WorkspaceSwitcher } from '../WorkspaceSwitcher'
-import { Tooltip } from './ui/Tooltip'
+import { WorkspaceSwitcher } from '../../WorkspaceSwitcher'
+import { Tooltip } from '../reusables/Tooltip'
 import {
   IconBookOpen,
   IconChevronsLeft,
@@ -13,7 +13,7 @@ import {
   IconLayoutList,
   IconNews,
   IconStore,
-} from './Icons'
+} from '../../lib/Icons'
 
 export type Tab = 'projects' | 'versions' | 'news' | 'templates' | 'asset-store' | 'settings' | 'changelog'
 

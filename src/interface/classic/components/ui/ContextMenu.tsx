@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { IconChevronRight } from '../Icons'
+import { IconChevronRight } from '../../lib/Icons'
 
 export interface ContextMenuAction {
   label: string

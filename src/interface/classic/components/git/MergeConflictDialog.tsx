@@ -11,7 +11,7 @@ import {
   IconTerminal,
   IconCode,
   IconCircleX,
-} from '../Icons'
+} from '../../lib/Icons'
 import { ConfirmDialog } from '../modals/ConfirmDialog'
 
 interface ConflictFile {

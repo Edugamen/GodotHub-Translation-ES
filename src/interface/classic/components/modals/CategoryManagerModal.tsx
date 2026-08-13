@@ -30,7 +30,7 @@ import {
   IconPlus,
   IconTrash,
   IconX,
-} from '../Icons'
+} from '../../lib/Icons'
 
 const CATEGORY_COLORS = [
   '#457ff2', '#f28b45', '#45c97f', '#e74c8a', '#a855f7',
