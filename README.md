@@ -526,6 +526,18 @@ And every other open-source library that makes GodotHub possible, see `package.j
 
 ---
 
+## Star History
+
+<a href="https://www.star-history.com/?repos=RykoTheDev%2FGodotHub&type=timeline&legend=bottom-right">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=RykoTheDev/GodotHub&type=timeline&theme=dark&legend=bottom-right&sealed_token=K0A_747qaDoioaDadvVke_xGw9V06vKC9raC8-6f9w3TolZ6o6E7nqnGAy1Syr-d2Au51bDwvMnagX21RPuTdf2AIKNUoToc8ijpaPEM5LMwTX3RQCznVM4K5g-S11xLT4rrCZYSk2AXLSeK2yyBxOijNAXYmFSJOW5jk0kEDqBFcDWTrIOnAWoGMWbP" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=RykoTheDev/GodotHub&type=timeline&legend=bottom-right&sealed_token=K0A_747qaDoioaDadvVke_xGw9V06vKC9raC8-6f9w3TolZ6o6E7nqnGAy1Syr-d2Au51bDwvMnagX21RPuTdf2AIKNUoToc8ijpaPEM5LMwTX3RQCznVM4K5g-S11xLT4rrCZYSk2AXLSeK2yyBxOijNAXYmFSJOW5jk0kEDqBFcDWTrIOnAWoGMWbP" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=RykoTheDev/GodotHub&type=timeline&legend=bottom-right&sealed_token=K0A_747qaDoioaDadvVke_xGw9V06vKC9raC8-6f9w3TolZ6o6E7nqnGAy1Syr-d2Au51bDwvMnagX21RPuTdf2AIKNUoToc8ijpaPEM5LMwTX3RQCznVM4K5g-S11xLT4rrCZYSk2AXLSeK2yyBxOijNAXYmFSJOW5jk0kEDqBFcDWTrIOnAWoGMWbP" />
+ </picture>
+</a>
+
+---
+
 <p align="center">Made with ❤️ by <a href="https://github.com/RykoTheDev">RykoTheDev</a></p>
 
 <p align="center">
