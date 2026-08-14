@@ -81,7 +81,7 @@ export function LanguageMenu() {
 
   const select = (value: string) => {
     i18n.changeLanguage(value)
-    document.documentElement.setAttribute("dir", i18n.dir())
+    // document.documentElement.dir = i18n.dir()
     update({ ...settings, language: value })
     setOpen(false)
   }
