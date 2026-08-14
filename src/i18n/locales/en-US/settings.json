@@ -243,6 +243,7 @@
   "switch_to_classic_confirm_title": "Switch to the classic UI?",
   "switch_to_classic_confirm_desc": "The app will switch to the classic interface immediately. You can switch back to the new UI anytime from Settings.",
   "language_label": "Language",
+  "direction_label": "UI Direction",
   "use_os_decorations": "Use OS window decorations",
   "use_os_decorations_desc": "Use your operating system's native title bar and window controls instead of GodotHub's custom title bar. Requires a restart to take full effect."
 }

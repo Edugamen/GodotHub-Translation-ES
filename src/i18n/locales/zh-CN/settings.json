@@ -243,6 +243,7 @@
   "switch_to_classic_confirm_title": "切换到经典界面？",
   "switch_to_classic_confirm_desc": "应用将立即切换到经典界面。您随时可以在设置中切换回新界面。",
   "language_label": "语言",
+    "direction_label": "UI Direction",
   "use_os_decorations": "使用系统窗口装饰",
   "use_os_decorations_desc": "使用操作系统的原生标题栏和窗口控件，而不是 GodotHub 的自定义标题栏。需要重启才能完全生效。"
 }
