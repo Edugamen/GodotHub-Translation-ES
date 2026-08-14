@@ -429,7 +429,7 @@ export function OnboardingView({ settings, onComplete }: Props) {
                             whileTap={{ scale: 0.96 }}
                             onClick={() => {
                               i18n.changeLanguage(value)
-                              document.documentElement.setAttribute("dir", i18n.dir())
+                              // document.documentElement.dir = i18n.dir()
                               setDraft((prev) => ({ ...prev, language: value }))
                             }}
                             className={
