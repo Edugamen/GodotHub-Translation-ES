@@ -3,9 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 
-#[cfg(debug_assertions)]
 const GITHUB_DEV_CLIENT_ID: &str = "Ov23liu8vbSyRFgs0Ka0";
-#[cfg(debug_assertions)]
 const GITLAB_DEV_CLIENT_ID: &str = "e80ad1fc408f647d60484286a65ae370bb7b06fdfd7fc5dc36478542f76529ee";
 
 const GITHUB_SCOPES: &str = "repo read:user";
@@ -163,12 +161,9 @@ fn github_client_id() -> Option<String> {
             return Some(v);
         }
     }
-    #[cfg(debug_assertions)]
-    {
-        let v = GITHUB_DEV_CLIENT_ID.trim();
-        if !v.is_empty() && !v.starts_with("YOUR_") {
-            return Some(v.to_string());
-        }
+    let v = GITHUB_DEV_CLIENT_ID.trim();
+    if !v.is_empty() && !v.starts_with("YOUR_") {
+        return Some(v.to_string());
     }
     None
 }
@@ -180,12 +175,9 @@ fn gitlab_client_id() -> Option<String> {
             return Some(v);
         }
     }
-    #[cfg(debug_assertions)]
-    {
-        let v = GITLAB_DEV_CLIENT_ID.trim();
-        if !v.is_empty() && !v.starts_with("YOUR_") {
-            return Some(v.to_string());
-        }
+    let v = GITLAB_DEV_CLIENT_ID.trim();
+    if !v.is_empty() && !v.starts_with("YOUR_") {
+        return Some(v.to_string());
     }
     None
 }
@@ -213,7 +205,7 @@ pub async fn start_device_flow(
         "github" => (
             github_client_id().ok_or_else(|| {
                 "GitHub OAuth isn't configured. Set the GODOTHUB_GITHUB_CLIENT_ID \
-                 environment variable (or fill the dev constant in git_auth.rs)."
+                 environment variable."
                     .to_string()
             })?,
             "https://github.com/login/device/code".to_string(),
@@ -233,7 +225,7 @@ pub async fn start_device_flow(
             } else {
                 gitlab_client_id().ok_or_else(|| {
                     "GitLab OAuth isn't configured. Set the GODOTHUB_GITLAB_CLIENT_ID \
-                     environment variable (or fill the dev constant in git_auth.rs)."
+                     environment variable."
                         .to_string()
                 })?
             };
@@ -358,7 +350,7 @@ pub async fn poll_device_flow(
                 } else {
                     gitlab_client_id().ok_or_else(|| {
                         "GitLab OAuth isn't configured. Set the GODOTHUB_GITLAB_CLIENT_ID \
-                         environment variable (or fill the dev constant in git_auth.rs)."
+                         environment variable."
                             .to_string()
                     })?
                 };
