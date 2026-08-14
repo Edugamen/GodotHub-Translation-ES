@@ -13,7 +13,6 @@ export const LANGUAGES: LanguageOption[] = [
   { value: 'ar-MA', label: 'العربية', status: 'incomplete' },
 ]
 
-/** Badge label keys live in the `settings` namespace. */
 export function languageStatusLabelKey(status: LanguageStatus): string {
   switch (status) {
     case 'complete':

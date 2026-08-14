@@ -103,10 +103,10 @@ function isKnownIssueSection(s: ReleaseSection): boolean {
 
 /* ---------- Preview (dev-only) fixtures ---------- */
 
-const PREVIEW_VERSION = '1.3.0'
+const PREVIEW_VERSION = '1.3.5'
 
 const PREVIEW_NOTES = [
-  `## What's new in v1.3.0 - The Preview Update`,
+  `## What's new in v1.3.5 - The Preview Update`,
   '',
   '## 🚀 New',
   '',

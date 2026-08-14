@@ -61,9 +61,12 @@ import {
   IconBomb,
   IconPlug,
   IconGitBranch,
+  IconPlus,
+  IconTrash,
 } from '../lib/icons'
 import type { IconProps } from '../lib/icons'
-import type { AppSettings } from '../../../types'
+import type { AppSettings, GitAuthState } from '../../../types'
+import { GitAuthModal } from '../components/modals/GitAuthModal'
 
 type SettingsCat =
   | 'appearance'
@@ -219,6 +222,21 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
   const [confirmingOsDec, setConfirmingOsDec] = useState<boolean | null>(null)
   const [showUpdates, setShowUpdates] = useState(false)
   const [showBugReport, setShowBugReport] = useState(false)
+  const [gitAuth, setGitAuth] = useState<GitAuthState | null>(null)
+  const [gitAuthFlow, setGitAuthFlow] = useState<'github' | 'gitlab' | null>(
+    null,
+  )
+  const [gitAuthInstance, setGitAuthInstance] = useState<{
+    baseUrl: string
+    clientId: string
+  } | null>(null)
+  const [gitlabUrl, setGitlabUrl] = useState('')
+  const [gitlabClientId, setGitlabClientId] = useState('')
+  const [patOpen, setPatOpen] = useState(false)
+  const [patHost, setPatHost] = useState('')
+  const [patUser, setPatUser] = useState('')
+  const [patToken, setPatToken] = useState('')
+  const [patMsg, setPatMsg] = useState<string | null>(null)
   const {
     query: searchQuery,
     setQuery: setSearchQuery,
@@ -1542,6 +1560,30 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
     </div>
   )
 
+  const refreshGitAuth = async () => {
+    try {
+      setGitAuth(await api.gitAuthGetState())
+    } catch {}
+  }
+
+  useEffect(() => {
+    void refreshGitAuth()
+  }, [])
+
+  const handleSavePat = async () => {
+    setPatMsg(null)
+    try {
+      await api.gitAuthSavePat(patHost, patUser, patToken)
+      setPatHost('')
+      setPatUser('')
+      setPatToken('')
+      setPatOpen(false)
+      await refreshGitAuth()
+    } catch (e) {
+      setPatMsg(String(e))
+    }
+  }
+
   const renderIntegrations = () => (
     <div className="flex flex-col gap-3">
       <Subsection
@@ -1550,59 +1592,282 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
           <span className="inline-flex items-center gap-2">
             <IconGitBranch className="w-3.5 h-3.5 text-muted" />
             Git
+            <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-tag bg-amber/10 text-amber border border-amber/20">
+              Beta
+            </span>
           </span>
         }
         description={ts('github_token_desc')}
-        searchText={`${ts('github_token_title')} ${ts('github_token_desc')} ${ts('test')}`}
+        searchText={`${ts('git_sign_in_github')} ${ts('git_sign_in_gitlab')} ${ts('git_pat_title')} ${ts('github_token_title')} ${ts('github_token_desc')} ${ts('test')}`}
         query={searchQuery}
         onMatch={reportMatch}
       >
-        <div className="flex flex-col gap-2.5">
-          <div className="relative">
-            <input
-              type="password"
-              value={settings.github_token ?? ''}
-              onChange={(e) =>
-                update({ ...settings, github_token: e.target.value || null })
-              }
-              placeholder={ts('setting_token_placeholder', { ns: 'common' })}
-              className="focus-ring w-full bg-base border border-outline/50 rounded-btn px-3.5 py-2.5 text-sm font-mono focus:border-accent-dim transition-colors pr-20"
-            />
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-2.5">
+            <span className="text-xs font-medium text-muted">GitHub</span>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-xs text-muted">
+                {gitAuth?.github
+                  ? ts('git_connected_as', {
+                      username: gitAuth.github.username,
+                    })
+                  : ts('git_oauth_hint')}
+              </span>
+              {gitAuth?.github ? (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await api.gitAuthDisconnect('github')
+                    await refreshGitAuth()
+                  }}
+                  className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-8 px-4 rounded-item border border-outline/50 text-muted hover:text-danger hover:border-danger/40 hover:bg-danger/5 text-xs font-medium transition-colors"
+                >
+                  {ts('git_disconnect')}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setGitAuthFlow('github')}
+                  className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-8 px-4 rounded-item bg-accent hover:bg-accent-bright text-xs font-medium text-white transition-colors"
+                >
+                  <IconGitBranch className="w-3.5 h-3.5" />
+                  {ts('git_sign_in_github')}
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2.5 pt-5 border-t border-line">
+            <span className="text-xs font-medium text-muted">GitLab</span>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-xs text-muted">
+                {gitAuth?.gitlab
+                  ? gitAuth.gitlab.host
+                    ? ts('git_connected_to', {
+                        host: gitAuth.gitlab.host,
+                        username: gitAuth.gitlab.username,
+                      })
+                    : ts('git_connected_as', {
+                        username: gitAuth.gitlab.username,
+                      })
+                  : ts('git_oauth_hint')}
+              </span>
+              {gitAuth?.gitlab ? (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await api.gitAuthDisconnect('gitlab')
+                    await refreshGitAuth()
+                  }}
+                  className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-8 px-4 rounded-item border border-outline/50 text-muted hover:text-danger hover:border-danger/40 hover:bg-danger/5 text-xs font-medium transition-colors"
+                >
+                  {ts('git_disconnect')}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setGitAuthFlow('gitlab')}
+                  className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-8 px-4 rounded-item bg-accent hover:bg-accent-bright text-xs font-medium text-white transition-colors"
+                >
+                  <IconGitBranch className="w-3.5 h-3.5" />
+                  {ts('git_sign_in_gitlab')}
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2.5 pt-5 border-t border-line">
+            <span className="text-xs font-medium text-muted">
+              {ts('git_self_hosted_title')}
+            </span>
+            <p className="text-[11px] text-muted leading-relaxed">
+              {ts('git_self_hosted_desc')}
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                value={gitlabUrl}
+                onChange={(e) => setGitlabUrl(e.target.value)}
+                placeholder={ts('git_self_hosted_url_placeholder')}
+                className="focus-ring bg-base border border-outline/50 rounded-btn px-3.5 py-2.5 text-xs font-mono focus:border-accent-dim transition-colors outline-none"
+              />
+              <input
+                value={gitlabClientId}
+                onChange={(e) => setGitlabClientId(e.target.value)}
+                placeholder={ts('git_self_hosted_client_id')}
+                className="focus-ring bg-base border border-outline/50 rounded-btn px-3.5 py-2.5 text-xs font-mono focus:border-accent-dim transition-colors outline-none"
+              />
+            </div>
             <button
               type="button"
-              onClick={testGithubToken}
-              className="focus-ring cursor-pointer absolute right-1.5 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-md bg-overlay border border-outline/50 text-xs font-medium text-muted hover:text-ink hover:border-accent-dim transition-colors"
+              disabled={!gitlabUrl.trim() || !gitlabClientId.trim()}
+              onClick={() => {
+                setGitAuthInstance({
+                  baseUrl: gitlabUrl.trim(),
+                  clientId: gitlabClientId.trim(),
+                })
+                setGitAuthFlow('gitlab')
+              }}
+              className="focus-ring cursor-pointer inline-flex items-center justify-center gap-1.5 h-8 px-4 rounded-item border border-outline/50 text-muted hover:text-ink hover:border-accent-dim hover:bg-raised disabled:opacity-40 disabled:cursor-not-allowed text-xs font-medium transition-colors w-fit"
             >
-              {tokenTestState === 'testing' ? ts('testing') : ts('test')}
+              <IconGitBranch className="w-3.5 h-3.5" />
+              {ts('git_sign_in_self_hosted')}
             </button>
           </div>
-          {tokenTestMsg && (
-            <span
-              className={`text-[11px] ${
-                tokenTestState === 'success'
-                  ? 'text-mint'
-                  : tokenTestState === 'warning'
-                    ? 'text-amber'
-                    : tokenTestState === 'error'
-                      ? 'text-danger'
-                      : 'text-muted'
-              }`}
-            >
-              {tokenTestMsg}
+
+          <div className="flex flex-col gap-2.5 pt-5 border-t border-line">
+            <span className="text-xs font-medium text-muted">
+              {ts('git_pat_title')}
             </span>
+            <p className="text-[11px] text-muted leading-relaxed">
+              {ts('git_pat_desc')}
+            </p>
+
+            {(gitAuth?.pats.length ?? 0) === 0 && !patOpen && (
+              <span className="text-xs text-muted/60">
+                {ts('git_pat_empty')}
+              </span>
+            )}
+
+            <div className="flex flex-col gap-2">
+              {(gitAuth?.pats ?? []).map((pat) => (
+                <div
+                  key={pat.host}
+                  className="flex items-center justify-between gap-3 rounded-btn bg-base border border-outline/50 px-3.5 py-2.5"
+                >
+                  <div className="min-w-0 flex items-center gap-2">
+                    <span className="text-xs font-medium text-ink font-mono">
+                      {pat.host}
+                    </span>
+                    <span className="text-[11px] text-muted">
+                      {pat.username}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label={ts('git_pat_remove')}
+                    title={ts('git_pat_remove')}
+                    onClick={async () => {
+                      await api.gitAuthRemovePat(pat.host)
+                      await refreshGitAuth()
+                    }}
+                    className="focus-ring cursor-pointer p-1.5 rounded-btn text-muted/60 hover:text-danger hover:bg-danger/10 transition-colors shrink-0"
+                  >
+                    <IconTrash className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {patOpen ? (
+              <div className="flex flex-col gap-2.5">
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    value={patHost}
+                    onChange={(e) => setPatHost(e.target.value)}
+                    placeholder={ts('git_pat_host_placeholder')}
+                    className="focus-ring bg-base border border-outline/50 rounded-btn px-3.5 py-2.5 text-xs font-mono focus:border-accent-dim transition-colors outline-none"
+                  />
+                  <input
+                    value={patUser}
+                    onChange={(e) => setPatUser(e.target.value)}
+                    placeholder={ts('git_pat_username')}
+                    className="focus-ring bg-base border border-outline/50 rounded-btn px-3.5 py-2.5 text-xs font-mono focus:border-accent-dim transition-colors outline-none"
+                  />
+                </div>
+                <input
+                  type="password"
+                  value={patToken}
+                  onChange={(e) => setPatToken(e.target.value)}
+                  placeholder={ts('git_pat_token')}
+                  className="focus-ring bg-base border border-outline/50 rounded-btn px-3.5 py-2.5 text-xs font-mono focus:border-accent-dim transition-colors outline-none"
+                />
+                {patMsg && (
+                  <span className="text-[11px] text-danger">{patMsg}</span>
+                )}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleSavePat}
+                    className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-8 px-4 rounded-item bg-accent hover:bg-accent-bright text-xs font-medium text-white transition-colors"
+                  >
+                    {ts('git_pat_save')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPatOpen(false)
+                      setPatMsg(null)
+                    }}
+                    className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-8 px-3.5 rounded-item border border-outline/50 text-muted hover:text-ink hover:bg-raised text-xs font-medium transition-colors"
+                  >
+                    {ts('cancel', { ns: 'common' })}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setPatOpen(true)}
+                className="focus-ring cursor-pointer self-start inline-flex items-center gap-1.5 h-8 px-4 rounded-item border border-outline/50 text-muted hover:text-ink hover:border-accent-dim hover:bg-raised text-xs font-medium transition-colors"
+              >
+                <IconPlus className="w-3.5 h-3.5" />
+                {ts('git_pat_add')}
+              </button>
+            )}
+          </div>
+
+          {!gitAuth?.github && (
+            <div className="flex flex-col gap-2.5 pt-5 border-t border-line">
+              <span className="text-xs font-medium text-muted">
+                {ts('github_token_title')}
+              </span>
+              <div className="relative">
+                <input
+                  type="password"
+                  value={settings.github_token ?? ''}
+                  onChange={(e) =>
+                    update({ ...settings, github_token: e.target.value || null })
+                  }
+                  placeholder={ts('setting_token_placeholder', { ns: 'common' })}
+                  className="focus-ring w-full bg-base border border-outline/50 rounded-btn px-3.5 py-2.5 text-sm font-mono focus:border-accent-dim transition-colors pr-20"
+                />
+                <button
+                  type="button"
+                  onClick={testGithubToken}
+                  className="focus-ring cursor-pointer absolute right-1.5 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-md bg-overlay border border-outline/50 text-xs font-medium text-muted hover:text-ink hover:border-accent-dim transition-colors"
+                >
+                  {tokenTestState === 'testing' ? ts('testing') : ts('test')}
+                </button>
+              </div>
+              {tokenTestMsg && (
+                <span
+                  className={`text-[11px] ${
+                    tokenTestState === 'success'
+                      ? 'text-mint'
+                      : tokenTestState === 'warning'
+                        ? 'text-amber'
+                        : tokenTestState === 'error'
+                          ? 'text-danger'
+                          : 'text-muted'
+                  }`}
+                >
+                  {tokenTestMsg}
+                </span>
+              )}
+              <p className="text-[11px] text-muted leading-relaxed">
+                {ts('token_help_desc')}{' '}
+                <a
+                  href="https://github.com/settings/tokens"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-accent hover:text-accent-bright underline underline-offset-2"
+                >
+                  github.com/settings/tokens
+                </a>
+                .
+              </p>
+            </div>
           )}
-          <p className="text-[11px] text-muted leading-relaxed">
-            {ts('token_help_desc')}{' '}
-            <a
-              href="https://github.com/settings/tokens"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-accent hover:text-accent-bright underline underline-offset-2"
-            >
-              github.com/settings/tokens
-            </a>
-            .
-          </p>
         </div>
       </Subsection>
     </div>
@@ -1925,6 +2190,20 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
         )}
         {showBugReport && (
           <BugReportModal onClose={() => setShowBugReport(false)} />
+        )}
+        {gitAuthFlow && (
+          <GitAuthModal
+            provider={gitAuthFlow}
+            baseUrl={gitAuthInstance?.baseUrl ?? null}
+            clientId={gitAuthInstance?.clientId ?? null}
+            onClose={() => {
+              setGitAuthFlow(null)
+              setGitAuthInstance(null)
+            }}
+            onConnected={() => {
+              void refreshGitAuth()
+            }}
+          />
         )}
       </AnimatePresence>
     </div>

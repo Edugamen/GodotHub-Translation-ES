@@ -495,7 +495,7 @@ In beta phase (languages other than english might be incomplete)
 | English   | Completed |
 | Chinese   | Beta               |
 | Russian   | Incomplete               |
-| Russian   | Incomplete               |
+| Arabic    | Incomplete               |
 
 ---
 

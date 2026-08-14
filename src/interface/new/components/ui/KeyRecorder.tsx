@@ -53,7 +53,7 @@ export function KeyRecorder({ value, onChange, onReset }: Props) {
   }, [])
 
   const displayKey =
-    value === ' ' ? t('key_space') : value ? value.toUpperCase() : '—'
+    value === ' ' ? t('key_space') : value ? value.toUpperCase() : t('none')
 
   return (
     <div className="flex flex-col gap-2.5">

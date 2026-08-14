@@ -143,12 +143,8 @@ export function TemplatePreviewModal({ template, onClose }: Props) {
       .finally(() => setLoading(false))
   }, [template.id])
 
-  // Show the toggle only when the description is long enough to be clamped.
   useEffect(() => {
     setDescExpanded(false)
-    // Only ever confirm overflow, never clear it: while the description is
-    // expanded the element is unclamped and would measure as not overflowing,
-    // which must not hide the "Show less" button.
     const measure = () => {
       const el = descRef.current
       if (el && el.scrollHeight > el.clientHeight + 1) {

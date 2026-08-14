@@ -1,6 +1,7 @@
 import { projectsApi, getCachedProjectIcon, getCachedProjectName } from '../api/projects'
 import { versionsApi } from '../api/versions'
 import { gitApi } from '../api/git'
+import { gitAuthApi } from '../api/gitAuth'
 import { settingsApi } from '../api/settings'
 import { templatesApi } from '../api/templates'
 import { categoriesApi } from '../api/categories'
@@ -93,6 +94,14 @@ export const api = {
   gitResolveConflictManual: gitApi.resolveConflictManual,
   gitAbortMerge: gitApi.abortMerge,
   gitIsMerging: gitApi.isMerging,
+
+  gitAuthGetState: gitAuthApi.getState,
+  gitAuthCreateRemoteRepo: gitAuthApi.createRemoteRepo,
+  gitAuthStartDeviceFlow: gitAuthApi.startDeviceFlow,
+  gitAuthPollDeviceFlow: gitAuthApi.pollDeviceFlow,
+  gitAuthDisconnect: gitAuthApi.disconnect,
+  gitAuthSavePat: gitAuthApi.savePat,
+  gitAuthRemovePat: gitAuthApi.removePat,
 
   getSettings: settingsApi.get,
   updateSettings: settingsApi.update,

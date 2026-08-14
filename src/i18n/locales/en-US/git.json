@@ -100,7 +100,7 @@
   "path_copy_failed": "Couldn't copy the path to the clipboard.",
   "discard_file_title": "Discard changes to \"{{file}}\"?",
   "discard_file_desc": "Changes to this file will be stashed first so you can recover them later. Continue?",
-  "file_discarded": "Changes to {{file}} stashed — recover it from the Stashes section if needed.",
+  "file_discarded": "Changes to {{file}} stashed. Recover it from the Stashes section if needed.",
   "open_commit_on_github": "Open commit on GitHub",
   "recent_commits": "Recent Commits",
   "no_commits_found": "No commits found.",
@@ -110,5 +110,11 @@
   "loading_diff": "Loading diff…",
   "diff_error": "Couldn't load the diff.",
   "stage_all": "Stage All",
-  "staging": "Staging…"
+  "staging": "Staging…",
+  "auth_title": "Authentication",
+  "auth_not_signed_in": "Not signed in",
+  "auth_sign_in": "Sign in",
+  "auth_disconnect": "Disconnect",
+  "auth_connected_as": "Connected as @{{username}}",
+  "auth_manage_settings": "Manage in Settings"
 }

@@ -17,12 +17,9 @@ const TOOL_BUTTON_ANIMATION = {
 } as const
 
 interface ImportButtonProps {
-  /** Picks a folder, then runs this action with the chosen path. */
   onImport: (folder: string) => Promise<void>
-  /** Extra actions shown in the split-button dropdown (hidden when empty). */
   options?: NewDropdownItem[]
   disabled?: boolean
-  /** When set, this window event also triggers the import flow. */
   importEvent?: string
 }
 

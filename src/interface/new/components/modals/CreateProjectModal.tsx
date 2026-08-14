@@ -2,12 +2,18 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import type { Category, InstalledGodotVersion, ProjectTemplate } from '../../../../types'
+import type {
+  Category,
+  GitAuthState,
+  InstalledGodotVersion,
+  ProjectTemplate,
+} from '../../../../types'
 import { api } from '../../../../lib/api'
 import { applyNamingConvention } from '../../../../lib/namingConvention'
 import { useSettings } from '../../../../hooks/useSettings'
 import { TemplatePreviewModal } from './TemplatePreviewModal'
 import { Toggle } from '../ui/Toggle'
+import { Checkbox } from '../ui/Checkbox'
 import {
   IconFolderPlus,
   IconX,
@@ -64,11 +70,23 @@ export function CreateProjectModal({
   const [templates, setTemplates] = useState<ProjectTemplate[]>([])
   const [error, setError] = useState<string | null>(null)
   const [initGit, setInitGit] = useState(settings.git_init_new_projects)
+  const [gitGitignore, setGitGitignore] = useState(true)
+  const [gitGitattributes, setGitGitattributes] = useState(true)
+  const [gitReadme, setGitReadme] = useState(false)
+  const [gitLicense, setGitLicense] = useState('')
   const [gitAvailable, setGitAvailable] = useState(true)
   const [gitWarning, setGitWarning] = useState<string | null>(null)
+  const [remoteSuccess, setRemoteSuccess] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [initializingGit, setInitializingGit] = useState(false)
+  const [creatingRemote, setCreatingRemote] = useState(false)
   const [attempted, setAttempted] = useState(false)
+  const [gitAuth, setGitAuth] = useState<GitAuthState | null>(null)
+  const [remoteEnabled, setRemoteEnabled] = useState(false)
+  const [remoteProvider, setRemoteProvider] = useState<'github' | 'gitlab'>(
+    'github',
+  )
+  const [remotePrivate, setRemotePrivate] = useState(true)
   const nameInputRef = useRef<HTMLInputElement>(null)
 
   const folderName = useMemo(
@@ -120,6 +138,17 @@ export function CreateProjectModal({
   }, [])
 
   useEffect(() => {
+    api
+      .gitAuthGetState()
+      .then((state) => {
+        setGitAuth(state)
+        if (state.github && !state.gitlab) setRemoteProvider('github')
+        else if (state.gitlab && !state.github) setRemoteProvider('gitlab')
+      })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
     nameInputRef.current?.focus()
   }, [])
 
@@ -141,20 +170,20 @@ export function CreateProjectModal({
   }, [iconPath])
 
   const dismiss = () => {
-    if (gitWarning) onCreated()
+    if (gitWarning || remoteSuccess) onCreated()
     else onClose()
   }
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (gitWarning) onCreated()
+        if (gitWarning || remoteSuccess) onCreated()
         else onClose()
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [gitWarning, onClose, onCreated])
+  }, [gitWarning, remoteSuccess, onClose, onCreated])
 
   const pickLocation = async () => {
     const folder = await api.pickFolder()
@@ -178,7 +207,7 @@ export function CreateProjectModal({
   const locationInvalid = attempted && !location
 
   const submit = async () => {
-    if (busy || gitWarning) return
+    if (busy || gitWarning || remoteSuccess) return
     if (!name.trim() || !location) {
       setAttempted(true)
       setError(t('create_project_error'))
@@ -198,7 +227,12 @@ export function CreateProjectModal({
       if (initGit) {
         setInitializingGit(true)
         try {
-          const outcome = await api.gitInitProject(project.path)
+          const outcome = await api.gitInitProject(project.path, {
+            gitignore: gitGitignore,
+            gitattributes: gitGitattributes,
+            readme: gitReadme,
+            license: gitLicense || null,
+          })
           if (outcome.warning) {
             setGitWarning(outcome.warning)
             return
@@ -208,6 +242,24 @@ export function CreateProjectModal({
           return
         } finally {
           setInitializingGit(false)
+        }
+      }
+      if (remoteEnabled && (gitAuth?.github || gitAuth?.gitlab)) {
+        setCreatingRemote(true)
+        try {
+          const result = await api.gitAuthCreateRemoteRepo(
+            remoteProvider,
+            name.trim(),
+            remotePrivate,
+            project.path,
+          )
+          setRemoteSuccess(result.url)
+          return
+        } catch (e) {
+          setGitWarning(String(e))
+          return
+        } finally {
+          setCreatingRemote(false)
         }
       }
       onCreated()
@@ -527,10 +579,160 @@ export function CreateProjectModal({
                 <Toggle
                   checked={initGit}
                   onChange={setInitGit}
-                  disabled={busy || !gitAvailable || gitWarning !== null}
+                  disabled={busy || !gitAvailable || gitWarning !== null || remoteSuccess !== null}
                   label={t('init_git_label')}
                 />
               </label>
+
+              {initGit && gitAvailable && (
+                <div className="flex flex-col gap-2.5 rounded-item border border-outline/50 bg-overlay p-3.5">
+                  <div className="flex flex-wrap gap-x-5 gap-y-2">
+                    <Checkbox
+                      checked={gitGitignore}
+                      onChange={setGitGitignore}
+                      disabled={busy}
+                    >
+                      {t('git_option_gitignore')}
+                    </Checkbox>
+                    <Checkbox
+                      checked={gitGitattributes}
+                      onChange={setGitGitattributes}
+                      disabled={busy}
+                    >
+                      {t('git_option_gitattributes')}
+                    </Checkbox>
+                    <Checkbox
+                      checked={gitReadme}
+                      onChange={setGitReadme}
+                      disabled={busy}
+                    >
+                      {t('git_option_readme')}
+                    </Checkbox>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <label className="text-xs font-medium text-muted shrink-0">
+                      {t('git_option_license')}
+                    </label>
+                    <div className="flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setGitLicense('')}
+                        className={`${chipClass(gitLicense === '')} ${
+                          gitLicense === ''
+                            ? 'border-outline/60 text-muted'
+                            : ''
+                        }`}
+                      >
+                        {t('git_option_no_license')}
+                      </button>
+                      {['MIT', 'Apache-2.0', 'GPL-3.0', 'Unlicense'].map((lic) => (
+                        <button
+                          key={lic}
+                          type="button"
+                          onClick={() => setGitLicense(lic)}
+                          className={`${chipClass(gitLicense === lic)} ${
+                            gitLicense === lic
+                              ? 'border-accent bg-accent/10 text-accent-bright'
+                              : ''
+                          }`}
+                        >
+                          {gitLicense === lic && (
+                            <IconCheck className="w-3 h-3 inline -mt-0.5" />
+                          )}
+                          {lic}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {(gitAuth?.github || gitAuth?.gitlab) && (
+                <div className="flex flex-col gap-2.5 pt-1">
+                  <label className="flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <span className="text-xs font-medium text-ink block">
+                        {t('create_remote_label')}
+                      </span>
+                      <p className="text-[11px] text-muted mt-1 leading-relaxed">
+                        {t('create_remote_desc')}
+                      </p>
+                    </div>
+                    <Toggle
+                      checked={remoteEnabled}
+                      onChange={(v) => {
+                        setRemoteEnabled(v)
+                        if (v && !initGit) setInitGit(true)
+                      }}
+                      disabled={busy || !initGit || !gitAvailable || gitWarning !== null || remoteSuccess !== null}
+                      label={t('create_remote_label')}
+                    />
+                  </label>
+
+                  {remoteEnabled && (
+                    <div className="flex flex-col gap-2.5 rounded-item border border-outline/50 bg-overlay p-3">
+                      <div className="flex flex-wrap gap-1.5">
+                        {gitAuth?.github && (
+                          <button
+                            type="button"
+                            onClick={() => setRemoteProvider('github')}
+                            className={`${chipClass(remoteProvider === 'github')} ${
+                              remoteProvider === 'github'
+                                ? 'border-accent bg-accent/10 text-accent-bright'
+                                : ''
+                            }`}
+                          >
+                            {remoteProvider === 'github' && (
+                              <IconCheck className="w-3 h-3 inline -mt-0.5" />
+                            )}
+                            GitHub
+                          </button>
+                        )}
+                        {gitAuth?.gitlab && (
+                          <button
+                            type="button"
+                            onClick={() => setRemoteProvider('gitlab')}
+                            className={`${chipClass(remoteProvider === 'gitlab')} ${
+                              remoteProvider === 'gitlab'
+                                ? 'border-accent bg-accent/10 text-accent-bright'
+                                : ''
+                            }`}
+                          >
+                            {remoteProvider === 'gitlab' && (
+                              <IconCheck className="w-3 h-3 inline -mt-0.5" />
+                            )}
+                            GitLab
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setRemotePrivate(true)}
+                          className={`flex-1 px-3 py-1.5 rounded-btn border text-xs font-medium transition-colors ${
+                            remotePrivate
+                              ? 'border-mint bg-mint/10 text-mint'
+                              : 'border-outline/50 text-muted hover:border-accent-dim hover:text-ink'
+                          }`}
+                        >
+                          {t('remote_private')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setRemotePrivate(false)}
+                          className={`flex-1 px-3 py-1.5 rounded-btn border text-xs font-medium transition-colors ${
+                            !remotePrivate
+                              ? 'border-mint bg-mint/10 text-mint'
+                              : 'border-outline/50 text-muted hover:border-accent-dim hover:text-ink'
+                          }`}
+                        >
+                          {t('remote_public')}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -635,8 +837,32 @@ export function CreateProjectModal({
           )}
         </AnimatePresence>
 
+        <AnimatePresence>
+          {remoteSuccess && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+              className="px-6 overflow-hidden"
+            >
+              <div className="flex items-start gap-2.5 rounded-item border border-mint/25 bg-mint/10 px-4 py-3">
+                <IconCheck className="w-4 h-4 text-mint shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-mint">
+                    {t('remote_repo_created_title')}
+                  </p>
+                  <p className="text-xs text-muted leading-relaxed mt-1 whitespace-pre-wrap break-words">
+                    {remoteSuccess}
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <div className="flex justify-end gap-2.5 p-6 pt-4 border-t border-line">
-          {gitWarning ? (
+          {gitWarning || remoteSuccess ? (
             <motion.button
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.96 }}
@@ -666,7 +892,11 @@ export function CreateProjectModal({
                 {busy ? (
                   <>
                     <IconSpinner className="w-3.5 h-3.5 animate-spin" />
-                    {initializingGit ? t('initializing_git') : t('creating')}
+                    {creatingRemote
+                      ? t('creating_remote_repo')
+                      : initializingGit
+                        ? t('initializing_git')
+                        : t('creating')}
                   </>
                 ) : (
                   t('create_project_btn')

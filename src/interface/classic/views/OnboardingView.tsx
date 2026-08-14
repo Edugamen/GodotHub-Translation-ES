@@ -124,6 +124,7 @@ function ProgressRow({
   progress: { current: number; total: number } | null
   running: boolean
 }) {
+  const { t } = useTranslation('common')
   const hasProgress = !!progress && progress.total > 0
   const pct = hasProgress
     ? Math.min((progress.current / progress.total) * 100, 100)
@@ -143,7 +144,7 @@ function ProgressRow({
             <span className="font-mono">…</span>
           </span>
         ) : (
-          <span className="font-mono text-xs text-muted shrink-0">—</span>
+          <span className="font-mono text-xs text-muted shrink-0">{t('none')}</span>
         )}
       </div>
       <div className="h-1.5 w-full rounded-full bg-line/60 overflow-hidden">
@@ -416,7 +417,6 @@ export function OnboardingView({ settings, onComplete }: Props) {
                             whileTap={{ scale: 0.96 }}
                             onClick={() => {
                               i18n.changeLanguage(value)
-                              // document.documentElement.dir = i18n.dir()
                               setDraft((prev) => ({ ...prev, language: value }))
                             }}
                             className={

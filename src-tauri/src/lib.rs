@@ -3,10 +3,12 @@ mod categories;
 mod changelog;
 mod error;
 mod git;
+mod git_auth;
 mod git_helpers;
 mod godot_versions;
 mod godotenv;
 mod install_mode;
+mod licenses;
 mod models;
 mod news;
 mod persist;
@@ -80,6 +82,10 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
+            if let Ok(dir) = app.path().app_data_dir() {
+                git_helpers::set_credential_store(dir.join("git-credentials"));
+            }
+
             app.manage(std::sync::Arc::new(
                 asset_library::AssetResponseCache::default(),
             ));
@@ -172,6 +178,13 @@ pub fn run() {
             godot_versions::open_godot_version,
             godot_versions::test_github_token,
             godot_versions::get_github_rate_limit,
+            git_auth::start_device_flow,
+            git_auth::poll_device_flow,
+            git_auth::get_git_auth_state,
+            git_auth::disconnect_git_auth,
+            git_auth::save_git_pat,
+            git_auth::remove_git_pat,
+            git_auth::create_remote_repo,
             godot_versions::import_version_zip,
             projects::list_projects,
             projects::create_project,

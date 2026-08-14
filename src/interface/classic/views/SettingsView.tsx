@@ -146,7 +146,7 @@ function KeyRecorder({
   }, [])
 
   const displayKey =
-    value === ' ' ? t('key_space') : value ? value.toUpperCase() : '—'
+    value === ' ' ? t('key_space') : value ? value.toUpperCase() : t('none')
 
   return (
     <label className="flex flex-col gap-2.5 pt-5 border-t border-line">

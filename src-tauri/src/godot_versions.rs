@@ -288,7 +288,8 @@ async fn fetch_archive_versions(app: AppHandle) -> Result<Vec<GodotRelease>, Str
 
 async fn refresh_releases_cache(app: AppHandle) -> Result<Vec<GodotRelease>, String> {
     let settings = crate::settings::read_settings(&app);
-    let token = settings.github_token.filter(|t| !t.trim().is_empty());
+    let token = crate::git_auth::github_oauth_token(&app)
+        .or_else(|| settings.github_token.filter(|t| !t.trim().is_empty()));
 
     let mut client_builder = reqwest::Client::builder().user_agent("godot-hub");
     if token.is_some() {
@@ -431,8 +432,6 @@ async fn refresh_archive_releases(app: AppHandle) -> Result<Vec<GodotRelease>, S
     Ok(releases)
 }
 
-/// Collects every `/download/archive/<tag>/` link from the archive index HTML,
-/// preserving page order (newest first) and de-duplicating.
 fn parse_archive_tags(html: &str) -> Vec<String> {
     const MARKER: &str = "/download/archive/";
     let mut tags = Vec::new();
@@ -453,8 +452,6 @@ fn parse_archive_tags(html: &str) -> Vec<String> {
     tags
 }
 
-/// Asset filename suffixes for the current platform, following Godot's official
-/// naming scheme (see godot-website `_data/download_configs.yml`).
 fn archive_asset_names() -> Vec<String> {
     let mut names = Vec::new();
     #[cfg(target_os = "windows")]
@@ -941,10 +938,6 @@ pub fn migrate_mono_tags(app: &AppHandle) {
     }
 }
 
-/// Signature of the registry contents from the last full reconcile. The
-/// frontend polls `list_installed_godot_versions` every few seconds; when the
-/// registry hasn't changed we skip the whole migrate/rebind pass (which
-/// re-scans every project directory via `detect_version`).
 fn installed_signature() -> &'static Mutex<Option<String>> {
     static SIG: OnceLock<Mutex<Option<String>>> = OnceLock::new();
     SIG.get_or_init(|| Mutex::new(None))
@@ -952,8 +945,6 @@ fn installed_signature() -> &'static Mutex<Option<String>> {
 
 fn registry_signature(raw: &str) -> String {
     let Ok(value) = serde_json::from_str::<serde_json::Value>(raw) else {
-        // Unparseable file — fall back to the raw bytes so any change
-        // invalidates the cache.
         return raw.to_string();
     };
     let arr = value.as_array().map(|a| a.as_slice()).unwrap_or(&[]);
@@ -986,17 +977,12 @@ pub fn list_installed_godot_versions(app: AppHandle) -> Result<Vec<InstalledGodo
     };
 
     if needs_reconcile {
-        // Registry changed (or first call): re-run the one-time corrections
-        // and rebind projects against the current installed set.
         migrate_mono_tags(&app);
         crate::projects::rebind_projects_to_installed(&app);
-        // Re-read after migration/prune may have rewritten the file, then
-        // record the new signature so the next poll takes the fast path.
         let raw = fs::read_to_string(&file).unwrap_or_default();
         *installed_signature().lock().unwrap() = Some(registry_signature(&raw));
     }
 
-    // Cheap steady-state check: stat each executable to drop deleted ones.
     Ok(prune_missing(&app))
 }
 
@@ -1223,7 +1209,8 @@ pub struct RateLimitInfo {
 #[tauri::command]
 pub async fn test_github_token(app: AppHandle) -> Result<RateLimitInfo, String> {
     let settings = crate::settings::read_settings(&app);
-    let token = settings.github_token.filter(|t| !t.trim().is_empty());
+    let token = crate::git_auth::github_oauth_token(&app)
+        .or_else(|| settings.github_token.filter(|t| !t.trim().is_empty()));
 
     let client = reqwest::Client::builder()
         .user_agent("godot-hub/1.0")

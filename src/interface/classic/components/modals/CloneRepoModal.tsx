@@ -143,7 +143,7 @@ export function CloneRepoModal({
     }
   }
 
-  const previewName = url.trim() ? repoName : '—'
+  const previewName = url.trim() ? repoName : t('none')
 
   return (
     <motion.div

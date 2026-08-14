@@ -18,6 +18,8 @@ import { Checkbox } from '../ui/Checkbox'
 import { ConfirmDialog } from '../modals/ConfirmDialog'
 import { OverlayScrollArea } from '../reusables/OverlayScrollArea'
 import { useSettings } from '../../../../hooks/useSettings'
+import { GitAuthModal } from '../modals/GitAuthModal'
+import type { GitAuthState } from '../../../../types'
 import {
   IconX,
   IconGitBranch,
@@ -34,6 +36,7 @@ import {
   IconAlertTriangle,
   IconInfo,
   IconBomb,
+  IconPlug,
 } from '../../lib/icons'
 
 interface Props {
@@ -109,6 +112,11 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
   const [mergeActive, setMergeActive] = useState(false)
 
   const [toasts, setToasts] = useState<Toast[]>([])
+
+  const [gitAuth, setGitAuth] = useState<GitAuthState | null>(null)
+  const [gitAuthFlow, setGitAuthFlow] = useState<'github' | 'gitlab' | null>(
+    null,
+  )
 
   const addToast = useCallback((type: Toast['type'], message: string) => {
     const id = ++toastId
@@ -207,11 +215,21 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
     } catch {}
   }, [project.path])
 
+  const refreshGitAuth = useCallback(async () => {
+    try {
+      setGitAuth(await api.gitAuthGetState())
+    } catch {}
+  }, [])
+
   useEffect(() => {
     let cancelled = false
     api.getProjectName(project.path).then((name) => { if (!cancelled) setDisplayName(name) })
     return () => { cancelled = true }
   }, [project.path])
+
+  useEffect(() => {
+    void refreshGitAuth()
+  }, [refreshGitAuth])
 
   useEffect(() => {
     let cancelled = false
@@ -547,6 +565,61 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
         <button onClick={onClose} aria-label={t('close_sidebar')} className="focus-ring cursor-pointer p-2 rounded-item text-muted hover:text-ink hover:bg-raised transition-colors shrink-0">
           <IconX className="w-4 h-4" />
         </button>
+      </div>
+
+      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-line shrink-0">
+        <IconPlug className="w-3.5 h-3.5 text-muted shrink-0" />
+        <div className="flex items-center gap-1.5 min-w-0 flex-1 flex-wrap">
+          {gitAuth?.github ? (
+            <span
+              title={`GitHub · @${gitAuth.github.username}`}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-mint/10 border border-mint/30 text-[11px] text-mint"
+            >
+              <IconCheck className="w-3 h-3 shrink-0" />
+              <span className="font-medium">GitHub</span>
+              <span className="text-mint/70 truncate max-w-[110px]">@{gitAuth.github.username}</span>
+            </span>
+          ) : (
+            <button
+              onClick={() => setGitAuthFlow('github')}
+              className="focus-ring cursor-pointer inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-outline/50 text-[11px] text-muted hover:text-ink hover:border-accent-dim transition-colors"
+            >
+              <IconGitBranch className="w-3 h-3 shrink-0" />
+              {t('auth_sign_in')} GitHub
+            </button>
+          )}
+          {gitAuth?.gitlab ? (
+            <span
+              title={`GitLab · ${gitAuth.gitlab.host ?? `@${gitAuth.gitlab.username}`}`}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-mint/10 border border-mint/30 text-[11px] text-mint"
+            >
+              <IconCheck className="w-3 h-3 shrink-0" />
+              <span className="font-medium">GitLab</span>
+              <span className="text-mint/70 truncate max-w-[110px]">
+                {gitAuth.gitlab.host ?? `@${gitAuth.gitlab.username}`}
+              </span>
+            </span>
+          ) : (
+            <button
+              onClick={() => setGitAuthFlow('gitlab')}
+              className="focus-ring cursor-pointer inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-outline/50 text-[11px] text-muted hover:text-ink hover:border-accent-dim transition-colors"
+            >
+              <IconGitBranch className="w-3 h-3 shrink-0" />
+              {t('auth_sign_in')} GitLab
+            </button>
+          )}
+          {(gitAuth?.pats ?? []).map((pat) => (
+            <span
+              key={pat.host}
+              title={`${pat.host} · @${pat.username}`}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-mint/10 border border-mint/30 text-[11px] text-mint"
+            >
+              <IconPlug className="w-3 h-3 shrink-0" />
+              <span className="font-medium">{pat.host}</span>
+              <span className="text-mint/70 truncate max-w-[110px]">@{pat.username}</span>
+            </span>
+          ))}
+        </div>
       </div>
 
       {!isRepo ? (
@@ -1093,6 +1166,18 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
             }}
             onOpenTerminal={() => api.openTerminal(project.path)}
             onAbortMerge={handleAbortMerge}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {gitAuthFlow && (
+          <GitAuthModal
+            provider={gitAuthFlow}
+            onClose={() => setGitAuthFlow(null)}
+            onConnected={() => {
+              void refreshGitAuth()
+            }}
           />
         )}
       </AnimatePresence>

@@ -130,6 +130,13 @@ export interface GitInitOutcome {
   warning: string | null
 }
 
+export interface GitInitOptions {
+  gitignore?: boolean
+  gitattributes?: boolean
+  readme?: boolean
+  license?: string | null
+}
+
 export interface GitDiffLine {
   kind: 'context' | 'add' | 'delete'
   content: string
@@ -339,5 +346,42 @@ export interface AppSettings {
 export interface ScanResult {
   added: Project[]
   found_dismissed: string[]
+}
+
+export interface GitAccountInfo {
+  username: string
+  host?: string | null
+}
+
+export interface GitPatInfo {
+  host: string
+  username: string
+}
+
+export interface GitAuthState {
+  github: GitAccountInfo | null
+  gitlab: GitAccountInfo | null
+  pats: GitPatInfo[]
+}
+
+export interface DeviceFlowStart {
+  provider: string
+  device_code: string
+  user_code: string
+  verification_uri: string
+  verification_uri_complete: string
+  interval: number
+  expires_in: number
+  base_url?: string | null
+}
+
+export type DeviceFlowPoll =
+  | { status: 'pending' }
+  | { status: 'success'; username: string }
+  | { status: 'error'; message: string }
+
+export interface CreateRepoResult {
+  url: string
+  slug: string
 }
 

@@ -100,7 +100,7 @@
   "path_copy_failed": "无法将路径复制到剪贴板。",
   "discard_file_title": "放弃 \"{{file}}\" 的更改？",
   "discard_file_desc": "此文件的更改将先被暂存，以便稍后恢复。是否继续？",
-  "file_discarded": "{{file}} 的更改已暂存 — 如有需要可从暂存部分恢复。",
+  "file_discarded": "{{file}} 的更改已暂存，如有需要可从暂存部分恢复。",
   "open_commit_on_github": "在 GitHub 上打开提交",
   "recent_commits": "最近的提交",
   "no_commits_found": "未找到提交。",

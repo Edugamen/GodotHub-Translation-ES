@@ -1,6 +1,7 @@
 use std::ffi::OsStr;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::OnceLock;
 
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
@@ -10,11 +11,34 @@ use crate::terminal::CREATE_NO_WINDOW;
 
 use crate::error::{AppError, AppResult};
 
+static CREDENTIAL_STORE: OnceLock<Option<PathBuf>> = OnceLock::new();
+
+pub fn set_credential_store(path: PathBuf) {
+    let _ = CREDENTIAL_STORE.set(Some(path));
+}
+
+fn credential_store_arg() -> Option<String> {
+    let path = CREDENTIAL_STORE.get().and_then(|o| o.as_ref())?;
+    if !path.exists() {
+        return None;
+    }
+    let escaped = path
+        .display()
+        .to_string()
+        .replace('\\', "\\\\")
+        .replace('\"', "\\\"");
+    Some(format!("store --file=\"{}\"", escaped))
+}
+
 pub fn git_command() -> Command {
     #[allow(unused_mut)]
     let mut cmd = Command::new("git");
     #[cfg(target_os = "windows")]
     cmd.creation_flags(CREATE_NO_WINDOW);
+    if let Some(helper) = credential_store_arg() {
+        cmd.arg("-c");
+        cmd.arg(format!("credential.helper={}", helper));
+    }
     cmd
 }
 
