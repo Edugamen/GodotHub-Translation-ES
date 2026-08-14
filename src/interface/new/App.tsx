@@ -14,6 +14,8 @@ import { GitSidebar } from './components/git/GitSidebar'
 import { ProjectsView } from './views/ProjectsView'
 import { VersionsView } from './views/VersionsView'
 import { SettingsView } from './views/SettingsView'
+import { UpdatesView } from './views/UpdatesView'
+import { ChangelogView } from './views/ChangelogView'
 import { useSettings } from '../../hooks/useSettings'
 import { useTauriEvent } from '../../lib/useTauriEvent'
 import {
@@ -22,6 +24,7 @@ import {
   shouldOpenSettingsAfterSwitch,
 } from '../../lib/uiTransition'
 import {
+  IconBell,
   IconBookOpen,
   IconCloudArrowDown,
   IconFolder,
@@ -40,6 +43,7 @@ const TABS = [
   { id: 'asset-store', navKey: 'asset_store', icon: IconStore },
   { id: 'news', navKey: 'news', icon: IconNews },
   { id: 'settings', navKey: 'settings', icon: IconGear, footer: true },
+  { id: 'updates', navKey: 'updates', icon: IconBell, footer: true },
   { id: 'changelog', navKey: 'changelog', icon: IconBookOpen, footer: true, iconOnly: true },
 ] as const
 
@@ -51,16 +55,19 @@ function PlaceholderView({
   icon: Icon,
   metric,
   children,
+  connected = false,
 }: {
   title: string
   description: string
   icon: (props: IconProps) => ReactNode
   metric?: ReactNode
   children?: ReactNode
+  connected?: boolean
 }) {
   return (
     <div className="flex-1 min-w-0 h-full flex flex-col">
       <ViewHeader
+        connected={connected}
         title={title}
         leadingAction={
           <span className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full bg-accent text-ink">
@@ -87,6 +94,7 @@ export function App() {
   const { t } = useTranslation('nav')
   const { t: tc } = useTranslation('common')
   const { settings } = useSettings()
+  const cardLayout = settings.card_layout ?? true
   const { projects, refresh: refreshProjects } = useProjectsContext()
   const projectsRef = useRef(projects)
   projectsRef.current = projects
@@ -179,20 +187,34 @@ export function App() {
   const renderView = () => {
     switch (tab) {
       case 'projects':
-        return <ProjectsView onOpenSettings={() => setTab('settings')} />
+        return (
+          <ProjectsView
+            onOpenSettings={() => setTab('settings')}
+            connected={!cardLayout}
+          />
+        )
       case 'versions':
-        return <VersionsView onOpenSettings={() => setTab('settings')} />
+        return (
+          <VersionsView
+            onOpenSettings={() => setTab('settings')}
+            connected={!cardLayout}
+          />
+        )
       case 'news':
         return (
           <PlaceholderView
+            connected={!cardLayout}
             title={t('news')}
             icon={IconNews}
             description="The redesigned News view will live here as its own file in src/interface/new/views/."
           />
         )
+      case 'updates':
+        return <UpdatesView connected={!cardLayout} />
       case 'templates':
         return (
           <PlaceholderView
+            connected={!cardLayout}
             title={t('templates')}
             icon={IconRocket}
             description="The redesigned Templates view will live here as its own file in src/interface/new/views/."
@@ -201,21 +223,16 @@ export function App() {
       case 'asset-store':
         return (
           <PlaceholderView
+            connected={!cardLayout}
             title={t('asset_store')}
             icon={IconStore}
             description="The redesigned Asset Store view will live here as its own file in src/interface/new/views/."
           />
         )
       case 'settings':
-        return <SettingsView />
+        return <SettingsView connected={!cardLayout} />
       case 'changelog':
-        return (
-          <PlaceholderView
-            title={t('changelog')}
-            icon={IconBookOpen}
-            description="The redesigned Changelog view will live here as its own file in src/interface/new/views/."
-          />
-        )
+        return <ChangelogView connected={!cardLayout} />
     }
   }
 
@@ -223,7 +240,11 @@ export function App() {
     <div className="new-ui h-screen w-screen flex flex-col bg-base text-ink font-body">
       <Titlebar />
 
-      <div className="relative flex-1 flex min-h-0 p-4 pt-3 gap-4">
+      <div
+        className={`relative flex-1 flex min-h-0 ${
+          cardLayout ? 'p-4 pt-3 gap-4' : 'gap-0'
+        }`}
+      >
         <Sidebar
           tabs={tabs}
           activeTab={tab}
@@ -231,12 +252,21 @@ export function App() {
             setGitSidebarProject(null)
             setTab(id as NewTab)
           }}
+          connected={!cardLayout}
         />
 
-        {tab === 'projects' || tab === 'settings' || tab === 'versions' ? (
+        {tab === 'projects' ||
+        tab === 'settings' ||
+        tab === 'versions' ||
+        tab === 'updates' ||
+        tab === 'changelog' ? (
           renderView()
         ) : (
-          <main className="flex-1 min-w-0 relative rounded-card bg-raised overflow-hidden">
+          <main
+            className={`flex-1 min-w-0 relative overflow-hidden ${
+              cardLayout ? 'rounded-card bg-raised' : 'bg-raised'
+            }`}
+          >
             <OverlayScrollArea
               className="absolute inset-0"
               hideThumb={!settings.show_scrollbars}

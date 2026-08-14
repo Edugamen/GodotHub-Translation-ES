@@ -24,10 +24,12 @@ export function Sidebar({
   tabs,
   activeTab,
   onTabChange,
+  connected = false,
 }: {
   tabs: SidebarTab[]
   activeTab: string
   onTabChange: (id: string) => void
+  connected?: boolean
 }) {
   const { t } = useTranslation('nav')
   const [width, setWidth] = useState(() => {
@@ -199,7 +201,11 @@ export function Sidebar({
       <motion.div
         animate={{ width: collapsed ? COLLAPSED_WIDTH : width }}
         transition={dragging ? { duration: 0 } : { type: 'spring', stiffness: 650, damping: 38 }}
-        className="flex flex-col h-full rounded-card bg-raised overflow-hidden"
+        className={`flex flex-col h-full overflow-hidden ${
+          connected
+            ? 'rounded-none border-r border-line bg-raised'
+            : 'rounded-card bg-raised'
+        }`}
       >
       <div
         className={`shrink-0 flex items-center gap-2 h-12 border-b border-line ${
@@ -237,18 +243,37 @@ export function Sidebar({
       {footerTabs.length > 0 && (
         <nav className={`shrink-0 p-3 flex flex-col gap-1.5 ${collapsed ? 'items-center' : 'items-stretch'}`}>
           <div
-            className={`flex ${
-              collapsed ? 'flex-col gap-1 items-center' : 'flex-row gap-1.5 items-stretch'
+            className={`flex flex-col ${
+              collapsed ? 'gap-1 items-center' : 'gap-1.5 items-stretch'
             }`}
           >
-            {footerTabs.map((tab) =>
+            {footerTabs.slice(0, -2).map((tab) =>
               renderTabButton(
                 tab,
                 collapsed || tab.iconOnly
                   ? 'w-11 h-11 shrink-0 justify-center'
-                  : 'flex-1 gap-2.5 px-3 py-2.5',
+                  : 'w-full gap-2.5 px-3 py-2.5',
                 collapsed,
               ),
+            )}
+            {footerTabs.length >= 2 && (
+              <div
+                className={`flex ${
+                  collapsed
+                    ? 'flex-col gap-1 items-center'
+                    : 'flex-row gap-1.5 items-stretch'
+                }`}
+              >
+                {footerTabs.slice(-2).map((tab) =>
+                  renderTabButton(
+                    tab,
+                    collapsed || tab.iconOnly
+                      ? 'w-11 h-11 shrink-0 justify-center'
+                      : 'flex-1 gap-2.5 px-3 py-2.5',
+                    collapsed,
+                  ),
+                )}
+              </div>
             )}
           </div>
         </nav>

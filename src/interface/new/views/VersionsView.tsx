@@ -117,8 +117,10 @@ function MonoBadge() {
 
 export function VersionsView({
   onOpenSettings,
+  connected = false,
 }: {
   onOpenSettings?: () => void
+  connected?: boolean
 }) {
   const { t } = useTranslation('nav')
   const { t: tv } = useTranslation('versions')
@@ -266,13 +268,10 @@ export function VersionsView({
   }
 
   return (
-    <OverlayScrollArea
-      className="flex-1 min-w-0 -mr-4 -mb-4"
-      hideThumb={!settings.show_scrollbars}
-    >
-      <div className="h-full pr-5 pb-4 flex flex-col gap-2">
-        <ViewHeader
-          title={t('versions')}
+    <div className="flex-1 min-w-0 h-full flex flex-col gap-2">
+      <ViewHeader
+        connected={connected}
+        title={t('versions')}
           metric={
             <>
               <h2 className="text-4xl font-bold text-muted">
@@ -314,8 +313,15 @@ export function VersionsView({
             onChange={setQuery}
             placeholderKey="version_search_placeholder"
           />
-        </ViewHeader>
+      </ViewHeader>
 
+      <OverlayScrollArea
+        className={`flex-1 min-w-0 ${connected ? '' : '-mr-4 -mb-4'}`}
+        hideThumb={!settings.show_scrollbars}
+      >
+        <div
+          className={`h-full ${connected ? 'pl-5' : ''} pr-5 pb-4 flex flex-col gap-2`}
+        >
         {installed.length === 0 && !isSearching ? (
           <div className="rounded-item border border-dashed border-outline/50 py-20 flex flex-col items-center gap-3 text-center px-6">
             <div className="w-12 h-12 rounded-tile bg-overlay border border-outline/50 flex items-center justify-center">
@@ -720,8 +726,9 @@ export function VersionsView({
             </>
           )}
         </section>
-      </div>
-
-    </OverlayScrollArea>
+        <div className="shrink-0 h-4" aria-hidden="true" />
+        </div>
+      </OverlayScrollArea>
+    </div>
   )
 }

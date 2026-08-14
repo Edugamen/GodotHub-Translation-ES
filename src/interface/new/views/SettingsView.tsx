@@ -187,7 +187,7 @@ function Segmented({
   )
 }
 
-export function SettingsView() {
+export function SettingsView({ connected = false }: { connected?: boolean }) {
   const { t } = useTranslation('nav')
   const { t: ts, i18n } = useTranslation('settings')
   const { settings, update, resetToDefaults } = useSettings()
@@ -448,6 +448,25 @@ export function SettingsView() {
             </p>
           </button>
         </div>
+      </Subsection>
+
+      <Subsection
+        id="appearance-layout"
+        title={ts('card_layout_label')}
+        description={ts('card_layout_desc')}
+        searchText={`${ts('card_layout_label')} ${ts('card_layout_desc')}`}
+        query={searchQuery}
+        onMatch={reportMatch}
+      >
+        <SettingRow label={ts('card_layout_label')}>
+          <Toggle
+            checked={settings.card_layout ?? true}
+            onChange={(checked) =>
+              update({ ...settings, card_layout: checked })
+            }
+            label={ts('card_layout_label')}
+          />
+        </SettingRow>
       </Subsection>
 
       <Subsection
@@ -1709,6 +1728,7 @@ export function SettingsView() {
   return (
     <div className="flex-1 min-w-0 h-full flex flex-col">
       <ViewHeader
+        connected={connected}
         title={t('settings')}
       >
         <SearchBar
@@ -1719,11 +1739,11 @@ export function SettingsView() {
         />
       </ViewHeader>
 
-      <div className="flex-1 mt-2 min-h-0 flex gap-4">
+      <div className="flex-1 min-h-0 flex gap-4 mt-2">
         <nav
           onKeyDown={handleRailKeyDown}
           aria-label={ts('settings_title')}
-          className="shrink-0 w-52 flex flex-col gap-1"
+          className={`shrink-0 w-52 flex flex-col gap-1 ${connected ? 'pl-3' : ''}`}
         >
           {CATEGORIES.map(({ id, icon: Icon }, railIndex) => {
             const active = cat === id
@@ -1761,7 +1781,11 @@ export function SettingsView() {
           })}
         </nav>
 
-        <div className="flex-1 min-w-0 flex rounded-card bg-raised overflow-hidden">
+        <div
+          className={`flex-1 min-w-0 flex bg-raised overflow-hidden ${
+            connected ? 'rounded-tl-tag' : 'rounded-card'
+          }`}
+        >
           <OverlayScrollArea
             className="flex-1 min-w-0"
             hideThumb={!settings.show_scrollbars}

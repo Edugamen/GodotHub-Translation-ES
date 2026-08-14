@@ -74,9 +74,9 @@ export function Titlebar() {
     <header
       data-tauri-drag-region
       onDoubleClick={handleDoubleClick}
-      className={`shrink-0 bg-raised/80 h-12 flex items-center gap-3 select-none ${
-        isMac ? 'pl-20' : 'pl-4'
-      } ${showWindowControls ? '' : 'pr-4'}`}
+      className={`shrink-0 h-12 flex items-center gap-3 select-none ${
+        settings.card_layout ? 'bg-raised/80' : 'bg-raised border-b border-line'
+      } ${isMac ? 'pl-20' : 'pl-4'} ${showWindowControls ? '' : 'pr-4'}`}
     >
       <RunningProjectsChip />
 

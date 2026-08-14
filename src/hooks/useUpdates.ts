@@ -22,5 +22,5 @@ export function useUpdates() {
     void refresh()
   }, [refresh])
 
-  return { entries, loading, error, fromCache, fetchedAt, reload }
+  return { entries, loading, error, fromCache, fetchedAt, reload, refresh }
 }

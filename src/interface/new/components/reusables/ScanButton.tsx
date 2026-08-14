@@ -80,6 +80,7 @@ interface ScanButtonProps {
   onScanStart?: () => void
   onScanEnd?: () => void
   disabled?: boolean
+  requiresDirs?: boolean
 }
 
 export function ScanButton({
@@ -91,6 +92,7 @@ export function ScanButton({
   onScanStart,
   onScanEnd,
   disabled = false,
+  requiresDirs = true,
 }: ScanButtonProps) {
   const { t } = useTranslation('common')
   const [phase, setPhase] = useState<Phase>('idle')
@@ -118,7 +120,7 @@ export function ScanButton({
 
   const handleScan = async () => {
     if (phase !== 'idle') return
-    if (scanDirs.length === 0) {
+    if (scanDirs.length === 0 && requiresDirs) {
       onOpenSettings?.()
       return
     }

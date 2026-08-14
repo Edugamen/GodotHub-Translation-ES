@@ -44,8 +44,10 @@ const UNCATEGORIZED = '__uncategorized__'
 
 export function ProjectsView({
   onOpenSettings,
+  connected = false,
 }: {
   onOpenSettings?: () => void
+  connected?: boolean
 }) {
   const { t } = useTranslation('nav')
   const { t: tc } = useTranslation('common')
@@ -205,15 +207,10 @@ export function ProjectsView({
     query.trim() !== '' || filterBy !== 'all' || tagFilter !== null
 
   return (
-    <OverlayScrollArea
-      className="flex-1 min-w-0 -mr-4 -mb-4"
-      hideThumb={!settings.show_scrollbars}
-      scrollToTopOn={tagFilter}
-      scrollRef={viewportRef}
-    >
-      <div className="h-full pr-5 pb-4 flex flex-col gap-2">
-      <div className="flex flex-col gap-2">
+    <div className="flex-1 min-w-0 h-full flex flex-col">
+      <div className="shrink-0 flex flex-col gap-2">
       <ViewHeader
+        connected={connected}
         title={t('projects')}
         leadingAction={
           <motion.button
@@ -276,7 +273,7 @@ export function ProjectsView({
         <SearchBar value={query} onChange={setQuery} />
       </ViewHeader>
 
-      <div className="shrink-0 flex items-center gap-2">
+      <div className="shrink-0 flex items-center gap-2 mb-3">
         {settings.categories_enabled && (
         <Dropdown
           align="left"
@@ -352,6 +349,15 @@ export function ProjectsView({
       </div>
       </div>
 
+      <OverlayScrollArea
+        className={`flex-1 min-w-0 ${connected ? '' : '-mr-4 -mb-4'}`}
+        hideThumb={!settings.show_scrollbars}
+        scrollToTopOn={tagFilter}
+        scrollRef={viewportRef}
+      >
+        <div
+          className={`h-full ${connected ? 'pl-5' : ''} pr-5 pb-4 flex flex-col gap-2`}
+        >
       <ProjectCardList
         projects={filtered}
         totalCount={projects.length}
@@ -411,6 +417,7 @@ export function ProjectsView({
         )}
       </AnimatePresence>
       </div>
-    </OverlayScrollArea>
+      </OverlayScrollArea>
+    </div>
   )
 }

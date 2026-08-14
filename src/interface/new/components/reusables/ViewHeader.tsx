@@ -7,6 +7,7 @@ export function ViewHeader({
   actions,
   children,
   className = '',
+  connected = false,
 }: {
   title: ReactNode
   leadingAction?: ReactNode
@@ -14,10 +15,13 @@ export function ViewHeader({
   actions?: ReactNode
   children?: ReactNode
   className?: string
+  connected?: boolean
 }) {
   return (
     <section
-      className={`shrink-0 rounded-card bg-raised px-6 py-4 flex flex-col gap-2 ${className}`}
+      className={`shrink-0 px-6 py-4 flex flex-col gap-2 ${
+        connected ? 'rounded-none' : 'rounded-card'
+      } bg-raised ${className}`}
     >
       <header className="shrink-0 flex flex-row items-center gap-3">
         <div className="flex items-center gap-1.5">

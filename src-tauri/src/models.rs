@@ -241,6 +241,8 @@ pub struct AppSettings {
     pub open_after_import: bool,
     #[serde(default)]
     pub new_ui: bool,
+    #[serde(default = "default_true")]
+    pub card_layout: bool,
 }
 
 fn default_language() -> String {
@@ -481,6 +483,7 @@ tooltip_delay: default_tooltip_delay(),
             git_init_new_projects: false,
             open_after_import: true,
             new_ui: false,
+            card_layout: true,
         }
     }
 }

@@ -244,6 +244,8 @@
   "switch_to_classic_confirm_desc": "The app will switch to the classic interface immediately. You can switch back to the new UI anytime from Settings.",
   "switch_to_new_ui_confirm_title": "Switch to the new UI?",
   "switch_to_new_ui_confirm_desc": "The app will switch to the experimental interface immediately. Some areas are still unstable; you can switch back anytime from Settings → Appearance.",
+  "card_layout_label": "Card layout",
+  "card_layout_desc": "Show the sidebar, views, and titlebar as separate floating rounded cards. Turn off for a connected layout where everything merges into one surface, like the classic UI.",
   "language_label": "Language",
   "language_complete": "Complete",
   "language_beta": "Beta",

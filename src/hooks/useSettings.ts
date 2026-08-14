@@ -84,6 +84,7 @@ const DEFAULTS: AppSettings = {
   git_init_new_projects: false,
   open_after_import: true,
   new_ui: false,
+  card_layout: true,
 }
 
 interface SettingsContextValue {
