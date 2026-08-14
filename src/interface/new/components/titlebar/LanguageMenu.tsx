@@ -8,7 +8,7 @@ import {
   languageStatusLabelKey,
   type LanguageStatus,
 } from '../../../../i18n/languages'
-import { IconLanguage, IconCheck, IconGear } from '../../lib/icons'
+import { IconLanguage, IconCheck } from '../../lib/icons'
 import { useSettings } from '../../../../hooks/useSettings'
 import { Tooltip } from '../reusables/Tooltip'
 
@@ -24,7 +24,6 @@ const MENU_WIDTH = 240
 const OPEN_UP_THRESHOLD = 220
 
 export function LanguageMenu() {
-  const { t } = useTranslation('common')
   const { t: ts } = useTranslation('settings')
   const { settings, update } = useSettings()
 
@@ -97,13 +96,6 @@ export function LanguageMenu() {
     setOpen(false)
   }
 
-  const openSettings = () => {
-    setOpen(false)
-    window.dispatchEvent(
-      new CustomEvent('app:open-setting', { detail: 'language' }),
-    )
-  }
-
   const noDrag = (e: React.MouseEvent) => e.stopPropagation()
 
   return (
@@ -171,16 +163,6 @@ export function LanguageMenu() {
                   </button>
                 )
               })}
-              <div className="mx-2 my-1 h-px bg-outline/40" />
-              <button
-                type="button"
-                role="menuitem"
-                onClick={openSettings}
-                className="focus-ring cursor-pointer w-full flex items-center gap-2 text-left px-2.5 py-2 rounded-item text-xs text-muted hover:bg-raised hover:text-ink transition-colors"
-              >
-                <IconGear className="w-3.5 h-3.5" />
-                {t('language_settings')}
-              </button>
             </motion.div>
           )}
         </AnimatePresence>,
