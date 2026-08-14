@@ -242,6 +242,8 @@
   "switch_to_classic_ui_desc": "Leaves the experimental new interface and returns to the classic UI. You can switch back anytime from Settings → Appearance.",
   "switch_to_classic_confirm_title": "Switch to the classic UI?",
   "switch_to_classic_confirm_desc": "The app will switch to the classic interface immediately. You can switch back to the new UI anytime from Settings.",
+  "switch_to_new_ui_confirm_title": "Switch to the new UI?",
+  "switch_to_new_ui_confirm_desc": "The app will switch to the experimental interface immediately. Some areas are still unstable; you can switch back anytime from Settings → Appearance.",
   "language_label": "Language",
   "language_complete": "Complete",
   "language_beta": "Beta",

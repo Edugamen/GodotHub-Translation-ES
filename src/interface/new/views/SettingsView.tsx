@@ -25,12 +25,10 @@ import {
   DEFAULT_RAISED_CONTRAST,
   LIGHT_THEME_PRESETS,
   DARK_THEME_PRESETS,
-  buildCustomPalette,
   customThemeDefaults,
   getThemePreset,
   isDarkColor,
   resolveThemeMode,
-  type ThemePreset,
 } from '../../../lib/colors'
 import { ColorSwatchPicker } from '../components/ui/ColorSwatchPicker'
 import { OverlayScrollArea } from '../components/reusables/OverlayScrollArea'
@@ -43,6 +41,7 @@ import { ViewHeader } from '../components/reusables/ViewHeader'
 import { ConfirmDialog } from '../components/modals/ConfirmDialog'
 import { CheckForUpdatesModal } from '../components/modals/CheckForUpdatesModal'
 import { BugReportModal } from '../components/modals/BugReportModal'
+import { ThemePresetsModal } from '../components/modals/ThemePresetsModal'
 import { defaultCornerRadius, isMac, isWindows } from '../../../lib/platform'
 import { relaunch } from '@tauri-apps/plugin-process'
 import { flushPendingSave } from '../../../lib/pendingSave'
@@ -128,117 +127,6 @@ function Subsection({
   )
 }
 
-function PalettePreview({ preset }: { preset: ThemePreset }) {
-  return (
-    <div
-      className="w-full rounded-md overflow-hidden border"
-      style={{ backgroundColor: preset.base, borderColor: preset.line }}
-    >
-      <div
-        className="flex items-center gap-1 px-2 py-1.5"
-        style={{
-          backgroundColor: preset.surface,
-          borderBottom: `1px solid ${preset.line}`,
-        }}
-      >
-        <span
-          className="w-1.5 h-1.5 rounded-full"
-          style={{ backgroundColor: preset.danger }}
-        />
-        <span
-          className="w-1.5 h-1.5 rounded-full"
-          style={{ backgroundColor: preset.amber }}
-        />
-        <span
-          className="w-1.5 h-1.5 rounded-full"
-          style={{ backgroundColor: preset.mint }}
-        />
-        <span
-          className="ml-auto w-7 h-1 rounded-full"
-          style={{ backgroundColor: preset.line }}
-        />
-      </div>
-
-      <div className="flex gap-1.5 p-2">
-        <div
-          className="flex flex-col gap-1 p-1 rounded-[3px]"
-          style={{ backgroundColor: preset.surface }}
-        >
-          <span
-            className="w-2 h-1 rounded-full"
-            style={{ backgroundColor: preset.accent }}
-          />
-          <span
-            className="w-2 h-1 rounded-full"
-            style={{ backgroundColor: preset.line }}
-          />
-          <span
-            className="w-2 h-1 rounded-full"
-            style={{ backgroundColor: preset.line }}
-          />
-        </div>
-        <div className="flex-1 flex flex-col gap-1">
-          <div
-            className="rounded-[3px] p-1.5"
-            style={{
-              backgroundColor: preset.raised,
-              border: `1px solid ${preset.line}`,
-            }}
-          >
-            <span
-              className="block h-1 rounded-full w-3/4"
-              style={{ backgroundColor: preset.ink }}
-            />
-            <span
-              className="block h-1 rounded-full w-1/2 mt-1"
-              style={{ backgroundColor: preset.muted }}
-            />
-          </div>
-          <div className="flex items-center gap-1">
-            <span
-              className="flex-1 h-1 rounded-full"
-              style={{ backgroundColor: preset.line }}
-            />
-            <span
-              className="w-3 h-2 rounded-xs"
-              style={{ backgroundColor: preset.accent }}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div
-        className="flex items-center gap-1.5 px-2 py-1.5"
-        style={{
-          backgroundColor: preset.surface,
-          borderTop: `1px solid ${preset.line}`,
-        }}
-      >
-        <span
-          className="w-2 h-2 rounded-full ring-1 ring-black/20"
-          style={{ backgroundColor: preset.accent }}
-        />
-        <span
-          className="w-2 h-2 rounded-full ring-1 ring-black/20"
-          style={{ backgroundColor: preset.accentBright }}
-        />
-        <span
-          className="w-2 h-2 rounded-full ring-1 ring-black/20"
-          style={{ backgroundColor: preset.mint }}
-        />
-        <span
-          className="w-2 h-2 rounded-full ring-1 ring-black/20"
-          style={{ backgroundColor: preset.amber }}
-        />
-        <span
-          className="w-2 h-2 rounded-full ring-1 ring-black/20"
-          style={{ backgroundColor: preset.danger }}
-        />
-      </div>
-    </div>
-  )
-}
-
 function SettingRow({
   label,
   description,
@@ -305,7 +193,8 @@ export function SettingsView() {
   const { settings, update, resetToDefaults } = useSettings()
   const { refresh: refreshProjects } = useProjectsContext()
   const [cat, setCat] = useState<SettingsCat>('appearance')
-  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
+  const [presetModal, setPresetModal] = useState<'light' | 'dark' | null>(null)
+  const [confirmingUiSwitch, setConfirmingUiSwitch] = useState<boolean | null>(null)
   const [statsBusy, setStatsBusy] = useState<'export' | 'import' | null>(null)
   const [statsMessage, setStatsMessage] = useState<string | null>(null)
   const [cssDraft, setCssDraft] = useState(settings.custom_css)
@@ -399,15 +288,6 @@ export function SettingsView() {
     }
   }
 
-  const customPalette =
-    getThemePreset(settings.theme_preset) ??
-    buildCustomPalette(
-      settings.accent_color,
-      settings.background_color,
-      resolveThemeMode(settings.theme_mode),
-      settings.raised_contrast,
-    )
-
   const runScan = async () => {
     setScanMessage(ts('scanning'))
     const [projects, versions] = await Promise.all([
@@ -478,6 +358,14 @@ export function SettingsView() {
     await resetToDefaults()
   }
 
+  const handleUiSwitchConfirm = () => {
+    const target = confirmingUiSwitch
+    setConfirmingUiSwitch(null)
+    if (target === null) return
+    update({ ...settings, new_ui: target })
+    markUiSwitchToSettings()
+  }
+
   const wipeAppData = async () => {
     setConfirmingWipe(false)
     await api.resetAppData()
@@ -503,29 +391,63 @@ export function SettingsView() {
     <div className="flex flex-col gap-3">
       <Subsection
         id="appearance-ui"
-        title={
-          <span className="inline-flex items-center gap-2">
-            {ts('new_ui_label')}
-            <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-tag bg-amber/15 text-amber border border-amber/30">
-              {ts('git_beta_badge', { ns: 'common' })}
-            </span>
-          </span>
-        }
-        description={ts('new_ui_desc')}
-        searchText={`${ts('new_ui_label')} ${ts('new_ui_desc')} ${ts('new_ui_tooltip')}`}
+        title={ts('interface_label')}
+        searchText={`${ts('new_ui_label')} ${ts('new_ui_desc')} ${ts('new_ui_tooltip')} ${ts('switch_to_classic_ui')} ${ts('switch_to_classic_ui_desc')} ${ts('interface_label')}`}
         query={searchQuery}
         onMatch={reportMatch}
       >
-        <SettingRow label={ts('new_ui_label')}>
-          <Toggle
-            checked={settings.new_ui}
-            onChange={(checked) => {
-              update({ ...settings, new_ui: checked })
-              markUiSwitchToSettings()
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              if (!settings.new_ui) setConfirmingUiSwitch(true)
             }}
-            label={ts('new_ui_label')}
-          />
-        </SettingRow>
+            className={`focus-ring cursor-pointer flex flex-col items-start gap-1.5 rounded-btn border p-3.5 text-left transition-colors ${
+              settings.new_ui
+                ? 'border-accent bg-accent/10'
+                : 'border-outline/50 hover:border-accent-dim hover:bg-raised'
+            }`}
+          >
+            <span className="flex items-center gap-2 w-full">
+              <span className="text-xs font-medium text-ink">
+                {ts('new_ui_label')}
+              </span>
+              <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-tag bg-amber/15 text-amber border border-amber/30">
+                {ts('git_beta_badge', { ns: 'common' })}
+              </span>
+              {settings.new_ui && (
+                <IconCheck className="w-3.5 h-3.5 text-accent-bright ml-auto" />
+              )}
+            </span>
+            <p className="text-[11px] text-muted leading-relaxed">
+              {ts('new_ui_desc')}
+            </p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (settings.new_ui) setConfirmingUiSwitch(false)
+            }}
+            className={`focus-ring cursor-pointer flex flex-col items-start gap-1.5 rounded-btn border p-3.5 text-left transition-colors ${
+              !settings.new_ui
+                ? 'border-accent bg-accent/10'
+                : 'border-outline/50 hover:border-accent-dim hover:bg-raised'
+            }`}
+          >
+            <span className="flex items-center gap-2 w-full">
+              <span className="text-xs font-medium text-ink">
+                {ts('switch_to_classic_ui')}
+              </span>
+              {!settings.new_ui && (
+                <IconCheck className="w-3.5 h-3.5 text-accent-bright ml-auto" />
+              )}
+            </span>
+            <p className="text-[11px] text-muted leading-relaxed">
+              {ts('switch_to_classic_ui_desc')}
+            </p>
+          </button>
+        </div>
       </Subsection>
 
       <Subsection
@@ -537,90 +459,44 @@ export function SettingsView() {
         onMatch={reportMatch}
       >
         <div className="flex flex-col gap-4">
+          {([
+            { mode: 'light' as const, label: ts('preset_light_group'), Icon: IconSun, presets: LIGHT_THEME_PRESETS },
+            { mode: 'dark' as const, label: ts('preset_dark_group'), Icon: IconMoon, presets: DARK_THEME_PRESETS },
+          ]).map(({ mode, label, Icon, presets }) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => setPresetModal(mode)}
+              className="focus-ring cursor-pointer flex items-center gap-3 rounded-btn border border-outline/50 hover:border-accent-dim hover:bg-raised px-4 py-3.5 transition-colors"
+            >
+              <Icon className="w-4 h-4 text-muted shrink-0" />
+              <span className="text-xs font-medium text-ink">{label}</span>
+              <span className="text-[10px] font-medium text-muted/60">
+                {presets.length}
+              </span>
+              <IconChevronDown className="w-3.5 h-3.5 text-muted -rotate-90 ml-auto" />
+            </button>
+          ))}
+
           <button
             type="button"
             onClick={selectCustom}
-            className={`focus-ring cursor-pointer flex flex-col items-start gap-2 rounded-btn border p-3 text-left transition-colors ${
+            className={`focus-ring cursor-pointer flex items-center gap-3 rounded-btn border px-4 py-3.5 transition-colors ${
               settings.theme_preset === 'custom'
                 ? 'border-accent bg-accent/10'
                 : 'border-outline/50 hover:border-accent-dim hover:bg-raised'
             }`}
           >
-            <PalettePreview preset={customPalette} />
-            <span className="text-xs font-medium text-ink flex items-center gap-1">
-              {settings.theme_preset === 'custom' && (
-                <IconCheck className="w-3 h-3 text-accent-bright" />
-              )}
+            <IconPalette className="w-4 h-4 text-muted shrink-0" />
+            <span className="text-xs font-medium text-ink">
               {ts('theme_preset_custom')}
             </span>
+            {settings.theme_preset === 'custom' ? (
+              <IconCheck className="w-3.5 h-3.5 text-accent-bright ml-auto" />
+            ) : (
+              <IconChevronDown className="w-3.5 h-3.5 text-muted -rotate-90 ml-auto" />
+            )}
           </button>
-          {([
-            { id: 'light', label: ts('preset_light_group'), Icon: IconSun, presets: LIGHT_THEME_PRESETS },
-            { id: 'dark', label: ts('preset_dark_group'), Icon: IconMoon, presets: DARK_THEME_PRESETS },
-          ] as const).map(({ id, label, Icon, presets }) => {
-            const collapsed = !!collapsedGroups[id]
-            return (
-              <div className="flex flex-col gap-2" key={id}>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setCollapsedGroups((prev) => ({
-                      ...prev,
-                      [id]: !prev[id],
-                    }))
-                  }
-                  aria-expanded={!collapsed}
-                  className="focus-ring cursor-pointer flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted hover:text-ink transition-colors"
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  {label}
-                  <span className="text-[10px] font-medium text-muted/60">
-                    {presets.length}
-                  </span>
-                  <IconChevronDown
-                    className={`w-3 h-3 transition-transform duration-200 ${
-                      collapsed ? '-rotate-90' : ''
-                    }`}
-                  />
-                </button>
-                <AnimatePresence initial={false}>
-                  {!collapsed && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2, ease: 'easeOut' }}
-                      className="overflow-hidden"
-                    >
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {presets.map((preset) => {
-                          const active = settings.theme_preset === preset.id
-                          return (
-                            <button
-                              key={preset.id}
-                              type="button"
-                              onClick={() => selectPreset(preset.id)}
-                              className={`focus-ring cursor-pointer flex flex-col items-start gap-2 rounded-btn border p-3 text-left transition-colors ${
-                                active
-                                  ? 'border-accent bg-accent/10'
-                                  : 'border-outline/50 hover:border-accent-dim hover:bg-raised'
-                              }`}
-                            >
-                              <PalettePreview preset={preset} />
-                              <span className="text-xs font-medium text-ink flex items-center gap-1">
-                                {active && <IconCheck className="w-3 h-3 text-accent-bright" />}
-                                {preset.name}
-                              </span>
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            )
-          })}
         </div>
 
         {settings.theme_preset === 'custom' && (
@@ -835,6 +711,34 @@ export function SettingsView() {
       </Subsection>
 
       <Subsection
+        id="appearance-animation-threshold"
+        title={ts('animation_threshold_label')}
+        description={ts('animation_threshold_desc')}
+        searchText={`${ts('animation_threshold_label')} ${ts('animation_threshold_desc')}`}
+        query={searchQuery}
+        onMatch={reportMatch}
+      >
+        <div className="flex flex-col gap-2">
+          <Slider
+            label={ts('animation_threshold_label')}
+            display={
+              <span className="text-xs font-medium text-ink tabular-nums">
+                {ts('n_projects', { count: settings.animation_threshold })}
+              </span>
+            }
+            value={settings.animation_threshold}
+            min={10}
+            max={100}
+            step={5}
+            defaultValue={20}
+            onChange={(value) =>
+              update({ ...settings, animation_threshold: value })
+            }
+          />
+        </div>
+      </Subsection>
+
+      <Subsection
         id="appearance-scrollbars"
         title={ts('show_scrollbar_label')}
         description={ts('scrollbar_desc')}
@@ -992,52 +896,60 @@ export function SettingsView() {
             />
           </div>
 
-          <div className="flex flex-col gap-2.5 pt-5 border-t border-line">
-            <span className="text-xs font-medium text-muted flex items-center gap-2">
-              {ts('language_label')}
-              <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-tag bg-amber/15 text-amber border border-amber/30">
-                Beta
-              </span>
-            </span>
-            <Dropdown
-              align="left"
-              trigger={({ open, toggle }) => {
-                const current =
-                  LANGUAGES.find(
-                    (l) =>
-                      i18n.language === l.value ||
-                      i18n.language.startsWith(l.value.split('-')[0]),
-                  ) ?? LANGUAGES[0]
-                return (
-                  <button
-                    type="button"
-                    onClick={toggle}
-                    aria-expanded={open}
-                    className="focus-ring cursor-pointer inline-flex items-center gap-2 px-3.5 py-2 rounded-btn bg-overlay border border-outline/50 text-xs font-medium text-ink hover:border-accent-dim transition-colors self-start"
-                  >
-                    {current.label}
-                    <IconChevronDown
-                      className={`w-3 h-3 text-muted transition-transform duration-200 ${
-                        open ? 'rotate-180' : ''
-                      }`}
-                    />
-                  </button>
-                )
-              }}
-              items={LANGUAGES.map((lang) => ({
-                key: lang.value,
-                label: lang.label,
-                active:
-                  i18n.language === lang.value ||
-                  i18n.language.startsWith(lang.value.split('-')[0]),
-                onClick: () => {
-                  i18n.changeLanguage(lang.value)
-                  update({ ...settings, language: lang.value })
-                },
-              }))}
-            />
-          </div>
         </div>
+      </Subsection>
+
+      <Subsection
+        id="display-language"
+        title={
+          <span className="inline-flex items-center gap-2">
+            {ts('language_label')}
+            <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-tag bg-amber/15 text-amber border border-amber/30">
+              Beta
+            </span>
+          </span>
+        }
+        searchText={`${ts('language_label')} ${LANGUAGES.map((l) => l.label).join(' ')}`}
+        query={searchQuery}
+        onMatch={reportMatch}
+      >
+        <Dropdown
+          align="left"
+          trigger={({ open, toggle }) => {
+            const current =
+              LANGUAGES.find(
+                (l) =>
+                  i18n.language === l.value ||
+                  i18n.language.startsWith(l.value.split('-')[0]),
+              ) ?? LANGUAGES[0]
+            return (
+              <button
+                type="button"
+                onClick={toggle}
+                aria-expanded={open}
+                className="focus-ring cursor-pointer inline-flex items-center gap-2 px-3.5 py-2 rounded-btn bg-overlay border border-outline/50 text-xs font-medium text-ink hover:border-accent-dim transition-colors self-start"
+              >
+                {current.label}
+                <IconChevronDown
+                  className={`w-3 h-3 text-muted transition-transform duration-200 ${
+                    open ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+            )
+          }}
+          items={LANGUAGES.map((lang) => ({
+            key: lang.value,
+            label: lang.label,
+            active:
+              i18n.language === lang.value ||
+              i18n.language.startsWith(lang.value.split('-')[0]),
+            onClick: () => {
+              i18n.changeLanguage(lang.value)
+              update({ ...settings, language: lang.value })
+            },
+          }))}
+        />
       </Subsection>
 
       {!isMac && (
@@ -1060,30 +972,32 @@ export function SettingsView() {
       )}
 
       <Subsection
-        id="display-animation-threshold"
-        title={ts('animation_threshold_label')}
-        description={ts('animation_threshold_desc')}
-        searchText={`${ts('animation_threshold_label')} ${ts('animation_threshold_desc')}`}
+        id="display-titlebar"
+        title={ts('titlebar_buttons')}
+        description={ts('titlebar_buttons_desc')}
+        searchText={`${ts('titlebar_buttons')} ${ts('titlebar_buttons_desc')} ${ts('show_support_label')} ${ts('show_star_label')}`}
         query={searchQuery}
         onMatch={reportMatch}
       >
-        <div className="flex flex-col gap-2">
-          <Slider
-            label={ts('animation_threshold_label')}
-            display={
-              <span className="text-xs font-medium text-ink tabular-nums">
-                {ts('n_projects', { count: settings.animation_threshold })}
-              </span>
-            }
-            value={settings.animation_threshold}
-            min={10}
-            max={100}
-            step={5}
-            defaultValue={20}
-            onChange={(value) =>
-              update({ ...settings, animation_threshold: value })
-            }
-          />
+        <div className="flex flex-col gap-4">
+          <SettingRow label={ts('show_support_label')}>
+            <Toggle
+              checked={settings.show_support_button}
+              onChange={(checked) =>
+                update({ ...settings, show_support_button: checked })
+              }
+              label={ts('show_support_label')}
+            />
+          </SettingRow>
+          <SettingRow label={ts('show_star_label')} divider>
+            <Toggle
+              checked={settings.show_star_button}
+              onChange={(checked) =>
+                update({ ...settings, show_star_button: checked })
+              }
+              label={ts('show_star_label')}
+            />
+          </SettingRow>
         </div>
       </Subsection>
     </div>
@@ -1228,6 +1142,35 @@ export function SettingsView() {
               update({ ...settings, download_concurrency: value })
             }
           />
+        </div>
+      </Subsection>
+
+      <Subsection
+        id="storage-time-stats"
+        title={ts('time_tracking_title')}
+        description={ts('time_tracking_desc')}
+        searchText={`${ts('time_tracking_title')} ${ts('time_tracking_desc')} ${ts('export_stats_btn')} ${ts('import_stats_btn')}`}
+        query={searchQuery}
+        onMatch={reportMatch}
+      >
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={handleExportStats}
+            disabled={statsBusy !== null}
+            className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-8 px-4 rounded-item bg-overlay border border-outline/50 text-muted hover:text-ink hover:bg-raised transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {statsBusy === 'export' ? ts('saving') : ts('export_stats_btn')}
+          </button>
+          <button
+            type="button"
+            onClick={handleImportStats}
+            disabled={statsBusy !== null}
+            className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-8 px-4 rounded-item bg-overlay border border-outline/50 text-muted hover:text-ink hover:bg-raised transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {statsBusy === 'import' ? ts('saving') : ts('import_stats_btn')}
+          </button>
+          {statsMessage && <span className="text-xs text-muted">{statsMessage}</span>}
         </div>
       </Subsection>
 
@@ -1631,65 +1574,6 @@ export function SettingsView() {
       </Subsection>
 
       <Subsection
-        id="advanced-titlebar"
-        title={ts('titlebar_buttons')}
-        description={ts('titlebar_buttons_desc')}
-        searchText={`${ts('titlebar_buttons')} ${ts('titlebar_buttons_desc')} ${ts('show_support_label')} ${ts('show_star_label')}`}
-        query={searchQuery}
-        onMatch={reportMatch}
-      >
-        <div className="flex flex-col gap-4">
-          <SettingRow label={ts('show_support_label')}>
-            <Toggle
-              checked={settings.show_support_button}
-              onChange={(checked) =>
-                update({ ...settings, show_support_button: checked })
-              }
-              label={ts('show_support_label')}
-            />
-          </SettingRow>
-          <SettingRow label={ts('show_star_label')} divider>
-            <Toggle
-              checked={settings.show_star_button}
-              onChange={(checked) =>
-                update({ ...settings, show_star_button: checked })
-              }
-              label={ts('show_star_label')}
-            />
-          </SettingRow>
-        </div>
-      </Subsection>
-
-      <Subsection
-        id="advanced-time-stats"
-        title={ts('time_tracking_title')}
-        description={ts('time_tracking_desc')}
-        searchText={`${ts('time_tracking_title')} ${ts('time_tracking_desc')} ${ts('export_stats_btn')} ${ts('import_stats_btn')}`}
-        query={searchQuery}
-        onMatch={reportMatch}
-      >
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={handleExportStats}
-            disabled={statsBusy !== null}
-            className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-8 px-4 rounded-item bg-overlay border border-outline/50 text-muted hover:text-ink hover:bg-raised transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {statsBusy === 'export' ? ts('saving') : ts('export_stats_btn')}
-          </button>
-          <button
-            type="button"
-            onClick={handleImportStats}
-            disabled={statsBusy !== null}
-            className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-8 px-4 rounded-item bg-overlay border border-outline/50 text-muted hover:text-ink hover:bg-raised transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {statsBusy === 'import' ? ts('saving') : ts('import_stats_btn')}
-          </button>
-          {statsMessage && <span className="text-xs text-muted">{statsMessage}</span>}
-        </div>
-      </Subsection>
-
-      <Subsection
         id="advanced-setup"
         title={ts('setup_wizard_again')}
         description={ts('setup_wizard_desc')}
@@ -1926,6 +1810,36 @@ export function SettingsView() {
       </div>
 
       <AnimatePresence>
+        {confirmingUiSwitch !== null && (
+          <ConfirmDialog
+            title={
+              confirmingUiSwitch
+                ? ts('switch_to_new_ui_confirm_title')
+                : ts('switch_to_classic_confirm_title')
+            }
+            description={
+              confirmingUiSwitch
+                ? ts('switch_to_new_ui_confirm_desc')
+                : ts('switch_to_classic_confirm_desc')
+            }
+            confirmLabel={
+              confirmingUiSwitch
+                ? ts('new_ui_label')
+                : ts('switch_to_classic_ui')
+            }
+            variant="default"
+            onConfirm={handleUiSwitchConfirm}
+            onCancel={() => setConfirmingUiSwitch(null)}
+          />
+        )}
+        {presetModal && (
+          <ThemePresetsModal
+            mode={presetModal}
+            currentId={settings.theme_preset}
+            onSelect={(id) => selectPreset(id)}
+            onClose={() => setPresetModal(null)}
+          />
+        )}
         {confirmingReset && (
           <ConfirmDialog
             title={ts('reset_all_title')}
