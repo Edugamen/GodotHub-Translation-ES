@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
+import { LANGUAGES } from '../../../i18n/languages'
 import { useSettings } from '../../../hooks/useSettings'
 import { useWorkspaces } from '../../../hooks/useWorkspaces'
 import { registerPendingSave, flushPendingSave } from '../../../lib/pendingSave'
@@ -1276,12 +1277,7 @@ export function SettingsView({
                   </span>
                 </span>
                 <div className="inline-flex self-start rounded-lg border border-line bg-raised p-1 gap-1">
-                  {[
-                    { value: 'en-US', label: 'English' },
-                    { value: 'zh-CN', label: '简体中文' },
-                    { value: 'ru-RU', label: 'Русский' },
-                    { value: 'ar-MA', label: 'العربية' },
-                  ].map(({ value, label }) => {
+                  {LANGUAGES.map(({ value, label }) => {
                     const active = i18n.language === value || i18n.language.startsWith(value.split('-')[0])
                     return (
                       <motion.button

@@ -16,6 +16,7 @@ import {
   faGripVertical,
   faTableCellsLarge,
   faListUl,
+  faLanguage,
   faSun,
   faMoon,
   faPen,
@@ -105,6 +106,7 @@ export const IconPin = solid(faMapPin)
 export const IconGrip = solid(faGripVertical)
 export const IconLayoutGrid = solid(faTableCellsLarge)
 export const IconLayoutList = solid(faListUl)
+export const IconLanguage = solid(faLanguage)
 export const IconSun = solid(faSun)
 export const IconMoon = solid(faMoon)
 export const IconPencil = solid(faPen)

@@ -38,7 +38,8 @@ export const api = {
   clearProjectIconCache: projectsApi.clearIconCache,
   clearProjectNameCache: projectsApi.clearNameCache,
 
-  fetchAvailableGodotVersions: versionsApi.fetchAvailable,
+  fetchAvailableGodotVersions: (source?: string) =>
+    versionsApi.fetchAvailable(source),
   downloadGodotVersion: versionsApi.download,
   pauseDownload: versionsApi.pauseDownload,
   resumeDownload: versionsApi.resumeDownload,

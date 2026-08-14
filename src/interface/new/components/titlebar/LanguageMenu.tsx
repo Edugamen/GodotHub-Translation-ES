@@ -2,15 +2,15 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import i18n from 'i18next'
+import i18n from '../../../../i18n'
 import {
   LANGUAGES,
   languageStatusLabelKey,
   type LanguageStatus,
-} from '../../../i18n/languages'
-import { IconLanguage, IconCheck, IconGear } from '../lib/Icons'
-import { useSettings } from '../../../hooks/useSettings'
-import { Tooltip } from './reusables/Tooltip'
+} from '../../../../i18n/languages'
+import { IconLanguage, IconCheck, IconGear } from '../../lib/icons'
+import { useSettings } from '../../../../hooks/useSettings'
+import { Tooltip } from '../reusables/Tooltip'
 
 const STATUS_BADGE_CLASS: Record<LanguageStatus, string> = {
   complete: 'bg-mint/10 text-mint border-mint/30',
@@ -20,7 +20,7 @@ const STATUS_BADGE_CLASS: Record<LanguageStatus, string> = {
 
 const GAP = 8
 const EDGE_PADDING = 8
-const MENU_WIDTH = 176
+const MENU_WIDTH = 240
 const OPEN_UP_THRESHOLD = 220
 
 export function LanguageMenu() {
@@ -93,7 +93,6 @@ export function LanguageMenu() {
 
   const select = (value: string) => {
     i18n.changeLanguage(value)
-    // document.documentElement.dir = i18n.dir()
     update({ ...settings, language: value })
     setOpen(false)
   }
@@ -105,20 +104,29 @@ export function LanguageMenu() {
     )
   }
 
+  const noDrag = (e: React.MouseEvent) => e.stopPropagation()
+
   return (
     <>
-      <div ref={ref} className="flex items-center">
-        <Tooltip content={ts('language_label')} side="bottom">
+      <div ref={ref} className="flex items-stretch shrink-0">
+        <Tooltip
+          content={ts('language_label')}
+          side="bottom"
+          className="flex items-stretch"
+        >
           <motion.button
             type="button"
             onClick={() => setOpen((o) => !o)}
+            onMouseDown={noDrag}
             aria-label={ts('language_label')}
             aria-expanded={open}
-            className="focus-ring cursor-pointer w-7 h-7 flex items-center justify-center rounded-md text-muted/60 hover:text-accent-bright hover:bg-accent/10 transition-colors"
-            whileHover={{ scale: 1.1 }}
+            aria-haspopup="menu"
+            whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.9 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            className="focus-ring cursor-pointer relative w-9 h-8 flex items-center justify-center rounded-item text-muted hover:text-ink hover:bg-raised transition-colors shrink-0"
           >
-            <IconLanguage className="w-3.5 h-3.5" />
+            <IconLanguage className="w-4 h-4" />
           </motion.button>
         </Tooltip>
       </div>
@@ -128,14 +136,17 @@ export function LanguageMenu() {
           {open && (
             <motion.div
               ref={listRef}
-              initial={{ opacity: 0, y: dir ? 6 : -6, scale: 0.97 }}
+              initial={{ opacity: 0, y: dir ? 6 : -6, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: dir ? 6 : -6, scale: 0.97 }}
+              exit={{ opacity: 0, y: dir ? 6 : -6, scale: 0.96 }}
               transition={{ duration: 0.15, ease: 'easeOut' }}
-              className={`fixed z-50 ${dir ? 'origin-bottom' : 'origin-top'} rounded-xl border border-line bg-surface shadow-2xl shadow-black/40 p-1.5`}
+              role="menu"
+              className={`fixed z-50 ${
+                dir ? 'origin-bottom' : 'origin-top'
+              } rounded-menu border border-outline/50 bg-overlay shadow-md shadow-black/10 p-1.5`}
               style={{ left: pos?.left, top: pos?.top, width: MENU_WIDTH }}
             >
-              <div className="px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted/50">
+              <div className="px-2.5 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted/50">
                 {ts('language_label')}
               </div>
               {LANGUAGES.map((lang) => {
@@ -144,11 +155,12 @@ export function LanguageMenu() {
                   <button
                     key={lang.value}
                     type="button"
+                    role="menuitem"
                     onClick={() => select(lang.value)}
-                    className={`focus-ring cursor-pointer w-full flex items-center justify-between gap-2 text-left px-3 py-2 rounded-lg text-xs transition-colors ${
+                    className={`focus-ring cursor-pointer w-full flex items-center justify-between gap-2 text-left px-2.5 py-2 rounded-item text-xs transition-colors ${
                       active
                         ? 'bg-accent/15 text-accent-bright'
-                        : 'text-ink hover:bg-raised'
+                        : 'text-muted hover:bg-raised hover:text-ink'
                     }`}
                   >
                     <span className="flex items-center gap-1.5 min-w-0">
@@ -159,11 +171,12 @@ export function LanguageMenu() {
                   </button>
                 )
               })}
-              <div className="mx-2 my-1 h-px bg-line/60" />
+              <div className="mx-2 my-1 h-px bg-outline/40" />
               <button
                 type="button"
+                role="menuitem"
                 onClick={openSettings}
-                className="focus-ring cursor-pointer w-full flex items-center gap-2 text-left px-3 py-2 rounded-lg text-xs text-muted hover:bg-raised hover:text-ink transition-colors"
+                className="focus-ring cursor-pointer w-full flex items-center gap-2 text-left px-2.5 py-2 rounded-item text-xs text-muted hover:bg-raised hover:text-ink transition-colors"
               >
                 <IconGear className="w-3.5 h-3.5" />
                 {t('language_settings')}

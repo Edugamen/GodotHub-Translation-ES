@@ -25,8 +25,8 @@ import {
 
 import { ScrollReveal } from '../components/ui/ScrollReveal'
 import { useGodotVersionsContext } from '../../../hooks/godotVersionsContext'
+import { useTaskTray } from '../../../hooks/useTaskTray'
 import { ConfirmDialog } from '../components/modals/ConfirmDialog'
-import { ImportProgressCard } from '../components/reusables/ImportProgressCard'
 
 function versionCore(raw: string): string {
   const parts = raw
@@ -173,9 +173,9 @@ export function VersionsView() {
     rename,
     refreshAvailable,
     refreshInstalled,
-    scanProgress,
   } = useGodotVersionsContext()
   const { settings } = useSettings()
+  const { registerTask, updateTask, unregisterTask } = useTaskTray()
   const [consoleToggles, setConsoleToggles] = useState<Record<string, boolean>>({})
   const [contextMenu, setContextMenu] = useState<{
     x: number
@@ -184,7 +184,6 @@ export function VersionsView() {
   } | null>(null)
   const [scanning, setScanning] = useState(false)
   const [importing, setImporting] = useState(false)
-  const [dialogMinimized, setDialogMinimized] = useState(false)
   const [collapsedGroups, setCollapsedGroups] = useState<
     Record<string, boolean>
   >({})
@@ -224,15 +223,27 @@ export function VersionsView() {
     const dir = folder ?? (await api.pickFolder())
     if (!dir) return
     if (scanning || importing) return
-    setDialogMinimized(false)
     setImporting(true)
+    const taskId = `import-version-${Date.now()}`
+    registerTask({
+      id: taskId,
+      type: 'import-versions',
+      label: t('importing_version'),
+      description: dir,
+      progress: null,
+      status: 'running',
+    })
     try {
       const imported = await api.importVersion(dir)
       await refreshInstalled()
       if (imported.length > 1) {
         alert(t('version_imported_many', { count: imported.length }))
       }
+      updateTask(taskId, { status: 'completed' })
+      setTimeout(() => unregisterTask(taskId), 3000)
     } catch (e) {
+      updateTask(taskId, { status: 'error', errorMessage: String(e) })
+      setTimeout(() => unregisterTask(taskId), 6000)
     } finally {
       setImporting(false)
     }
@@ -255,7 +266,6 @@ export function VersionsView() {
       )
       return
     }
-    setDialogMinimized(false)
     setScanning(true)
     try {
       await api.scanForVersions(settings.version_scan_dirs, settings.scan_depth)
@@ -831,32 +841,6 @@ export function VersionsView() {
           })()
         )}
       </section>
-
-      {(scanning || importing) && !dialogMinimized && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <motion.div
-            initial={{ opacity: 0, y: 14, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-            className="w-full flex justify-center"
-          >
-            <ImportProgressCard
-              icon={<IconRefresh className="w-5 h-5 text-accent-bright" />}
-              title={
-                importing
-                  ? t('importing_version')
-                  : t('scanning_versions')
-              }
-              progress={
-                scanProgress && scanProgress.total > 0
-                  ? { current: scanProgress.current, total: scanProgress.total }
-                  : null
-              }
-              onMinimize={() => setDialogMinimized(true)}
-            />
-          </motion.div>
-        </div>
-      )}
 
       <AnimatePresence>
         {confirmUninstallTag && (

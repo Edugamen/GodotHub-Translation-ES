@@ -448,7 +448,7 @@ godothub/
 │   │       │   ├── reusables/      # App-level reuse (Tooltip, ScanButton, ViewHeader)
 │   │       │   ├── titlebar/       # Titlebar, TaskTray, RunningProjectsChip
 │   │       │   ├── ui/             # Form controls & primitives (Checkbox, Dropdown, Slider…)
-│   │       │   └── …               # DirList, ImportProgressCard, OverlayScrollArea, Sidebar, etc.
+│   │       │   └── …               # DirList, OverlayScrollArea, Sidebar, etc.
 │   │       ├── hooks/              # New-UI-only React hooks
 │   │       ├── lib/                # New-UI helpers (duration, icons)
 │   │       └── views/              # Main application views
@@ -492,9 +492,10 @@ In beta phase (languages other than english might be incomplete)
 
 | Languages | Status          |
 | ------- | ------------------ |
-| English   | :white_check_mark: |
-| Chinese   | :white_check_mark:               |
-| Russian   | :white_check_mark:               |
+| English   | Completed |
+| Chinese   | Beta               |
+| Russian   | Incomplete               |
+| Russian   | Incomplete               |
 
 ---
 

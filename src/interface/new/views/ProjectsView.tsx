@@ -15,6 +15,7 @@ import { useGodotVersionsContext } from '../../../hooks/godotVersionsContext'
 import {
   IconArrowUpDown,
   IconFilter,
+  IconGitBranch,
   IconPlus,
   IconX,
 } from '../lib/icons'
@@ -37,6 +38,7 @@ import { ScanButton } from '../components/reusables/ScanButton'
 import { SearchBar } from '../components/ui/SearchBar'
 import { ViewHeader } from '../components/reusables/ViewHeader'
 import { CreateProjectModal } from '../components/modals/CreateProjectModal'
+import { CloneRepoModal } from '../components/modals/CloneRepoModal'
 
 const UNCATEGORIZED = '__uncategorized__'
 
@@ -53,6 +55,7 @@ export function ProjectsView({
   const { installed } = useGodotVersionsContext()
   const { settings } = useSettings()
   const [createProjectOpen, setCreateProjectOpen] = useState(false)
+  const [cloneRepoOpen, setCloneRepoOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
   useEffect(() => {
@@ -237,7 +240,20 @@ export function ProjectsView({
         }
         actions={
           <>
-            <ImportButton />
+            <ImportButton
+              onImport={async (folder) => {
+                await api.importProject(folder, '')
+                await refresh()
+              }}
+              options={[
+                {
+                  key: 'clone-repo',
+                  label: tc('clone_import_repo'),
+                  icon: IconGitBranch,
+                  onClick: () => setCloneRepoOpen(true),
+                },
+              ]}
+            />
             <ScanButton
               onOpenSettings={onOpenSettings}
               scanDirs={settings.project_scan_dirs}
@@ -378,6 +394,17 @@ export function ProjectsView({
             onClose={() => setCreateProjectOpen(false)}
             onCreated={() => {
               setCreateProjectOpen(false)
+              refresh()
+            }}
+          />
+        )}
+        {cloneRepoOpen && (
+          <CloneRepoModal
+            defaultLocation={settings.default_project_location}
+            categories={categories}
+            onClose={() => setCloneRepoOpen(false)}
+            onCloned={() => {
+              setCloneRepoOpen(false)
               refresh()
             }}
           />

@@ -2,8 +2,10 @@ import { invoke } from '@tauri-apps/api/core'
 import type { GodotRelease, InstalledGodotVersion } from '../types'
 
 export const versionsApi = {
-  fetchAvailable: () =>
-    invoke<GodotRelease[]>('fetch_available_godot_versions'),
+  fetchAvailable: (source?: string) =>
+    invoke<GodotRelease[]>('fetch_available_godot_versions', {
+      source: source ?? 'github',
+    }),
   download: (tag: string, assetName: string, downloadUrl: string) =>
     invoke<void>('download_godot_version', { tag, assetName, downloadUrl }),
   pauseDownload: (key: string) => invoke<void>('pause_download', { key }),

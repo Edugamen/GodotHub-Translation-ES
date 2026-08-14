@@ -10,6 +10,7 @@ import { isMac } from '../../../../lib/platform'
 import { useSettings } from '../../../../hooks/useSettings'
 import { RunningProjectsChip } from '../titlebar/RunningProjectsChip'
 import { TaskTray } from '../titlebar/TaskTray'
+import { LanguageMenu } from '../titlebar/LanguageMenu'
 import { Tooltip } from '../reusables/Tooltip'
 import { IconHeart, IconStar } from '../../lib/icons'
 
@@ -118,6 +119,7 @@ export function Titlebar() {
         )}
 
         <div className="w-px h-5 bg-line/40 mx-1 shrink-0" />
+        <LanguageMenu />
         <TaskTray />
 
         {showWindowControls && (

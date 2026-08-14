@@ -13,6 +13,7 @@ import { ConfirmDialog } from '../modals/ConfirmDialog'
 import { TagManagerModal } from '../modals/TagManagerModal'
 import { Dropdown } from '../ui/Dropdown'
 import { Tooltip } from '../reusables/Tooltip'
+import { OpenButton } from '../reusables/OpenButton'
 import {
   IconChevronDown,
   IconChevronRight,
@@ -21,14 +22,12 @@ import {
   IconExternalLink,
   IconGitBranch,
   IconHistory,
-  IconMore,
   IconNode,
   IconPencil,
   IconPin,
   IconPlus,
   IconStopwatch,
   IconTags,
-  IconTerminal,
   IconTrash,
   IconX,
 } from '../../lib/icons'
@@ -132,9 +131,6 @@ export function ProjectCard({
   )
   const versionInstalled = Boolean(boundVersion)
   const supportsConsole = boundVersion?.supports_console ?? false
-  const [useConsole, setUseConsole] = useState(
-    launchWithConsole && supportsConsole,
-  )
 
   useEffect(() => {
     let cancelled = false
@@ -675,123 +671,68 @@ export function ProjectCard({
         </div>
       </div>
 
-      <div className="flex items-stretch gap-1 shrink-0 justify-end">
-        <motion.button
-          whileHover={versionInstalled ? { scale: 1.04 } : undefined}
-          whileTap={versionInstalled ? { scale: 0.94 } : undefined}
-          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-          type="button"
-          disabled={!versionInstalled}
-          onClick={() => launchProject(useConsole || undefined)}
-          className={`focus-ring flex items-center px-10 h-12 rounded-l-dropdown-btn rounded-r-[4px] font-semibold text-[17px] shadow-md shadow-black/10 border border-outline/50 transition-colors ${
-            versionInstalled
-              ? 'bg-accent text-ink hover:bg-accent-bright cursor-pointer'
-              : 'bg-raised text-muted/40 cursor-not-allowed'
-          }`}
-        >
-          {versionInstalled ? t('open_project') : t('no_version_selected')}
-        </motion.button>
-
-        {supportsConsole && (
-          <motion.button
-            key={useConsole ? 'console-on' : 'console-off'}
-            initial={{ scale: 0.9, opacity: 0.6 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', stiffness: 500, damping: 24 }}
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.9 }}
-            type="button"
-            onClick={() => setUseConsole((v) => !v)}
-            aria-label={t('open_with_console')}
-            aria-pressed={useConsole}
-            title={t('open_with_console')}
-            className={`focus-ring cursor-pointer p-2 h-12 rounded-[4px] font-semibold text-[17px] shadow-md shadow-black/10 border transition-colors duration-200 ${
-              useConsole
-                ? 'bg-raised text-ink border-green-500'
-                : 'bg-overlay text-muted border-outline/50 hover:text-green-500 hover:border-green-500/50'
-            }`}
-          >
-            <IconTerminal
-              className={`w-4 h-4 ${useConsole ? 'text-green-500' : ''}`}
-            />
-          </motion.button>
-        )}
-
-        <Dropdown
-          align="right"
-          trigger={({ open, toggle }) => (
-            <motion.button
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.94 }}
-              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-              type="button"
-              aria-label={t('project_more_aria')}
-              aria-expanded={open}
-              onClick={toggle}
-              className={`focus-ring cursor-pointer px-[5px] h-12 rounded-r-dropdown rounded-l-[4px] font-semibold text-[17px] shadow-md shadow-black/10 border border-outline/50 transition-colors ${
-                open
-                  ? 'bg-raised text-ink border-accent-dim/60'
-                  : 'bg-overlay text-muted hover:text-ink hover:bg-raised'
-              }`}
-            >
-              <IconMore className="w-4 h-4" />
-            </motion.button>
-          )}
-          items={[
-            {
-              key: 'open-folder',
-              label: t('open_folder'),
-              icon: IconExternalLink,
-              onClick: openFolder,
-            },
-            {
-              key: 'open-ide',
-              label: t('open_in_ide'),
-              icon: IconCode,
-              onClick: openInIde,
-            },
-            {
-              key: 'manage-tags',
-              label: t('manage_tags'),
-              icon: IconTags,
-              onClick: () => setTagManagerOpen(true),
-            },
-            {
-              key: 'pin',
-              label: project.pinned
-                ? t('project_unpin_from_library')
-                : t('project_pin_to_library'),
-              icon: IconPin,
-              onClick: onTogglePin,
-              dividerAfter: true,
-            },
-            ...(gitStatus?.is_repo
-              ? [
-                  {
-                    key: 'git-sidebar',
-                    label: t('git_sidebar'),
-                    icon: IconGitBranch,
-                    onClick: onShowGitSidebar,
-                    dividerAfter: true,
-                  },
-                ]
-              : []),
-            {
-              key: 'remove',
-              label: t('project_card_remove_library'),
-              icon: IconX,
-              onClick: () => setConfirmAction('remove'),
-            },
-            {
-              key: 'delete',
-              label: t('project_card_delete_files'),
-              icon: IconTrash,
-              danger: true,
-              onClick: () => setConfirmAction('delete'),
-            },
-          ]}
-        />
-      </div>
+      <OpenButton
+        label={versionInstalled ? t('open_project') : t('no_version_selected')}
+        disabled={!versionInstalled}
+        onOpen={launchProject}
+        consoleSupported={supportsConsole}
+        consoleInitiallyOn={launchWithConsole && supportsConsole}
+        moreAriaLabel={t('project_more_aria')}
+        className="px-10"
+        items={[
+          {
+            key: 'open-folder',
+            label: t('open_folder'),
+            icon: IconExternalLink,
+            onClick: openFolder,
+          },
+          {
+            key: 'open-ide',
+            label: t('open_in_ide'),
+            icon: IconCode,
+            onClick: openInIde,
+          },
+          {
+            key: 'manage-tags',
+            label: t('manage_tags'),
+            icon: IconTags,
+            onClick: () => setTagManagerOpen(true),
+          },
+          {
+            key: 'pin',
+            label: project.pinned
+              ? t('project_unpin_from_library')
+              : t('project_pin_to_library'),
+            icon: IconPin,
+            onClick: onTogglePin,
+            dividerAfter: true,
+          },
+          ...(gitStatus?.is_repo
+            ? [
+                {
+                  key: 'git-sidebar',
+                  label: t('git_sidebar'),
+                  icon: IconGitBranch,
+                  onClick: onShowGitSidebar,
+                  dividerAfter: true,
+                },
+              ]
+            : []),
+          {
+            key: 'remove',
+            label: t('project_card_remove_library'),
+            icon: IconX,
+            onClick: () => setConfirmAction('remove'),
+          },
+          {
+            key: 'delete',
+            label: t('project_card_delete_files'),
+            icon: IconTrash,
+            danger: true,
+            onClick: () => setConfirmAction('delete'),
+          },
+        ]}
+      />
 
       <AnimatePresence>
         {confirmAction === 'remove' && (

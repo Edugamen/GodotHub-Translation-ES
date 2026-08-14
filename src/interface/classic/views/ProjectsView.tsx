@@ -30,9 +30,9 @@ import { CSS } from '@dnd-kit/utilities'
 import { useProjectsContext } from '../../../hooks/projectsContext'
 import { useCategoriesContext } from '../../../hooks/categoriesContext'
 import { useSettings } from '../../../hooks/useSettings'
+import { useTaskTray } from '../../../hooks/useTaskTray'
 import { ProjectCard } from '../components/cards/ProjectCard'
 import { Tooltip } from '../components/reusables/Tooltip'
-import { ImportProgressCard } from '../components/reusables/ImportProgressCard'
 import { CreateProjectModal } from '../components/modals/CreateProjectModal'
 import { CloneRepoModal } from '../components/modals/CloneRepoModal'
 import { CategoryManagerModal } from '../components/modals/CategoryManagerModal'
@@ -221,7 +221,6 @@ export function ProjectsView({
     setCategory,
     moveProject,
     reorder,
-    scanProgress,
   } = useProjectsContext()
   const {
     categories,
@@ -232,6 +231,7 @@ export function ProjectsView({
   } = useCategoriesContext()
   const { installed } = useGodotVersionsContext()
   const { settings } = useSettings()
+  const { registerTask, updateTask, unregisterTask } = useTaskTray()
   const categoriesEnabled = settings.categories_enabled
   const [modalOpen, setModalOpen] = useState(false)
   const [categoryModalOpen, setCategoryModalOpen] = useState(false)
@@ -284,7 +284,6 @@ export function ProjectsView({
 
   const [scanning, setScanning] = useState(false)
   const [importing, setImporting] = useState(false)
-  const [dialogMinimized, setDialogMinimized] = useState(false)
   const [gitStatusMap, setGitStatusMap] = useState<Record<string, GitStatus>>({})
   const fetchingGitRef = useRef(false)
   const [collapsedCats, setCollapsedCats] = useState<Record<string, boolean>>(
@@ -314,13 +313,25 @@ export function ProjectsView({
   const handleImport = async () => {
     const folder = await api.pickFolder()
     if (!folder) return
-    setDialogMinimized(false)
     setImporting(true)
+    const taskId = `import-project-${Date.now()}`
+    registerTask({
+      id: taskId,
+      type: 'import-projects',
+      label: t('importing_project'),
+      description: folder,
+      progress: null,
+      status: 'running',
+    })
     try {
       await api.importProject(folder, '')
       refresh()
+      updateTask(taskId, { status: 'completed' })
+      setTimeout(() => unregisterTask(taskId), 3000)
     } catch (e) {
       alert(e)
+      updateTask(taskId, { status: 'error', errorMessage: String(e) })
+      setTimeout(() => unregisterTask(taskId), 6000)
     } finally {
       setImporting(false)
     }
@@ -352,7 +363,6 @@ export function ProjectsView({
       openScanFolderSetting()
       return
     }
-    setDialogMinimized(false)
     setScanning(true)
     try {
       const result = await api.scanForProjectsWithInfo(
@@ -1715,31 +1725,6 @@ export function ProjectsView({
           }}
           onReorder={reorderCategories}
         />
-      )}
-      {(scanning || importing) && !dialogMinimized && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <motion.div
-            initial={{ opacity: 0, y: 14, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-            className="w-full flex justify-center"
-          >
-            <ImportProgressCard
-              icon={<IconRefresh className="w-5 h-5 text-accent-bright" />}
-              title={
-                importing
-                  ? t('importing_project')
-                  : t('scanning_projects')
-              }
-              progress={
-                scanProgress && scanProgress.total > 0
-                  ? { current: scanProgress.current, total: scanProgress.total }
-                  : null
-              }
-              onMinimize={() => setDialogMinimized(true)}
-            />
-          </motion.div>
-        </div>
       )}
     </div>
   )

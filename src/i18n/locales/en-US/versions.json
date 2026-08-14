@@ -39,5 +39,11 @@
   "resume_download": "Resume download",
   "pause_download": "Pause download",
   "cancel_download": "Cancel download",
-  "installed_label": "Installed"
+  "installed_label": "Installed",
+  "original_name": "Original",
+  "source": "Source",
+  "source_github": "GitHub",
+  "source_archive": "Godot Archive",
+  "open_source_page": "Open on {{source}}",
+  "switch_to_archive": "Switch to Godot Archive"
 }

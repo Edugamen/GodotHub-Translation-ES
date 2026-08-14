@@ -1,13 +1,9 @@
-import { AnimatePresence, motion } from 'framer-motion'
-import { useState } from 'react'
+import { motion } from 'framer-motion'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useProjectsContext } from '../../../../hooks/projectsContext'
-import { useSettings } from '../../../../hooks/useSettings'
-import { useCategoriesContext } from '../../../../hooks/categoriesContext'
-import { IconChevronDown, IconGitBranch } from '../../lib/icons'
+import { IconChevronDown } from '../../lib/icons'
 import { api } from '../../../../lib/api'
-import { CloneRepoModal } from '../modals/CloneRepoModal'
-import { Dropdown } from '../ui/Dropdown'
+import { Dropdown, type NewDropdownItem } from '../ui/Dropdown'
 
 const TOOL_BUTTON_CLASS =
   'text-muted hover:text-ink font-semibold text-[17px] bg-overlay shadow-md shadow-black/10 border border-outline/50 hover:bg-raised cursor-pointer h-10 flex items-center transition-colors'
@@ -20,52 +16,72 @@ const TOOL_BUTTON_ANIMATION = {
   transition: TOOL_BUTTON_SPRING,
 } as const
 
-export function ImportButton() {
+interface ImportButtonProps {
+  /** Picks a folder, then runs this action with the chosen path. */
+  onImport: (folder: string) => Promise<void>
+  /** Extra actions shown in the split-button dropdown (hidden when empty). */
+  options?: NewDropdownItem[]
+  disabled?: boolean
+  /** When set, this window event also triggers the import flow. */
+  importEvent?: string
+}
+
+export function ImportButton({
+  onImport,
+  options = [],
+  disabled = false,
+  importEvent,
+}: ImportButtonProps) {
   const { t } = useTranslation('common')
-  const { refresh } = useProjectsContext()
-  const { settings } = useSettings()
-  const { categories } = useCategoriesContext()
   const [importing, setImporting] = useState(false)
   const [picking, setPicking] = useState(false)
-  const [cloneRepoOpen, setCloneRepoOpen] = useState(false)
 
   const handleImport = async () => {
-    if (importing || picking) return
+    if (importing || picking || disabled) return
     setPicking(true)
     setImporting(true)
     try {
       const folder = await api.pickFolder()
       if (!folder) return
       try {
-        await api.importProject(folder, '')
-        await refresh()
+        await onImport(folder)
       } catch (e) {
         console.error('[new-ui] import failed:', e)
         alert(String(e))
       }
     } finally {
-      setImporting(false)
       setPicking(false)
+      setImporting(false)
     }
   }
 
-  const handleCloneResult = () => {
-    setCloneRepoOpen(false)
-    refresh()
-  }
+  const handleImportRef = useRef(handleImport)
+  handleImportRef.current = handleImport
+
+  useEffect(() => {
+    if (!importEvent) return
+    const handler = () => handleImportRef.current()
+    window.addEventListener(importEvent, handler)
+    return () => window.removeEventListener(importEvent, handler)
+  }, [importEvent])
+
+  const hasOptions = options.length > 0
+  const busy = importing || picking
 
   return (
-    <>
-      <div className="flex items-stretch gap-1">
-        <motion.button
-          type="button"
-          {...(!importing && !picking ? TOOL_BUTTON_ANIMATION : {})}
-          onClick={handleImport}
-          disabled={!!importing || picking}
-          className={`${TOOL_BUTTON_CLASS} px-6 rounded-l-dropdown-btn rounded-r-[4px] disabled:opacity-40 disabled:cursor-not-allowed`}
-        >
-          {t('import')}
-        </motion.button>
+    <div className="flex items-stretch gap-1">
+      <motion.button
+        type="button"
+        {...(!busy ? TOOL_BUTTON_ANIMATION : {})}
+        onClick={handleImport}
+        disabled={busy || disabled}
+        className={`${TOOL_BUTTON_CLASS} px-6 ${
+          hasOptions ? 'rounded-l-dropdown-btn rounded-r-[4px]' : 'rounded-item'
+        } disabled:opacity-40 disabled:cursor-not-allowed`}
+      >
+        {t('import')}
+      </motion.button>
+      {hasOptions && (
         <Dropdown
           align="right"
           trigger={({ open, toggle }) => (
@@ -84,27 +100,9 @@ export function ImportButton() {
               />
             </motion.button>
           )}
-          items={[
-            {
-              key: 'clone-repo',
-              label: t('clone_import_repo'),
-              icon: IconGitBranch,
-              onClick: () => setCloneRepoOpen(true),
-            },
-          ]}
+          items={options}
         />
-      </div>
-
-      <AnimatePresence>
-        {cloneRepoOpen && (
-          <CloneRepoModal
-            defaultLocation={settings.default_project_location}
-            categories={categories}
-            onClose={() => setCloneRepoOpen(false)}
-            onCloned={handleCloneResult}
-          />
-        )}
-      </AnimatePresence>
-    </>
+      )}
+    </div>
   )
 }

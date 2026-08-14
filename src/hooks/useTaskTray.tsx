@@ -25,6 +25,7 @@ export interface Task {
     | 'sync-templates'
     | 'clone-repo'
     | 'import-projects'
+    | 'import-versions'
   label: string
   description?: string
   progress: { current: number; total: number } | null

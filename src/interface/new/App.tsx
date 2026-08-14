@@ -140,6 +140,13 @@ export function App() {
   }, [uiSwitchIntent])
 
   useEffect(() => {
+    const handleOpenSetting = () => setTab('settings')
+    window.addEventListener('app:open-setting', handleOpenSetting)
+    return () =>
+      window.removeEventListener('app:open-setting', handleOpenSetting)
+  }, [])
+
+  useEffect(() => {
     const handleShowGitSidebar = (e: Event) => {
       const detail = (e as CustomEvent).detail as {
         project: Project

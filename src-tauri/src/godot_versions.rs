@@ -153,12 +153,17 @@ pub fn register_version(app: &AppHandle, version: InstalledGodotVersion) -> Resu
     Ok(true)
 }
 
-fn releases_cache_file(app: &AppHandle) -> PathBuf {
+fn releases_cache_file(app: &AppHandle, source: &str) -> PathBuf {
     let base = app.path().app_data_dir().expect("no app data dir");
     if !base.exists() {
         let _ = fs::create_dir_all(&base);
     }
-    base.join("godot-releases-cache.json")
+    let name = if source == "archive" {
+        "godot-archive-cache.json"
+    } else {
+        "godot-releases-cache.json"
+    };
+    base.join(name)
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -175,8 +180,8 @@ fn asset_target() -> String {
     format!("{}-{}", std::env::consts::OS, std::env::consts::ARCH)
 }
 
-fn read_cache_allow_stale(app: &AppHandle) -> Option<(Vec<GodotRelease>, i64)> {
-    let file = releases_cache_file(app);
+fn read_cache_allow_stale(app: &AppHandle, source: &str) -> Option<(Vec<GodotRelease>, i64)> {
+    let file = releases_cache_file(app, source);
     let raw = fs::read_to_string(&file).ok()?;
     let cache: ReleasesCache = serde_json::from_str(&raw).ok()?;
     if cache.asset_target != asset_target() {
@@ -185,14 +190,14 @@ fn read_cache_allow_stale(app: &AppHandle) -> Option<(Vec<GodotRelease>, i64)> {
     Some((dedupe_releases(cache.releases), cache.fetched_at))
 }
 
-fn write_releases_cache(app: &AppHandle, releases: &[GodotRelease]) {
+fn write_releases_cache(app: &AppHandle, source: &str, releases: &[GodotRelease]) {
     let cache = ReleasesCache {
         fetched_at: chrono::Utc::now().timestamp(),
         asset_target: asset_target(),
         releases: releases.to_vec(),
     };
     if let Ok(json) = serde_json::to_string_pretty(&cache) {
-        let _ = fs::write(releases_cache_file(app), json);
+        let _ = fs::write(releases_cache_file(app, source), json);
     }
 }
 
@@ -240,8 +245,19 @@ fn platform_asset_matcher(name: &str) -> bool {
 }
 
 #[tauri::command]
-pub async fn fetch_available_godot_versions(app: AppHandle) -> Result<Vec<GodotRelease>, String> {
-    if let Some((cached, fetched_at)) = read_cache_allow_stale(&app) {
+pub async fn fetch_available_godot_versions(
+    app: AppHandle,
+    source: Option<String>,
+) -> Result<Vec<GodotRelease>, String> {
+    if source.as_deref() == Some("archive") {
+        fetch_archive_versions(app).await
+    } else {
+        fetch_github_versions(app).await
+    }
+}
+
+async fn fetch_github_versions(app: AppHandle) -> Result<Vec<GodotRelease>, String> {
+    if let Some((cached, fetched_at)) = read_cache_allow_stale(&app, "github") {
         let now = chrono::Utc::now().timestamp();
         if now - fetched_at >= CACHE_TTL_SECS {
             let app_clone = app.clone();
@@ -253,6 +269,21 @@ pub async fn fetch_available_godot_versions(app: AppHandle) -> Result<Vec<GodotR
     }
 
     refresh_releases_cache(app).await
+}
+
+async fn fetch_archive_versions(app: AppHandle) -> Result<Vec<GodotRelease>, String> {
+    if let Some((cached, fetched_at)) = read_cache_allow_stale(&app, "archive") {
+        let now = chrono::Utc::now().timestamp();
+        if now - fetched_at >= CACHE_TTL_SECS {
+            let app_clone = app.clone();
+            tauri::async_runtime::spawn(async move {
+                let _ = refresh_archive_releases(app_clone).await;
+            });
+        }
+        return Ok(cached);
+    }
+
+    refresh_archive_releases(app).await
 }
 
 async fn refresh_releases_cache(app: AppHandle) -> Result<Vec<GodotRelease>, String> {
@@ -303,7 +334,7 @@ async fn refresh_releases_cache(app: AppHandle) -> Result<Vec<GodotRelease>, Str
                 "GitHub API error: {} (rate limit remaining: {}).{} {}",
                 status, remaining, reset_msg, body
             );
-            if let Ok(raw) = fs::read_to_string(releases_cache_file(&app)) {
+            if let Ok(raw) = fs::read_to_string(releases_cache_file(&app, "github")) {
                 if let Ok(stale) = serde_json::from_str::<ReleasesCache>(&raw) {
                     if stale.asset_target == asset_target() {
                         return Ok(stale.releases);
@@ -357,8 +388,127 @@ async fn refresh_releases_cache(app: AppHandle) -> Result<Vec<GodotRelease>, Str
         page += 1;
     }
 
-    write_releases_cache(&app, &releases);
+    write_releases_cache(&app, "github", &releases);
     Ok(releases)
+}
+
+async fn refresh_archive_releases(app: AppHandle) -> Result<Vec<GodotRelease>, String> {
+    let client = reqwest::Client::builder()
+        .user_agent("godot-hub")
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let index_html = client
+        .get("https://godotengine.org/download/archive/")
+        .send()
+        .await
+        .map_err(|e| format!("Failed to fetch Godot archive: {e}"))?
+        .text()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let tags = parse_archive_tags(&index_html);
+    let releases: Vec<GodotRelease> = futures_util::stream::iter(
+        tags.into_iter().filter(|t| meets_min_version(t)),
+    )
+    .map(|tag| {
+        let client = client.clone();
+        async move {
+            let assets = fetch_archive_assets(&client, &tag).await;
+            if assets.is_empty() {
+                None
+            } else {
+                Some(GodotRelease { tag, assets })
+            }
+        }
+    })
+    .buffered(8)
+    .filter_map(|r| async move { r })
+    .collect()
+    .await;
+
+    write_releases_cache(&app, "archive", &releases);
+    Ok(releases)
+}
+
+/// Collects every `/download/archive/<tag>/` link from the archive index HTML,
+/// preserving page order (newest first) and de-duplicating.
+fn parse_archive_tags(html: &str) -> Vec<String> {
+    const MARKER: &str = "/download/archive/";
+    let mut tags = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    let mut rest = html;
+    while let Some(idx) = rest.find(MARKER) {
+        let after = &rest[idx + MARKER.len()..];
+        let end = after.find('"').unwrap_or(after.len());
+        let tag = after[..end].trim_end_matches('/').trim().to_string();
+        if !tag.is_empty()
+            && tag.chars().next().is_some_and(|c| c.is_ascii_digit())
+            && seen.insert(tag.clone())
+        {
+            tags.push(tag);
+        }
+        rest = after;
+    }
+    tags
+}
+
+/// Asset filename suffixes for the current platform, following Godot's official
+/// naming scheme (see godot-website `_data/download_configs.yml`).
+fn archive_asset_names() -> Vec<String> {
+    let mut names = Vec::new();
+    #[cfg(target_os = "windows")]
+    {
+        names.push("win64.exe.zip".to_string());
+        names.push("mono_win64.zip".to_string());
+    }
+    #[cfg(target_os = "macos")]
+    {
+        names.push("macos.universal.zip".to_string());
+        names.push("mono_macos.universal.zip".to_string());
+    }
+    #[cfg(target_os = "linux")]
+    if let Some(arch) = LINUX_ARCH_TOKEN {
+        let (std, mono) = match arch {
+            "x86_64" => ("linux.x86_64.zip", "mono_linux_x86_64.zip"),
+            "x86_32" => ("linux.x86_32.zip", "mono_linux_x86_32.zip"),
+            "arm64" => ("linux.arm64.zip", "mono_linux_arm64.zip"),
+            "arm32" => ("linux.arm32.zip", "mono_linux_arm32.zip"),
+            _ => ("", ""),
+        };
+        if !std.is_empty() {
+            names.push(std.to_string());
+            names.push(mono.to_string());
+        }
+    }
+    names
+}
+
+async fn fetch_archive_assets(client: &reqwest::Client, tag: &str) -> Vec<GodotReleaseAsset> {
+    let mut assets = Vec::new();
+    for suffix in archive_asset_names() {
+        let name = format!("Godot_v{tag}_{suffix}");
+        let url = format!("https://github.com/godotengine/godot/releases/download/{tag}/{name}");
+        let Ok(resp) = client.head(&url).send().await else {
+            continue;
+        };
+        if !resp.status().is_success() {
+            continue;
+        }
+        let size = resp
+            .headers()
+            .get(reqwest::header::CONTENT_LENGTH)
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.parse::<u64>().ok())
+            .unwrap_or(0);
+        assets.push(GodotReleaseAsset {
+            name,
+            download_url: url,
+            size,
+            is_mono: suffix.contains("mono"),
+        });
+    }
+    assets
 }
 
 pub(crate) fn meets_min_version(tag: &str) -> bool {

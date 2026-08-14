@@ -13,6 +13,7 @@ import { viewTransition } from '../../../lib/motion'
 import { markUiSwitchToSettings } from '../../../lib/uiTransition'
 import { useSettings } from '../../../hooks/useSettings'
 import { useProjectsContext } from '../../../hooks/projectsContext'
+import { LANGUAGES } from '../../../i18n/languages'
 import { api } from '../../../lib/api'
 import {
   ACCENT_PRESETS_DARK,
@@ -998,16 +999,42 @@ export function SettingsView() {
                 Beta
               </span>
             </span>
-            <Segmented
-              value={i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US'}
-              onChange={(v) => {
-                i18n.changeLanguage(v)
-                update({ ...settings, language: v })
+            <Dropdown
+              align="left"
+              trigger={({ open, toggle }) => {
+                const current =
+                  LANGUAGES.find(
+                    (l) =>
+                      i18n.language === l.value ||
+                      i18n.language.startsWith(l.value.split('-')[0]),
+                  ) ?? LANGUAGES[0]
+                return (
+                  <button
+                    type="button"
+                    onClick={toggle}
+                    aria-expanded={open}
+                    className="focus-ring cursor-pointer inline-flex items-center gap-2 px-3.5 py-2 rounded-btn bg-overlay border border-outline/50 text-xs font-medium text-ink hover:border-accent-dim transition-colors self-start"
+                  >
+                    {current.label}
+                    <IconChevronDown
+                      className={`w-3 h-3 text-muted transition-transform duration-200 ${
+                        open ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+                )
               }}
-              options={[
-                { value: 'en-US', label: 'English' },
-                { value: 'zh-CN', label: '简体中文' },
-              ]}
+              items={LANGUAGES.map((lang) => ({
+                key: lang.value,
+                label: lang.label,
+                active:
+                  i18n.language === lang.value ||
+                  i18n.language.startsWith(lang.value.split('-')[0]),
+                onClick: () => {
+                  i18n.changeLanguage(lang.value)
+                  update({ ...settings, language: lang.value })
+                },
+              }))}
             />
           </div>
         </div>

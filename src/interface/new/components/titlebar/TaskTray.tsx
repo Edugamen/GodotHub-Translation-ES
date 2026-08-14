@@ -15,6 +15,7 @@ import {
   IconCheck,
   IconCircleCheck,
   IconCircleX,
+  IconCloudArrowDown,
   IconCopy,
   IconDownload,
   IconFolderPlus,
@@ -46,6 +47,8 @@ function TaskIcon({ task }: { task: Task }) {
       return <IconGitBranch className={`${iconClass} text-mint`} />
     case 'import-projects':
       return <IconFolderPlus className={`${iconClass} text-accent-bright`} />
+    case 'import-versions':
+      return <IconCloudArrowDown className={`${iconClass} text-accent-bright`} />
     default:
       return <IconRefresh className={`${iconClass} text-muted`} />
   }

@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
+import { openUrl } from '@tauri-apps/plugin-opener'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence, type Transition } from 'framer-motion'
 import NumberFlow from '@number-flow/react'
 import { useGodotVersionsContext } from '../../../hooks/godotVersionsContext'
 import { useSettings } from '../../../hooks/useSettings'
+import { useTaskTray } from '../../../hooks/useTaskTray'
 import { isReducedMotion } from '../../../lib/appearance'
 import { api } from '../../../lib/api'
 import type { GodotReleaseAsset } from '../../../types'
@@ -12,14 +14,14 @@ import { SearchBar } from '../components/ui/SearchBar'
 import { Dropdown } from '../components/ui/Dropdown'
 import { OverlayScrollArea } from '../components/reusables/OverlayScrollArea'
 import { ScanButton } from '../components/reusables/ScanButton'
-import { ImportProgressCard } from '../components/reusables/ImportProgressCard'
+import { ImportButton } from '../components/reusables/ImportButton'
 import { InstalledVersionCard } from '../components/cards/InstalledVersionCard'
 import {
   IconChevronDown,
   IconDownload,
+  IconExternalLink,
   IconPause,
   IconPlay,
-  IconRefresh,
   IconSearch,
   IconSpinner,
   IconX,
@@ -65,6 +67,12 @@ function minorGroup(tag: string): string {
 
 function downloadKey(tag: string, assetName: string) {
   return assetName.toLowerCase().includes('mono') ? `${tag}-mono` : tag
+}
+
+function sourcePageUrl(source: string, tag: string): string {
+  return source === 'archive'
+    ? `https://godotengine.org/download/archive/${tag}/`
+    : `https://github.com/godotengine/godot-builds/releases/tag/${tag}`
 }
 
 const STATE_DOT = {
@@ -129,16 +137,16 @@ export function VersionsView({
     rename,
     refreshAvailable,
     refreshInstalled,
+    source,
   } = useGodotVersionsContext()
   const { settings } = useSettings()
+  const { registerTask, updateTask, unregisterTask } = useTaskTray()
 
   const [query, setQuery] = useState('')
   const [filters, setFilters] = useState<VersionFilters>(loadVersionFilters)
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
   const [visibleGroups, setVisibleGroups] = useState(5)
   const [scanning, setScanning] = useState(false)
-  const [importing, setImporting] = useState(false)
-  const [dialogMinimized, setDialogMinimized] = useState(false)
 
   useEffect(() => {
     try {
@@ -146,22 +154,26 @@ export function VersionsView({
     } catch {}
   }, [filters])
 
-  const handleImportVersion = async (folder?: string) => {
-    const dir = folder ?? (await api.pickFolder())
-    if (!dir) return
-    if (scanning || importing) return
-    setDialogMinimized(false)
-    setImporting(true)
+  const handleImportVersion = async (folder: string) => {
+    const taskId = `import-version-${Date.now()}`
+    registerTask({
+      id: taskId,
+      type: 'import-versions',
+      label: tv('importing_version'),
+      description: folder,
+      progress: null,
+      status: 'running',
+    })
     try {
-      await api.importVersion(dir)
+      await api.importVersion(folder)
       await refreshInstalled()
-    } catch {
-    } finally {
-      setImporting(false)
+      updateTask(taskId, { status: 'completed' })
+      setTimeout(() => unregisterTask(taskId), 3000)
+    } catch (e) {
+      updateTask(taskId, { status: 'error', errorMessage: String(e) })
+      setTimeout(() => unregisterTask(taskId), 6000)
     }
   }
-  const importRef = useRef(handleImportVersion)
-  importRef.current = handleImportVersion
 
   const handleScanNow = async () => {
     if (scanning) return
@@ -184,12 +196,9 @@ export function VersionsView({
   scanRef.current = handleScanNow
 
   useEffect(() => {
-    const onImport = () => importRef.current()
     const onScan = () => scanRef.current()
-    window.addEventListener('app:import-version', onImport)
     window.addEventListener('app:scan-versions', onScan)
     return () => {
-      window.removeEventListener('app:import-version', onImport)
       window.removeEventListener('app:scan-versions', onScan)
     }
   }, [])
@@ -200,6 +209,11 @@ export function VersionsView({
 
   const isSearching = query.trim().length > 0
   const q = query.trim().toLowerCase()
+
+  // GitHub's API can rate-limit unauthenticated requests; surface a quick
+  // escape hatch to the Godot Archive source when that happens.
+  const rateLimited =
+    source === 'github' && /rate\s*limit/i.test(availableError || '')
 
   const filteredInstalled = isSearching
     ? installed.filter(
@@ -244,8 +258,6 @@ export function VersionsView({
       ),
   ).sort(([a], [b]) => b.localeCompare(a, undefined, { numeric: true }))
 
-  const busy = scanning || importing
-
   const animate = !isReducedMotion()
   const entranceTransition: Transition = {
     type: 'tween',
@@ -273,16 +285,11 @@ export function VersionsView({
           }
           actions={
             <>
-              <motion.button
-                type="button"
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.94 }}
-                onClick={() => handleImportVersion()}
-                disabled={busy}
-                className="focus-ring cursor-pointer inline-flex items-center h-10 px-4 rounded-item bg-overlay border border-outline/50 text-muted hover:text-ink hover:bg-raised text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                {importing ? tv('importing') : tv('import')}
-              </motion.button>
+              <ImportButton
+                onImport={handleImportVersion}
+                disabled={scanning}
+                importEvent="app:import-version"
+              />
               <ScanButton
                 onOpenSettings={onOpenSettings}
                 disabled={scanning}
@@ -371,6 +378,41 @@ export function VersionsView({
                   onClick={toggle}
                   className="focus-ring cursor-pointer flex items-center justify-center gap-1.5 h-8 px-4 rounded-item bg-overlay text-muted hover:text-ink hover:bg-raised transition-colors"
                 >
+                  <span className="text-[13px] text-muted">{tv('source')}:</span>
+                  <span className="text-[16px] font-medium text-ink">
+                    {source === 'archive'
+                      ? tv('source_archive')
+                      : tv('source_github')}
+                  </span>
+                  <IconChevronDown className="w-3 h-3 text-muted" />
+                </motion.button>
+              )}
+              items={[
+                {
+                  key: 'github',
+                  label: tv('source_github'),
+                  active: source === 'github',
+                  onClick: () => refreshAvailable('github'),
+                },
+                {
+                  key: 'archive',
+                  label: tv('source_archive'),
+                  active: source === 'archive',
+                  onClick: () => refreshAvailable('archive'),
+                },
+              ]}
+            />
+            <Dropdown
+              align="left"
+              trigger={({ open, toggle }) => (
+                <motion.button
+                  type="button"
+                  aria-expanded={open}
+                  whileHover={{ scale: 1.04 }}
+                  whileTap={{ scale: 0.94 }}
+                  onClick={toggle}
+                  className="focus-ring cursor-pointer flex items-center justify-center gap-1.5 h-8 px-4 rounded-item bg-overlay text-muted hover:text-ink hover:bg-raised transition-colors"
+                >
                   <span className="text-[13px] text-muted">{tv('type')}:</span>
                   <span className="text-[16px] font-medium text-ink">
                     {filters.buildType === 'both'
@@ -441,6 +483,17 @@ export function VersionsView({
               >
                 {tv('retry')}
               </motion.button>
+              {rateLimited && (
+                <motion.button
+                  type="button"
+                  whileHover={{ y: -1 }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => refreshAvailable('archive')}
+                  className="focus-ring cursor-pointer px-4 py-2 rounded-item bg-accent hover:bg-accent-bright text-sm font-medium text-white transition-colors"
+                >
+                  {tv('switch_to_archive')}
+                </motion.button>
+              )}
             </div>
           ) : isSearching && filteredAvailable.length === 0 ? (
             <p className="text-sm text-muted px-1">
@@ -607,18 +660,37 @@ export function VersionsView({
                                         {tv('installed_label')}
                                       </span>
                                     ) : (
-                                      <motion.button
-                                        type="button"
-                                        whileHover={{ y: -1 }}
-                                        whileTap={{ scale: 0.96 }}
-                                        onClick={() =>
-                                          download(tag, asset.name, asset.download_url)
-                                        }
-                                        className="focus-ring cursor-pointer flex items-center gap-1.5 h-9 px-4 rounded-item bg-accent hover:bg-accent-bright text-sm font-medium text-white transition-colors shrink-0"
-                                      >
-                                        <IconDownload className="w-3.5 h-3.5" />
-                                        {tv('install')}
-                                      </motion.button>
+                                      <div className="flex items-center gap-2 shrink-0">
+                                        <motion.button
+                                          type="button"
+                                          whileHover={{ y: -1 }}
+                                          whileTap={{ scale: 0.96 }}
+                                          onClick={() =>
+                                            openUrl(sourcePageUrl(source, tag))
+                                          }
+                                          title={tv('open_source_page', {
+                                            source:
+                                              source === 'archive'
+                                                ? tv('source_archive')
+                                                : tv('source_github'),
+                                          })}
+                                          className="focus-ring cursor-pointer flex items-center gap-1.5 h-9 px-3.5 rounded-item border border-outline/50 text-muted hover:text-ink hover:border-accent-dim hover:bg-raised text-sm font-medium transition-colors"
+                                        >
+                                          <IconExternalLink className="w-3.5 h-3.5" />
+                                        </motion.button>
+                                        <motion.button
+                                          type="button"
+                                          whileHover={{ y: -1 }}
+                                          whileTap={{ scale: 0.96 }}
+                                          onClick={() =>
+                                            download(tag, asset.name, asset.download_url)
+                                          }
+                                          className="focus-ring cursor-pointer flex items-center gap-1.5 h-9 px-4 rounded-item bg-accent hover:bg-accent-bright text-sm font-medium text-white transition-colors"
+                                        >
+                                          <IconDownload className="w-3.5 h-3.5" />
+                                          {tv('install')}
+                                        </motion.button>
+                                      </div>
                                     )}
                                   </div>
                                   </motion.div>
@@ -649,34 +721,6 @@ export function VersionsView({
           )}
         </section>
       </div>
-
-      <AnimatePresence>
-        {importing && !dialogMinimized && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-          >
-            <motion.div
-              initial={{ opacity: 0, y: 14, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 14, scale: 0.96 }}
-              transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-              className="w-full flex justify-center"
-            >
-              <ImportProgressCard
-                icon={
-                  <IconRefresh className="w-5 h-5 text-accent-bright" />
-                }
-                title={tv('importing_version')}
-                progress={null}
-                onMinimize={() => setDialogMinimized(true)}
-              />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
     </OverlayScrollArea>
   )
