@@ -59,11 +59,19 @@ import {
   IconHeart,
   IconFlask,
   IconBomb,
+  IconPlug,
+  IconGitBranch,
 } from '../lib/icons'
 import type { IconProps } from '../lib/icons'
 import type { AppSettings } from '../../../types'
 
-type SettingsCat = 'appearance' | 'display' | 'storage' | 'behavior' | 'advanced'
+type SettingsCat =
+  | 'appearance'
+  | 'display'
+  | 'storage'
+  | 'behavior'
+  | 'integrations'
+  | 'advanced'
 
 interface CatDef {
   id: SettingsCat
@@ -75,6 +83,7 @@ const CATEGORIES: CatDef[] = [
   { id: 'display', icon: IconSun },
   { id: 'storage', icon: IconHardDrive },
   { id: 'behavior', icon: IconGear },
+  { id: 'integrations', icon: IconPlug },
   { id: 'advanced', icon: IconFlask },
 ]
 
@@ -1533,11 +1542,16 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
     </div>
   )
 
-  const renderAdvanced = () => (
+  const renderIntegrations = () => (
     <div className="flex flex-col gap-3">
       <Subsection
-        id="advanced-token"
-        title={ts('github_token_title')}
+        id="integrations-git"
+        title={
+          <span className="inline-flex items-center gap-2">
+            <IconGitBranch className="w-3.5 h-3.5 text-muted" />
+            Git
+          </span>
+        }
         description={ts('github_token_desc')}
         searchText={`${ts('github_token_title')} ${ts('github_token_desc')} ${ts('test')}`}
         query={searchQuery}
@@ -1591,7 +1605,11 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
           </p>
         </div>
       </Subsection>
+    </div>
+  )
 
+  const renderAdvanced = () => (
+    <div className="flex flex-col gap-3">
       <Subsection
         id="advanced-setup"
         title={ts('setup_wizard_again')}
@@ -1700,6 +1718,8 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
         return renderStorage()
       case 'behavior':
         return renderBehavior()
+      case 'integrations':
+        return renderIntegrations()
       case 'advanced':
         return renderAdvanced()
     }
@@ -1898,7 +1918,7 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
           <CheckForUpdatesModal
             onClose={() => setShowUpdates(false)}
             onOpenTokenSettings={() => {
-              handleCatChange('advanced')
+              handleCatChange('integrations')
               setSearchQuery('')
             }}
           />

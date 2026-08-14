@@ -235,11 +235,6 @@ export function ChangelogView({
         connected={connected}
         className="mb-4"
         title={t('changelog_title')}
-        leadingAction={
-          <span className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full bg-accent text-ink">
-            <IconBookOpen className="w-4.5 h-4.5" />
-          </span>
-        }
         actions={
           IS_DEV ? (
             <motion.button

@@ -8,6 +8,8 @@
   "data": "Data",
   "advanced": "Advanced",
   "advanced_desc": "Power-user settings: API tokens, data, updates, and app-level controls.",
+  "integrations": "Integrations",
+  "integrations_desc": "Connect GodotHub to external services like Git and GitHub.",
   "storage_title": "Storage & Auto-scan",
   "storage_desc": "Folders GodotHub checks at startup. Star a folder to also use it as the default location for new projects/downloads.",
   "behavior_title": "Behavior",
