@@ -93,8 +93,6 @@ pub struct AssetLibraryResponse {
 pub struct AssetLibraryCategory {
     pub id: String,
     pub name: String,
-    // The Godot Asset Library API sends this as "type"; serialize it as
-    // "category_type" so the frontend's contract matches.
     #[serde(rename(deserialize = "type", serialize = "category_type"))]
     pub category_type: String,
 }
@@ -378,9 +376,6 @@ pub async fn search_asset_library(
             eprintln!("Asset Library: {failures} detail fetch(es) failed");
         }
 
-        // Don't drop old-Godot assets here: install validates type and minimum
-        // version separately, and filtering them out breaks oldest-first sorting
-        // (the oldest pages are almost entirely pre-4.1 assets).
         assets = details
             .into_iter()
             .flatten()
@@ -415,8 +410,6 @@ pub async fn search_asset_library(
 
     let response = AssetLibraryResponse {
         assets,
-        // The skip loop can walk past the end when the last pages contain only
-        // filtered-out assets; never report a page index outside the valid range.
         page: current_page.min(pages.saturating_sub(1)),
         pages,
         total,

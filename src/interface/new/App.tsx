@@ -24,6 +24,7 @@ import { UpdatesView } from './views/UpdatesView'
 import { ChangelogView } from './views/ChangelogView'
 import { NewsView } from './views/NewsView'
 import { AssetStoreView } from './views/AssetStoreView'
+import { DashboardView } from './views/DashboardView'
 import { useSettings } from '../../hooks/useSettings'
 import { useTauriEvent } from '../../lib/useTauriEvent'
 import {
@@ -37,6 +38,7 @@ import {
   IconCloudArrowDown,
   IconFolder,
   IconGear,
+  IconHouse,
   IconNews,
   IconRocket,
   IconStore,
@@ -44,6 +46,7 @@ import {
 import './style.css'
 
 const TABS = [
+  { id: 'dashboard', navKey: 'dashboard', icon: IconHouse, hidden: true },
   { id: 'projects', navKey: 'projects', icon: IconFolder },
   { id: 'versions', navKey: 'versions', icon: IconCloudArrowDown },
   { id: 'templates', navKey: 'templates', icon: IconRocket },
@@ -128,8 +131,6 @@ export function App() {
       window.removeEventListener('app:open-setting', handleOpenSetting)
   }, [])
 
-  // App-level handlers for command-palette actions that don't belong to a
-  // specific view (or can be triggered while that view isn't mounted).
   useEffect(() => {
     const handleNewProject = () => setCreateProjectOpen(true)
     const handleImportProject = async () => {
@@ -211,7 +212,7 @@ export function App() {
     return () => window.removeEventListener('keydown', handler)
   }, [gitSidebarProject])
 
-  const tabs = TABS.map((tab) => ({
+  const tabs = TABS.filter((tab) => !('hidden' in tab) || !tab.hidden).map((tab) => ({
     id: tab.id,
     label: t(tab.navKey),
     icon: tab.icon,
@@ -221,6 +222,8 @@ export function App() {
 
   const renderView = () => {
     switch (tab) {
+      case 'dashboard':
+        return <DashboardView connected={!cardLayout} />
       case 'projects':
         return (
           <ProjectsView
@@ -276,7 +279,8 @@ export function App() {
           onOpenCommandPalette={() => setCommandPaletteOpen(true)}
         />
 
-        {tab === 'projects' ||
+        {tab === 'dashboard' ||
+        tab === 'projects' ||
         tab === 'settings' ||
         tab === 'versions' ||
         tab === 'news' ||

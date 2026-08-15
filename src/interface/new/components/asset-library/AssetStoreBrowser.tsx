@@ -89,7 +89,6 @@ export function AssetStoreBrowser({
   const requestSeq = useRef(0)
   const rootRef = useRef<HTMLDivElement>(null)
 
-  // Keep the view's header metric in sync with this browser's state.
   useEffect(() => {
     onStatsChange?.({ loading, total })
   }, [loading, total, onStatsChange])

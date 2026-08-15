@@ -56,8 +56,6 @@ fn strip_html(input: &str) -> String {
     decoded.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-/// Walk the raw feed XML and collect each <item>'s <image> (the blog cover),
-/// in document order. Returns one entry per <item> (None when missing).
 fn extract_item_images(xml: &[u8]) -> Result<Vec<Option<String>>, String> {
     use quick_xml::events::Event;
     use quick_xml::Reader;
@@ -148,9 +146,6 @@ async fn fetch_live() -> Result<Vec<NewsItem>, String> {
     }
     let bytes = resp.bytes().await.map_err(|e| e.to_string())?;
     let feed = feed_rs::parser::parse(&bytes[..]).map_err(|e| e.to_string())?;
-    // The Godot blog puts each post's cover image in a non-standard <image>
-    // element inside <item>, which feed-rs ignores. Extract them separately, in
-    // document order, so they line up 1:1 with the parsed entries.
     let images = extract_item_images(&bytes)?;
 
     let items = feed

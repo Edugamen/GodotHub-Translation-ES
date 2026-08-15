@@ -2,7 +2,7 @@ import { motion } from 'framer-motion'
 import { useRef, useState } from 'react'
 import type { ComponentType } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconChevronsLeft, IconSearch, IconX } from '../../lib/icons'
+import { IconChevronsLeft, IconHouse, IconSearch, IconX } from '../../lib/icons'
 import type { IconProps } from '../../lib/icons'
 import { Tooltip } from '../reusables/Tooltip'
 
@@ -185,7 +185,7 @@ export function Sidebar({
       onClick={toggleCollapsed}
       aria-label={collapsed ? t('expand_sidebar') : t('collapse_sidebar')}
       className={`focus-ring cursor-pointer relative flex items-center justify-center rounded-item text-sm font-medium transition-colors border border-transparent text-muted hover:text-ink hover:bg-raised/60 ${
-        collapsed ? 'w-11 h-11 shrink-0' : 'w-9 h-9 ml-auto shrink-0'
+        collapsed ? 'w-8 h-8 shrink-0' : 'w-9 h-9 ml-auto shrink-0'
       }`}
     >
       <motion.span
@@ -225,16 +225,32 @@ export function Sidebar({
         }`}
       >
         {!collapsed && (
-          <>
-            <span className="font-display pl-2 font-black text-2xl tracking-tight text-ink/50 min-w-0 truncate">
+          <Tooltip content={t('dashboard')} side="right">
+            <button
+              type="button"
+              onClick={() => onTabChange('dashboard')}
+              className="focus-ring cursor-pointer font-display pl-2 font-black text-2xl tracking-tight text-ink/50 hover:text-ink min-w-0 truncate text-left transition-colors"
+            >
               GodotHub
-            </span>
-          </>
+            </button>
+          </Tooltip>
         )}
         {collapsed ? (
-          <Tooltip content={t('expand_sidebar')} side="right">
-            {collapseBtn}
-          </Tooltip>
+          <>
+            <Tooltip content={t('dashboard')} side="right">
+              <button
+                type="button"
+                onClick={() => onTabChange('dashboard')}
+                aria-label={t('dashboard')}
+                className="focus-ring cursor-pointer w-8 h-8 shrink-0 flex items-center justify-center rounded-item text-muted hover:text-ink hover:bg-raised/60 transition-colors"
+              >
+                <IconHouse className="w-4 h-4" />
+              </button>
+            </Tooltip>
+            <Tooltip content={t('expand_sidebar')} side="right">
+              {collapseBtn}
+            </Tooltip>
+          </>
         ) : (
           collapseBtn
         )}

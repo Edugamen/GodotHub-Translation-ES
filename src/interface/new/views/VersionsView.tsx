@@ -213,8 +213,6 @@ export function VersionsView({
   const isSearching = query.trim().length > 0
   const q = query.trim().toLowerCase()
 
-  // GitHub's API can rate-limit unauthenticated requests; surface a quick
-  // escape hatch to the Godot Archive source when that happens.
   const rateLimited =
     source === 'github' && /rate\s*limit/i.test(availableError || '')
 

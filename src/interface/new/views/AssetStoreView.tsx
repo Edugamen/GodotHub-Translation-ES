@@ -33,8 +33,6 @@ const SOURCE_OPTIONS: { value: AssetSource; labelKey: string }[] = [
   { value: 'store', labelKey: 'asset_source_store' },
 ]
 
-// Only sorts the Godot Asset Store API actually supports server-side.
-// (name/license sorts fall back to relevance there, so they'd be misleading.)
 const STORE_SORT_KEYS: AssetSortKey[] = [
   'relevance',
   'updated_new',
@@ -79,9 +77,6 @@ export function AssetStoreView({ connected = false }: { connected?: boolean }) {
     }
   }, [categoryOptions, categoryId])
 
-  // Keep the selected sort valid for the current source: the store only
-  // supports a subset of the sort keys, so fall back to relevance when
-  // switching to it with e.g. a name/license sort still selected.
   useEffect(() => {
     const keys =
       source === 'store' ? STORE_SORT_KEYS : sortKeysForSource(source)

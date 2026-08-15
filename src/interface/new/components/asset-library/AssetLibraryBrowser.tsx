@@ -42,9 +42,6 @@ const VERSION_OPTIONS = [
   '4.0',
 ]
 
-// The Asset Library API treats godot_version as a compatibility filter
-// (assets declaring a version <= the one you ask for), so we narrow results
-// client-side to the exact selected major.minor.
 function versionMatches(assetVersion: string, target: string): boolean {
   const a = assetVersion.trim().replace(/^v/, '').split(/[.\-+]/)
   const t = target.trim().split('.')
@@ -52,11 +49,7 @@ function versionMatches(assetVersion: string, target: string): boolean {
 }
 
 const MAX_EMPTY_SKIP = 15
-// How many loose API pages to probe around the current page when a specific
-// version is selected, to decide whether prev/next content actually exists.
 const PROBE_DEPTH = 5
-// When a sparse version's matches are gathered into one page, stop after this
-// many collected assets or this many consecutive empty API pages.
 const GATHER_LIMIT = PAGE_SIZE * 3
 const GATHER_EMPTY_RUN = 5
 
@@ -82,7 +75,6 @@ export function AssetLibraryBrowser({
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
 
-  // Keep the view's header metric in sync with this browser's state.
   useEffect(() => {
     onStatsChange?.({ loading, total })
   }, [loading, total, onStatsChange])
@@ -144,9 +136,6 @@ export function AssetLibraryBrowser({
   const [canPrev, setCanPrev] = useState(false)
   const [canNext, setCanNext] = useState(false)
 
-  // The API's version filter is compatibility-based, so its page count can be
-  // wildly larger than the exact-match content. Probe the nearby pages to see
-  // whether there's actually more content before/after the current page.
   const probeNeighbors = useCallback(
     async (cursor: number) => {
       if (version === '') {
@@ -172,11 +161,6 @@ export function AssetLibraryBrowser({
     [version, fetchPage, isExactVersion],
   )
 
-  // When a specific version is selected and the first page holds only a few
-  // exact matches, the API's loose pagination scatters them across pages
-  // (e.g. 3 on page 1, 1 on page 2). Instead of paging through that, scan
-  // forward and collect every exact match so few-asset versions show on one
-  // page with no pagination.
   const gatherAll = useCallback(
     async (startPage: number) => {
       let collected: AssetLibraryAsset[] = []
@@ -195,7 +179,6 @@ export function AssetLibraryBrowser({
           emptyRun = 0
         } else {
           emptyRun += 1
-          // A run of empty pages means we've passed the last exact match.
           if (collected.length > 0 && emptyRun >= GATHER_EMPTY_RUN) break
         }
         cursor += 1
@@ -257,8 +240,6 @@ export function AssetLibraryBrowser({
     setPaging(true)
     let cursor = clamped
     let landedPage = clamped
-    // A page can contain no exact-version matches (the API's version filter is
-    // compatibility-based); step in the direction of travel until we find one.
     for (let i = 0; i <= MAX_EMPTY_SKIP; i++) {
       const res = await load(cursor)
       if (res) landedPage = Math.min(res.page, Math.max(0, res.pages - 1))
