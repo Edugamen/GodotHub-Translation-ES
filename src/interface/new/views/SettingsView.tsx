@@ -33,6 +33,7 @@ import {
 import { ColorSwatchPicker } from '../components/ui/ColorSwatchPicker'
 import { OverlayScrollArea } from '../components/reusables/OverlayScrollArea'
 import { DirList } from '../components/reusables/DirList'
+import { Tooltip } from '../components/reusables/Tooltip'
 import { KeyRecorder } from '../components/ui/KeyRecorder'
 import { matchesSearch, useSectionSearch } from '../hooks/useSectionSearch'
 import { Dropdown } from '../components/ui/Dropdown'
@@ -799,6 +800,25 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
               update({ ...settings, show_scrollbars: checked })
             }
             label={ts('show_scrollbar_label')}
+          />
+        </SettingRow>
+      </Subsection>
+
+      <Subsection
+        id="appearance-animated-numbers"
+        title={ts('animated_numbers_label')}
+        description={ts('animated_numbers_desc')}
+        searchText={`${ts('animated_numbers_label')} ${ts('animated_numbers_desc')}`}
+        query={searchQuery}
+        onMatch={reportMatch}
+      >
+        <SettingRow label={ts('animated_numbers_label')}>
+          <Toggle
+            checked={settings.animated_numbers}
+            onChange={(checked) =>
+              update({ ...settings, animated_numbers: checked })
+            }
+            label={ts('animated_numbers_label')}
           />
         </SettingRow>
       </Subsection>
@@ -1742,18 +1762,19 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
                       {pat.username}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    aria-label={ts('git_pat_remove')}
-                    title={ts('git_pat_remove')}
-                    onClick={async () => {
-                      await api.gitAuthRemovePat(pat.host)
-                      await refreshGitAuth()
-                    }}
-                    className="focus-ring cursor-pointer p-1.5 rounded-btn text-muted/60 hover:text-danger hover:bg-danger/10 transition-colors shrink-0"
-                  >
-                    <IconTrash className="w-3.5 h-3.5" />
-                  </button>
+                  <Tooltip content={ts('git_pat_remove')} side="top">
+                    <button
+                      type="button"
+                      aria-label={ts('git_pat_remove')}
+                      onClick={async () => {
+                        await api.gitAuthRemovePat(pat.host)
+                        await refreshGitAuth()
+                      }}
+                      className="focus-ring cursor-pointer p-1.5 rounded-btn text-muted/60 hover:text-danger hover:bg-danger/10 transition-colors shrink-0"
+                    >
+                      <IconTrash className="w-3.5 h-3.5" />
+                    </button>
+                  </Tooltip>
                 </div>
               ))}
             </div>

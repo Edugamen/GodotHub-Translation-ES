@@ -661,10 +661,10 @@ fn reroot_to_project(
     top: &Path,
 ) -> Vec<GitChangedFile> {
     let Ok(prefix) = project.strip_prefix(top) else {
-        return files; // Not under the repo root, keep entries as-is.
+        return files;
     };
     if prefix.as_os_str().is_empty() {
-        return files; // Project *is* the repo root, nothing to scope.
+        return files;
     }
     files
         .into_iter()

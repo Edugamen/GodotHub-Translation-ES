@@ -18,6 +18,7 @@
   <img src="https://img.shields.io/github/license/RykoTheDev/godothub?style=flat-square&color=23a55a" alt="License">
   <img src="https://img.shields.io/github/stars/RykoTheDev/godothub?style=flat-square&color=f0b132" alt="Stars">
   <img src="https://img.shields.io/badge/winget-available-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Winget Available">
+  <a href="https://github.com/RykoTheDev/godothub/wiki"><img src="https://img.shields.io/badge/wiki-Docs-457ff2?style=flat-square" alt="Wiki"></a>
 </p>
 
 
@@ -31,6 +32,8 @@
   <a href="#-installation"><kbd>🛠️ Installation</kbd></a>
   &nbsp;&nbsp;
   <a href="#️-keyboard-shortcuts"><kbd>⌨️ Shortcuts</kbd></a>
+  &nbsp;&nbsp;
+  <a href="https://github.com/RykoTheDev/godothub/wiki"><kbd>📚 Wiki</kbd></a>
 </p>
 
 > [!WARNING]
@@ -304,6 +307,14 @@ Deep configuration options for every aspect of the app.
 
 ---
 
+## 🤖 AI Disclosure
+
+Some parts of this codebase have been restructured and small bugs fixed with the assistance of AI. All changes are reviewed and tested before being merged. Whole Code is written by a freshly baked Human from scratch.
+
+Copilot is **not** used here. I Accidentally had it fix the PR where it literally only removed a Space and now its in Collaborators list 😭. I've disabled it, and it has no authority over this repository, including reviews.
+
+---
+
 ## 🛠️ Installation
 
 ### Download Prebuilt Binaries
@@ -382,6 +393,20 @@ bun tauri build
 | `Escape` | Close overlay / Clear selection |
 
 > The command palette keybind can be customized in Settings.
+
+---
+
+## 📚 Wiki
+
+The [project wiki](https://github.com/RykoTheDev/godothub/wiki) covers GodotHub in more depth than this README, split into a few pages:
+
+| Page | What it covers |
+|---|---|
+| [Getting Started](https://github.com/RykoTheDev/godothub/wiki/Getting-Started) | Installation, the first-run setup wizard, and what to do after |
+| [Keyboard Shortcuts](https://github.com/RykoTheDev/godothub/wiki/Keyboard-Shortcuts) | Every global shortcut, plus how lists, menus, and forms behave on the keyboard |
+| [Settings Reference](https://github.com/RykoTheDev/godothub/wiki/Settings-Reference) | What every setting does, grouped by category |
+| [Custom CSS in the New UI](https://github.com/RykoTheDev/godothub/wiki/Custom-CSS-in-the-New-UI) | Restyle the new interface with your own CSS |
+| [FAQ / Troubleshooting](https://github.com/RykoTheDev/godothub/wiki/FAQ-Troubleshooting) | Answers to common questions and fixes for common problems |
 
 ---
 
@@ -487,7 +512,7 @@ godothub/
 
 ---
 
-## Languages
+## 🌍 Languages
 In beta phase (languages other than english might be incomplete)
 
 | Languages | Status          |
@@ -519,14 +544,9 @@ And every other open-source library that makes GodotHub possible, see `package.j
 
 ---
 
-> [!NOTE]
-> **AI Notice:** Some parts of this codebase have been restructured and small bugs fixed with the assistance of AI. All changes are reviewed and tested before being merged. If you notice anything unusual, feel free to [open an issue](https://github.com/RykoTheDev/godothub/issues).
->
-> Copilot is **not** used here. It activated automatically at some point, which is why it shows up in the contributors list. I've disabled it, and it has no authority over this repository, including reviews.
-
 ---
 
-## Star History
+## ⭐ Star History
 
 <a href="https://www.star-history.com/?repos=RykoTheDev%2FGodotHub&type=timeline&legend=bottom-right">
  <picture>
@@ -546,4 +566,6 @@ And every other open-source library that makes GodotHub possible, see `package.j
   <a href="https://github.com/RykoTheDev/godothub/issues">🐛 Report a Bug</a>
   &nbsp;·&nbsp;
   <a href="https://github.com/RykoTheDev/godothub/discussions">💬 Discussions</a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/RykoTheDev/godothub/wiki">📚 Wiki</a>
 </p>

@@ -168,6 +168,7 @@ export interface NewsItem {
   summary: string | null
   author: string | null
   category: string | null
+  image: string | null
 }
 
 export interface NewsResponse {
@@ -331,6 +332,7 @@ export interface AppSettings {
   show_support_button: boolean
   show_star_button: boolean
   show_scrollbars: boolean
+  animated_numbers: boolean
   project_icon_opacity: number
   animation_threshold: number
   language: string

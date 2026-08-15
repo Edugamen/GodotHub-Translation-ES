@@ -10,6 +10,7 @@ import {
   IconChevronDown,
   IconCopy,
 } from '../../lib/icons'
+import { Tooltip } from '../reusables/Tooltip'
 
 interface GitResultDialogProps {
   type: 'success' | 'error'
@@ -124,16 +125,17 @@ export function GitResultDialog({
               <span>{t('technical_details')}</span>
               <div className="flex-1" />
               {showRaw && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    navigator.clipboard.writeText(rawError)
-                  }}
-                  className="focus-ring p-1 rounded text-muted hover:text-ink hover:bg-raised transition-colors cursor-pointer"
-                  title={t('copy_to_clipboard')}
-                >
-                  <IconCopy className="w-3 h-3" />
-                </button>
+                <Tooltip content={t('copy_to_clipboard')} side="top">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      navigator.clipboard.writeText(rawError)
+                    }}
+                    className="focus-ring p-1 rounded text-muted hover:text-ink hover:bg-raised transition-colors cursor-pointer"
+                  >
+                    <IconCopy className="w-3 h-3" />
+                  </button>
+                </Tooltip>
               )}
             </button>
             {showRaw && (

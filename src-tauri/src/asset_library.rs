@@ -93,7 +93,7 @@ pub struct AssetLibraryResponse {
 pub struct AssetLibraryCategory {
     pub id: String,
     pub name: String,
-    #[serde(rename = "type")]
+    #[serde(rename(deserialize = "type", serialize = "category_type"))]
     pub category_type: String,
 }
 
@@ -380,7 +380,6 @@ pub async fn search_asset_library(
             .into_iter()
             .flatten()
             .filter(|d| !apply_default_filters || ALLOWED_TYPES.contains(&d.asset_type.as_str()))
-            .filter(|d| !apply_default_filters || meets_min_version(&d.godot_version))
             .map(|d| AssetLibraryAsset {
                 asset_id: d.asset_id,
                 title: d.title,
@@ -411,7 +410,7 @@ pub async fn search_asset_library(
 
     let response = AssetLibraryResponse {
         assets,
-        page: current_page,
+        page: current_page.min(pages.saturating_sub(1)),
         pages,
         total,
     };

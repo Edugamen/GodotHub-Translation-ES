@@ -75,6 +75,7 @@ const DEFAULTS: AppSettings = {
   show_support_button: true,
   show_star_button: true,
   show_scrollbars: true,
+  animated_numbers: true,
   project_icon_opacity: 14,
   animation_threshold: 20,
   language: 'en-US',

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence, type Transition } from 'framer-motion'
-import NumberFlow from '@number-flow/react'
+import { AnimatedNumber } from '../components/reusables/AnimatedNumber'
 import { useGodotVersionsContext } from '../../../hooks/godotVersionsContext'
 import { useSettings } from '../../../hooks/useSettings'
 import { useTaskTray } from '../../../hooks/useTaskTray'
@@ -15,6 +15,7 @@ import { Dropdown } from '../components/ui/Dropdown'
 import { OverlayScrollArea } from '../components/reusables/OverlayScrollArea'
 import { ScanButton } from '../components/reusables/ScanButton'
 import { ImportButton } from '../components/reusables/ImportButton'
+import { Tooltip } from '../components/reusables/Tooltip'
 import { InstalledVersionCard } from '../components/cards/InstalledVersionCard'
 import {
   IconChevronDown,
@@ -212,8 +213,6 @@ export function VersionsView({
   const isSearching = query.trim().length > 0
   const q = query.trim().toLowerCase()
 
-  // GitHub's API can rate-limit unauthenticated requests; surface a quick
-  // escape hatch to the Godot Archive source when that happens.
   const rateLimited =
     source === 'github' && /rate\s*limit/i.test(availableError || '')
 
@@ -275,7 +274,7 @@ export function VersionsView({
           metric={
             <>
               <h2 className="text-4xl font-bold text-muted">
-                <NumberFlow value={installed.length} />
+                <AnimatedNumber value={installed.length} />
               </h2>
               <p className="text-lg font-medium uppercase text-muted">
                 {tv('installed_label')}
@@ -628,38 +627,41 @@ export function VersionsView({
                                           </div>
                                         )}
                                         {dl.status === 'paused' ? (
-                                          <motion.button
-                                            type="button"
-                                            whileTap={{ scale: 0.9 }}
-                                            onClick={() => resume(progressKey)}
-                                            aria-label={tv('resume_download')}
-                                            title={tv('resume_download')}
-                                            className="focus-ring cursor-pointer p-2 rounded-btn border border-outline/50 text-muted hover:text-mint hover:border-mint/40 transition-colors"
-                                          >
-                                            <IconPlay className="w-4 h-4" />
-                                          </motion.button>
+                                          <Tooltip content={tv('resume_download')} side="top">
+                                            <motion.button
+                                              type="button"
+                                              whileTap={{ scale: 0.9 }}
+                                              onClick={() => resume(progressKey)}
+                                              aria-label={tv('resume_download')}
+                                              className="focus-ring cursor-pointer p-2 rounded-btn border border-outline/50 text-muted hover:text-mint hover:border-mint/40 transition-colors"
+                                            >
+                                              <IconPlay className="w-4 h-4" />
+                                            </motion.button>
+                                          </Tooltip>
                                         ) : dl.status === 'downloading' ? (
+                                          <Tooltip content={tv('pause_download')} side="top">
+                                            <motion.button
+                                              type="button"
+                                              whileTap={{ scale: 0.9 }}
+                                              onClick={() => pause(progressKey)}
+                                              aria-label={tv('pause_download')}
+                                              className="focus-ring cursor-pointer p-2 rounded-btn border border-outline/50 text-muted hover:text-ink hover:border-accent-dim transition-colors"
+                                            >
+                                              <IconPause className="w-4 h-4" />
+                                            </motion.button>
+                                          </Tooltip>
+                                        ) : null}
+                                        <Tooltip content={tv('cancel_download')} side="top">
                                           <motion.button
                                             type="button"
                                             whileTap={{ scale: 0.9 }}
-                                            onClick={() => pause(progressKey)}
-                                            aria-label={tv('pause_download')}
-                                            title={tv('pause_download')}
-                                            className="focus-ring cursor-pointer p-2 rounded-btn border border-outline/50 text-muted hover:text-ink hover:border-accent-dim transition-colors"
+                                            onClick={() => cancel(progressKey)}
+                                            aria-label={tv('cancel_download')}
+                                            className="focus-ring cursor-pointer p-2 rounded-btn border border-outline/50 text-muted hover:text-danger hover:border-danger/40 transition-colors"
                                           >
-                                            <IconPause className="w-4 h-4" />
+                                            <IconX className="w-4 h-4" />
                                           </motion.button>
-                                        ) : null}
-                                        <motion.button
-                                          type="button"
-                                          whileTap={{ scale: 0.9 }}
-                                          onClick={() => cancel(progressKey)}
-                                          aria-label={tv('cancel_download')}
-                                          title={tv('cancel_download')}
-                                          className="focus-ring cursor-pointer p-2 rounded-btn border border-outline/50 text-muted hover:text-danger hover:border-danger/40 transition-colors"
-                                        >
-                                          <IconX className="w-4 h-4" />
-                                        </motion.button>
+                                        </Tooltip>
                                       </div>
                                     ) : isInstalled ? (
                                       <span className="text-xs text-mint font-medium shrink-0">
@@ -667,23 +669,27 @@ export function VersionsView({
                                       </span>
                                     ) : (
                                       <div className="flex items-center gap-2 shrink-0">
-                                        <motion.button
-                                          type="button"
-                                          whileHover={{ y: -1 }}
-                                          whileTap={{ scale: 0.96 }}
-                                          onClick={() =>
-                                            openUrl(sourcePageUrl(source, tag))
-                                          }
-                                          title={tv('open_source_page', {
+                                        <Tooltip
+                                          content={tv('open_source_page', {
                                             source:
                                               source === 'archive'
                                                 ? tv('source_archive')
                                                 : tv('source_github'),
                                           })}
-                                          className="focus-ring cursor-pointer flex items-center gap-1.5 h-9 px-3.5 rounded-item border border-outline/50 text-muted hover:text-ink hover:border-accent-dim hover:bg-raised text-sm font-medium transition-colors"
+                                          side="top"
                                         >
-                                          <IconExternalLink className="w-3.5 h-3.5" />
-                                        </motion.button>
+                                          <motion.button
+                                            type="button"
+                                            whileHover={{ y: -1 }}
+                                            whileTap={{ scale: 0.96 }}
+                                            onClick={() =>
+                                              openUrl(sourcePageUrl(source, tag))
+                                            }
+                                            className="focus-ring cursor-pointer flex items-center gap-1.5 h-9 px-3.5 rounded-item border border-outline/50 text-muted hover:text-ink hover:border-accent-dim hover:bg-raised text-sm font-medium transition-colors"
+                                          >
+                                            <IconExternalLink className="w-3.5 h-3.5" />
+                                          </motion.button>
+                                        </Tooltip>
                                         <motion.button
                                           type="button"
                                           whileHover={{ y: -1 }}

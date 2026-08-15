@@ -14,6 +14,7 @@ import {
   IconCircleX,
 } from '../../lib/icons'
 import { ConfirmDialog } from '../modals/ConfirmDialog'
+import { Tooltip } from '../reusables/Tooltip'
 
 interface ConflictFile {
   path: string
@@ -238,39 +239,43 @@ export function MergeConflictDialog({
 
                       {!file.resolved && (
                         <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            onClick={() => handleResolve(file.path, 'ours')}
-                            disabled={resolving === file.path}
-                            className="focus-ring cursor-pointer px-2 py-1.5 rounded-lg bg-accent/10 hover:bg-accent/20 border border-accent/20 text-accent-bright disabled:opacity-40 disabled:cursor-not-allowed text-[10px] font-medium transition-colors"
-                            title={t('merge_use_ours_tooltip')}
-                          >
-                            {t('merge_use_ours')}
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleResolve(file.path, 'theirs')
-                            }
-                            disabled={resolving === file.path}
-                            className="focus-ring cursor-pointer px-2 py-1.5 rounded-lg bg-mint/10 hover:bg-mint/20 border border-mint/20 text-mint disabled:opacity-40 disabled:cursor-not-allowed text-[10px] font-medium transition-colors"
-                            title={t('merge_use_theirs_tooltip')}
-                          >
-                            {t('merge_use_theirs')}
-                          </button>
-                          <button
-                            onClick={() => onOpenTerminal()}
-                            className="focus-ring cursor-pointer p-1.5 rounded-lg border border-outline/50 text-muted hover:text-ink hover:bg-raised transition-colors shrink-0"
-                            title={t('merge_edit_terminal_tooltip')}
-                          >
-                            <IconTerminal className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleMarkManual(file.path)}
-                            disabled={resolving === file.path}
-                            className="focus-ring cursor-pointer px-2 py-1.5 rounded-lg bg-base hover:bg-raised border border-outline/50 text-muted hover:text-ink disabled:opacity-40 disabled:cursor-not-allowed text-[10px] font-medium transition-colors"
-                            title={t('merge_mark_fixed_tooltip')}
-                          >
-                            {t('merge_mark_fixed')}
-                          </button>
+                          <Tooltip content={t('merge_use_ours_tooltip')} side="top">
+                            <button
+                              onClick={() => handleResolve(file.path, 'ours')}
+                              disabled={resolving === file.path}
+                              className="focus-ring cursor-pointer px-2 py-1.5 rounded-lg bg-accent/10 hover:bg-accent/20 border border-accent/20 text-accent-bright disabled:opacity-40 disabled:cursor-not-allowed text-[10px] font-medium transition-colors"
+                            >
+                              {t('merge_use_ours')}
+                            </button>
+                          </Tooltip>
+                          <Tooltip content={t('merge_use_theirs_tooltip')} side="top">
+                            <button
+                              onClick={() =>
+                                handleResolve(file.path, 'theirs')
+                              }
+                              disabled={resolving === file.path}
+                              className="focus-ring cursor-pointer px-2 py-1.5 rounded-lg bg-mint/10 hover:bg-mint/20 border border-mint/20 text-mint disabled:opacity-40 disabled:cursor-not-allowed text-[10px] font-medium transition-colors"
+                            >
+                              {t('merge_use_theirs')}
+                            </button>
+                          </Tooltip>
+                          <Tooltip content={t('merge_edit_terminal_tooltip')} side="top">
+                            <button
+                              onClick={() => onOpenTerminal()}
+                              className="focus-ring cursor-pointer p-1.5 rounded-lg border border-outline/50 text-muted hover:text-ink hover:bg-raised transition-colors shrink-0"
+                            >
+                              <IconTerminal className="w-3.5 h-3.5" />
+                            </button>
+                          </Tooltip>
+                          <Tooltip content={t('merge_mark_fixed_tooltip')} side="top">
+                            <button
+                              onClick={() => handleMarkManual(file.path)}
+                              disabled={resolving === file.path}
+                              className="focus-ring cursor-pointer px-2 py-1.5 rounded-lg bg-base hover:bg-raised border border-outline/50 text-muted hover:text-ink disabled:opacity-40 disabled:cursor-not-allowed text-[10px] font-medium transition-colors"
+                            >
+                              {t('merge_mark_fixed')}
+                            </button>
+                          </Tooltip>
                         </div>
                       )}
 
