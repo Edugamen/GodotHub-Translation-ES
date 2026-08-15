@@ -376,11 +376,13 @@ pub async fn search_asset_library(
             eprintln!("Asset Library: {failures} detail fetch(es) failed");
         }
 
+        // Don't drop old-Godot assets here: install validates type and minimum
+        // version separately, and filtering them out breaks oldest-first sorting
+        // (the oldest pages are almost entirely pre-4.1 assets).
         assets = details
             .into_iter()
             .flatten()
             .filter(|d| !apply_default_filters || ALLOWED_TYPES.contains(&d.asset_type.as_str()))
-            .filter(|d| !apply_default_filters || meets_min_version(&d.godot_version))
             .map(|d| AssetLibraryAsset {
                 asset_id: d.asset_id,
                 title: d.title,
@@ -411,7 +413,9 @@ pub async fn search_asset_library(
 
     let response = AssetLibraryResponse {
         assets,
-        page: current_page,
+        // The skip loop can walk past the end when the last pages contain only
+        // filtered-out assets; never report a page index outside the valid range.
+        page: current_page.min(pages.saturating_sub(1)),
         pages,
         total,
     };

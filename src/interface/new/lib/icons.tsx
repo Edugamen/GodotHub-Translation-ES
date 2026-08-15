@@ -9,6 +9,7 @@ import {
   faDiagramProject,
   faChevronUp,
   faChevronDown,
+  faChevronLeft,
   faChevronRight,
   faXmark,
   faGear,
@@ -99,6 +100,7 @@ export const IconDownload = solid(faDownload)
 export const IconNode = solid(faDiagramProject)
 export const IconChevronUp = solid(faChevronUp)
 export const IconChevronDown = solid(faChevronDown)
+export const IconChevronLeft = solid(faChevronLeft)
 export const IconChevronRight = solid(faChevronRight)
 export const IconX = solid(faXmark)
 export const IconGear = solid(faGear)

@@ -13,6 +13,7 @@ import { ConfirmDialog } from './components/modals/ConfirmDialog'
 import { GitSidebar } from './components/git/GitSidebar'
 import { ProjectsView } from './views/ProjectsView'
 import { VersionsView } from './views/VersionsView'
+import { TemplatesView } from './views/TemplatesView'
 import { SettingsView } from './views/SettingsView'
 import { UpdatesView } from './views/UpdatesView'
 import { ChangelogView } from './views/ChangelogView'
@@ -213,11 +214,9 @@ export function App() {
         return <UpdatesView connected={!cardLayout} />
       case 'templates':
         return (
-          <PlaceholderView
+          <TemplatesView
+            onOpenSettings={() => setTab('settings')}
             connected={!cardLayout}
-            title={t('templates')}
-            icon={IconRocket}
-            description="The redesigned Templates view will live here as its own file in src/interface/new/views/."
           />
         )
       case 'asset-store':
@@ -258,6 +257,7 @@ export function App() {
         {tab === 'projects' ||
         tab === 'settings' ||
         tab === 'versions' ||
+        tab === 'templates' ||
         tab === 'updates' ||
         tab === 'changelog' ? (
           renderView()
