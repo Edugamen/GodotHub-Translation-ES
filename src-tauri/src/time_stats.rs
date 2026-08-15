@@ -1,5 +1,5 @@
 use crate::persist;
-use chrono::Datelike;
+use chrono::{Datelike, Duration};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
@@ -58,6 +58,23 @@ pub fn record_session(app: &AppHandle, project_id: &str, start_ms: u64, seconds:
             .or_insert(0) += seconds;
     }
     write_stats(app, &store);
+}
+
+#[tauri::command]
+pub fn get_weekly_activity(app: AppHandle) -> Vec<(String, u64)> {
+    let store = read_stats(&app);
+    let now = chrono::Local::now();
+    let mut out: Vec<(String, u64)> = Vec::new();
+    for offset in (0..7).rev() {
+        let day = now - Duration::days(offset);
+        let date = day.format("%Y-%m-%d").to_string();
+        let mut total = 0u64;
+        for by_project in store.daily.values() {
+            total += by_project.get(&date).copied().unwrap_or(0);
+        }
+        out.push((date, total));
+    }
+    out
 }
 
 pub fn breakdown(

@@ -6,6 +6,7 @@ import { useGodotVersionsContext } from '../../hooks/godotVersionsContext'
 import { useCategoriesContext } from '../../hooks/categoriesContext'
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts'
 import { api } from '../../lib/api'
+import { viewTransition } from '../../lib/motion'
 import type { GitStatus, Project } from '../../types'
 
 import { Sidebar } from './components/ui/Sidebar'
@@ -62,13 +63,22 @@ export type NewTab = (typeof TABS)[number]['id']
 export function App() {
   const { t } = useTranslation('nav')
   const { t: tc } = useTranslation('common')
-  const { settings } = useSettings()
+  const { settings, loaded: settingsLoaded } = useSettings()
   const cardLayout = settings.card_layout ?? true
   const { projects, refresh: refreshProjects } = useProjectsContext()
   const projectsRef = useRef(projects)
   projectsRef.current = projects
   const [uiSwitchIntent] = useState(() => shouldOpenSettingsAfterSwitch())
   const [tab, setTab] = useState<NewTab>(uiSwitchIntent ? 'settings' : 'projects')
+  const landingTabRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!settingsLoaded || uiSwitchIntent) return
+    if (landingTabRef.current !== null) return
+    landingTabRef.current = settings.default_landing_tab
+    const landing = settings.default_landing_tab as NewTab
+    if (TABS.some((t) => t.id === landing)) setTab(landing)
+  }, [settingsLoaded, settings.default_landing_tab, uiSwitchIntent])
   const [pendingLaunch, setPendingLaunch] = useState<{
     id: string
     console?: boolean
@@ -223,7 +233,7 @@ export function App() {
   const renderView = () => {
     switch (tab) {
       case 'dashboard':
-        return <DashboardView connected={!cardLayout} />
+        return <DashboardView connected={!cardLayout} active={tab === 'dashboard'} />
       case 'projects':
         return (
           <ProjectsView
@@ -279,32 +289,43 @@ export function App() {
           onOpenCommandPalette={() => setCommandPaletteOpen(true)}
         />
 
-        {tab === 'dashboard' ||
-        tab === 'projects' ||
-        tab === 'settings' ||
-        tab === 'versions' ||
-        tab === 'news' ||
-        tab === 'asset-store' ||
-        tab === 'templates' ||
-        tab === 'updates' ||
-        tab === 'changelog' ? (
-          renderView()
-        ) : (
-          <main
-            className={`flex-1 min-w-0 relative overflow-hidden ${
-              cardLayout ? 'rounded-card bg-raised' : 'bg-raised'
-            }`}
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={tab}
+            className="flex-1 min-w-0 h-full"
+            {...viewTransition(
+              settings.view_entrance,
+              settings.animation_intensity,
+            )}
           >
-            <OverlayScrollArea
-              className="absolute inset-0"
-              hideThumb={!settings.show_scrollbars}
-            >
-              <div className="min-h-full px-6 py-4">
-                {renderView()}
-              </div>
-            </OverlayScrollArea>
-          </main>
-        )}
+            {tab === 'dashboard' ||
+            tab === 'projects' ||
+            tab === 'settings' ||
+            tab === 'versions' ||
+            tab === 'news' ||
+            tab === 'asset-store' ||
+            tab === 'templates' ||
+            tab === 'updates' ||
+            tab === 'changelog' ? (
+              renderView()
+            ) : (
+              <main
+                className={`flex-1 min-w-0 relative overflow-hidden h-full ${
+                  cardLayout ? 'rounded-card bg-raised' : 'bg-raised'
+                }`}
+              >
+                <OverlayScrollArea
+                  className="absolute inset-0"
+                  hideThumb={!settings.show_scrollbars}
+                >
+                  <div className="min-h-full px-6 py-4">
+                    {renderView()}
+                  </div>
+                </OverlayScrollArea>
+              </main>
+            )}
+          </motion.div>
+        </AnimatePresence>
 
         <AnimatePresence>
           {gitSidebarProject && (

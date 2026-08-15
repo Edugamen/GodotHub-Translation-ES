@@ -343,6 +343,22 @@ export interface AppSettings {
   open_after_import: boolean
   new_ui: boolean
   card_layout: boolean
+  dashboard_custom_name: string | null
+  default_landing_tab: string
+  dashboard_sections: string[]
+  dashboard_section_order: string[]
+  dashboard_section_spans: string[]
+  dashboard_tall_sections: string[]
+  dashboard_custom_presets: DashboardCustomPreset[]
+}
+
+export interface DashboardCustomPreset {
+  id: string
+  name: string
+  sections: string[]
+  order: string[]
+  spans: string[]
+  tall: string[]
 }
 
 export interface ScanResult {

@@ -1,3 +1,4 @@
+import { invoke } from '@tauri-apps/api/core'
 import { projectsApi, getCachedProjectIcon, getCachedProjectName } from '../api/projects'
 import { versionsApi } from '../api/versions'
 import { gitApi } from '../api/git'
@@ -23,6 +24,10 @@ export const api = {
   saveProjectTags: projectsApi.saveTags,
   openProject: projectsApi.open,
   stopProject: projectsApi.stop,
+  listRunningProjects: () =>
+    invoke<{ id: string; name: string; version: string; launched_at_ms: number }[]>(
+      'list_running_projects',
+    ),
   openProjectFolder: projectsApi.openFolder,
   openInEditor: projectsApi.openInEditor,
   getProjectSize: projectsApi.getSize,
@@ -30,8 +35,11 @@ export const api = {
   pickFile: projectsApi.pickFile,
   pickSavePath: projectsApi.pickSavePath,
   pickDataFile: projectsApi.pickDataFile,
+  getOsUsername: settingsApi.getOsUsername,
   exportProjectStats: projectsApi.exportProjectStats,
   importProjectStats: projectsApi.importProjectStats,
+  getWeeklyActivity: () =>
+    invoke<[string, number][]>('get_weekly_activity'),
   readImageFile: projectsApi.readImageFile,
   getProjectIcon: projectsApi.getIcon,
   getProjectName: projectsApi.getName,

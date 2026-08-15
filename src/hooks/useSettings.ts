@@ -86,6 +86,13 @@ const DEFAULTS: AppSettings = {
   open_after_import: true,
   new_ui: false,
   card_layout: true,
+  dashboard_custom_name: null,
+  default_landing_tab: 'projects',
+  dashboard_sections: [],
+  dashboard_section_order: [],
+  dashboard_section_spans: [],
+  dashboard_tall_sections: [],
+  dashboard_custom_presets: [],
 }
 
 interface SettingsContextValue {
