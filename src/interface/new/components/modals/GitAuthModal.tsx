@@ -13,6 +13,7 @@ import {
   IconSpinner,
   IconX,
 } from '../../lib/icons'
+import { Tooltip } from '../reusables/Tooltip'
 
 type Provider = 'github' | 'gitlab'
 
@@ -221,19 +222,20 @@ export function GitAuthModal({
                   <code className="font-mono text-2xl font-semibold tracking-[0.3em] text-ink bg-base border border-outline/50 rounded-btn px-5 py-3">
                     {flow.user_code}
                   </code>
-                  <button
-                    type="button"
-                    onClick={copyCode}
-                    aria-label={ts('git_auth_copy_code')}
-                    title={ts('git_auth_copy_code')}
-                    className="focus-ring cursor-pointer p-2.5 rounded-btn border border-outline/50 text-muted hover:text-ink hover:border-accent-dim transition-colors shrink-0"
-                  >
-                    {copied ? (
-                      <IconCheck className="w-4 h-4 text-mint" />
-                    ) : (
-                      <IconCopy className="w-4 h-4" />
-                    )}
-                  </button>
+                  <Tooltip content={ts('git_auth_copy_code')} side="top">
+                    <button
+                      type="button"
+                      onClick={copyCode}
+                      aria-label={ts('git_auth_copy_code')}
+                      className="focus-ring cursor-pointer p-2.5 rounded-btn border border-outline/50 text-muted hover:text-ink hover:border-accent-dim transition-colors shrink-0"
+                    >
+                      {copied ? (
+                        <IconCheck className="w-4 h-4 text-mint" />
+                      ) : (
+                        <IconCopy className="w-4 h-4" />
+                      )}
+                    </button>
+                  </Tooltip>
                 </div>
               </div>
 

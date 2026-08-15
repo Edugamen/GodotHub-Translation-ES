@@ -23,6 +23,7 @@ import { tagColor } from '../../../lib/colors'
 import { Dropdown } from '../components/ui/Dropdown'
 import { ImportButton } from '../components/reusables/ImportButton'
 import { OverlayScrollArea } from '../components/reusables/OverlayScrollArea'
+import { Tooltip } from '../components/reusables/Tooltip'
 import { ProjectCard } from '../components/cards/ProjectCard'
 import { ProjectCardList } from '../components/cards/ProjectCardList'
 import { useSettings } from '../../../hooks/useSettings'
@@ -331,19 +332,20 @@ export function ProjectsView({
         />
 
         {tagFilter && (
-          <button
-            type="button"
-            onClick={() => setTagFilter(null)}
-            title={tc('clear_tag_filter')}
-            className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-8 px-3 rounded-item bg-accent/15 text-accent-bright ring-1 ring-accent-dim/70 hover:bg-accent/25 transition-colors"
-          >
-            <span
-              className="w-1.5 h-1.5 rounded-full shrink-0"
-              style={{ backgroundColor: tagColor(tagFilter) }}
-            />
-            <span className="text-[16px] font-medium">{tagFilter}</span>
-            <IconX className="w-3 h-3" />
-          </button>
+          <Tooltip content={tc('clear_tag_filter')} side="top">
+            <button
+              type="button"
+              onClick={() => setTagFilter(null)}
+              className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-8 px-3 rounded-item bg-accent/15 text-accent-bright ring-1 ring-accent-dim/70 hover:bg-accent/25 transition-colors"
+            >
+              <span
+                className="w-1.5 h-1.5 rounded-full shrink-0"
+                style={{ backgroundColor: tagColor(tagFilter) }}
+              />
+              <span className="text-[16px] font-medium">{tagFilter}</span>
+              <IconX className="w-3 h-3" />
+            </button>
+          </Tooltip>
         )}
 
       </div>

@@ -226,11 +226,8 @@ export function Sidebar({
       >
         {!collapsed && (
           <>
-            <span className="font-display font-semibold tracking-tight text-ink min-w-0 truncate">
+            <span className="font-display pl-2 font-black text-2xl tracking-tight text-ink/50 min-w-0 truncate">
               GodotHub
-            </span>
-            <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-tag bg-accent/15 text-accent-bright border border-accent-dim/40">
-              New UI
             </span>
           </>
         )}
@@ -276,23 +273,24 @@ export function Sidebar({
                     {tc('quick_commands')}
                   </span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    try {
-                      localStorage.setItem(
-                        'new_ui_sidebar_palette_hint_dismissed',
-                        '1',
-                      )
-                    } catch {}
-                    setPaletteHintDismissed(true)
-                  }}
-                  aria-label={tc('close')}
-                  title={tc('close')}
-                  className="focus-ring cursor-pointer absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-raised border border-outline/60 text-muted/60 hover:text-ink hover:border-outline flex items-center justify-center transition-colors"
-                >
-                  <IconX className="w-2.5 h-2.5" />
-                </button>
+                <Tooltip content={tc('close')} side="top" className="absolute -top-1.5 -right-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      try {
+                        localStorage.setItem(
+                          'new_ui_sidebar_palette_hint_dismissed',
+                          '1',
+                        )
+                      } catch {}
+                      setPaletteHintDismissed(true)
+                    }}
+                    aria-label={tc('close')}
+                    className="focus-ring cursor-pointer w-4 h-4 rounded-full bg-raised border border-outline/60 text-muted/60 hover:text-ink hover:border-outline flex items-center justify-center transition-colors"
+                  >
+                    <IconX className="w-2.5 h-2.5" />
+                  </button>
+                </Tooltip>
               </div>
             )}
             {footerTabs.slice(0, -2).map((tab) =>

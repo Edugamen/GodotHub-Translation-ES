@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { IconRefresh } from '../../lib/icons'
 import { beginScaleSmoothing } from '../../../../lib/appearance'
+import { Tooltip } from '../reusables/Tooltip'
 
 interface Props {
   value: number
@@ -49,23 +50,24 @@ export function Slider({
             <span className="relative w-5 h-5 shrink-0">
               <AnimatePresence>
                 {canReset && (
-                  <motion.button
-                    type="button"
-                    initial={{ opacity: 0, scale: 0.75, y: 1 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.75, y: 1 }}
-                    transition={{ type: 'spring', stiffness: 420, damping: 26, mass: 0.9 }}
-                    onClick={() => {
-                      beginScaleSmoothing()
-                      onChange(defaultValue)
-                    }}
-                    disabled={disabled}
-                    aria-label={t('reset_to_default')}
-                    title={t('reset_to_default')}
-                    className="focus-ring cursor-pointer absolute inset-0 flex items-center justify-center rounded-full bg-raised border border-outline/50 text-muted transition-colors duration-150 hover:text-accent-bright hover:border-accent-dim/70 hover:bg-overlay disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <IconRefresh className="w-3 h-3" />
-                  </motion.button>
+                  <Tooltip content={t('reset_to_default')} side="top" className="absolute inset-0">
+                    <motion.button
+                      type="button"
+                      initial={{ opacity: 0, scale: 0.75, y: 1 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.75, y: 1 }}
+                      transition={{ type: 'spring', stiffness: 420, damping: 26, mass: 0.9 }}
+                      onClick={() => {
+                        beginScaleSmoothing()
+                        onChange(defaultValue)
+                      }}
+                      disabled={disabled}
+                      aria-label={t('reset_to_default')}
+                      className="focus-ring cursor-pointer w-full h-full flex items-center justify-center rounded-full bg-raised border border-outline/50 text-muted transition-colors duration-150 hover:text-accent-bright hover:border-accent-dim/70 hover:bg-overlay disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <IconRefresh className="w-3 h-3" />
+                    </motion.button>
+                  </Tooltip>
                 )}
               </AnimatePresence>
             </span>

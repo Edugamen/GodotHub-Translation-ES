@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { IconAlertTriangle, IconPlus, IconX } from '../../lib/icons'
+import { Tooltip } from '../reusables/Tooltip'
 import type { ChangelogEntry, ChangelogNote } from '../../../../types'
 
 interface Props {
@@ -151,22 +152,22 @@ export function ChangelogEntryModal({ entry, onClose, onSave }: Props) {
               <div key={i} className="flex items-center gap-2">
                 <div className="flex rounded-btn border border-outline/50 overflow-hidden shrink-0">
                   {CATEGORIES.map((c) => (
-                    <button
-                      key={c.value}
-                      type="button"
-                      onClick={() => setNote(i, { category: c.value })}
-                      title={t(c.label)}
-                      className={`focus-ring cursor-pointer px-2 py-1.5 text-[10px] font-medium transition-colors ${
-                        note.category === c.value
-                          ? c.activeClass
-                          : 'text-muted hover:bg-raised/50'
-                      }`}
-                    >
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full inline-block mr-1 align-middle ${c.dotClass}`}
-                      />
-                      {t(c.label)}
-                    </button>
+                    <Tooltip key={c.value} content={t(c.label)} side="top">
+                      <button
+                        type="button"
+                        onClick={() => setNote(i, { category: c.value })}
+                        className={`focus-ring cursor-pointer px-2 py-1.5 text-[10px] font-medium transition-colors ${
+                          note.category === c.value
+                            ? c.activeClass
+                            : 'text-muted hover:bg-raised/50'
+                        }`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full inline-block mr-1 align-middle ${c.dotClass}`}
+                        />
+                        {t(c.label)}
+                      </button>
+                    </Tooltip>
                   ))}
                 </div>
                 <input

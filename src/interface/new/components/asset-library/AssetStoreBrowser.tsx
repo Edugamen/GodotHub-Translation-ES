@@ -14,6 +14,7 @@ import type { AssetLibraryAsset } from '../../../../types'
 import { cachedAssetSearch } from '../../../../lib/assetSearchCache'
 import { isReducedMotion } from '../../../../lib/appearance'
 import { OpenButton } from '../reusables/OpenButton'
+import { Tooltip } from '../reusables/Tooltip'
 import { AssetCard } from './AssetCard'
 import {
   InstallAssetModal,
@@ -362,17 +363,18 @@ export function AssetStoreBrowser({
 
           {(page > 0 || page + 1 < pages) && (
             <div className="flex items-center justify-center gap-1.5 flex-wrap">
-              <motion.button
-                type="button"
-                whileTap={{ scale: 0.94 }}
-                onClick={() => navigate(page - 1)}
-                disabled={page <= 0 || paging}
-                aria-label={t('asset_prev_page')}
-                title={t('asset_prev_page')}
-                className="focus-ring cursor-pointer flex items-center justify-center w-9 h-9 rounded-item bg-overlay border border-outline/50 text-muted hover:text-ink hover:bg-raised transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-              >
-                <IconChevronLeft className="w-4 h-4" />
-              </motion.button>
+              <Tooltip content={t('asset_prev_page')} side="top">
+                <motion.button
+                  type="button"
+                  whileTap={{ scale: 0.94 }}
+                  onClick={() => navigate(page - 1)}
+                  disabled={page <= 0 || paging}
+                  aria-label={t('asset_prev_page')}
+                  className="focus-ring cursor-pointer flex items-center justify-center w-9 h-9 rounded-item bg-overlay border border-outline/50 text-muted hover:text-ink hover:bg-raised transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                >
+                  <IconChevronLeft className="w-4 h-4" />
+                </motion.button>
+              </Tooltip>
               {pageItems().map((item, i) =>
                 item === 'ellipsis' ? (
                   <span
@@ -404,17 +406,18 @@ export function AssetStoreBrowser({
                   </motion.button>
                 ),
               )}
-              <motion.button
-                type="button"
-                whileTap={{ scale: 0.94 }}
-                onClick={() => navigate(page + 1)}
-                disabled={page + 1 >= pages || paging}
-                aria-label={t('asset_next_page')}
-                title={t('asset_next_page')}
-                className="focus-ring cursor-pointer flex items-center justify-center w-9 h-9 rounded-item bg-overlay border border-outline/50 text-muted hover:text-ink hover:bg-raised transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-              >
-                <IconChevronRight className="w-4 h-4" />
-              </motion.button>
+              <Tooltip content={t('asset_next_page')} side="top">
+                <motion.button
+                  type="button"
+                  whileTap={{ scale: 0.94 }}
+                  onClick={() => navigate(page + 1)}
+                  disabled={page + 1 >= pages || paging}
+                  aria-label={t('asset_next_page')}
+                  className="focus-ring cursor-pointer flex items-center justify-center w-9 h-9 rounded-item bg-overlay border border-outline/50 text-muted hover:text-ink hover:bg-raised transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                >
+                  <IconChevronRight className="w-4 h-4" />
+                </motion.button>
+              </Tooltip>
             </div>
           )}
         </>

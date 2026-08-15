@@ -68,13 +68,13 @@ export function Titlebar() {
   const noDrag = (e: React.MouseEvent) => e.stopPropagation()
 
   const windowDot =
-    'w-5 h-5 rounded-xl transition-[filter] duration-150 group-hover/win:brightness-125'
+    'w-4.5 h-4.5 rounded-xl transition-[filter] duration-150 group-hover/win:brightness-125'
 
   return (
     <header
       data-tauri-drag-region
       onDoubleClick={handleDoubleClick}
-      className={`shrink-0 h-12 flex items-center gap-3 select-none ${
+      className={`shrink-0 h-8 flex items-center gap-3 select-none ${
         settings.card_layout ? 'bg-raised/80' : 'bg-raised border-b border-line'
       } ${isMac ? 'pl-20' : 'pl-4'} ${showWindowControls ? '' : 'pr-4'}`}
     >
@@ -136,7 +136,7 @@ export function Titlebar() {
                   onMouseDown={noDrag}
                   onClick={() => safe((w) => w.minimize())}
                   aria-label={t('minimize')}
-                  className="focus-ring cursor-pointer group/win w-10 h-full flex items-center justify-center"
+                  className="focus-ring cursor-pointer group/win w-9 h-full flex items-center justify-center"
                 >
                   <motion.span
                     whileHover={{ scale: 1.12 }}
@@ -157,7 +157,7 @@ export function Titlebar() {
                   onMouseDown={noDrag}
                   onClick={() => safe((w) => w.toggleMaximize())}
                   aria-label={isMaximized ? t('restore') : t('maximize')}
-                  className="focus-ring cursor-pointer group/win w-10 h-full flex items-center justify-center"
+                  className="focus-ring cursor-pointer group/win w-9 h-full flex items-center justify-center"
                 >
                   <motion.span
                     whileHover={{ scale: 1.12 }}
@@ -178,7 +178,7 @@ export function Titlebar() {
                   onMouseDown={noDrag}
                   onClick={() => safe((w) => w.close())}
                   aria-label={t('close')}
-                  className="focus-ring cursor-pointer group/win w-10 h-full flex items-center justify-center"
+                  className="focus-ring cursor-pointer group/win w-9 h-full flex items-center justify-center"
                 >
                   <motion.span
                     whileHover={{ scale: 1.12 }}
