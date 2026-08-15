@@ -2,7 +2,7 @@ import { motion } from 'framer-motion'
 import { useRef, useState } from 'react'
 import type { ComponentType } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconChevronsLeft } from '../../lib/icons'
+import { IconChevronsLeft, IconSearch, IconX } from '../../lib/icons'
 import type { IconProps } from '../../lib/icons'
 import { Tooltip } from '../reusables/Tooltip'
 
@@ -25,13 +25,18 @@ export function Sidebar({
   activeTab,
   onTabChange,
   connected = false,
+  paletteKey = 'p',
+  onOpenCommandPalette,
 }: {
   tabs: SidebarTab[]
   activeTab: string
   onTabChange: (id: string) => void
   connected?: boolean
+  paletteKey?: string
+  onOpenCommandPalette?: () => void
 }) {
   const { t } = useTranslation('nav')
+  const { t: tc } = useTranslation('common')
   const [width, setWidth] = useState(() => {
     try {
       return Math.min(
@@ -45,6 +50,13 @@ export function Sidebar({
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return localStorage.getItem('new_ui_sidebar_collapsed') === '1'
+    } catch {
+      return false
+    }
+  })
+  const [paletteHintDismissed, setPaletteHintDismissed] = useState(() => {
+    try {
+      return localStorage.getItem('new_ui_sidebar_palette_hint_dismissed') === '1'
     } catch {
       return false
     }
@@ -247,6 +259,42 @@ export function Sidebar({
               collapsed ? 'gap-1 items-center' : 'gap-1.5 items-stretch'
             }`}
           >
+            {!collapsed && onOpenCommandPalette && !paletteHintDismissed && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={onOpenCommandPalette}
+                  className="focus-ring cursor-pointer w-full flex items-center gap-2 px-3 py-2 rounded-item border border-dashed border-outline/50 text-[11px] font-medium text-muted/60 hover:text-muted hover:border-outline hover:bg-raised/50 transition-colors"
+                >
+                  <kbd className="font-mono text-[9px] px-1.5 py-0.5 rounded-tag bg-overlay border border-outline/50">
+                    {navigator.platform.includes('Mac')
+                      ? `⌘${paletteKey.toUpperCase()}`
+                      : `Ctrl+${paletteKey.toUpperCase()}`}
+                  </kbd>
+                  <span className="flex items-center gap-1.5">
+                    <IconSearch className="w-3 h-3" />
+                    {tc('quick_commands')}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    try {
+                      localStorage.setItem(
+                        'new_ui_sidebar_palette_hint_dismissed',
+                        '1',
+                      )
+                    } catch {}
+                    setPaletteHintDismissed(true)
+                  }}
+                  aria-label={tc('close')}
+                  title={tc('close')}
+                  className="focus-ring cursor-pointer absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-raised border border-outline/60 text-muted/60 hover:text-ink hover:border-outline flex items-center justify-center transition-colors"
+                >
+                  <IconX className="w-2.5 h-2.5" />
+                </button>
+              </div>
+            )}
             {footerTabs.slice(0, -2).map((tab) =>
               renderTabButton(
                 tab,

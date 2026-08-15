@@ -25,6 +25,8 @@ pub struct NewsItem {
     pub summary: Option<String>,
     pub author: Option<String>,
     pub category: Option<String>,
+    #[serde(default)]
+    pub image: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -221,6 +223,8 @@ pub struct AppSettings {
     pub show_star_button: bool,
     #[serde(default = "default_true")]
     pub show_scrollbars: bool,
+    #[serde(default = "default_true")]
+    pub animated_numbers: bool,
     #[serde(default = "default_project_icon_opacity")]
     pub project_icon_opacity: u32,
     #[serde(default = "default_animation_threshold")]
@@ -473,6 +477,7 @@ tooltip_delay: default_tooltip_delay(),
             show_support_button: true,
             show_star_button: true,
             show_scrollbars: true,
+            animated_numbers: true,
             project_icon_opacity: 14,
             animation_threshold: default_animation_threshold(),
             language: default_language(),

@@ -8,7 +8,7 @@ import {
 } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import NumberFlow from '@number-flow/react'
+import { AnimatedNumber } from '../components/reusables/AnimatedNumber'
 import { useProjectsContext } from '../../../hooks/projectsContext'
 import { useCategoriesContext } from '../../../hooks/categoriesContext'
 import { useGodotVersionsContext } from '../../../hooks/godotVersionsContext'
@@ -228,7 +228,7 @@ export function ProjectsView({
         metric={
           <>
             <h2 className="text-4xl font-bold text-muted">
-              <NumberFlow value={filtered.length} />
+              <AnimatedNumber value={filtered.length} />
             </h2>
             <p className="text-lg font-medium uppercase text-muted">
               {t('projects')}

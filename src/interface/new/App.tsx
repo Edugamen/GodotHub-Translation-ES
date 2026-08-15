@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { ViewHeader } from './components/reusables/ViewHeader'
 import { useProjectsContext } from '../../hooks/projectsContext'
+import { useGodotVersionsContext } from '../../hooks/godotVersionsContext'
+import { useCategoriesContext } from '../../hooks/categoriesContext'
+import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts'
 import { api } from '../../lib/api'
 import type { GitStatus, Project } from '../../types'
 
@@ -10,6 +12,9 @@ import { Sidebar } from './components/ui/Sidebar'
 import { Titlebar } from './components/titlebar/Titlebar'
 import { OverlayScrollArea } from './components/reusables/OverlayScrollArea'
 import { ConfirmDialog } from './components/modals/ConfirmDialog'
+import { CreateProjectModal } from './components/modals/CreateProjectModal'
+import { BugReportModal } from './components/modals/BugReportModal'
+import { CommandPalette } from './components/modals/CommandPalette'
 import { GitSidebar } from './components/git/GitSidebar'
 import { ProjectsView } from './views/ProjectsView'
 import { VersionsView } from './views/VersionsView'
@@ -17,6 +22,8 @@ import { TemplatesView } from './views/TemplatesView'
 import { SettingsView } from './views/SettingsView'
 import { UpdatesView } from './views/UpdatesView'
 import { ChangelogView } from './views/ChangelogView'
+import { NewsView } from './views/NewsView'
+import { AssetStoreView } from './views/AssetStoreView'
 import { useSettings } from '../../hooks/useSettings'
 import { useTauriEvent } from '../../lib/useTauriEvent'
 import {
@@ -33,7 +40,6 @@ import {
   IconNews,
   IconRocket,
   IconStore,
-  type IconProps,
 } from './lib/icons'
 import './style.css'
 
@@ -49,47 +55,6 @@ const TABS = [
 ] as const
 
 export type NewTab = (typeof TABS)[number]['id']
-
-function PlaceholderView({
-  title,
-  description,
-  icon: Icon,
-  metric,
-  children,
-  connected = false,
-}: {
-  title: string
-  description: string
-  icon: (props: IconProps) => ReactNode
-  metric?: ReactNode
-  children?: ReactNode
-  connected?: boolean
-}) {
-  return (
-    <div className="flex-1 min-w-0 h-full flex flex-col">
-      <ViewHeader
-        connected={connected}
-        title={title}
-        leadingAction={
-          <span className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full bg-accent text-ink">
-            <Icon className="w-4.5 h-4.5" />
-          </span>
-        }
-        metric={metric}
-      />
-      <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-4 text-center px-10">
-        <div className="w-14 h-14 rounded-tile bg-accent/10 border border-accent-dim/30 flex items-center justify-center text-accent-bright">
-          <Icon className="w-6 h-6" />
-        </div>
-        <p className="text-sm text-muted max-w-sm leading-relaxed">{description}</p>
-        {children}
-        <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-tag bg-amber/10 text-amber border border-amber/20">
-          New UI · under construction
-        </span>
-      </div>
-    </div>
-  )
-}
 
 export function App() {
   const { t } = useTranslation('nav')
@@ -109,6 +74,14 @@ export function App() {
     project: Project
     gitStatus: GitStatus | null
   } | null>(null)
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
+  const [bugReportOpen, setBugReportOpen] = useState(false)
+  const [createProjectOpen, setCreateProjectOpen] = useState(false)
+  const { installed } = useGodotVersionsContext()
+  const { categories } = useCategoriesContext()
+  const settingsRef = useRef(settings)
+  settingsRef.current = settings
+  const paletteKey = settings.command_palette_keybind || 'p'
 
   const openProject = useCallback(
     async (projectId: string, withConsole?: boolean) => {
@@ -154,6 +127,67 @@ export function App() {
     return () =>
       window.removeEventListener('app:open-setting', handleOpenSetting)
   }, [])
+
+  // App-level handlers for command-palette actions that don't belong to a
+  // specific view (or can be triggered while that view isn't mounted).
+  useEffect(() => {
+    const handleNewProject = () => setCreateProjectOpen(true)
+    const handleImportProject = async () => {
+      try {
+        const folder = await api.pickFolder()
+        if (!folder) return
+        await api.importProject(folder, '')
+        refreshProjects()
+      } catch (e) {
+        console.error('[new-ui] import failed:', e)
+      }
+    }
+    const handleScanProjects = async () => {
+      if (settingsRef.current.project_scan_dirs.length === 0) {
+        setTab('settings')
+        return
+      }
+      try {
+        await api.scanForProjectsWithInfo(
+          settingsRef.current.project_scan_dirs,
+          settingsRef.current.scan_depth,
+        )
+        refreshProjects()
+      } catch (e) {
+        console.error('[new-ui] scan failed:', e)
+      }
+    }
+    const handleReportBug = () => setBugReportOpen(true)
+
+    window.addEventListener('app:new-project-request', handleNewProject)
+    window.addEventListener('app:import-project-request', handleImportProject)
+    window.addEventListener('app:scan-projects', handleScanProjects)
+    window.addEventListener('app:report-bug', handleReportBug)
+    return () => {
+      window.removeEventListener('app:new-project-request', handleNewProject)
+      window.removeEventListener('app:import-project-request', handleImportProject)
+      window.removeEventListener('app:scan-projects', handleScanProjects)
+      window.removeEventListener('app:report-bug', handleReportBug)
+    }
+  }, [refreshProjects])
+
+  useKeyboardShortcuts(
+    {
+      onNewProject: () => setCreateProjectOpen(true),
+      onOpenSettings: () => setTab('settings'),
+      onSwitchTab: (i: number) => {
+        const tabs: NewTab[] = ['projects', 'versions', 'news', 'templates']
+        if (tabs[i]) setTab(tabs[i])
+      },
+      onCommandPalette: () => setCommandPaletteOpen((o) => !o),
+      onEscape: () => {
+        setGitSidebarProject(null)
+        setCommandPaletteOpen(false)
+        setBugReportOpen(false)
+      },
+    },
+    paletteKey,
+  )
 
   useEffect(() => {
     const handleShowGitSidebar = (e: Event) => {
@@ -202,14 +236,7 @@ export function App() {
           />
         )
       case 'news':
-        return (
-          <PlaceholderView
-            connected={!cardLayout}
-            title={t('news')}
-            icon={IconNews}
-            description="The redesigned News view will live here as its own file in src/interface/new/views/."
-          />
-        )
+        return <NewsView connected={!cardLayout} />
       case 'updates':
         return <UpdatesView connected={!cardLayout} />
       case 'templates':
@@ -220,14 +247,7 @@ export function App() {
           />
         )
       case 'asset-store':
-        return (
-          <PlaceholderView
-            connected={!cardLayout}
-            title={t('asset_store')}
-            icon={IconStore}
-            description="The redesigned Asset Store view will live here as its own file in src/interface/new/views/."
-          />
-        )
+        return <AssetStoreView connected={!cardLayout} />
       case 'settings':
         return <SettingsView connected={!cardLayout} />
       case 'changelog':
@@ -252,11 +272,15 @@ export function App() {
             setTab(id as NewTab)
           }}
           connected={!cardLayout}
+          paletteKey={paletteKey}
+          onOpenCommandPalette={() => setCommandPaletteOpen(true)}
         />
 
         {tab === 'projects' ||
         tab === 'settings' ||
         tab === 'versions' ||
+        tab === 'news' ||
+        tab === 'asset-store' ||
         tab === 'templates' ||
         tab === 'updates' ||
         tab === 'changelog' ? (
@@ -328,6 +352,34 @@ export function App() {
             onCancel={() => setPendingLaunch(null)}
           />
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {commandPaletteOpen && (
+          <CommandPalette
+            onClose={() => setCommandPaletteOpen(false)}
+            currentTab={tab}
+            onNavigate={(id) => setTab(id as NewTab)}
+            projects={projects}
+            installedVersions={installed}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {createProjectOpen && (
+          <CreateProjectModal
+            installedVersions={installed}
+            defaultLocation={settings.default_project_location}
+            categories={categories}
+            onClose={() => setCreateProjectOpen(false)}
+            onCreated={() => {
+              setCreateProjectOpen(false)
+              refreshProjects()
+            }}
+          />
+        )}
+        {bugReportOpen && <BugReportModal onClose={() => setBugReportOpen(false)} />}
       </AnimatePresence>
     </div>
   )

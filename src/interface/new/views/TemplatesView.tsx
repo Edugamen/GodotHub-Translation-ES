@@ -6,7 +6,7 @@ import {
 } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
-import NumberFlow from '@number-flow/react'
+import { AnimatedNumber } from '../components/reusables/AnimatedNumber'
 import { api } from '../../../lib/api'
 import { consumePendingAction } from '../../../lib/pendingAction'
 import { useSettings } from '../../../hooks/useSettings'
@@ -97,6 +97,7 @@ export function TemplatesView({
   const [previewTemplate, setPreviewTemplate] = useState<ProjectTemplate | null>(null)
   const [createTemplate, setCreateTemplate] = useState<ProjectTemplate | null>(null)
   const [query, setQuery] = useState('')
+  const [assetStats, setAssetStats] = useState({ loading: true, total: 0 })
 
   const load = async () => {
     try {
@@ -204,14 +205,25 @@ export function TemplatesView({
         connected={connected}
         title={t('templates')}
         metric={
-          <>
-            <h2 className="text-4xl font-bold text-muted">
-              <NumberFlow value={templates.length} />
-            </h2>
-            <p className="text-lg font-medium uppercase text-muted">
-              {tc('template_your_templates')}
-            </p>
-          </>
+          tab === 'local' ? (
+            <>
+              <h2 className="text-4xl font-bold text-muted">
+                <AnimatedNumber value={templates.length} />
+              </h2>
+              <p className="text-lg font-medium uppercase text-muted">
+                {tc('template_your_templates')}
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="text-4xl font-bold text-muted">
+                <AnimatedNumber value={assetStats.total} />
+              </h2>
+              <p className="text-lg font-medium uppercase text-muted">
+                {tc('asset_store_count')}
+              </p>
+            </>
+          )
         }
         actions={
           <>
@@ -400,7 +412,7 @@ export function TemplatesView({
               )}
             </>
           ) : (
-            <AssetLibraryBrowser query={query} />
+            <AssetLibraryBrowser query={query} onStatsChange={setAssetStats} />
           )}
           <div className="shrink-0 h-4" aria-hidden="true" />
         </div>

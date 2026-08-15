@@ -804,6 +804,25 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
       </Subsection>
 
       <Subsection
+        id="appearance-animated-numbers"
+        title={ts('animated_numbers_label')}
+        description={ts('animated_numbers_desc')}
+        searchText={`${ts('animated_numbers_label')} ${ts('animated_numbers_desc')}`}
+        query={searchQuery}
+        onMatch={reportMatch}
+      >
+        <SettingRow label={ts('animated_numbers_label')}>
+          <Toggle
+            checked={settings.animated_numbers}
+            onChange={(checked) =>
+              update({ ...settings, animated_numbers: checked })
+            }
+            label={ts('animated_numbers_label')}
+          />
+        </SettingRow>
+      </Subsection>
+
+      <Subsection
         id="appearance-icon-opacity"
         title={ts('project_icon_opacity_label')}
         description={ts('icon_opacity_desc')}

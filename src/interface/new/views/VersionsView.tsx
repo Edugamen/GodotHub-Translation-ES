@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence, type Transition } from 'framer-motion'
-import NumberFlow from '@number-flow/react'
+import { AnimatedNumber } from '../components/reusables/AnimatedNumber'
 import { useGodotVersionsContext } from '../../../hooks/godotVersionsContext'
 import { useSettings } from '../../../hooks/useSettings'
 import { useTaskTray } from '../../../hooks/useTaskTray'
@@ -275,7 +275,7 @@ export function VersionsView({
           metric={
             <>
               <h2 className="text-4xl font-bold text-muted">
-                <NumberFlow value={installed.length} />
+                <AnimatedNumber value={installed.length} />
               </h2>
               <p className="text-lg font-medium uppercase text-muted">
                 {tv('installed_label')}

@@ -93,7 +93,9 @@ pub struct AssetLibraryResponse {
 pub struct AssetLibraryCategory {
     pub id: String,
     pub name: String,
-    #[serde(rename = "type")]
+    // The Godot Asset Library API sends this as "type"; serialize it as
+    // "category_type" so the frontend's contract matches.
+    #[serde(rename(deserialize = "type", serialize = "category_type"))]
     pub category_type: String,
 }
 

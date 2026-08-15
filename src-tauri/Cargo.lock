@@ -1607,6 +1607,7 @@ dependencies = [
  "futures-util",
  "libc",
  "notify",
+ "quick-xml",
  "reqwest",
  "serde",
  "serde_json",
