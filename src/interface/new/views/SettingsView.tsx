@@ -96,6 +96,28 @@ const DEFAULT_DENSITY = 1.05
 const DEFAULT_FONT_SCALE = 1.0
 const DEFAULT_PROJECT_ICON_OPACITY = 14
 
+const LANDING_TABS: { id: string; label: string }[] = [
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'projects', label: 'Projects' },
+  { id: 'versions', label: 'Versions' },
+  { id: 'news', label: 'Godot News' },
+]
+
+const DASHBOARD_SECTIONS = [
+  { id: 'quick_actions' },
+  { id: 'stats' },
+  { id: 'weekly' },
+  { id: 'top_time' },
+  { id: 'git' },
+  { id: 'storage' },
+  { id: 'categories' },
+  { id: 'recent' },
+  { id: 'pinned' },
+  { id: 'engines' },
+  { id: 'running' },
+  { id: 'news' },
+] as const
+
 function Subsection({
   id,
   title,
@@ -493,6 +515,43 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
               update({ ...settings, card_layout: checked })
             }
             label={ts('card_layout_label')}
+          />
+        </SettingRow>
+      </Subsection>
+
+      <Subsection
+        id="appearance-landing"
+        title={ts('landing_tab_label')}
+        description={ts('landing_tab_desc')}
+        searchText={`${ts('landing_tab_label')} ${ts('landing_tab_desc')} ${LANDING_TABS.map((l) => l.label).join(' ')}`}
+        query={searchQuery}
+        onMatch={reportMatch}
+      >
+        <SettingRow label={ts('landing_tab_label')}>
+          <Dropdown
+            align="right"
+            trigger={({ open, toggle }) => (
+              <button
+                type="button"
+                onClick={toggle}
+                aria-expanded={open}
+                className="focus-ring cursor-pointer inline-flex items-center gap-2 px-3.5 py-2 rounded-btn bg-overlay border border-outline/50 text-xs font-medium text-ink hover:border-accent-dim transition-colors"
+              >
+                {LANDING_TABS.find((l) => l.id === settings.default_landing_tab)?.label ??
+                  LANDING_TABS[0].label}
+                <IconChevronDown
+                  className={`w-3 h-3 text-muted transition-transform duration-200 ${
+                    open ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+            )}
+            items={LANDING_TABS.map((l) => ({
+              key: l.id,
+              label: l.label,
+              active: settings.default_landing_tab === l.id,
+              onClick: () => update({ ...settings, default_landing_tab: l.id }),
+            }))}
           />
         </SettingRow>
       </Subsection>
@@ -899,6 +958,37 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
             )}
           </div>
         </div>
+      </Subsection>
+
+      <Subsection
+        id="appearance-dashboard-sections"
+        title={ts('dashboard_sections_label')}
+        description={ts('dashboard_sections_desc')}
+        searchText={`${ts('dashboard_sections_label')} ${ts('dashboard_sections_desc')}`}
+        query={searchQuery}
+        onMatch={reportMatch}
+      >
+        {DASHBOARD_SECTIONS.map((s) => {
+          const enabled =
+            settings.dashboard_sections.length === 0 ||
+            settings.dashboard_sections.includes(s.id)
+          return (
+            <SettingRow key={s.id} label={ts(`dashboard_section_${s.id}`)}>
+              <Toggle
+                checked={enabled}
+                onChange={(checked) => {
+                  const next = checked
+                    ? Array.from(
+                        new Set([...settings.dashboard_sections, s.id]),
+                      )
+                    : settings.dashboard_sections.filter((x) => x !== s.id)
+                  update({ ...settings, dashboard_sections: next })
+                }}
+                label={ts(`dashboard_section_${s.id}`)}
+              />
+            </SettingRow>
+          )
+        })}
       </Subsection>
 
       <button

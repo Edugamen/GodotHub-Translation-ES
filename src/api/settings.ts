@@ -13,4 +13,5 @@ export const settingsApi = {
     invoke<ScanResult>('scan_for_projects_with_info', { dirs, depth }),
   refreshTrayMenu: () => invoke<void>('refresh_tray_menu'),
   restartWatchers: () => invoke<void>('restart_watchers'),
+  getOsUsername: () => invoke<string | null>('get_os_username'),
 }

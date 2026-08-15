@@ -88,6 +88,7 @@ function AppContent() {
   const [tab, setTab] = useState<Tab>(uiSwitchIntent ? 'settings' : 'projects')
   const tabRef = useRef(tab)
   tabRef.current = tab
+  const landingTabRef = useRef<string | null>(null)
 
   const { projects, refresh: refreshProjects } = useProjectsContext()
   const { installed, refreshInstalled } = useGodotVersionsContext()
@@ -144,6 +145,24 @@ function AppContent() {
       console.error('Failed to set window decorations:', e),
     )
   }, [settings.use_os_decorations])
+
+  useEffect(() => {
+    if (!settingsReady || uiSwitchIntent) return
+    if (landingTabRef.current !== null) return
+    landingTabRef.current = settings.default_landing_tab
+    const landing = settings.default_landing_tab as Tab
+    const valid: Tab[] = [
+      'projects',
+      'versions',
+      'news',
+      'templates',
+      'asset-store',
+      'updates',
+      'settings',
+      'changelog',
+    ]
+    if (valid.includes(landing)) setTab(landing)
+  }, [settingsReady, settings.default_landing_tab, uiSwitchIntent])
 
   useTauriEvent('watcher:template-synced', () => {
     if (tabRef.current === 'templates') {

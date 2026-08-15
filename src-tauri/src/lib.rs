@@ -26,6 +26,23 @@ mod workspace;
 use tauri::{Manager, WindowEvent};
 
 #[tauri::command]
+fn get_os_username() -> Option<String> {
+    for var in ["USERNAME", "USER", "LOGNAME"] {
+        if let Ok(v) = std::env::var(var) {
+            if !v.trim().is_empty() {
+                return Some(v);
+            }
+        }
+    }
+    let home = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .ok()?;
+    std::path::Path::new(&home)
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+}
+
+#[tauri::command]
 async fn pick_folder(app: tauri::AppHandle) -> Option<String> {
     use tauri_plugin_dialog::DialogExt;
     let (tx, rx) = std::sync::mpsc::channel();
@@ -200,11 +217,13 @@ pub fn run() {
             projects::get_project_name,
             projects::validate_godot_folder,
             projects::stop_project,
+            projects::list_running_projects,
             projects::pick_file,
             projects::read_image_file,
             projects::write_project_tags,
             projects::export_project_stats,
             projects::import_project_stats,
+            time_stats::get_weekly_activity,
             categories::list_categories,
             categories::create_category,
             categories::update_category,
@@ -215,6 +234,7 @@ pub fn run() {
             settings::update_settings,
             settings::reset_settings,
             settings::reset_app_data,
+            get_os_username,
             workspace::list_workspaces,
             workspace::list_workspace_scan_dirs,
             workspace::create_workspace,

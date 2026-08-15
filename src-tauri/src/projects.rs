@@ -37,6 +37,14 @@ impl TrackedProcess {
 
 pub struct ActiveProcesses(pub Mutex<HashMap<String, TrackedProcess>>);
 
+#[derive(Debug, Clone, Serialize)]
+pub struct RunningProjectInfo {
+    pub id: String,
+    pub name: String,
+    pub version: String,
+    pub launched_at_ms: u64,
+}
+
 const SESSION_START_DELAY_MS: u64 = 3000;
 
 const DEFAULT_ICON_SVG: &[u8] = include_bytes!("../icon.svg");
@@ -891,6 +899,40 @@ fn kill_tracked(tracked: &mut TrackedProcess) -> Result<(), String> {
         #[cfg(unix)]
         TrackedHandle::Pid(pid) => crate::terminal::terminate_process(*pid),
     }
+}
+
+#[tauri::command]
+pub fn list_running_projects(app: AppHandle) -> Vec<RunningProjectInfo> {
+    let entries: Vec<(String, std::time::SystemTime)> = {
+        let Some(state) = app.try_state::<ActiveProcesses>() else {
+            return vec![];
+        };
+        let active = state.0.lock().unwrap();
+        active
+            .iter()
+            .map(|(id, p)| (id.clone(), p.launched_at))
+            .collect()
+    };
+    if entries.is_empty() {
+        return vec![];
+    }
+    let projects = read_projects(&app);
+    entries
+        .into_iter()
+        .filter_map(|(id, launched_at)| {
+            let project = projects.iter().find(|p| p.id == id)?;
+            let launched_at_ms = launched_at
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_millis() as u64)
+                .unwrap_or(0);
+            Some(RunningProjectInfo {
+                id,
+                name: project.name.clone(),
+                version: project.godot_version.clone(),
+                launched_at_ms,
+            })
+        })
+        .collect()
 }
 
 #[tauri::command]

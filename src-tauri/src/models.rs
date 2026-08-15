@@ -247,6 +247,30 @@ pub struct AppSettings {
     pub new_ui: bool,
     #[serde(default = "default_true")]
     pub card_layout: bool,
+    #[serde(default)]
+    pub dashboard_custom_name: Option<String>,
+    #[serde(default = "default_landing_tab")]
+    pub default_landing_tab: String,
+    #[serde(default)]
+    pub dashboard_sections: Vec<String>,
+    #[serde(default)]
+    pub dashboard_section_order: Vec<String>,
+    #[serde(default)]
+    pub dashboard_section_spans: Vec<String>,
+    #[serde(default)]
+    pub dashboard_tall_sections: Vec<String>,
+    #[serde(default)]
+    pub dashboard_custom_presets: Vec<DashboardCustomPreset>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct DashboardCustomPreset {
+    pub id: String,
+    pub name: String,
+    pub sections: Vec<String>,
+    pub order: Vec<String>,
+    pub spans: Vec<String>,
+    pub tall: Vec<String>,
 }
 
 fn default_language() -> String {
@@ -259,6 +283,10 @@ fn default_naming_convention() -> String {
 
 fn default_theme_preset() -> String {
     "custom".to_string()
+}
+
+fn default_landing_tab() -> String {
+    "projects".to_string()
 }
 
 fn default_project_icon_opacity() -> u32 {
@@ -489,6 +517,13 @@ tooltip_delay: default_tooltip_delay(),
             open_after_import: true,
             new_ui: false,
             card_layout: true,
+            dashboard_custom_name: None,
+            default_landing_tab: default_landing_tab(),
+            dashboard_sections: vec![],
+            dashboard_section_order: vec![],
+            dashboard_section_spans: vec![],
+            dashboard_tall_sections: vec![],
+            dashboard_custom_presets: vec![],
         }
     }
 }

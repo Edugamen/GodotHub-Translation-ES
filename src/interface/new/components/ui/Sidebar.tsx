@@ -184,8 +184,12 @@ export function Sidebar({
       type="button"
       onClick={toggleCollapsed}
       aria-label={collapsed ? t('expand_sidebar') : t('collapse_sidebar')}
-      className={`focus-ring cursor-pointer relative flex items-center justify-center rounded-item text-sm font-medium transition-colors border border-transparent text-muted hover:text-ink hover:bg-raised/60 ${
-        collapsed ? 'w-8 h-8 shrink-0' : 'w-9 h-9 ml-auto shrink-0'
+      className={`focus-ring cursor-pointer flex items-center justify-center rounded-item text-sm font-medium transition-colors text-muted hover:text-ink hover:bg-raised/60 border ${
+        collapsed
+          ? `absolute top-2 -right-4 w-8 h-8 shrink-0 bg-raised border-line shadow-md shadow-black/10 transition-opacity duration-200 ease-out ${
+              revealed ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`
+          : 'border-transparent w-9 h-9 ml-auto shrink-0'
       }`}
     >
       <motion.span
@@ -236,21 +240,16 @@ export function Sidebar({
           </Tooltip>
         )}
         {collapsed ? (
-          <>
-            <Tooltip content={t('dashboard')} side="right">
-              <button
-                type="button"
-                onClick={() => onTabChange('dashboard')}
-                aria-label={t('dashboard')}
-                className="focus-ring cursor-pointer w-8 h-8 shrink-0 flex items-center justify-center rounded-item text-muted hover:text-ink hover:bg-raised/60 transition-colors"
-              >
-                <IconHouse className="w-4 h-4" />
-              </button>
-            </Tooltip>
-            <Tooltip content={t('expand_sidebar')} side="right">
-              {collapseBtn}
-            </Tooltip>
-          </>
+          <Tooltip content={t('dashboard')} side="right">
+            <button
+              type="button"
+              onClick={() => onTabChange('dashboard')}
+              aria-label={t('dashboard')}
+              className="focus-ring cursor-pointer w-6 h-6 shrink-0 flex items-center justify-center rounded-item text-muted hover:text-ink hover:bg-raised/60 transition-colors"
+            >
+              <IconHouse className="w-4 h-4" />
+            </button>
+          </Tooltip>
         ) : (
           collapseBtn
         )}
@@ -341,6 +340,11 @@ export function Sidebar({
         </nav>
       )}
       </motion.div>
+      {collapsed && (
+        <Tooltip content={t('expand_sidebar')} side="right">
+          {collapseBtn}
+        </Tooltip>
+      )}
       {!collapsed && (
       <div
         onPointerDown={beginDrag}
