@@ -884,14 +884,14 @@ function Clock({ active = true }: { active?: boolean }) {
   const dateString = formatDate(now, settings.last_opened_date_format)
 
   return (
-    <div className="ml-auto shrink-0 flex flex-col items-end gap-0.5">
+    <div className="ml-auto shrink-0 flex flex-col items-end gap-1">
       <span
-        className="font-mono text-2xl font-semibold text-ink tabular-nums leading-none"
+        className="font-display text-3xl font-semibold text-ink leading-none"
         aria-label={tc('dashboard_clock_aria')}
       >
         {timeString}
       </span>
-      <span className="text-[10px] text-muted/70 leading-none">
+      <span className="text-sm text-muted/70 leading-none">
         {dateString}
       </span>
     </div>
@@ -971,7 +971,6 @@ export function DashboardView({
   connected?: boolean
   active?: boolean
 }) {
-  const { t } = useTranslation('nav')
   const { t: tc } = useTranslation('common')
   const { settings, update } = useSettings()
   const { projects } = useProjectsContext()
@@ -1060,7 +1059,7 @@ export function DashboardView({
     api.stopProject(id).catch((e) => alert(String(e)))
   }, [])
 
-  const displayName = settings.dashboard_custom_name || osName || ''
+  const displayName = (settings.dashboard_custom_name || osName || '').slice(0, 40)
   const greeting = tc(`dashboard_greeting_${greetingKey(greetingHour)}`)
 
   const isEnabled = (id: string) =>
@@ -1375,7 +1374,7 @@ export function DashboardView({
     <div className="flex-1 min-w-0 h-full flex flex-col">
       {/* Greeting header */}
       <section
-        className={`shrink-0 px-6 py-4 flex flex-col gap-2 ${
+        className={`shrink-0 px-6 py-7 flex flex-col gap-2 ${
           connected ? 'rounded-none' : 'rounded-card'
         } bg-raised mb-4`}
       >
@@ -1394,6 +1393,7 @@ export function DashboardView({
                     if (e.key === 'Escape') cancelNameEdit()
                   }}
                   onBlur={commitName}
+                  maxLength={15}
                   placeholder={tc('dashboard_name_placeholder')}
                   className="focus-ring w-64 bg-base border border-accent rounded-btn px-3 py-2 text-xl font-medium text-ink outline-none"
                 />
@@ -1421,7 +1421,7 @@ export function DashboardView({
                 </Tooltip>
               </div>
             ) : (
-              <h1 className="font-display text-4xl font-bold tracking-wide text-ink min-w-0">
+              <h1 className="font-display text-5xl font-bold leading-13 text-ink min-w-0">
                 {displayName ? (
                   <>
                     {greeting}
@@ -1475,8 +1475,6 @@ export function DashboardView({
 
           <Clock active={active} />
         </header>
-
-        <p className="text-xs text-muted">{t('dashboard')}</p>
       </section>
 
       <OverlayScrollArea
