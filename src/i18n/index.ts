@@ -18,6 +18,15 @@ import enUSChangelog from './locales/en-US/changelog.json'
 import enUSOnboarding from './locales/en-US/onboarding.json'
 import enUSVersions from './locales/en-US/versions.json'
 
+import esMXNav from "./locales/es-MX/nav.json"
+import esMXCommon from './locales/es-MX/common.json'
+import esMXSettings from './locales/es-MX/settings.json'
+import esMXGit from './locales/es-MX/git.json'
+import esMXChangelog from './locales/es-MX/changelog.json'
+import esMXOnboarding from './locales/es-MX/onboarding.json'
+import esMXVersions from './locales/es-MX/versions.json'
+
+
 import zhCNNav from './locales/zh-CN/nav.json'
 import zhCNCommon from './locales/zh-CN/common.json'
 import zhCNSettings from './locales/zh-CN/settings.json'
@@ -46,6 +55,16 @@ const arMAResources = {
   versions: arMAVersions,
 }
 
+const esMXResources = {
+  nav: esMXNav,
+  common: esMXCommon,
+  settings: esMXSettings,
+  git: esMXGit,
+  changelog: esMXChangelog,
+  onboarding: esMXOnboarding,
+  versions: esMXSettings
+}
+
 const zhCNResources = {
   nav: zhCNNav,
   common: zhCNCommon,
@@ -66,6 +85,9 @@ const resources = {
     onboarding: enUSOnboarding,
     versions: enUSVersions,
   },
+
+  'es-MX': esMXResources,
+  es: esMXResources,
 
   'zh-CN': zhCNResources,
   zh: zhCNResources,

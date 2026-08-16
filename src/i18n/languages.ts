@@ -8,6 +8,7 @@ export interface LanguageOption {
 
 export const LANGUAGES: LanguageOption[] = [
   { value: 'en-US', label: 'English', status: 'complete' },
+  { value: 'es-MX', label: 'Español (MX)', status: 'incomplete'},
   { value: 'zh-CN', label: '简体中文', status: 'beta' },
   { value: 'ru-RU', label: 'Русский', status: 'incomplete' },
   { value: 'ar-MA', label: 'العربية', status: 'incomplete' },

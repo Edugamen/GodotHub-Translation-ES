@@ -1,0 +1,22 @@
+{
+  "welcome": "Bienvenido",
+  "godot_versions": "Versiones de Godot",
+  "categories": "Categorias",
+  "customize": "Personalizar",
+  "finish": "Terminado",
+  "in_progress": "En progreso",
+  "prototypes": "Prototipos",
+  "finished": "Finalizado",
+  "game_jams": "Game Jams",
+  "project_folders": "Carpetas del Proyecto",
+  "version_folders": "Carpetas de las Versiones",
+  "welcome_title": "Bienvenido a GodotHub!",
+  "welcome_desc": "Un hogar para cada proyecto de Godot y version de motor de esta maquina. Configuremos algunas cosas para que funcione de la manera deseada, solo toma un minuto y todo lo que se encuentra aqui se puede cambiar mas adelante en Configuracion.",
+  "onboard_empty_projects": "Carpeta sin añadirse aun, GodotHub no podra escanear tus proyectos hasta que asignes una carpeta, o tu puedes agregarlos mas adelante.",
+  "onboard_empty_versions": "Carpeta sin añadirse aun, Las nuevas descargas de Godot iran a la carpeta AppData a menos que configures una a continuacion.",
+  "onboard_no_template_folder": "No hay ninguna carpeta configurada, siempre puedes configurar esto más tarde en Configuracion o guardar las Plantillas manualmente.",
+  "onboard_categories_desc": "Nada de aqui es requerido, Proyectos sin categoria simplemente se mostrara como Sin Categorizado.",
+  "language_title": "Escoge un lenguaje",
+  "language_desc": "Escoje un lenguaje lo que mas guste para GodotHub. Tu puedes cambiarlo mas adelante en Configuracion.",
+  "language_heading": "Lenguajes"
+}
