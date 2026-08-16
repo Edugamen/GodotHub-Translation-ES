@@ -293,6 +293,12 @@ export type NamingConvention =
   | 'PascalCase'
   | 'Title Case'
 
+export interface DiscordProjectPresence {
+  id: string
+  details: string | null
+  state: string | null
+}
+
 export interface AppSettings {
   download_dir: string | null
   default_project_location: string | null
@@ -324,6 +330,11 @@ export interface AppSettings {
   command_palette_keybind: string
   external_editor_path: string | null
   github_token: string | null
+  discord_app_id: string | null
+  discord_rpc_enabled: boolean
+  discord_rpc_show_projects: boolean
+  discord_rpc_excluded_projects: string[]
+  discord_rpc_project_presences: DiscordProjectPresence[]
   template_scan_dir: string | null
   auto_watch_project_dirs: boolean
   auto_watch_version_dirs: boolean

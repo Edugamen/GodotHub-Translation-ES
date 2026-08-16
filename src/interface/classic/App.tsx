@@ -36,6 +36,7 @@ import { useSettings } from '../../hooks/useSettings'
 import { ScreenReaderAnnouncer } from '../../lib/screenReader'
 import { useWorkspaces } from '../../hooks/useWorkspaces'
 import { useProjectsContext } from '../../hooks/projectsContext'
+import { useDiscordRpc } from '../../hooks/useDiscordRpc'
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts'
 import { check } from '@tauri-apps/plugin-updater'
 import { relaunch } from '@tauri-apps/plugin-process'
@@ -91,6 +92,10 @@ function AppContent() {
   const tabRef = useRef(tab)
   tabRef.current = tab
   const landingTabRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('app:view-changed', { detail: tab }))
+  }, [tab])
 
   const { projects, refresh: refreshProjects } = useProjectsContext()
   const { installed, refreshInstalled } = useGodotVersionsContext()
@@ -653,6 +658,8 @@ export default function App() {
   const { t } = useTranslation('common')
   const { settings, update, loaded } = useSettings()
   const { loaded: workspacesLoaded } = useWorkspaces()
+  const { projects } = useProjectsContext()
+  useDiscordRpc(settings, projects)
   const [splashPhase, setSplashPhase] = useState<SplashPhase | 'done'>(() =>
     shouldShowSplash() ? 'enter' : 'done',
   )

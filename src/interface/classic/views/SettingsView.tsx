@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { LANGUAGES } from '../../../i18n/languages'
 import { useSettings } from '../../../hooks/useSettings'
 import { useWorkspaces } from '../../../hooks/useWorkspaces'
+import { useProjectsContext } from '../../../hooks/projectsContext'
 import { registerPendingSave, flushPendingSave } from '../../../lib/pendingSave'
 import { DirList } from '../components/ui/DirList'
 import { Dropdown } from '../components/ui/Dropdown'
@@ -264,6 +265,7 @@ export function SettingsView({
 }: SettingsViewProps = {}) {
   const { t, i18n } = useTranslation('settings')
   const { settings, update, resetToDefaults, loaded } = useSettings()
+  const { projects } = useProjectsContext()
   const { activeId } = useWorkspaces()
   const activeIdRef = useRef(activeId)
   activeIdRef.current = activeId
@@ -357,6 +359,11 @@ export function SettingsView({
       git_init_new_projects: { tab: 'behavior', section: 'behavior-projects' },
       check_updates: { tab: 'advanced', section: 'advanced-updates' },
       github_token: { tab: 'advanced', section: 'advanced-github-token' },
+      discord_rpc_enabled: { tab: 'advanced', section: 'advanced-discord' },
+      discord_app_id: { tab: 'advanced', section: 'advanced-discord' },
+      discord_rpc_show_projects: { tab: 'advanced', section: 'advanced-discord' },
+      discord_rpc_excluded_projects: { tab: 'advanced', section: 'advanced-discord' },
+      discord_rpc_project_presences: { tab: 'advanced', section: 'advanced-discord' },
       tooltip_delay: { tab: 'accessibility', section: 'accessibility' },
       tray_recent_projects_count: { tab: 'behavior', section: 'behavior' },
       command_palette_keybind: { tab: 'behavior', section: 'behavior' },
@@ -2053,6 +2060,247 @@ export function SettingsView({
                   </a>
                   .
                 </p>
+              </div>
+            </SectionCard>
+            </div>
+
+            <div data-section-id="advanced-discord">
+            <SectionCard
+              title={t('discord_rpc_label')}
+              description={t('discord_rpc_desc')}
+            >
+              <div className="flex flex-col gap-2.5">
+                <label className="flex items-center justify-between gap-4">
+                  <span className="text-xs font-medium text-muted">
+                    {t('discord_rpc_label')}
+                  </span>
+                  <Toggle
+                    checked={current.discord_rpc_enabled}
+                    onChange={(checked) =>
+                      setField('discord_rpc_enabled', checked)
+                    }
+                    label={t('discord_rpc_label')}
+                  />
+                </label>
+
+                <div className="flex flex-col gap-2.5 pt-4 border-t border-line">
+                  <span className="text-xs font-medium text-muted">
+                    {t('discord_app_id_label')}
+                  </span>
+                  <input
+                    type="text"
+                    value={current.discord_app_id ?? ''}
+                    onChange={(e) =>
+                      setField('discord_app_id', e.target.value || null)
+                    }
+                    placeholder={t('discord_app_id_placeholder')}
+                    className="focus-ring w-full bg-raised border border-line rounded-lg px-3.5 py-2.5 text-sm font-mono focus:border-accent-dim transition-colors"
+                  />
+                  {!current.discord_app_id?.trim() && (
+                    <span className="text-[11px] text-mint font-medium">
+                      {t('discord_builtin_hint')}
+                    </span>
+                  )}
+                  <p className="text-[11px] text-muted leading-relaxed">
+                    {t('discord_app_id_desc')}{' '}
+                    <a
+                      href="https://discord.com/developers/applications"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-accent hover:text-accent-bright underline underline-offset-2"
+                    >
+                      {t('discord_developer_portal')}
+                    </a>
+                    .
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-2.5 pt-4 border-t border-line">
+                  <label className="flex items-center justify-between gap-4">
+                    <span className="text-xs font-medium text-muted">
+                      {t('discord_show_projects_label')}
+                    </span>
+                    <Toggle
+                      checked={current.discord_rpc_show_projects}
+                      onChange={(checked) =>
+                        setField('discord_rpc_show_projects', checked)
+                      }
+                      label={t('discord_show_projects_label')}
+                    />
+                  </label>
+                  <p className="text-[11px] text-muted leading-relaxed">
+                    {t('discord_show_projects_desc')}
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-2.5 pt-4 border-t border-line">
+                  <span className="text-xs font-medium text-muted">
+                    {t('discord_excluded_label')}
+                  </span>
+                  <p className="text-[11px] text-muted leading-relaxed">
+                    {t('discord_excluded_desc')}
+                  </p>
+                  <Dropdown
+                    value=""
+                    emptyLabel={t('discord_exclude_project')}
+                    onChange={(value) => {
+                      if (!value) return
+                      setField('discord_rpc_excluded_projects', [
+                        ...current.discord_rpc_excluded_projects,
+                        value,
+                      ])
+                    }}
+                    options={projects
+                      .filter(
+                        (p) =>
+                          !current.discord_rpc_excluded_projects.includes(
+                            p.id,
+                          ),
+                      )
+                      .map((p) => ({ value: p.id, label: p.name }))}
+                    className="self-start"
+                  />
+                  {current.discord_rpc_excluded_projects.length > 0 ? (
+                    <div className="flex flex-col gap-1.5">
+                      {current.discord_rpc_excluded_projects.map((id) => {
+                        const proj = projects.find((p) => p.id === id)
+                        return (
+                          <div
+                            key={id}
+                            className="flex items-center justify-between gap-3 rounded-lg bg-raised border border-line px-3 py-2"
+                          >
+                            <span className="text-xs text-ink truncate">
+                              {proj?.name ?? id}
+                            </span>
+                            <motion.button
+                              type="button"
+                              whileTap={{ scale: 0.9 }}
+                              onClick={() =>
+                                setField(
+                                  'discord_rpc_excluded_projects',
+                                  current.discord_rpc_excluded_projects.filter(
+                                    (x) => x !== id,
+                                  ),
+                                )
+                              }
+                              aria-label={t('discord_excluded_remove')}
+                              className="focus-ring cursor-pointer shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-muted hover:text-danger hover:bg-danger/10 transition-colors"
+                            >
+                              <IconX className="w-3.5 h-3.5" />
+                            </motion.button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-muted/70">
+                      {t('discord_excluded_empty')}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-2.5 pt-4 border-t border-line">
+                  <span className="text-xs font-medium text-muted">
+                    {t('discord_custom_label')}
+                  </span>
+                  <p className="text-[11px] text-muted leading-relaxed">
+                    {t('discord_custom_desc')}
+                  </p>
+                  <Dropdown
+                    value=""
+                    emptyLabel={t('discord_custom_add')}
+                    onChange={(value) => {
+                      if (!value) return
+                      setField('discord_rpc_project_presences', [
+                        ...current.discord_rpc_project_presences,
+                        { id: value, details: null, state: null },
+                      ])
+                    }}
+                    options={projects
+                      .filter(
+                        (p) =>
+                          !current.discord_rpc_project_presences.some(
+                            (pr) => pr.id === p.id,
+                          ) &&
+                          !current.discord_rpc_excluded_projects.includes(
+                            p.id,
+                          ),
+                      )
+                      .map((p) => ({ value: p.id, label: p.name }))}
+                    className="self-start"
+                  />
+                  {current.discord_rpc_project_presences.length > 0 && (
+                    <div className="flex flex-col gap-2">
+                      {current.discord_rpc_project_presences.map((pr) => {
+                        const proj = projects.find((p) => p.id === pr.id)
+                        const setPresence = (
+                          field: 'details' | 'state',
+                          value: string,
+                        ) =>
+                          setField(
+                            'discord_rpc_project_presences',
+                            current.discord_rpc_project_presences.map((x) =>
+                              x.id === pr.id
+                                ? { ...x, [field]: value || null }
+                                : x,
+                            ),
+                          )
+                        return (
+                          <div
+                            key={pr.id}
+                            className="rounded-lg bg-raised border border-line p-3 flex flex-col gap-2"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-xs font-medium text-ink truncate">
+                                {proj?.name ?? pr.id}
+                              </span>
+                              <motion.button
+                                type="button"
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() =>
+                                  setField(
+                                    'discord_rpc_project_presences',
+                                    current.discord_rpc_project_presences.filter(
+                                      (x) => x.id !== pr.id,
+                                    ),
+                                  )
+                                }
+                                aria-label={t('discord_custom_remove')}
+                                className="focus-ring cursor-pointer shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-muted hover:text-danger hover:bg-danger/10 transition-colors"
+                              >
+                                <IconX className="w-3.5 h-3.5" />
+                              </motion.button>
+                            </div>
+                            <div className="flex flex-col gap-1.5">
+                              <input
+                                type="text"
+                                value={pr.details ?? ''}
+                                onChange={(e) =>
+                                  setPresence('details', e.target.value)
+                                }
+                                placeholder={t(
+                                  'discord_custom_details_placeholder',
+                                )}
+                                className="focus-ring w-full bg-raised border border-line rounded-lg px-3 py-2 text-xs focus:border-accent-dim transition-colors"
+                              />
+                              <input
+                                type="text"
+                                value={pr.state ?? ''}
+                                onChange={(e) =>
+                                  setPresence('state', e.target.value)
+                                }
+                                placeholder={t(
+                                  'discord_custom_state_placeholder',
+                                )}
+                                className="focus-ring w-full bg-raised border border-line rounded-lg px-3 py-2 text-xs focus:border-accent-dim transition-colors"
+                              />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             </SectionCard>
             </div>

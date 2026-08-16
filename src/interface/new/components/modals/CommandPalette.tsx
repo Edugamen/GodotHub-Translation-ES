@@ -259,6 +259,11 @@ const SETTINGS_SEARCH_ITEMS: SettingSearchEntry[] = [
   { key: 'check_updates', tab: 'advanced' },
   { key: 'show_support_button', tab: 'advanced' },
   { key: 'show_star_button', tab: 'advanced' },
+  { key: 'discord_rpc_enabled', tab: 'integrations' },
+  { key: 'discord_app_id', tab: 'integrations' },
+  { key: 'discord_rpc_show_projects', tab: 'integrations' },
+  { key: 'discord_rpc_excluded_projects', tab: 'integrations' },
+  { key: 'discord_rpc_project_presences', tab: 'integrations' },
 ]
 
 interface Props {

@@ -209,6 +209,16 @@ pub struct AppSettings {
     pub github_token: Option<String>,
     #[serde(default)]
     pub template_scan_dir: Option<String>,
+    #[serde(default)]
+    pub discord_app_id: Option<String>,
+    #[serde(default)]
+    pub discord_rpc_enabled: bool,
+    #[serde(default = "default_true")]
+    pub discord_rpc_show_projects: bool,
+    #[serde(default)]
+    pub discord_rpc_excluded_projects: Vec<String>,
+    #[serde(default)]
+    pub discord_rpc_project_presences: Vec<DiscordProjectPresence>,
     #[serde(default = "default_tooltip_delay")]
     pub tooltip_delay: u32,
     #[serde(default = "default_watch_projects")]
@@ -409,6 +419,15 @@ pub struct Workspace {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiscordProjectPresence {
+    pub id: String,
+    #[serde(default)]
+    pub details: Option<String>,
+    #[serde(default)]
+    pub state: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkspacesState {
     pub workspaces: Vec<Workspace>,
     pub active_id: String,
@@ -507,6 +526,11 @@ tooltip_delay: default_tooltip_delay(),
             external_editor_path: None,
             github_token: None,
             template_scan_dir: None,
+            discord_app_id: None,
+            discord_rpc_enabled: false,
+            discord_rpc_show_projects: true,
+            discord_rpc_excluded_projects: vec![],
+            discord_rpc_project_presences: vec![],
             auto_watch_project_dirs: default_watch_projects(),
             auto_watch_version_dirs: default_watch_versions(),
             auto_watch_template_dir: default_watch_templates(),
