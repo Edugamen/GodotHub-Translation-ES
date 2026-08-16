@@ -7,7 +7,7 @@ import {
 import { motion } from 'framer-motion'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { version } from '../../../../../package.json'
-import { IconStar, IconHeart } from '../../lib/Icons'
+import { IconStar, IconHeart, IconBug } from '../../lib/Icons'
 import { isMac } from '../../../../lib/platform'
 import { TaskTray } from './TaskTray'
 import { Tooltip } from '../reusables/Tooltip'
@@ -121,6 +121,21 @@ export function TitleBar({ minimal = false }: { minimal?: boolean }) {
                 whileTap={{ scale: 0.9 }}
               >
                 <IconStar className="w-3.5 h-3.5" />
+              </motion.button>
+            </Tooltip>
+          )}
+          {!minimal && (
+            <Tooltip content={t('report_a_bug')} side="bottom">
+              <motion.button
+                onClick={() =>
+                  window.dispatchEvent(new Event('app:report-bug'))
+                }
+                aria-label={t('report_a_bug')}
+                className="focus-ring cursor-pointer w-7 h-7 flex items-center justify-center rounded-md text-muted/60 hover:text-danger hover:bg-danger/10 transition-colors"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+              >
+                <IconBug className="w-3.5 h-3.5" />
               </motion.button>
             </Tooltip>
           )}

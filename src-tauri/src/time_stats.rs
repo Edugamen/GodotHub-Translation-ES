@@ -60,21 +60,102 @@ pub fn record_session(app: &AppHandle, project_id: &str, start_ms: u64, seconds:
     write_stats(app, &store);
 }
 
+fn days_in_month(year: i32, month: u32) -> u32 {
+    match month {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+        4 | 6 | 9 | 11 => 30,
+        2 => {
+            if (year % 4 == 0 && year % 100 != 0) || year % 400 == 0 {
+                29
+            } else {
+                28
+            }
+        }
+        _ => 0,
+    }
+}
+
+/// Aggregates time tracked into buckets for the given range:
+/// `daily`   -> current calendar day from 12 AM to 12 AM, one bucket per hour (key `YYYY-MM-DD:HH`)
+/// `weekly`  -> last 7 days, one bucket per day (key `YYYY-MM-DD`)
+/// `monthly` -> current calendar month from the 1st to the last day (key `YYYY-MM-DD`)
+/// `yearly`  -> current calendar year from January to December, one bucket per month (key `YYYY-MM`)
 #[tauri::command]
-pub fn get_weekly_activity(app: AppHandle) -> Vec<(String, u64)> {
+pub fn get_activity(app: AppHandle, range: String) -> Vec<(String, u64)> {
     let store = read_stats(&app);
     let now = chrono::Local::now();
-    let mut out: Vec<(String, u64)> = Vec::new();
-    for offset in (0..7).rev() {
-        let day = now - Duration::days(offset);
-        let date = day.format("%Y-%m-%d").to_string();
-        let mut total = 0u64;
-        for by_project in store.daily.values() {
-            total += by_project.get(&date).copied().unwrap_or(0);
+    match range.as_str() {
+        "daily" => {
+            let mut out: Vec<(String, u64)> = Vec::new();
+            let today = now.date_naive();
+            for hour in 0..24 {
+                let key = format!("{}:{:02}", today.format("%Y-%m-%d"), hour);
+                let mut total = 0u64;
+                for sessions in store.projects.values() {
+                    for s in sessions {
+                        let Some(start) = chrono::DateTime::<chrono::Utc>::from_timestamp_millis(
+                            s.start_ms as i64,
+                        )
+                        .map(|t| t.with_timezone(&chrono::Local))
+                        else {
+                            continue;
+                        };
+                        if start.format("%Y-%m-%d:%H").to_string() == key {
+                            total += s.seconds;
+                        }
+                    }
+                }
+                out.push((key, total));
+            }
+            out
         }
-        out.push((date, total));
+        "monthly" => {
+            let mut out: Vec<(String, u64)> = Vec::new();
+            let year = now.year();
+            let month = now.month();
+            let count = days_in_month(year, month);
+            for day in 1..=count {
+                let date = format!("{:04}-{:02}-{:02}", year, month, day);
+                let mut total = 0u64;
+                for by_project in store.daily.values() {
+                    total += by_project.get(&date).copied().unwrap_or(0);
+                }
+                out.push((date, total));
+            }
+            out
+        }
+        "yearly" => {
+            let mut out: Vec<(String, u64)> = Vec::new();
+            let year = now.year();
+            for month in 1..=12 {
+                let key = format!("{:04}-{:02}", year, month);
+                let mut total = 0u64;
+                for by_project in store.daily.values() {
+                    for (date, secs) in by_project {
+                        if date.starts_with(&key) {
+                            total += secs;
+                        }
+                    }
+                }
+                out.push((key, total));
+            }
+            out
+        }
+        _ => {
+            // weekly
+            let mut out: Vec<(String, u64)> = Vec::new();
+            for offset in (0..7).rev() {
+                let day = now - Duration::days(offset);
+                let date = day.format("%Y-%m-%d").to_string();
+                let mut total = 0u64;
+                for by_project in store.daily.values() {
+                    total += by_project.get(&date).copied().unwrap_or(0);
+                }
+                out.push((date, total));
+            }
+            out
+        }
     }
-    out
 }
 
 pub fn breakdown(

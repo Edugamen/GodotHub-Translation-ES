@@ -17,6 +17,7 @@ import {
   formatDate,
   formatLastOpened,
   formatTime,
+  type LastOpenedTimeFormat,
 } from '../../../lib/lastOpened'
 import { formatDuration } from '../lib/duration'
 import { AnimatedNumber } from '../components/reusables/AnimatedNumber'
@@ -94,20 +95,39 @@ function Section({
   title,
   icon,
   action,
+  onTitleClick,
+  titleHint,
   children,
 }: {
   title: string
   icon?: React.ReactNode
   action?: React.ReactNode
+  onTitleClick?: () => void
+  titleHint?: string
   children: React.ReactNode
 }) {
   return (
     <section className="flex flex-col gap-2.5 min-w-0">
       <header className="flex items-center gap-2">
         {icon && <span className="text-accent-bright">{icon}</span>}
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
-          {title}
-        </h2>
+        {onTitleClick ? (
+          <button
+            type="button"
+            onClick={onTitleClick}
+            aria-label={titleHint}
+            title={titleHint}
+            className="focus-ring group/title flex items-center gap-1.5 cursor-pointer rounded-btn -mx-1 px-1 py-0.5 transition-colors hover:text-ink"
+          >
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted group-hover/title:text-ink transition-colors">
+              {title}
+            </h2>
+            <IconRefresh className="w-3 h-3 text-muted/40 group-hover/title:text-accent-bright group-hover/title:rotate-180 transition-all duration-300 shrink-0" />
+          </button>
+        ) : (
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+            {title}
+          </h2>
+        )}
         <div className="flex-1 h-px bg-outline/50" />
         {action}
       </header>
@@ -469,16 +489,63 @@ function StatCard({
   )
 }
 
-function WeeklyActivity({ tall = false, active = true }: { tall?: boolean; active?: boolean }) {
+type ActivityRange = 'weekly' | 'monthly' | 'yearly' | 'daily'
+
+const ACTIVITY_RANGE_CYCLE: ActivityRange[] = [
+  'weekly',
+  'monthly',
+  'yearly',
+  'daily',
+]
+
+function activityLabel(
+  range: ActivityRange,
+  key: string,
+  timeFormat: LastOpenedTimeFormat,
+): string {
+  if (range === 'daily') {
+    // key is `YYYY-MM-DD:HH`
+    const hour = Number(key.slice(11, 13))
+    if (timeFormat === '24h') {
+      return `${String(hour).padStart(2, '0')}h`
+    }
+    const suffix = hour >= 12 ? 'PM' : 'AM'
+    const h12 = hour % 12 === 0 ? 12 : hour % 12
+    return `${h12} ${suffix}`
+  }
+  if (range === 'yearly') {
+    // key is `YYYY-MM`
+    return new Date(`${key}-01T00:00:00`).toLocaleDateString(undefined, {
+      month: 'short',
+    })
+  }
+  // weekly / monthly: key is `YYYY-MM-DD`
+  const d = new Date(`${key}T00:00:00`)
+  return range === 'weekly'
+    ? d.toLocaleDateString(undefined, { weekday: 'short' })
+    : String(d.getDate())
+}
+
+function ActivityChart({
+  range,
+  tall = false,
+  active = true,
+}: {
+  range: ActivityRange
+  tall?: boolean
+  active?: boolean
+}) {
   const { t: tc } = useTranslation('common')
+  const { settings } = useSettings()
   const [data, setData] = useState<[string, number][]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!active) return
     let cancelled = false
+    setLoading(true)
     api
-      .getWeeklyActivity()
+      .getActivity(range)
       .then((d) => {
         if (cancelled) return
         setData(d)
@@ -490,15 +557,16 @@ function WeeklyActivity({ tall = false, active = true }: { tall?: boolean; activ
     return () => {
       cancelled = true
     }
-  }, [active])
+  }, [active, range])
 
   const total = data.reduce((acc, [, s]) => acc + s, 0)
   const max = Math.max(...data.map(([, s]) => s), 1)
 
   if (loading) {
+    const bars = range === 'monthly' ? 30 : range === 'yearly' ? 12 : range === 'daily' ? 24 : 7
     return (
-      <div className={`flex items-end gap-2 animate-pulse ${tall ? 'h-48' : 'h-32'}`}>
-        {Array.from({ length: 7 }).map((_, i) => (
+      <div className={`flex items-end gap-1.5 animate-pulse ${tall ? 'h-48' : 'h-32'}`}>
+        {Array.from({ length: bars }).map((_, i) => (
           <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full">
             <div className="flex-1 w-full rounded bg-raised" />
           </div>
@@ -508,17 +576,16 @@ function WeeklyActivity({ tall = false, active = true }: { tall?: boolean; activ
   }
 
   if (total === 0) {
-    return <EmptyCard text={tc('dashboard_weekly_empty')} />
+    return <EmptyCard text={tc(`dashboard_${range}_empty`)} />
   }
 
   return (
-    <div className={`flex items-end gap-2 ${tall ? 'h-68' : 'h-45'}`}>
-      {data.map(([date, seconds]) => {
-        const d = new Date(`${date}T00:00:00`)
-        const label = d.toLocaleDateString(undefined, { weekday: 'short' })
+    <div className={`flex items-end gap-1.5 ${tall ? 'h-68' : 'h-45'}`}>
+      {data.map(([key, seconds]) => {
+        const label = activityLabel(range, key, settings.last_opened_time_format)
         const pct = seconds > 0 ? Math.max((seconds / max) * 100, 6) : 0
         return (
-          <div key={date} className="flex-1 flex flex-col items-center gap-1 h-full min-w-0">
+          <div key={key} className="flex-1 flex flex-col items-center gap-1 h-full min-w-0">
             <div className="flex-1 w-full flex items-end rounded-md overflow-hidden bg-raised">
               <Tooltip content={formatDuration(seconds * 1000)} side="top" className="w-full h-full flex items-end">
                 <div
@@ -986,6 +1053,14 @@ export function DashboardView({
   const [editingTiles, setEditingTiles] = useState(false)
   const [presetDraft, setPresetDraft] = useState('')
   const [running, setRunning] = useState<RunningProject[]>([])
+  const [activityRange, setActivityRange] = useState<ActivityRange>('weekly')
+
+  const cycleActivityRange = useCallback(() => {
+    setActivityRange((prev) => {
+      const i = ACTIVITY_RANGE_CYCLE.indexOf(prev)
+      return ACTIVITY_RANGE_CYCLE[(i + 1) % ACTIVITY_RANGE_CYCLE.length]
+    })
+  }, [])
 
   useEffect(() => {
     api.getOsUsername().then(setOsName).catch(() => setOsName(null))
@@ -1079,8 +1154,20 @@ export function DashboardView({
     [enabledTiles],
   )
 
-  const tileTitle: Record<DashboardTileId, string> = {
+  const activityTitle: Record<ActivityRange, string> = {
     weekly: tc('dashboard_weekly'),
+    monthly: tc('dashboard_monthly'),
+    yearly: tc('dashboard_yearly'),
+    daily: tc('dashboard_daily'),
+  }
+  const nextActivityRange =
+    ACTIVITY_RANGE_CYCLE[
+      (ACTIVITY_RANGE_CYCLE.indexOf(activityRange) + 1) %
+        ACTIVITY_RANGE_CYCLE.length
+    ]
+
+  const tileTitle: Record<DashboardTileId, string> = {
+    weekly: activityTitle[activityRange],
     top_time: tc('dashboard_top_time'),
     git: tc('dashboard_git'),
     storage: tc('dashboard_storage'),
@@ -1240,11 +1327,15 @@ export function DashboardView({
       case 'weekly':
         return (
           <Section
-            title={tc('dashboard_weekly')}
+            title={activityTitle[activityRange]}
             icon={<IconClock className="w-3.5 h-3.5" />}
+            onTitleClick={cycleActivityRange}
+            titleHint={tc('dashboard_activity_cycle', {
+              next: activityTitle[nextActivityRange],
+            })}
             action={controls}
           >
-            <WeeklyActivity tall={tall} active={active} />
+            <ActivityChart range={activityRange} tall={tall} active={active} />
           </Section>
         )
       case 'top_time':

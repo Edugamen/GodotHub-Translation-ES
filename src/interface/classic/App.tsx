@@ -660,6 +660,10 @@ export default function App() {
   const { loaded: workspacesLoaded } = useWorkspaces()
   const { projects } = useProjectsContext()
   useDiscordRpc(settings, projects)
+  useEffect(() => {
+    api.clearProjectIconCache()
+    api.clearProjectNameCache()
+  }, [settings.scan_depth, settings.icon_scan_depth])
   const [splashPhase, setSplashPhase] = useState<SplashPhase | 'done'>(() =>
     shouldShowSplash() ? 'enter' : 'done',
   )

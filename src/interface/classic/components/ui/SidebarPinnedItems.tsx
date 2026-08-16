@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../../../lib/api'
 import { Tooltip } from '../reusables/Tooltip'
+import { useProjectResolutionEpoch } from '../../../../hooks/useProjectResolutionEpoch'
 import { IconPlay, IconX } from '../../lib/Icons'
 import type { Project } from '../../../../types'
 
@@ -24,6 +25,7 @@ function SidebarProjectItem({
   onUnpin?: (id: string) => void
 }) {
   const { t } = useTranslation('common')
+  const resolutionEpoch = useProjectResolutionEpoch()
   const [icon, setIcon] = useState<string | null>(null)
   const [settingsName, setSettingsName] = useState<string | null>(null)
   const displayName = settingsName ?? project.name
@@ -36,7 +38,7 @@ function SidebarProjectItem({
     return () => {
       cancelled = true
     }
-  }, [project.path])
+  }, [project.path, resolutionEpoch])
 
   useEffect(() => {
     let cancelled = false
@@ -46,7 +48,7 @@ function SidebarProjectItem({
     return () => {
       cancelled = true
     }
-  }, [project.path])
+  }, [project.path, resolutionEpoch])
 
   if (collapsed) {
     return (

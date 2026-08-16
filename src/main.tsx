@@ -6,6 +6,7 @@ import { SettingsProvider } from './hooks/useSettings'
 import { WorkspacesProvider } from './hooks/useWorkspaces'
 import { ProjectsProvider } from './hooks/projectsContext'
 import { CategoriesProvider } from './hooks/categoriesContext'
+import { UpdatesBadgeProvider } from './hooks/useUpdatesBadge'
 import './i18n'
 import { initReducedMotionDetection } from './lib/appearance'
 
@@ -18,7 +19,9 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
         <SettingsProvider>
           <ProjectsProvider>
             <CategoriesProvider>
-              <App />
+              <UpdatesBadgeProvider>
+                <App />
+              </UpdatesBadgeProvider>
             </CategoriesProvider>
           </ProjectsProvider>
         </SettingsProvider>

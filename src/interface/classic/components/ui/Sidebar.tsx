@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'framer-motion'
 import { WorkspaceSwitcher } from '../../WorkspaceSwitcher'
+import { useUpdatesBadge } from '../../../../hooks/useUpdatesBadge'
 import { Tooltip } from '../reusables/Tooltip'
 import {
   IconBell,
@@ -73,6 +74,7 @@ export function Sidebar({
 }: SidebarProps) {
   const { t: tNav } = useTranslation('nav')
   const { t } = useTranslation('common')
+  const { hasUnseen } = useUpdatesBadge()
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1'
@@ -140,6 +142,12 @@ export function Sidebar({
         />
         {!collapsed && (
           <span className="relative">{label}</span>
+        )}
+        {hasUnseen && tabId === 'updates' && !active && (
+          <span className="absolute top-1 right-1 flex w-2 h-2" aria-hidden="true">
+            <span className="absolute inline-flex h-full w-full rounded-full bg-accent-bright opacity-75 animate-ping" />
+            <span className="relative inline-flex rounded-full w-2 h-2 bg-accent-bright shadow-[0_0_6px_2px] shadow-accent/50" />
+          </span>
         )}
       </button>
     )

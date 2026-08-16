@@ -214,6 +214,7 @@ pub fn list_projects(app: AppHandle) -> Vec<Project> {
         .partition(|p| Path::new(&p.path).join("project.godot").exists());
 
     let mut tags_changed = false;
+    let mut names_changed = false;
     for p in kept.iter_mut() {
         if p.tags.is_empty() {
             let disk_tags = resolve_project_tags(&p.path);
@@ -222,9 +223,25 @@ pub fn list_projects(app: AppHandle) -> Vec<Project> {
                 tags_changed = true;
             }
         }
+        // Backfill the real project name (config/name from project.godot) for
+        // projects whose stored name is still just the folder name. In-app
+        // renames always win because they change the stored name.
+        let folder = Path::new(&p.path)
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string());
+        if let Some(folder_name) = folder {
+            if p.name == folder_name {
+                if let Some(resolved) = resolve_project_name(&p.path) {
+                    if !resolved.trim().is_empty() && resolved != p.name {
+                        p.name = resolved;
+                        names_changed = true;
+                    }
+                }
+            }
+        }
     }
 
-    if !removed.is_empty() || tags_changed {
+    if !removed.is_empty() || tags_changed || names_changed {
         let _ = write_projects(&app, &kept);
     }
     let stats = crate::time_stats::read_stats(&app);
@@ -512,10 +529,13 @@ pub fn register_project(
     if !PathBuf::from(&path).join("project.godot").exists() {
         return Err("No project.godot found in the selected folder".into());
     }
-    let name = PathBuf::from(&path)
+    let folder_name = PathBuf::from(&path)
         .file_name()
         .map(|n| n.to_string_lossy().to_string())
         .unwrap_or_else(|| "Untitled".into());
+    // Prefer the actual project name from project.godot (config/name) over the
+    // folder name, so imported/scanned projects show their real title.
+    let name = resolve_project_name(&path).unwrap_or(folder_name);
 
     let mut projects = read_projects(&app);
     if projects.iter().any(|p| same_path(&p.path, &path)) {
@@ -527,6 +547,19 @@ pub fn register_project(
         archived.session_started_at_ms = None;
         archived.time_today_seconds = 0;
         archived.time_week_seconds = 0;
+        // Re-resolve the real name if the archived entry is still the folder name.
+        let folder_name = PathBuf::from(&path)
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string());
+        if let Some(folder) = folder_name {
+            if archived.name == folder {
+                if let Some(resolved) = resolve_project_name(&path) {
+                    if !resolved.trim().is_empty() {
+                        archived.name = resolved;
+                    }
+                }
+            }
+        }
         if !godot_version.is_empty() {
             archived.godot_version = godot_version;
         }

@@ -18,6 +18,7 @@ import {
 } from '../lib/Icons'
 import { MarkdownBody } from '../components/ui/MarkdownBody'
 import { useUpdates } from '../../../hooks/useUpdates'
+import { useUpdatesBadge } from '../../../hooks/useUpdatesBadge'
 import { ScrollReveal } from '../components/ui/ScrollReveal'
 import type { UpdateEntry, UpdateKind } from '../../../types'
 
@@ -267,6 +268,11 @@ export function UpdatesView() {
   const { t } = useTranslation('nav')
   const { t: tc } = useTranslation('common')
   const { entries, loading, fromCache, fetchedAt, reload } = useUpdates()
+  const { markSeen } = useUpdatesBadge()
+
+  useEffect(() => {
+    if (!loading && entries.length > 0) markSeen()
+  }, [loading, entries, markSeen])
 
   const featured = entries.filter((e) => e.featured)
   const regular = entries.filter((e) => !e.featured)

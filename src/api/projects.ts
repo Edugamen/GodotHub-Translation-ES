@@ -4,6 +4,27 @@ import type { Project, ProjectSizeInfo, ProjectUpdate } from '../types'
 const iconCache = new Map<string, string | null>()
 const nameCache = new Map<string, string | null>()
 
+// Bumped whenever the caches are cleared (e.g. the scan/icon scan depth
+// changed), so mounted components can re-resolve project icons and names.
+let resolutionEpoch = 0
+const epochListeners = new Set<() => void>()
+
+export function getResolutionEpoch(): number {
+  return resolutionEpoch
+}
+
+export function subscribeResolutionEpoch(listener: () => void): () => void {
+  epochListeners.add(listener)
+  return () => {
+    epochListeners.delete(listener)
+  }
+}
+
+function bumpResolutionEpoch() {
+  resolutionEpoch += 1
+  epochListeners.forEach((l) => l())
+}
+
 export function getCachedProjectIcon(path: string): string | null {
   const cached = iconCache.get(path)
   return cached !== undefined ? cached : null
@@ -63,6 +84,6 @@ export const projectsApi = {
   },
   reintroduceDismissed: (paths: string[]) =>
     invoke<Project[]>('reintroduce_dismissed_projects', { paths }),
-  clearIconCache: () => { iconCache.clear() },
-  clearNameCache: () => { nameCache.clear() },
+  clearIconCache: () => { iconCache.clear(); bumpResolutionEpoch() },
+  clearNameCache: () => { nameCache.clear(); bumpResolutionEpoch() },
 }

@@ -265,7 +265,7 @@ export function SettingsView({
 }: SettingsViewProps = {}) {
   const { t, i18n } = useTranslation('settings')
   const { settings, update, resetToDefaults, loaded } = useSettings()
-  const { projects } = useProjectsContext()
+  const { projects, refresh: refreshProjects } = useProjectsContext()
   const { activeId } = useWorkspaces()
   const activeIdRef = useRef(activeId)
   activeIdRef.current = activeId
@@ -278,12 +278,46 @@ export function SettingsView({
   const [confirmingWipe, setConfirmingWipe] = useState(false)
   const [confirmingOsDec, setConfirmingOsDec] = useState<boolean | null>(null)
   const [confirmingRestart, setConfirmingRestart] = useState(false)
+  const [settingsBusy, setSettingsBusy] = useState<'export' | 'import' | null>(null)
+  const [settingsMessage, setSettingsMessage] = useState<string | null>(null)
   const [tab, setTab] = useState<SettingsTab>('storage')
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
   const [settingsSearchQuery, setSettingsSearchQuery] = useState('')
   const [cssDraft, setCssDraft] = useState('')
   const [cssStatus, setCssStatus] = useState<'idle' | 'applied'>('idle')
   const settingsRootRef = useRef<HTMLDivElement>(null)
+
+  const handleExportSettings = async () => {
+    setSettingsBusy('export')
+    setSettingsMessage(null)
+    try {
+      const path = await api.pickSavePath('godothub-settings.json')
+      if (!path) return
+      await api.exportSettings(path)
+      setSettingsMessage(t('settings_exported'))
+    } catch (e) {
+      setSettingsMessage(String(e))
+    } finally {
+      setSettingsBusy(null)
+    }
+  }
+
+  const handleImportSettings = async () => {
+    setSettingsBusy('import')
+    setSettingsMessage(null)
+    try {
+      const path = await api.pickDataFile()
+      if (!path) return
+      const imported = await api.importSettings(path)
+      await update(imported)
+      await refreshProjects()
+      setSettingsMessage(t('settings_imported'))
+    } catch (e) {
+      setSettingsMessage(String(e))
+    } finally {
+      setSettingsBusy(null)
+    }
+  }
 
   // Opening a new settings tab always starts scrolled to the top.
   useEffect(() => {
@@ -2352,6 +2386,46 @@ export function SettingsView({
               >
                 {t('open_setup')}
               </motion.button>
+            </div>
+            </div>
+
+            <div data-section-id="advanced-backup">
+            <div className="rounded-xl border border-line bg-surface/60 p-6 flex items-center justify-between gap-6">
+              <div className="min-w-0">
+                <h3 className="font-display font-semibold">{t('settings_backup_title')}</h3>
+                <p className="text-xs text-muted mt-1.5 leading-relaxed">
+                  {t('settings_backup_desc')}
+                </p>
+                {settingsMessage && (
+                  <span className="text-xs text-muted block mt-1.5">
+                    {settingsMessage}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <motion.button
+                  whileHover={{ y: -1 }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={handleExportSettings}
+                  disabled={settingsBusy !== null}
+                  className="focus-ring cursor-pointer shrink-0 px-4 py-2.5 rounded-lg border border-line text-muted hover:text-ink hover:bg-raised text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {settingsBusy === 'export'
+                    ? t('saving')
+                    : t('export_settings_btn')}
+                </motion.button>
+                <motion.button
+                  whileHover={{ y: -1 }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={handleImportSettings}
+                  disabled={settingsBusy !== null}
+                  className="focus-ring cursor-pointer shrink-0 px-4 py-2.5 rounded-lg border border-line text-muted hover:text-ink hover:bg-raised text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {settingsBusy === 'import'
+                    ? t('saving')
+                    : t('import_settings_btn')}
+                </motion.button>
+              </div>
             </div>
             </div>
 
