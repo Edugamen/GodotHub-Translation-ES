@@ -26,7 +26,7 @@ const UpdatesView = lazy(() =>
   import('./views/UpdatesView').then((m) => ({ default: m.UpdatesView })),
 )
 const OnboardingView = lazy(() =>
-  import('./views/OnboardingView').then((m) => ({ default: m.OnboardingView })),
+  import('../onboarding/Onboarding').then((m) => ({ default: m.Onboarding })),
 )
 const AssetStoreView = lazy(() =>
   import('./views/AssetStoreView').then((m) => ({ default: m.AssetStoreView })),
@@ -681,9 +681,11 @@ export default function App() {
 
   if (!settings.setup_complete) {
     return (
-      <Suspense fallback={<ViewLoading />}>
-        <OnboardingView settings={settings} onComplete={update} />
-      </Suspense>
+      <TaskTrayProvider>
+        <Suspense fallback={<ViewLoading />}>
+          <OnboardingView settings={settings} onComplete={update} />
+        </Suspense>
+      </TaskTrayProvider>
     )
   }
 

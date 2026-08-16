@@ -14,7 +14,7 @@ import { LanguageMenu } from '../titlebar/LanguageMenu'
 import { Tooltip } from '../reusables/Tooltip'
 import { IconHeart, IconStar } from '../../lib/icons'
 
-export function Titlebar() {
+export function Titlebar({ minimal = false }: { minimal?: boolean }) {
   const { t } = useTranslation('common')
   const { settings } = useSettings()
   const [appWindow, setAppWindow] = useState<TauriWindow | null>(null)
@@ -78,10 +78,10 @@ export function Titlebar() {
         settings.card_layout ? 'bg-raised/80' : 'bg-raised border-b border-line'
       } ${isMac ? 'pl-20' : 'pl-4'} ${showWindowControls ? '' : 'pr-4'}`}
     >
-      <RunningProjectsChip />
+      {!minimal && <RunningProjectsChip />}
 
       <div className="ml-auto flex items-center gap-1.5 self-stretch ">
-        {settings.show_support_button && (
+        {!minimal && settings.show_support_button && (
           <Tooltip content={t('support_dev')} side="bottom">
             <motion.button
               type="button"
@@ -93,7 +93,7 @@ export function Titlebar() {
                 openUrl('https://www.patreon.com/cw/TheRyko/membership')
               }
               aria-label={t('support_dev')}
-              className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-8 px-3 rounded-item bg-danger/10 text-danger hover:bg-danger/20 transition-colors text-xs font-semibold"
+              className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-6.5 px-3 rounded-item bg-danger/10 text-danger hover:bg-danger/20 transition-colors text-xs font-semibold"
             >
               <IconHeart className="w-3.5 h-3.5" />
               {t('support')}
@@ -101,7 +101,7 @@ export function Titlebar() {
           </Tooltip>
         )}
 
-        {settings.show_star_button && (
+        {!minimal && settings.show_star_button && (
           <Tooltip content={t('star_on_github')} side="bottom">
             <motion.button
               type="button"
@@ -120,7 +120,7 @@ export function Titlebar() {
 
         <div className="w-px h-5 bg-line/40 mx-1 shrink-0" />
         <LanguageMenu />
-        <TaskTray />
+        {!minimal && <TaskTray />}
 
         {showWindowControls && (
           <>

@@ -567,7 +567,7 @@ export function SettingsView({
       view_entrance: 'fade',
       project_icon_opacity: DEFAULT_PROJECT_ICON_OPACITY,
       raised_contrast: DEFAULT_RAISED_CONTRAST,
-      new_ui: false,
+      new_ui: true,
       theme_preset: 'custom',
     })
     setCssDraft('')
@@ -576,7 +576,7 @@ export function SettingsView({
     applyDensity(DEFAULT_DENSITY)
     applyFontScale(DEFAULT_FONT_SCALE)
     applyProjectIconOpacity(DEFAULT_PROJECT_ICON_OPACITY)
-    applyNewUi(false)
+    applyNewUi(true)
   }
 
   const resetAllSettings = async () => {

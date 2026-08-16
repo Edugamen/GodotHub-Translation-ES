@@ -142,6 +142,15 @@ export function App() {
   }, [])
 
   useEffect(() => {
+    const handleSetTab = (e: Event) => {
+      const detail = (e as CustomEvent).detail as NewTab | undefined
+      if (detail) setTab(detail)
+    }
+    window.addEventListener('app:set-tab', handleSetTab)
+    return () => window.removeEventListener('app:set-tab', handleSetTab)
+  }, [])
+
+  useEffect(() => {
     const handleNewProject = () => setCreateProjectOpen(true)
     const handleImportProject = async () => {
       try {

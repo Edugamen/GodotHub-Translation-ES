@@ -1,16 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
+import {
+  motion,
+  useMotionValue,
+  useSpring,
+  useTransform,
+} from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import Masonry from 'react-masonry-css'
-import { openUrl } from '@tauri-apps/plugin-opener'
 import { useProjectsContext } from '../../../hooks/projectsContext'
 import { useGodotVersionsContext } from '../../../hooks/godotVersionsContext'
 import { useCategoriesContext } from '../../../hooks/categoriesContext'
 import { useSettings } from '../../../hooks/useSettings'
-import { useNews } from '../../../hooks/useNews'
 import { useTauriEvent } from '../../../lib/useTauriEvent'
 import { api } from '../../../lib/api'
-import { formatLastOpened } from '../../../lib/lastOpened'
+import {
+  formatDate,
+  formatLastOpened,
+  formatTime,
+} from '../../../lib/lastOpened'
 import { formatDuration } from '../lib/duration'
 import { AnimatedNumber } from '../components/reusables/AnimatedNumber'
 import { OverlayScrollArea } from '../components/reusables/OverlayScrollArea'
@@ -19,15 +26,15 @@ import {
   IconArrowUpDown,
   IconCheck,
   IconChevronDown,
+  IconChevronRight,
   IconChevronUp,
   IconClock,
-  IconExternalLink,
+  IconCopy,
   IconFolder,
   IconFolderPlus,
   IconGear,
   IconGitBranch,
   IconHardDrive,
-  IconHouse,
   IconImport,
   IconLayoutGrid,
   IconNode,
@@ -305,37 +312,160 @@ function StatsRow({
   totalMs: number
 }) {
   const { t: tc } = useTranslation('common')
-  const stats = [
-    { key: 'projects', label: tc('dashboard_stat_projects'), value: projects },
-    { key: 'templates', label: tc('dashboard_stat_templates'), value: templates },
-    { key: 'engines', label: tc('dashboard_stat_engines'), value: engines },
+  const stats: Array<{
+    key: string
+    label: string
+    value: number
+    display?: string
+    tab: 'projects' | 'templates' | 'versions' | null
+    hint?: string
+    Icon: React.ComponentType<{ className?: string }>
+    grad: string
+    sticker: string
+    hoverBorder: string
+  }> = [
+    {
+      key: 'projects',
+      label: tc('dashboard_stat_projects'),
+      value: projects,
+      tab: 'projects',
+      Icon: IconFolder,
+      grad: 'from-[#7aa0ff] to-[#4f7cff]',
+      sticker: 'text-accent-bright bg-accent/10 border-accent-dim/40',
+      hoverBorder: 'group-hover:border-accent/60',
+    },
+    {
+      key: 'templates',
+      label: tc('dashboard_stat_templates'),
+      value: templates,
+      tab: 'templates',
+      Icon: IconCopy,
+      grad: 'from-[#4ade80] to-[#2fbf71]',
+      sticker: 'text-mint bg-mint/10 border-mint/40',
+      hoverBorder: 'group-hover:border-mint/60',
+    },
+    {
+      key: 'engines',
+      label: tc('dashboard_stat_engines'),
+      value: engines,
+      tab: 'versions',
+      Icon: IconRocket,
+      grad: 'from-[#fbbf24] to-[#f0b132]',
+      sticker: 'text-amber bg-amber/10 border-amber/40',
+      hoverBorder: 'group-hover:border-amber/60',
+    },
     {
       key: 'time',
       label: tc('dashboard_stat_total_time'),
       value: totalMs,
       display: formatDuration(totalMs),
+      tab: null,
+      hint: tc('dashboard_stat_total_time_hint'),
+      Icon: IconClock,
+      grad: 'from-[#a78bfa] to-[#8b5cf6]',
+      sticker: 'text-violet-400 bg-violet-400/10 border-violet-400/40',
+      hoverBorder: 'group-hover:border-violet-400/60',
     },
   ]
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-      {stats.map((s) => (
-        <div
-          key={s.key}
-          className="flex flex-col gap-1 rounded-item bg-overlay border border-outline/50 px-4 py-3"
-        >
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted/70">
-            {s.label}
-          </span>
-          <span className="text-2xl font-bold text-ink tabular-nums">
-            {'display' in s && s.display ? (
-              s.display
-            ) : (
-              <AnimatedNumber value={s.value} />
-            )}
-          </span>
-        </div>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {stats.map(({ key, ...s }, i) => (
+        <StatCard key={key} index={i} {...s} />
       ))}
     </div>
+  )
+}
+
+function StatCard({
+  index,
+  label,
+  value,
+  display,
+  tab,
+  hint,
+  Icon,
+  grad,
+  sticker,
+  hoverBorder,
+}: {
+  index: number
+  label: string
+  value: number
+  display?: string
+  tab: 'projects' | 'templates' | 'versions' | null
+  hint?: string
+  Icon: React.ComponentType<{ className?: string }>
+  grad: string
+  sticker: string
+  hoverBorder: string
+}) {
+  const mx = useMotionValue(0)
+  const my = useMotionValue(0)
+  const tiltSpring = { stiffness: 220, damping: 18 }
+  const rotateX = useSpring(useTransform(my, [-0.5, 0.5], [9, -9]), tiltSpring)
+  const rotateY = useSpring(useTransform(mx, [-0.5, 0.5], [-9, 9]), tiltSpring)
+
+  const handleMove = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const r = e.currentTarget.getBoundingClientRect()
+    mx.set((e.clientX - r.left) / r.width - 0.5)
+    my.set((e.clientY - r.top) / r.height - 0.5)
+  }
+  const handleLeave = () => {
+    mx.set(0)
+    my.set(0)
+  }
+
+  return (
+    <motion.button
+      type="button"
+      initial={{ y: 26, opacity: 0, scale: 0.9, rotate: -1.5 }}
+      animate={{ y: 0, opacity: 1, scale: 1, rotate: 0 }}
+      transition={{
+        type: 'spring',
+        stiffness: 240,
+        damping: 20,
+        delay: 0.08 * index,
+      }}
+      whileHover={{ y: -4 }}
+      whileTap={{ scale: 0.96 }}
+      onClick={tab ? () => dispatch('app:set-tab', tab) : undefined}
+      onMouseMove={handleMove}
+      onMouseLeave={handleLeave}
+      style={{ rotateX, rotateY, transformPerspective: 700 }}
+      className={`group relative overflow-hidden text-left cursor-pointer focus-ring rounded-card bg-overlay border border-outline/50 px-5 py-4 flex flex-col transition-colors duration-200 hover:border-outline ${hoverBorder}`}
+    >
+      {/* Ghost icon watermark */}
+      <Icon
+        aria-hidden="true"
+        className="pointer-events-none absolute -bottom-8 -right-8 w-32 h-32 rotate-12 text-ink/5 transition-transform duration-500 group-hover:rotate-6 group-hover:scale-110"
+      />
+
+      <div className="relative z-10 flex items-start justify-between gap-2">
+        <span className="pt-1 truncate text-[10px] font-semibold uppercase tracking-wider text-muted/70">
+          {label}
+        </span>
+        <span
+          className={`w-9 h-9 shrink-0 -rotate-6 rounded-tile border flex items-center justify-center transition-transform duration-300 group-hover:rotate-0 group-hover:scale-110 ${sticker}`}
+        >
+          <Icon className="w-4 h-4" />
+        </span>
+      </div>
+
+      <span className="relative z-10 mt-3 block text-[26px] leading-none font-bold tabular-nums text-ink">
+        {display ?? <AnimatedNumber value={value} />}
+      </span>
+      <span
+        aria-hidden="true"
+        className={`relative z-10 mt-2.5 block h-1 w-8 rounded-full bg-gradient-to-r ${grad} transition-all duration-300 group-hover:w-12`}
+      />
+
+      <span className="relative z-10 mt-auto pt-3 inline-flex items-center gap-1 text-[10px] font-medium text-muted/40 transition-colors duration-200 group-hover:text-muted">
+        {hint ?? label}
+        {tab && (
+          <IconChevronRight className="w-3 h-3 transition-transform duration-300 group-hover:translate-x-0.5" />
+        )}
+      </span>
+    </motion.button>
   )
 }
 
@@ -367,7 +497,7 @@ function WeeklyActivity({ tall = false, active = true }: { tall?: boolean; activ
 
   if (loading) {
     return (
-      <div className={`flex items-end gap-2 animate-pulse ${tall ? 'h-40' : 'h-24'}`}>
+      <div className={`flex items-end gap-2 animate-pulse ${tall ? 'h-48' : 'h-32'}`}>
         {Array.from({ length: 7 }).map((_, i) => (
           <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full">
             <div className="flex-1 w-full rounded bg-raised" />
@@ -382,7 +512,7 @@ function WeeklyActivity({ tall = false, active = true }: { tall?: boolean; activ
   }
 
   return (
-    <div className={`flex items-end gap-2 ${tall ? 'h-40' : 'h-24'}`}>
+    <div className={`flex items-end gap-2 ${tall ? 'h-68' : 'h-45'}`}>
       {data.map(([date, seconds]) => {
         const d = new Date(`${date}T00:00:00`)
         const label = d.toLocaleDateString(undefined, { weekday: 'short' })
@@ -741,6 +871,7 @@ interface RunningProject {
 
 function Clock({ active = true }: { active?: boolean }) {
   const { t: tc } = useTranslation('common')
+  const { settings } = useSettings()
   const [now, setNow] = useState(() => new Date())
 
   useEffect(() => {
@@ -749,17 +880,8 @@ function Clock({ active = true }: { active?: boolean }) {
     return () => clearInterval(id)
   }, [active])
 
-  const timeString = now.toLocaleTimeString(undefined, {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  })
-  const dateString = now.toLocaleDateString(undefined, {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  })
+  const timeString = formatTime(now, settings.last_opened_time_format)
+  const dateString = formatDate(now, settings.last_opened_date_format)
 
   return (
     <div className="ml-auto shrink-0 flex flex-col items-end gap-0.5">
@@ -854,7 +976,6 @@ export function DashboardView({
   const { settings, update } = useSettings()
   const { projects } = useProjectsContext()
   const { installed } = useGodotVersionsContext()
-  const { items: newsItems } = useNews()
 
   const [osName, setOsName] = useState<string | null>(null)
   const [templates, setTemplates] = useState(0)
@@ -969,7 +1090,6 @@ export function DashboardView({
     pinned: tc('dashboard_pinned'),
     engines: tc('dashboard_engines'),
     running: tc('dashboard_running'),
-    news: tc('dashboard_news'),
   }
 
   const spanSet = useMemo(
@@ -1247,52 +1367,6 @@ export function DashboardView({
       case 'running':
         return (
           <RunningNow running={running} onStop={stopProject} editControls={controls} active={active} />
-        )
-      case 'news':
-        return (
-          <Section
-            title={tc('dashboard_news')}
-            icon={<IconHouse className="w-3.5 h-3.5" />}
-            action={controls}
-          >
-            {newsItems.length > 0 ? (
-              <div
-                className={`grid gap-2.5 ${
-                  spanning ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'
-                }`}
-              >
-                {newsItems.slice(0, tall ? 6 : 3).map((item) => (
-                  <motion.button
-                    key={item.id}
-                    type="button"
-                    whileHover={{ y: -1 }}
-                    onClick={() => openUrl(item.link).catch(() => {})}
-                    className="group focus-ring cursor-pointer flex flex-col gap-2 p-4 rounded-item bg-overlay border border-outline/50 hover:bg-raised hover:border-accent-dim/60 transition-colors text-left"
-                  >
-                    {item.category && (
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-accent-bright">
-                        {item.category}
-                      </span>
-                    )}
-                    <span className="font-display font-medium text-sm leading-snug line-clamp-2 text-ink">
-                      {item.title}
-                    </span>
-                    {item.summary && (
-                      <span className="text-[11px] text-muted/70 leading-relaxed line-clamp-2">
-                        {item.summary}
-                      </span>
-                    )}
-                    <span className="mt-auto pt-1 inline-flex items-center gap-1 text-[10px] text-muted/60 group-hover:text-accent-bright transition-colors">
-                      {item.link.replace(/^https?:\/\//, '').split('/')[0]}
-                      <IconExternalLink className="w-2.5 h-2.5" />
-                    </span>
-                  </motion.button>
-                ))}
-              </div>
-            ) : (
-              <EmptyCard text={tc('dashboard_news_empty')} />
-            )}
-          </Section>
         )
     }
   }

@@ -8,7 +8,6 @@ export const DASHBOARD_TILE_IDS = [
   'pinned',
   'engines',
   'running',
-  'news',
 ] as const
 
 export type DashboardTileId = (typeof DASHBOARD_TILE_IDS)[number]
@@ -59,7 +58,6 @@ export const TILE_LAYOUT_OPTIONS: Partial<Record<DashboardTileId, { span?: boole
   git: { span: true, tall: true },
   storage: { span: true, tall: true },
   categories: { span: true, tall: true },
-  news: { span: true, tall: true },
 }
 
 export function tileCanSpan(id: DashboardTileId): boolean {
@@ -150,22 +148,6 @@ export const DASHBOARD_PRESETS: DashboardPreset[] = [
     order: ['git', 'running', 'engines', 'recent', 'pinned'],
     spans: ['git'],
     tall: ['git'],
-  },
-  {
-    id: 'news_focus',
-    labelKey: 'dashboard_preset_news_focus',
-    descriptionKey: 'dashboard_preset_news_focus_desc',
-    sections: [
-      'quick_actions',
-      'stats',
-      'news',
-      'categories',
-      'recent',
-      'pinned',
-    ],
-    order: ['news', 'categories', 'recent', 'pinned'],
-    spans: ['news'],
-    tall: ['news', 'categories'],
   },
 ]
 

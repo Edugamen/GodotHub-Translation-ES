@@ -84,7 +84,7 @@ const DEFAULTS: AppSettings = {
   theme_preset: 'custom',
   git_init_new_projects: false,
   open_after_import: true,
-  new_ui: false,
+  new_ui: true,
   card_layout: true,
   dashboard_custom_name: null,
   default_landing_tab: 'projects',

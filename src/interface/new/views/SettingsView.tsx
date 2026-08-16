@@ -115,7 +115,6 @@ const DASHBOARD_SECTIONS = [
   { id: 'pinned' },
   { id: 'engines' },
   { id: 'running' },
-  { id: 'news' },
 ] as const
 
 function Subsection({
