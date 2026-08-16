@@ -11,6 +11,8 @@ export const versionsApi = {
   pauseDownload: (key: string) => invoke<void>('pause_download', { key }),
   resumeDownload: (key: string) => invoke<void>('resume_download', { key }),
   cancelDownload: (key: string) => invoke<void>('cancel_download', { key }),
+  reorderDownloadQueue: (key: string, direction: number) =>
+    invoke<void>('reorder_download_queue', { key, direction }),
   listInstalled: () =>
     invoke<InstalledGodotVersion[]>('list_installed_godot_versions'),
   rename: (tag: string, customName: string | null) =>

@@ -23,6 +23,7 @@ import { getWorkspaceIcon } from '../../lib/workspaceIcons'
 import { formatLastOpened } from '../../../../lib/lastOpened'
 import { isMac } from '../../../../lib/platform'
 import { isReducedMotion } from '../../../../lib/appearance'
+import { useSettings } from '../../../../hooks/useSettings'
 import type { Project, InstalledGodotVersion, Workspace } from '../../../../types'
 
 const IS_DEV = import.meta.env.DEV
@@ -232,6 +233,7 @@ export const SETTINGS_SEARCH_ITEMS: SettingSearchEntry[] = (
   { key: 'default_project_location', tab: 'storage' },
   { key: 'download_dir', tab: 'storage' },
   { key: 'scan_depth', tab: 'storage' },
+  { key: 'icon_scan_depth', tab: 'storage' },
   { key: 'download_concurrency', tab: 'storage' },
   { key: 'close_on_project_open', tab: 'behavior' },
   { key: 'minimize_to_tray', tab: 'behavior' },
@@ -241,7 +243,7 @@ export const SETTINGS_SEARCH_ITEMS: SettingSearchEntry[] = (
   { key: 'workspaces_enabled', tab: 'behavior' },
   { key: 'directory_naming_convention', tab: 'behavior' },
   { key: 'git_init_new_projects', tab: 'behavior' },
-  { key: 'tooltip_delay', tab: 'behavior' },
+  { key: 'tooltip_delay', tab: 'accessibility' },
   { key: 'command_palette_keybind', tab: 'behavior' },
   { key: 'tray_recent_projects_count', tab: 'behavior' },
   { key: 'last_opened_time_format', tab: 'display' },
@@ -250,9 +252,9 @@ export const SETTINGS_SEARCH_ITEMS: SettingSearchEntry[] = (
   { key: 'accent_color', tab: 'appearance' },
   { key: 'background_color', tab: 'appearance' },
   { key: 'corner_radius', tab: 'appearance' },
-  { key: 'ui_density', tab: 'appearance' },
-  { key: 'font_scale', tab: 'appearance' },
-  { key: 'animation_intensity', tab: 'appearance' },
+  { key: 'ui_density', tab: 'accessibility' },
+  { key: 'font_scale', tab: 'accessibility' },
+  { key: 'animation_intensity', tab: 'accessibility' },
   { key: 'view_entrance', tab: 'appearance' },
   { key: 'custom_css', tab: 'appearance' },
   { key: 'feeling_lucky', tab: 'appearance' },
@@ -264,9 +266,15 @@ export const SETTINGS_SEARCH_ITEMS: SettingSearchEntry[] = (
   { key: 'check_updates', tab: 'advanced' },
   { key: 'show_support_button', tab: 'advanced' },
   { key: 'show_star_button', tab: 'advanced' },
-  { key: 'show_scrollbars', tab: 'appearance' },
+  { key: 'discord_rpc_enabled', tab: 'advanced' },
+  { key: 'discord_app_id', tab: 'advanced' },
+  { key: 'discord_rpc_show_projects', tab: 'advanced' },
+  { key: 'discord_rpc_excluded_projects', tab: 'advanced' },
+  { key: 'discord_rpc_project_presences', tab: 'advanced' },
+  { key: 'show_scrollbars', tab: 'accessibility' },
   { key: 'project_icon_opacity', tab: 'appearance' },
   { key: 'new_ui', tab: 'appearance' },
+  { key: 'screen_reader_announcements', tab: 'accessibility' },
   ] as SettingSearchEntry[]
 ).filter((item) => !(isMac && item.key === 'minimize_to_tray'))
 
@@ -292,6 +300,7 @@ export function CommandPalette({
   paletteKey = 'k',
 }: Props) {
   const { t } = useTranslation(['common', 'settings'])
+  const { settings } = useSettings()
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -307,9 +316,11 @@ export function CommandPalette({
   const visibleCommands = useMemo(
     () =>
       allCommands.filter(
-        (cmd) => !cmd.context || cmd.context === currentTab,
+        (cmd) =>
+          (settings.workspaces_enabled || cmd.id !== 'create-workspace') &&
+          (!cmd.context || cmd.context === currentTab),
       ),
-    [allCommands, currentTab],
+    [allCommands, currentTab, settings.workspaces_enabled],
   )
 
   const navShortcuts: Record<string, string> = useMemo(
@@ -396,30 +407,38 @@ export function CommandPalette({
       })
     }
 
-    for (const w of workspaces) {
-      const WsIcon = getWorkspaceIcon(w.icon)
-      const active = w.id === activeWorkspaceId
-      items.push({
-        id: `workspace:${w.id}`,
-        label: active ? t('active_workspace', { name: w.name }) : w.name,
-        sublabel: active ? t('current_workspace') : t('switch_workspace'),
-        icon: (
-          <WsIcon
-            className="w-4 h-4"
-            style={{ color: w.color }}
-          />
-        ),
-        section: t('workspaces_section'),
-        action: () => {
-          window.dispatchEvent(
-            new CustomEvent('app:switch-workspace', { detail: w.id }),
-          )
-        },
-      })
+    if (settings.workspaces_enabled) {
+      for (const w of workspaces) {
+        const WsIcon = getWorkspaceIcon(w.icon)
+        const active = w.id === activeWorkspaceId
+        items.push({
+          id: `workspace:${w.id}`,
+          label: active ? t('active_workspace', { name: w.name }) : w.name,
+          sublabel: active ? t('current_workspace') : t('switch_workspace'),
+          icon: (
+            <WsIcon
+              className="w-4 h-4"
+              style={{ color: w.color }}
+            />
+          ),
+          section: t('workspaces_section'),
+          action: () => {
+            window.dispatchEvent(
+              new CustomEvent('app:switch-workspace', { detail: w.id }),
+            )
+          },
+        })
+      }
     }
 
     return items
-  }, [projects, installedVersions, workspaces, activeWorkspaceId])
+  }, [
+    projects,
+    installedVersions,
+    workspaces,
+    activeWorkspaceId,
+    settings.workspaces_enabled,
+  ])
 
   const allItems = useMemo(
     () => [...visibleCommands, ...dynamicItems],

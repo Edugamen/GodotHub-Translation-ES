@@ -9,6 +9,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from 'react'
+import { createPortal } from 'react-dom'
 import type { IconProps } from '../../lib/icons'
 
 export interface NewDropdownItem {
@@ -36,6 +37,8 @@ const MENU_FALLBACK_HEIGHT = 220
 
 const MENU_FALLBACK_WIDTH = 240
 
+const GAP = 8
+
 export function Dropdown({
   trigger,
   items,
@@ -44,7 +47,11 @@ export function Dropdown({
 }: NewDropdownProps) {
   const [open, setOpen] = useState(false)
   const [openUp, setOpenUp] = useState(false)
-  const [openLeft, setOpenLeft] = useState(align === 'right')
+  const [pos, setPos] = useState<{
+    left: number
+    top: number
+    width: number
+  } | null>(null)
   const ref = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -63,18 +70,24 @@ export function Dropdown({
     if (!el) return
     const r = el.getBoundingClientRect()
     const mh = menuRef.current?.offsetHeight ?? MENU_FALLBACK_HEIGHT
+    const mw = menuRef.current?.offsetWidth ?? MENU_FALLBACK_WIDTH
     const spaceBelow = window.innerHeight - r.bottom
     const spaceAbove = r.top
-    setOpenUp(spaceBelow < mh && spaceAbove > spaceBelow)
+    const up = spaceBelow < mh && spaceAbove > spaceBelow
+    setOpenUp(up)
 
-    const mw = menuRef.current?.offsetWidth ?? MENU_FALLBACK_WIDTH
     const spaceLeft = r.right
     const spaceRight = window.innerWidth - r.left
-    if (align === 'right') {
-      setOpenLeft(!(spaceLeft < mw && spaceRight > spaceLeft))
-    } else {
-      setOpenLeft(spaceRight < mw && spaceLeft > spaceRight)
-    }
+    const leftSide =
+      align === 'right'
+        ? !(spaceLeft < mw && spaceRight > spaceLeft)
+        : spaceRight < mw && spaceLeft > spaceRight
+
+    setPos({
+      left: leftSide ? r.right - mw : r.left,
+      top: up ? r.top - mh - GAP : r.bottom + GAP,
+      width: mw,
+    })
   }, [align])
 
   useLayoutEffect(() => {
@@ -94,7 +107,10 @@ export function Dropdown({
   useEffect(() => {
     if (!open) return
     const onDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        if (menuRef.current?.contains(e.target as Node)) return
+        setOpen(false)
+      }
     }
     const onKey = (e: globalThis.KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false)
@@ -132,87 +148,91 @@ export function Dropdown({
   }
 
   return (
-    <div ref={ref} className="relative flex items-stretch w-fit">
-      {trigger({ open, toggle })}
+    <>
+      <div ref={ref} className="relative flex items-stretch w-fit">
+        {trigger({ open, toggle })}
+      </div>
 
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            ref={menuRef}
-            initial={{ opacity: 0, y: openUp ? 6 : -6, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: openUp ? 6 : -6, scale: 0.96 }}
-            transition={{ duration: 0.15, ease: 'easeOut' }}
-            role="menu"
-            onKeyDown={handleMenuKey}
-            className={`absolute z-40 rounded-menu border border-outline/50 bg-overlay shadow-md shadow-black/10 p-1.5 min-w-60 ${
-              openUp
-                ? 'bottom-full mb-2 origin-bottom'
-                : `top-full mt-2 ${openLeft ? 'origin-top-right' : 'origin-top-left'}`
-            } ${openLeft ? 'right-0' : 'left-0'} ${menuClassName}`}
-          >
-            {items.map((item) => (
-              <div key={item.key}>
-                <button
-                  type="button"
-                  role="menuitem"
-                  disabled={item.disabled}
-                  onClick={() => {
-                    setOpen(false)
-                    item.onClick?.()
-                  }}
-                  className={`w-full flex items-center gap-1 px-2.5 py-2 rounded-item text-xs font-medium transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
-                    item.danger
-                      ? 'text-red-400 hover:bg-red-500/10 hover:text-red-300'
-                      : item.active
-                        ? 'text-ink bg-accent hover:bg-accent'
-                        : 'text-muted hover:bg-raised hover:text-ink'
-                  }`}
-                >
-                  {item.icon && (
-                    <span
-                      className={`w-7 h-7 rounded-btn flex items-center justify-center shrink-0 ${
-                        item.danger
-                          ? 'bg-red-500/10'
-                          : item.active
-                            ? 'bg-accent/20'
-                            : 'bg-transparent'
-                      }`}
-                    >
-                      <item.icon
-                        className={`w-3.5 h-3.5 ${item.danger ? 'text-red-400' : item.active ? 'text-accent-bright' : 'text-muted'}`}
+      {createPortal(
+        <AnimatePresence>
+          {open && (
+            <motion.div
+              ref={menuRef}
+              initial={{ opacity: 0, y: openUp ? 6 : -6, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: openUp ? 6 : -6, scale: 0.96 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+              role="menu"
+              onKeyDown={handleMenuKey}
+              style={{ left: pos?.left, top: pos?.top, width: pos?.width }}
+              className={`fixed z-50 rounded-menu border border-outline/50 bg-overlay shadow-md shadow-black/10 p-1.5 min-w-60 ${
+                openUp ? 'origin-bottom' : 'origin-top'
+              } ${menuClassName}`}
+            >
+              {items.map((item) => (
+                <div key={item.key}>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={item.disabled}
+                    onClick={() => {
+                      setOpen(false)
+                      item.onClick?.()
+                    }}
+                    className={`w-full flex items-center gap-1 px-2.5 py-2 rounded-item text-xs font-medium transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                      item.danger
+                        ? 'text-red-400 hover:bg-red-500/10 hover:text-red-300'
+                        : item.active
+                          ? 'text-ink bg-accent hover:bg-accent'
+                          : 'text-muted hover:bg-raised hover:text-ink'
+                    }`}
+                  >
+                    {item.icon && (
+                      <span
+                        className={`w-7 h-7 rounded-btn flex items-center justify-center shrink-0 ${
+                          item.danger
+                            ? 'bg-red-500/10'
+                            : item.active
+                              ? 'bg-accent/20'
+                              : 'bg-transparent'
+                        }`}
+                      >
+                        <item.icon
+                          className={`w-3.5 h-3.5 ${item.danger ? 'text-red-400' : item.active ? 'text-accent-bright' : 'text-muted'}`}
+                        />
+                      </span>
+                    )}
+                    {item.dotColor && (
+                      <span
+                        aria-hidden="true"
+                        className="w-2 h-2 rounded-full shrink-0"
+                        style={{ backgroundColor: item.dotColor }}
                       />
-                    </span>
-                  )}
-                  {item.dotColor && (
-                    <span
-                      aria-hidden="true"
-                      className="w-2 h-2 rounded-full shrink-0"
-                      style={{ backgroundColor: item.dotColor }}
-                    />
-                  )}
-                  <span className="flex-1 text-left truncate">{item.label}</span>
-                  {item.badge && (
-                    <span
-                      className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-tag border ${
-                        item.active
-                          ? 'bg-black/15 text-ink border-black/10'
-                          : 'bg-accent/10 text-accent-bright border-accent-dim/40'
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
-                  {item.shortcut && (
-                    <span className="text-[10px] text-muted font-mono shrink-0">{item.shortcut}</span>
-                  )}
-                </button>
-                {item.dividerAfter && <div className="h-px bg-white/6 my-1" />}
-              </div>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+                    )}
+                    <span className="flex-1 text-left truncate">{item.label}</span>
+                    {item.badge && (
+                      <span
+                        className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-tag border ${
+                          item.active
+                            ? 'bg-black/15 text-ink border-black/10'
+                            : 'bg-accent/10 text-accent-bright border-accent-dim/40'
+                        }`}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
+                    {item.shortcut && (
+                      <span className="text-[10px] text-muted font-mono shrink-0">{item.shortcut}</span>
+                    )}
+                  </button>
+                  {item.dividerAfter && <div className="h-px bg-white/6 my-1" />}
+                </div>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
+    </>
   )
 }

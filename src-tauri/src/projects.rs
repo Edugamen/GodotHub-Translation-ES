@@ -37,12 +37,21 @@ impl TrackedProcess {
 
 pub struct ActiveProcesses(pub Mutex<HashMap<String, TrackedProcess>>);
 
+#[derive(Debug, Clone, Serialize)]
+pub struct RunningProjectInfo {
+    pub id: String,
+    pub name: String,
+    pub version: String,
+    pub launched_at_ms: u64,
+}
+
 const SESSION_START_DELAY_MS: u64 = 3000;
 
 const DEFAULT_ICON_SVG: &[u8] = include_bytes!("../icon.svg");
 
 struct CachedIcon {
     project_godot_mtime: Option<SystemTime>,
+    icon_scan_depth: u32,
     data: Option<String>,
 }
 
@@ -51,20 +60,27 @@ fn icon_cache() -> &'static Mutex<HashMap<String, CachedIcon>> {
     CACHE.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
-fn projects_file(app: &AppHandle) -> PathBuf {
-    crate::workspace::active_workspace_dir(app).join("projects.json")
-}
-
-pub(crate) fn read_projects(app: &AppHandle) -> Vec<Project> {
-    let file = projects_file(app);
+pub(crate) fn read_projects_from(dir: &std::path::Path) -> Vec<Project> {
+    let file = dir.join("projects.json");
     if !file.exists() {
         return vec![];
     }
     serde_json::from_str(&fs::read_to_string(&file).unwrap_or_default()).unwrap_or_default()
 }
 
+pub(crate) fn read_projects(app: &AppHandle) -> Vec<Project> {
+    read_projects_from(&crate::workspace::active_workspace_dir(app))
+}
+
+pub(crate) fn write_projects_to(
+    dir: &std::path::Path,
+    projects: &Vec<Project>,
+) -> Result<(), String> {
+    persist::write_json(&dir.join("projects.json"), projects).map_err(|e| e.to_string())
+}
+
 pub(crate) fn write_projects(app: &AppHandle, projects: &Vec<Project>) -> Result<(), String> {
-    persist::write_json(&projects_file(app), projects).map_err(|e| e.to_string())
+    write_projects_to(&crate::workspace::active_workspace_dir(app), projects)
 }
 
 pub(crate) fn epoch_ms() -> u64 {
@@ -205,6 +221,7 @@ pub fn list_projects(app: AppHandle) -> Vec<Project> {
         .partition(|p| Path::new(&p.path).join("project.godot").exists());
 
     let mut tags_changed = false;
+    let mut names_changed = false;
     for p in kept.iter_mut() {
         if p.tags.is_empty() {
             let disk_tags = resolve_project_tags(&p.path);
@@ -213,9 +230,25 @@ pub fn list_projects(app: AppHandle) -> Vec<Project> {
                 tags_changed = true;
             }
         }
+        // Backfill the real project name (config/name from project.godot) for
+        // projects whose stored name is still just the folder name. In-app
+        // renames always win because they change the stored name.
+        let folder = Path::new(&p.path)
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string());
+        if let Some(folder_name) = folder {
+            if p.name == folder_name {
+                if let Some(resolved) = resolve_project_name(&p.path) {
+                    if !resolved.trim().is_empty() && resolved != p.name {
+                        p.name = resolved;
+                        names_changed = true;
+                    }
+                }
+            }
+        }
     }
 
-    if !removed.is_empty() || tags_changed {
+    if !removed.is_empty() || tags_changed || names_changed {
         let _ = write_projects(&app, &kept);
     }
     let stats = crate::time_stats::read_stats(&app);
@@ -503,10 +536,13 @@ pub fn register_project(
     if !PathBuf::from(&path).join("project.godot").exists() {
         return Err("No project.godot found in the selected folder".into());
     }
-    let name = PathBuf::from(&path)
+    let folder_name = PathBuf::from(&path)
         .file_name()
         .map(|n| n.to_string_lossy().to_string())
         .unwrap_or_else(|| "Untitled".into());
+    // Prefer the actual project name from project.godot (config/name) over the
+    // folder name, so imported/scanned projects show their real title.
+    let name = resolve_project_name(&path).unwrap_or(folder_name);
 
     let mut projects = read_projects(&app);
     if projects.iter().any(|p| same_path(&p.path, &path)) {
@@ -518,6 +554,19 @@ pub fn register_project(
         archived.session_started_at_ms = None;
         archived.time_today_seconds = 0;
         archived.time_week_seconds = 0;
+        // Re-resolve the real name if the archived entry is still the folder name.
+        let folder_name = PathBuf::from(&path)
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string());
+        if let Some(folder) = folder_name {
+            if archived.name == folder {
+                if let Some(resolved) = resolve_project_name(&path) {
+                    if !resolved.trim().is_empty() {
+                        archived.name = resolved;
+                    }
+                }
+            }
+        }
         if !godot_version.is_empty() {
             archived.godot_version = godot_version;
         }
@@ -894,6 +943,40 @@ fn kill_tracked(tracked: &mut TrackedProcess) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn list_running_projects(app: AppHandle) -> Vec<RunningProjectInfo> {
+    let entries: Vec<(String, std::time::SystemTime)> = {
+        let Some(state) = app.try_state::<ActiveProcesses>() else {
+            return vec![];
+        };
+        let active = state.0.lock().unwrap();
+        active
+            .iter()
+            .map(|(id, p)| (id.clone(), p.launched_at))
+            .collect()
+    };
+    if entries.is_empty() {
+        return vec![];
+    }
+    let projects = read_projects(&app);
+    entries
+        .into_iter()
+        .filter_map(|(id, launched_at)| {
+            let project = projects.iter().find(|p| p.id == id)?;
+            let launched_at_ms = launched_at
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_millis() as u64)
+                .unwrap_or(0);
+            Some(RunningProjectInfo {
+                id,
+                name: project.name.clone(),
+                version: project.godot_version.clone(),
+                launched_at_ms,
+            })
+        })
+        .collect()
+}
+
+#[tauri::command]
 pub fn stop_project(app: AppHandle, id: String) -> Result<(), String> {
     let state = app
         .try_state::<ActiveProcesses>()
@@ -1092,9 +1175,10 @@ fn find_resource_by_uid(
     dir: &Path,
     target_uid: &str,
     depth: usize,
+    max_depth: usize,
     budget: &mut usize,
 ) -> Option<PathBuf> {
-    if depth > 14 || *budget == 0 {
+    if depth > max_depth || *budget == 0 {
         return None;
     }
     let entries = match fs::read_dir(dir) {
@@ -1128,14 +1212,19 @@ fn find_resource_by_uid(
     }
 
     for sub in subdirs {
-        if let Some(found) = find_resource_by_uid(&sub, target_uid, depth + 1, budget) {
+        if let Some(found) =
+            find_resource_by_uid(&sub, target_uid, depth + 1, max_depth, budget)
+        {
             return Some(found);
         }
     }
     None
 }
 
-fn resolve_project_icon(project_path: &str) -> Option<(Vec<u8>, &'static str)> {
+fn resolve_project_icon(
+    project_path: &str,
+    icon_scan_depth: u32,
+) -> Option<(Vec<u8>, &'static str)> {
     let dir = PathBuf::from(project_path);
     let godot_file = dir.join("project.godot");
     let mut icon_rel: Option<String> = None;
@@ -1162,7 +1251,13 @@ fn resolve_project_icon(project_path: &str) -> Option<(Vec<u8>, &'static str)> {
     }
     if let Some(uid) = icon_uid {
         let mut budget = 8000usize;
-        if let Some(found) = find_resource_by_uid(&dir, &uid, 0, &mut budget) {
+        if let Some(found) = find_resource_by_uid(
+            &dir,
+            &uid,
+            0,
+            icon_scan_depth.max(1) as usize,
+            &mut budget,
+        ) {
             if let Ok(rel) = found.strip_prefix(&dir) {
                 if let Some(rel_str) = rel.to_str() {
                     candidates.push(rel_str.to_string());
@@ -1384,36 +1479,40 @@ pub fn get_project_name(path: String) -> Option<String> {
 }
 
 #[tauri::command]
-pub async fn validate_godot_folder(path: String) -> Option<GodotFolderPreview> {
+pub async fn validate_godot_folder(path: String, app: AppHandle) -> Option<GodotFolderPreview> {
     let godot_path = std::path::PathBuf::from(&path).join("project.godot");
     if !godot_path.exists() {
         return None;
     }
     let name = resolve_project_name(&path)?;
-    let icon = get_project_icon(path).await;
+    let icon = get_project_icon(path, app).await;
     Some(GodotFolderPreview { name, icon })
 }
 
 #[tauri::command]
-pub async fn get_project_icon(path: String) -> Option<String> {
+pub async fn get_project_icon(path: String, app: AppHandle) -> Option<String> {
+    let icon_scan_depth = crate::settings::read_settings(&app).icon_scan_depth;
     tokio::task::spawn_blocking(move || {
         let mtime = fs::metadata(PathBuf::from(&path).join("project.godot"))
             .and_then(|m| m.modified())
             .ok();
 
         if let Some(cached) = icon_cache().lock().unwrap().get(&path) {
-            if cached.project_godot_mtime == mtime {
+            if cached.project_godot_mtime == mtime
+                && cached.icon_scan_depth == icon_scan_depth
+            {
                 return cached.data.clone();
             }
         }
 
-        let (bytes, mime) = match resolve_project_icon(&path) {
+        let (bytes, mime) = match resolve_project_icon(&path, icon_scan_depth) {
             Some(v) => v,
             None => {
                 icon_cache().lock().unwrap().insert(
                     path.clone(),
                     CachedIcon {
                         project_godot_mtime: mtime,
+                        icon_scan_depth,
                         data: None,
                     },
                 );
@@ -1428,6 +1527,7 @@ pub async fn get_project_icon(path: String) -> Option<String> {
             path.clone(),
             CachedIcon {
                 project_godot_mtime: mtime,
+                icon_scan_depth,
                 data: Some(data_url.clone()),
             },
         );

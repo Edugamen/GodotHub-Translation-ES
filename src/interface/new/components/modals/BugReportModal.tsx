@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { version } from '../../../../../package.json'
+import { ModalShell } from './ModalShell'
 import {
   IconBug,
+  IconCheck,
   IconCopy,
   IconDownload,
   IconExternalLink,
@@ -87,17 +88,15 @@ async function getGPUInfo(): Promise<string> {
   }
 }
 
-async function buildReport(): Promise<string> {
+async function buildSystemReport(): Promise<{ specs: string; errors: string }> {
   const gpu = await getGPUInfo()
 
-  const lines: string[] = [
-    '=== GodotHub Bug Report ===',
+  const specs = [
+    '## System',
     '',
-    `Version: ${version}`,
-    `Date: ${new Date().toISOString().slice(0, 10)}`,
-    '',
-    '--- System ---',
-    `OS: ${
+    `- **Version**: ${version}`,
+    `- **Date**: ${new Date().toISOString().slice(0, 10)}`,
+    `- **OS**: ${
       navigator.userAgent.includes('Windows')
         ? 'Windows'
         : navigator.userAgent.includes('Mac OS X') ||
@@ -107,32 +106,48 @@ async function buildReport(): Promise<string> {
             ? 'Linux'
             : navigator.userAgent
     }`,
-    `Platform: ${navigator.platform}`,
-    `Language: ${navigator.language}`,
-    `CPU Cores: ${navigator.hardwareConcurrency ?? 'unknown'}`,
-    `RAM: ${
+    `- **Platform**: ${navigator.platform}`,
+    `- **Language**: ${navigator.language}`,
+    `- **CPU Cores**: ${navigator.hardwareConcurrency ?? 'unknown'}`,
+    `- **RAM**: ${
       (
         navigator as Navigator & { deviceMemory?: number }
       ).deviceMemory
         ? `${(navigator as Navigator & { deviceMemory?: number }).deviceMemory} GB`
         : 'unknown'
     }`,
-    `Screen: ${screen.width}x${screen.height} @${screen.colorDepth}bit`,
-    `GPU: ${gpu}`,
-    `User Agent: ${navigator.userAgent}`,
-  ]
+    `- **Screen**: ${screen.width}x${screen.height} @${screen.colorDepth}bit`,
+    `- **GPU**: ${gpu}`,
+    `- **User Agent**: ${navigator.userAgent}`,
+  ].join('\n')
 
+  const errorLines: string[] = ['## Recent Errors']
   if (capturedErrors.length > 0) {
-    lines.push('', '--- Recent Errors ---')
     for (const err of capturedErrors) {
-      lines.push(`  [${err.time}] (${err.source}) ${err.message}`)
+      errorLines.push(`- \`[${err.time}]\` (${err.source}) ${err.message}`)
     }
   } else {
-    lines.push('', '--- Recent Errors ---', '  (none captured)')
+    errorLines.push('- _(none captured)_')
   }
 
-  lines.push('', '--- End ---')
-  return lines.join('\n')
+  return { specs, errors: errorLines.join('\n') }
+}
+
+function assembleReport(
+  description: string,
+  specs: string,
+  errors: string,
+): string {
+  const desc = description.trim()
+  return [
+    '## Description',
+    '',
+    desc || '_No description provided_',
+    '',
+    specs,
+    '',
+    errors,
+  ].join('\n')
 }
 
 function downloadReport(report: string) {
@@ -149,15 +164,20 @@ function downloadReport(report: string) {
 
 export function BugReportModal({ onClose }: Props) {
   const { t } = useTranslation('common')
-  const [report, setReport] = useState<string | null>(null)
+  const [description, setDescription] = useState('')
+  const [system, setSystem] = useState<{
+    specs: string
+    errors: string
+  } | null>(null)
   const [loading, setLoading] = useState(true)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    buildReport().then((r) => {
+    buildSystemReport().then((r) => {
       if (!cancelled) {
-        setReport(r)
+        setSystem(r)
         setLoading(false)
       }
     })
@@ -166,67 +186,64 @@ export function BugReportModal({ onClose }: Props) {
     }
   }, [])
 
+  const report = useMemo(
+    () => (system ? assembleReport(description, system.specs, system.errors) : null),
+    [description, system],
+  )
+
   const handleCopy = async () => {
     if (!report) return
     try {
       await navigator.clipboard.writeText(report)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
     } catch {
     }
   }
 
-  return createPortal(
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ opacity: 0, y: 12, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 12, scale: 0.96 }}
-        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-        className="bg-surface border border-line rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center gap-3 px-7 pt-7 pb-4 shrink-0">
-          <div className="w-10 h-10 rounded-xl bg-danger/10 flex items-center justify-center shrink-0">
-            <IconBug className="w-5 h-5 text-danger" />
-          </div>
-          <div>
-            <h3 className="font-display font-semibold text-lg">
-              {t('bug_report_title', { ns: 'common' })}
-            </h3>
-            <p className="text-xs text-muted mt-0.5">
-              {t('bug_report_desc', { ns: 'common', version })}
-            </p>
-          </div>
-        </div>
+  const openGithubIssue = () => {
+    if (!system) return
+    const firstLine = description.trim().split('\n')[0] || ''
+    const title = (firstLine || t('bug_report_title')).slice(0, 72)
+    // Prefill the repo's issue-form template (bug_report.yaml):
+    // the bug goes into "Describe the bug" (id: description), the system
+    // specs into "Environment Details" (id: environment), and any captured
+    // errors into "Actual Behavior" (id: actual-behavior).
+    const params = new URLSearchParams({
+      template: 'bug_report.yaml',
+      title,
+      description: description.trim(),
+      environment: system.specs,
+      'actual-behavior': system.errors,
+    })
+    const url = `${BUG_REPORT_URL}?${params.toString()}`
+    openUrl(url)
+    onClose()
+  }
 
-        <div className="px-7 overflow-y-auto min-h-0 flex-1">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <IconRefresh className="w-5 h-5 animate-spin text-muted" />
-            </div>
-          ) : (
-            <div className="rounded-xl bg-base border border-line p-4 font-mono text-[11px] text-muted whitespace-pre-wrap break-all leading-relaxed max-h-[320px] overflow-y-auto select-all">
-              {report}
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between gap-3 px-7 pt-4 pb-7 shrink-0">
+  return (
+    <ModalShell
+      icon={<IconBug className="w-5 h-5 text-danger" />}
+      title={t('bug_report_title')}
+      description={t('bug_report_desc', { version })}
+      maxWidth="max-w-lg"
+      onClose={onClose}
+      footer={
+        <>
           <button
             type="button"
             onClick={handleCopy}
             disabled={!report}
             className="focus-ring cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-item border border-line text-sm text-muted hover:text-ink hover:border-accent-dim hover:bg-raised transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            <IconCopy className="w-4 h-4" />
-            {t('bug_report_copy_log')}
+            {copied ? (
+              <IconCheck className="w-4 h-4 text-mint" />
+            ) : (
+              <IconCopy className="w-4 h-4" />
+            )}
+            {copied ? t('bug_report_copied') : t('bug_report_copy_log')}
           </button>
-          <div className="flex items-center gap-2.5">
+          <div className="ml-auto flex items-center gap-2.5">
             <motion.button
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.96 }}
@@ -240,19 +257,58 @@ export function BugReportModal({ onClose }: Props) {
             <motion.button
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.96 }}
-              onClick={() => {
-                openUrl(BUG_REPORT_URL)
-                onClose()
-              }}
-              className="focus-ring cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-item bg-danger hover:bg-danger/90 text-sm font-medium text-white transition-colors"
+              onClick={openGithubIssue}
+              disabled={!report}
+              className="focus-ring cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-item bg-danger hover:bg-danger/90 text-sm font-medium text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <IconExternalLink className="w-4 h-4" />
               {t('bug_report_open_github')}
             </motion.button>
           </div>
+        </>
+      }
+    >
+      <div className="p-6 flex flex-col gap-4">
+        {/* What happened */}
+        <div className="flex flex-col gap-1.5">
+          <label
+            htmlFor="bug-report-description"
+            className="text-[11px] font-semibold uppercase tracking-wider text-muted"
+          >
+            {t('bug_report_describe_label')}
+          </label>
+          <textarea
+            id="bug-report-description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder={t('bug_report_describe_placeholder')}
+            rows={3}
+            maxLength={2000}
+            className="focus-ring w-full resize-none bg-base border border-outline/50 rounded-btn px-3.5 py-2.5 text-sm text-ink placeholder:text-muted/50 focus:border-accent-dim transition-colors"
+          />
         </div>
-      </motion.div>
-    </motion.div>,
-    document.body,
+
+        {/* Auto-collected diagnostics */}
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+              {t('bug_report_diagnostics_label')}
+            </span>
+            <span className="text-[10px] text-muted/50 shrink-0">
+              {t('bug_report_diagnostics_hint')}
+            </span>
+          </div>
+          {loading ? (
+            <div className="flex items-center justify-center py-10 rounded-item bg-base border border-line">
+              <IconRefresh className="w-5 h-5 animate-spin text-muted" />
+            </div>
+          ) : (
+            <div className="rounded-item bg-base border border-line p-3.5 font-mono text-[11px] text-muted whitespace-pre-wrap break-all leading-relaxed max-h-[200px] overflow-y-auto select-all">
+              {report}
+            </div>
+          )}
+        </div>
+      </div>
+    </ModalShell>
   )
 }

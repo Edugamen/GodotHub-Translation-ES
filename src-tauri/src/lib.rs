@@ -1,4 +1,5 @@
 mod asset_library;
+mod backup;
 mod categories;
 mod changelog;
 mod error;
@@ -15,6 +16,7 @@ mod persist;
 mod projects;
 mod scan;
 mod settings;
+mod sync;
 mod templates;
 mod terminal;
 mod time_stats;
@@ -24,6 +26,23 @@ mod watcher;
 mod workspace;
 
 use tauri::{Manager, WindowEvent};
+
+#[tauri::command]
+fn get_os_username() -> Option<String> {
+    for var in ["USERNAME", "USER", "LOGNAME"] {
+        if let Ok(v) = std::env::var(var) {
+            if !v.trim().is_empty() {
+                return Some(v);
+            }
+        }
+    }
+    let home = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .ok()?;
+    std::path::Path::new(&home)
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+}
 
 #[tauri::command]
 async fn pick_folder(app: tauri::AppHandle) -> Option<String> {
@@ -67,6 +86,7 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             tray::show_main_window(app);
         }))
+        .plugin(tauri_plugin_discord_rpc::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
@@ -172,6 +192,7 @@ pub fn run() {
             godot_versions::pause_download,
             godot_versions::resume_download,
             godot_versions::cancel_download,
+            godot_versions::reorder_download_queue,
             godot_versions::list_installed_godot_versions,
             godot_versions::rename_godot_version,
             godot_versions::delete_godot_version,
@@ -200,11 +221,14 @@ pub fn run() {
             projects::get_project_name,
             projects::validate_godot_folder,
             projects::stop_project,
+            projects::list_running_projects,
             projects::pick_file,
             projects::read_image_file,
             projects::write_project_tags,
             projects::export_project_stats,
             projects::import_project_stats,
+            time_stats::get_activity,
+            time_stats::get_time_insights,
             categories::list_categories,
             categories::create_category,
             categories::update_category,
@@ -214,7 +238,16 @@ pub fn run() {
             settings::get_settings,
             settings::update_settings,
             settings::reset_settings,
+            settings::export_settings,
+            settings::import_settings,
+            backup::export_workspace_backup,
+            backup::import_workspace_backup,
+            backup::export_app_backup,
+            backup::import_app_backup,
+            sync::gist_sync_push,
+            sync::gist_sync_pull,
             settings::reset_app_data,
+            get_os_username,
             workspace::list_workspaces,
             workspace::list_workspace_scan_dirs,
             workspace::create_workspace,
@@ -244,6 +277,8 @@ pub fn run() {
             changelog::add_changelog_entry,
             changelog::update_changelog_entry,
             changelog::delete_changelog_entry,
+            changelog::list_git_tags,
+            changelog::generate_changelog_draft,
             updates::fetch_updates,
             install_mode::is_portable_install,
             git::clone_repo,

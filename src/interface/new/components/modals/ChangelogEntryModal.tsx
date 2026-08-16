@@ -1,12 +1,23 @@
 import { useState } from 'react'
-import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { IconAlertTriangle, IconPlus, IconX } from '../../lib/icons'
+import { ModalShell } from './ModalShell'
+import {
+  IconAlertTriangle,
+  IconPencil,
+  IconPlus,
+  IconX,
+} from '../../lib/icons'
+import { Tooltip } from '../reusables/Tooltip'
 import type { ChangelogEntry, ChangelogNote } from '../../../../types'
 
 interface Props {
   entry?: ChangelogEntry
+  initial?: {
+    version?: string
+    date?: string
+    notes?: ChangelogNote[]
+  }
   onClose: () => void
   onSave: (
     version: string,
@@ -34,13 +45,15 @@ const CATEGORIES: {
 
 const todayIso = () => new Date().toISOString().slice(0, 10)
 
-export function ChangelogEntryModal({ entry, onClose, onSave }: Props) {
+export function ChangelogEntryModal({ entry, initial, onClose, onSave }: Props) {
   const { t } = useTranslation('common')
-  const [version, setVersion] = useState(entry?.version ?? '')
-  const [date, setDate] = useState(entry?.date ?? todayIso())
-  const [notes, setNotes] = useState<ChangelogNote[]>(
-    entry?.notes.length ? entry.notes : [{ category: 'add', text: '' }],
-  )
+  const [version, setVersion] = useState(entry?.version ?? initial?.version ?? '')
+  const [date, setDate] = useState(entry?.date ?? initial?.date ?? todayIso())
+  const [notes, setNotes] = useState<ChangelogNote[]>(() => {
+    if (entry?.notes.length) return entry.notes
+    if (initial?.notes?.length) return initial.notes
+    return [{ category: 'add', text: '' }]
+  })
   const [knownIssues, setKnownIssues] = useState<string[]>(
     entry?.known_issues?.length ? entry.known_issues : [],
   )
@@ -83,40 +96,40 @@ export function ChangelogEntryModal({ entry, onClose, onSave }: Props) {
     }
   }
 
-  return createPortal(
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ opacity: 0, y: 12, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-        className="bg-surface border border-line rounded-card w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-4 p-6 pb-0 shrink-0">
-          <div>
-            <h3 className="font-display font-semibold text-lg text-ink">
-              {entry ? t('edit_entry') : t('new_entry')}
-            </h3>
-            <p className="text-xs text-muted mt-1.5">
-              {t('changelog_entry_desc')}
-            </p>
+  return (
+    <ModalShell
+      icon={<IconPencil className="w-5 h-5 text-accent-bright" />}
+      title={entry ? t('edit_entry') : t('new_entry')}
+      description={t('changelog_entry_desc')}
+      maxWidth="max-w-lg"
+      onClose={onClose}
+      showClose={false}
+      footer={
+        <>
+          {error && <p className="text-xs text-danger">{error}</p>}
+          <div className="ml-auto flex justify-end gap-2.5">
+            <motion.button
+              whileHover={{ y: -1 }}
+              whileTap={{ scale: 0.96 }}
+              onClick={onClose}
+              className="focus-ring cursor-pointer px-4 py-2.5 rounded-btn text-sm text-muted hover:text-ink hover:bg-raised transition-colors"
+            >
+              {t('cancel')}
+            </motion.button>
+            <motion.button
+              whileHover={busy ? undefined : { y: -1 }}
+              whileTap={busy ? undefined : { scale: 0.96 }}
+              onClick={submit}
+              disabled={busy}
+              className="focus-ring cursor-pointer px-4 py-2.5 rounded-btn bg-accent hover:bg-accent-bright disabled:opacity-50 text-sm font-medium text-white transition-colors"
+            >
+              {busy ? t('saving') : entry ? t('save_changes') : t('add_entry')}
+            </motion.button>
           </div>
-          <button
-            onClick={onClose}
-            className="focus-ring cursor-pointer p-1.5 rounded-btn text-muted hover:text-ink hover:bg-raised transition-colors shrink-0"
-            aria-label={t('close')}
-          >
-            <IconX className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="flex flex-col gap-2.5 p-6 overflow-y-auto min-h-0">
+        </>
+      }
+    >
+        <div className="flex flex-col gap-2.5 p-6">
           <div className="flex gap-4">
             <div className="flex flex-col gap-2 flex-1">
               <label className="text-xs font-medium text-muted">
@@ -151,22 +164,22 @@ export function ChangelogEntryModal({ entry, onClose, onSave }: Props) {
               <div key={i} className="flex items-center gap-2">
                 <div className="flex rounded-btn border border-outline/50 overflow-hidden shrink-0">
                   {CATEGORIES.map((c) => (
-                    <button
-                      key={c.value}
-                      type="button"
-                      onClick={() => setNote(i, { category: c.value })}
-                      title={t(c.label)}
-                      className={`focus-ring cursor-pointer px-2 py-1.5 text-[10px] font-medium transition-colors ${
-                        note.category === c.value
-                          ? c.activeClass
-                          : 'text-muted hover:bg-raised/50'
-                      }`}
-                    >
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full inline-block mr-1 align-middle ${c.dotClass}`}
-                      />
-                      {t(c.label)}
-                    </button>
+                    <Tooltip key={c.value} content={t(c.label)} side="top">
+                      <button
+                        type="button"
+                        onClick={() => setNote(i, { category: c.value })}
+                        className={`focus-ring cursor-pointer px-2 py-1.5 text-[10px] font-medium transition-colors ${
+                          note.category === c.value
+                            ? c.activeClass
+                            : 'text-muted hover:bg-raised/50'
+                        }`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full inline-block mr-1 align-middle ${c.dotClass}`}
+                        />
+                        {t(c.label)}
+                      </button>
+                    </Tooltip>
                   ))}
                 </div>
                 <input
@@ -255,31 +268,6 @@ export function ChangelogEntryModal({ entry, onClose, onSave }: Props) {
             {t('changelog_add_known_issue')}
           </motion.button>
         </div>
-
-        <div className="flex flex-col gap-3 p-6 pt-4 border-t border-line shrink-0">
-          {error && <p className="text-xs text-danger">{error}</p>}
-          <div className="flex justify-end gap-2.5">
-            <motion.button
-              whileHover={{ y: -1 }}
-              whileTap={{ scale: 0.96 }}
-              onClick={onClose}
-              className="focus-ring cursor-pointer px-4 py-2.5 rounded-btn text-sm text-muted hover:text-ink hover:bg-raised transition-colors"
-            >
-              {t('cancel')}
-            </motion.button>
-            <motion.button
-              whileHover={busy ? undefined : { y: -1 }}
-              whileTap={busy ? undefined : { scale: 0.96 }}
-              onClick={submit}
-              disabled={busy}
-              className="focus-ring cursor-pointer px-4 py-2.5 rounded-btn bg-accent hover:bg-accent-bright disabled:opacity-50 text-sm font-medium text-white transition-colors"
-            >
-              {busy ? t('saving') : entry ? t('save_changes') : t('add_entry')}
-            </motion.button>
-          </div>
-        </div>
-      </motion.div>
-    </motion.div>,
-    document.body,
+    </ModalShell>
   )
 }

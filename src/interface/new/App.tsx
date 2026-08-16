@@ -1,23 +1,36 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { ViewHeader } from './components/reusables/ViewHeader'
 import { useProjectsContext } from '../../hooks/projectsContext'
+import { useGodotVersionsContext } from '../../hooks/godotVersionsContext'
+import { useCategoriesContext } from '../../hooks/categoriesContext'
+import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts'
 import { api } from '../../lib/api'
+import { viewTransition } from '../../lib/motion'
 import type { GitStatus, Project } from '../../types'
 
 import { Sidebar } from './components/ui/Sidebar'
 import { Titlebar } from './components/titlebar/Titlebar'
 import { OverlayScrollArea } from './components/reusables/OverlayScrollArea'
 import { ConfirmDialog } from './components/modals/ConfirmDialog'
+import { CreateProjectModal } from './components/modals/CreateProjectModal'
+import { BugReportModal } from './components/modals/BugReportModal'
+import { CheckForUpdatesModal } from './components/modals/CheckForUpdatesModal'
+import { CommandPalette } from './components/modals/CommandPalette'
 import { GitSidebar } from './components/git/GitSidebar'
 import { ProjectsView } from './views/ProjectsView'
 import { VersionsView } from './views/VersionsView'
+import { TemplatesView } from './views/TemplatesView'
 import { SettingsView } from './views/SettingsView'
 import { UpdatesView } from './views/UpdatesView'
 import { ChangelogView } from './views/ChangelogView'
+import { NewsView } from './views/NewsView'
+import { AssetStoreView } from './views/AssetStoreView'
+import { DashboardView } from './views/DashboardView'
 import { useSettings } from '../../hooks/useSettings'
 import { useTauriEvent } from '../../lib/useTauriEvent'
+import { ScreenReaderAnnouncer } from '../../lib/screenReader'
+import { relaunch } from '@tauri-apps/plugin-process'
 import {
   clearUiSwitchToSettings,
   markSplashConsumed,
@@ -29,14 +42,15 @@ import {
   IconCloudArrowDown,
   IconFolder,
   IconGear,
+  IconHouse,
   IconNews,
   IconRocket,
   IconStore,
-  type IconProps,
 } from './lib/icons'
 import './style.css'
 
 const TABS = [
+  { id: 'dashboard', navKey: 'dashboard', icon: IconHouse, hidden: true },
   { id: 'projects', navKey: 'projects', icon: IconFolder },
   { id: 'versions', navKey: 'versions', icon: IconCloudArrowDown },
   { id: 'templates', navKey: 'templates', icon: IconRocket },
@@ -49,57 +63,29 @@ const TABS = [
 
 export type NewTab = (typeof TABS)[number]['id']
 
-function PlaceholderView({
-  title,
-  description,
-  icon: Icon,
-  metric,
-  children,
-  connected = false,
-}: {
-  title: string
-  description: string
-  icon: (props: IconProps) => ReactNode
-  metric?: ReactNode
-  children?: ReactNode
-  connected?: boolean
-}) {
-  return (
-    <div className="flex-1 min-w-0 h-full flex flex-col">
-      <ViewHeader
-        connected={connected}
-        title={title}
-        leadingAction={
-          <span className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full bg-accent text-ink">
-            <Icon className="w-4.5 h-4.5" />
-          </span>
-        }
-        metric={metric}
-      />
-      <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-4 text-center px-10">
-        <div className="w-14 h-14 rounded-tile bg-accent/10 border border-accent-dim/30 flex items-center justify-center text-accent-bright">
-          <Icon className="w-6 h-6" />
-        </div>
-        <p className="text-sm text-muted max-w-sm leading-relaxed">{description}</p>
-        {children}
-        <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-tag bg-amber/10 text-amber border border-amber/20">
-          New UI · under construction
-        </span>
-      </div>
-    </div>
-  )
-}
-
 export function App() {
   const { t } = useTranslation('nav')
   const { t: tc } = useTranslation('common')
-  const { settings } = useSettings()
+  const { settings, loaded: settingsLoaded } = useSettings()
   const cardLayout = settings.card_layout ?? true
   const { projects, refresh: refreshProjects } = useProjectsContext()
   const projectsRef = useRef(projects)
   projectsRef.current = projects
   const [uiSwitchIntent] = useState(() => shouldOpenSettingsAfterSwitch())
   const [tab, setTab] = useState<NewTab>(uiSwitchIntent ? 'settings' : 'projects')
+  const landingTabRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('app:view-changed', { detail: tab }))
+  }, [tab])
+
+  useEffect(() => {
+    if (!settingsLoaded || uiSwitchIntent) return
+    if (landingTabRef.current !== null) return
+    landingTabRef.current = settings.default_landing_tab
+    const landing = settings.default_landing_tab as NewTab
+    if (TABS.some((t) => t.id === landing)) setTab(landing)
+  }, [settingsLoaded, settings.default_landing_tab, uiSwitchIntent])
   const [pendingLaunch, setPendingLaunch] = useState<{
     id: string
     console?: boolean
@@ -108,6 +94,18 @@ export function App() {
     project: Project
     gitStatus: GitStatus | null
   } | null>(null)
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
+  const [bugReportOpen, setBugReportOpen] = useState(false)
+  const [createProjectOpen, setCreateProjectOpen] = useState(false)
+  const [updatesModalOpen, setUpdatesModalOpen] = useState(false)
+  const [updatesModalMode, setUpdatesModalMode] = useState<
+    'manual' | 'preview'
+  >('manual')
+  const { installed } = useGodotVersionsContext()
+  const { categories } = useCategoriesContext()
+  const settingsRef = useRef(settings)
+  settingsRef.current = settings
+  const paletteKey = settings.command_palette_keybind || 'p'
 
   const openProject = useCallback(
     async (projectId: string, withConsole?: boolean) => {
@@ -155,6 +153,83 @@ export function App() {
   }, [])
 
   useEffect(() => {
+    const handleSetTab = (e: Event) => {
+      const detail = (e as CustomEvent).detail as NewTab | undefined
+      if (detail) setTab(detail)
+    }
+    window.addEventListener('app:set-tab', handleSetTab)
+    return () => window.removeEventListener('app:set-tab', handleSetTab)
+  }, [])
+
+  useEffect(() => {
+    const handleNewProject = () => setCreateProjectOpen(true)
+    const handleImportProject = async () => {
+      try {
+        const folder = await api.pickFolder()
+        if (!folder) return
+        await api.importProject(folder, '')
+        refreshProjects()
+      } catch (e) {
+        console.error('[new-ui] import failed:', e)
+      }
+    }
+    const handleScanProjects = async () => {
+      if (settingsRef.current.project_scan_dirs.length === 0) {
+        setTab('settings')
+        return
+      }
+      try {
+        await api.scanForProjectsWithInfo(
+          settingsRef.current.project_scan_dirs,
+          settingsRef.current.scan_depth,
+        )
+        refreshProjects()
+      } catch (e) {
+        console.error('[new-ui] scan failed:', e)
+      }
+    }
+    const handleReportBug = () => setBugReportOpen(true)
+    const handlePreviewUpdate = () => {
+      setUpdatesModalMode('preview')
+      setUpdatesModalOpen(true)
+    }
+
+    window.addEventListener('app:new-project-request', handleNewProject)
+    window.addEventListener('app:import-project-request', handleImportProject)
+    window.addEventListener('app:scan-projects', handleScanProjects)
+    window.addEventListener('app:report-bug', handleReportBug)
+    window.addEventListener('app:preview-update-modal', handlePreviewUpdate)
+    return () => {
+      window.removeEventListener('app:new-project-request', handleNewProject)
+      window.removeEventListener('app:import-project-request', handleImportProject)
+      window.removeEventListener('app:scan-projects', handleScanProjects)
+      window.removeEventListener('app:report-bug', handleReportBug)
+      window.removeEventListener('app:preview-update-modal', handlePreviewUpdate)
+    }
+  }, [refreshProjects])
+
+  useKeyboardShortcuts(
+    {
+      onNewProject: () => setCreateProjectOpen(true),
+      onOpenSettings: () => setTab('settings'),
+      onSwitchTab: (i: number) => {
+        const tabs: NewTab[] = ['projects', 'versions', 'news', 'templates']
+        if (tabs[i]) setTab(tabs[i])
+      },
+      onCommandPalette: () => setCommandPaletteOpen((o) => !o),
+      onRestart: () => {
+        void relaunch()
+      },
+      onEscape: () => {
+        setGitSidebarProject(null)
+        setCommandPaletteOpen(false)
+        setBugReportOpen(false)
+      },
+    },
+    paletteKey,
+  )
+
+  useEffect(() => {
     const handleShowGitSidebar = (e: Event) => {
       const detail = (e as CustomEvent).detail as {
         project: Project
@@ -176,7 +251,7 @@ export function App() {
     return () => window.removeEventListener('keydown', handler)
   }, [gitSidebarProject])
 
-  const tabs = TABS.map((tab) => ({
+  const tabs = TABS.filter((tab) => !('hidden' in tab) || !tab.hidden).map((tab) => ({
     id: tab.id,
     label: t(tab.navKey),
     icon: tab.icon,
@@ -186,6 +261,8 @@ export function App() {
 
   const renderView = () => {
     switch (tab) {
+      case 'dashboard':
+        return <DashboardView connected={!cardLayout} active={tab === 'dashboard'} />
       case 'projects':
         return (
           <ProjectsView
@@ -201,34 +278,18 @@ export function App() {
           />
         )
       case 'news':
-        return (
-          <PlaceholderView
-            connected={!cardLayout}
-            title={t('news')}
-            icon={IconNews}
-            description="The redesigned News view will live here as its own file in src/interface/new/views/."
-          />
-        )
+        return <NewsView connected={!cardLayout} />
       case 'updates':
         return <UpdatesView connected={!cardLayout} />
       case 'templates':
         return (
-          <PlaceholderView
+          <TemplatesView
+            onOpenSettings={() => setTab('settings')}
             connected={!cardLayout}
-            title={t('templates')}
-            icon={IconRocket}
-            description="The redesigned Templates view will live here as its own file in src/interface/new/views/."
           />
         )
       case 'asset-store':
-        return (
-          <PlaceholderView
-            connected={!cardLayout}
-            title={t('asset_store')}
-            icon={IconStore}
-            description="The redesigned Asset Store view will live here as its own file in src/interface/new/views/."
-          />
-        )
+        return <AssetStoreView connected={!cardLayout} />
       case 'settings':
         return <SettingsView connected={!cardLayout} />
       case 'changelog':
@@ -238,6 +299,7 @@ export function App() {
 
   return (
     <div className="new-ui h-screen w-screen flex flex-col bg-base text-ink font-body">
+      <ScreenReaderAnnouncer enabled={settings.screen_reader_announcements} />
       <Titlebar />
 
       <div
@@ -253,30 +315,47 @@ export function App() {
             setTab(id as NewTab)
           }}
           connected={!cardLayout}
+          paletteKey={paletteKey}
+          onOpenCommandPalette={() => setCommandPaletteOpen(true)}
         />
 
-        {tab === 'projects' ||
-        tab === 'settings' ||
-        tab === 'versions' ||
-        tab === 'updates' ||
-        tab === 'changelog' ? (
-          renderView()
-        ) : (
-          <main
-            className={`flex-1 min-w-0 relative overflow-hidden ${
-              cardLayout ? 'rounded-card bg-raised' : 'bg-raised'
-            }`}
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={tab}
+            className="flex-1 min-w-0 h-full"
+            {...viewTransition(
+              settings.view_entrance,
+              settings.animation_intensity,
+            )}
           >
-            <OverlayScrollArea
-              className="absolute inset-0"
-              hideThumb={!settings.show_scrollbars}
-            >
-              <div className="min-h-full px-6 py-4">
-                {renderView()}
-              </div>
-            </OverlayScrollArea>
-          </main>
-        )}
+            {tab === 'dashboard' ||
+            tab === 'projects' ||
+            tab === 'settings' ||
+            tab === 'versions' ||
+            tab === 'news' ||
+            tab === 'asset-store' ||
+            tab === 'templates' ||
+            tab === 'updates' ||
+            tab === 'changelog' ? (
+              renderView()
+            ) : (
+              <main
+                className={`flex-1 min-w-0 relative overflow-hidden h-full ${
+                  cardLayout ? 'rounded-card bg-raised' : 'bg-raised'
+                }`}
+              >
+                <OverlayScrollArea
+                  className="absolute inset-0"
+                  hideThumb={!settings.show_scrollbars}
+                >
+                  <div className="min-h-full px-6 py-4">
+                    {renderView()}
+                  </div>
+                </OverlayScrollArea>
+              </main>
+            )}
+          </motion.div>
+        </AnimatePresence>
 
         <AnimatePresence>
           {gitSidebarProject && (
@@ -326,6 +405,46 @@ export function App() {
               openProject(pending.id, pending.console)
             }}
             onCancel={() => setPendingLaunch(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {commandPaletteOpen && (
+          <CommandPalette
+            onClose={() => setCommandPaletteOpen(false)}
+            currentTab={tab}
+            onNavigate={(id) => setTab(id as NewTab)}
+            projects={projects}
+            installedVersions={installed}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {createProjectOpen && (
+          <CreateProjectModal
+            installedVersions={installed}
+            defaultLocation={settings.default_project_location}
+            categories={categories}
+            onClose={() => setCreateProjectOpen(false)}
+            onCreated={() => {
+              setCreateProjectOpen(false)
+              refreshProjects()
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {bugReportOpen && <BugReportModal onClose={() => setBugReportOpen(false)} />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {updatesModalOpen && (
+          <CheckForUpdatesModal
+            mode={updatesModalMode}
+            onClose={() => setUpdatesModalOpen(false)}
           />
         )}
       </AnimatePresence>

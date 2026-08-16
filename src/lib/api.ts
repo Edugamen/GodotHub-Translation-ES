@@ -1,3 +1,4 @@
+import { invoke } from '@tauri-apps/api/core'
 import { projectsApi, getCachedProjectIcon, getCachedProjectName } from '../api/projects'
 import { versionsApi } from '../api/versions'
 import { gitApi } from '../api/git'
@@ -23,6 +24,10 @@ export const api = {
   saveProjectTags: projectsApi.saveTags,
   openProject: projectsApi.open,
   stopProject: projectsApi.stop,
+  listRunningProjects: () =>
+    invoke<{ id: string; name: string; version: string; launched_at_ms: number }[]>(
+      'list_running_projects',
+    ),
   openProjectFolder: projectsApi.openFolder,
   openInEditor: projectsApi.openInEditor,
   getProjectSize: projectsApi.getSize,
@@ -30,8 +35,18 @@ export const api = {
   pickFile: projectsApi.pickFile,
   pickSavePath: projectsApi.pickSavePath,
   pickDataFile: projectsApi.pickDataFile,
+  getOsUsername: settingsApi.getOsUsername,
+  exportWorkspaceBackup: settingsApi.exportWorkspaceBackup,
+  importWorkspaceBackup: settingsApi.importWorkspaceBackup,
+  exportAppBackup: settingsApi.exportAppBackup,
+  importAppBackup: settingsApi.importAppBackup,
+  gistSyncPush: settingsApi.gistSyncPush,
+  gistSyncPull: settingsApi.gistSyncPull,
+  getTimeInsights: settingsApi.getTimeInsights,
   exportProjectStats: projectsApi.exportProjectStats,
   importProjectStats: projectsApi.importProjectStats,
+  getActivity: (range: 'daily' | 'weekly' | 'monthly' | 'yearly') =>
+    invoke<[string, number][]>('get_activity', { range }),
   readImageFile: projectsApi.readImageFile,
   getProjectIcon: projectsApi.getIcon,
   getProjectName: projectsApi.getName,
@@ -44,6 +59,7 @@ export const api = {
   downloadGodotVersion: versionsApi.download,
   pauseDownload: versionsApi.pauseDownload,
   resumeDownload: versionsApi.resumeDownload,
+  reorderDownloadQueue: versionsApi.reorderDownloadQueue,
   cancelDownload: versionsApi.cancelDownload,
   listInstalledGodotVersions: versionsApi.listInstalled,
   renameGodotVersion: versionsApi.rename,
@@ -106,6 +122,8 @@ export const api = {
   getSettings: settingsApi.get,
   updateSettings: settingsApi.update,
   resetSettings: settingsApi.reset,
+  exportSettings: settingsApi.exportSettings,
+  importSettings: settingsApi.importSettings,
   resetAppData: settingsApi.resetData,
   scanForProjects: settingsApi.scanForProjects,
   scanForProjectsWithInfo: settingsApi.scanForProjectsWithInfo,
@@ -136,6 +154,8 @@ export const api = {
   addChangelogEntry: changelogApi.add,
   updateChangelogEntry: changelogApi.update,
   deleteChangelogEntry: changelogApi.delete,
+  listGitTags: changelogApi.listGitTags,
+  generateChangelogDraft: changelogApi.generateDraft,
 
   fetchUpdates: updatesApi.fetch,
   isPortableInstall: updatesApi.isPortableInstall,

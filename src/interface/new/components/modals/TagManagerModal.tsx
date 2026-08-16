@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
-import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import type { Project } from '../../../../types'
 import { api } from '../../../../lib/api'
+import { ModalShell } from './ModalShell'
+import { Tooltip } from '../reusables/Tooltip'
 import { IconX, IconPlus, IconCheck, IconPencil, IconTags } from '../../lib/icons'
 
 interface Props {
@@ -29,13 +30,6 @@ function tagColor(tag: string): string {
 
 export function TagManagerModal({ project, onClose, onSaved }: Props) {
   const { t } = useTranslation('common')
-
-  useEffect(() => {
-    window.dispatchEvent(new CustomEvent('app:dialog-open'))
-    return () => {
-      window.dispatchEvent(new CustomEvent('app:dialog-close'))
-    }
-  }, [])
   const [tags, setTags] = useState<string[]>(project.tags)
   const [newTag, setNewTag] = useState('')
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
@@ -131,49 +125,55 @@ export function TagManagerModal({ project, onClose, onSaved }: Props) {
     }
   }
 
-  return createPortal(
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ opacity: 0, y: 16, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 16, scale: 0.95 }}
-        transition={{ type: 'spring', stiffness: 360, damping: 28 }}
-        className="bg-surface border border-line rounded-2xl p-6 w-full max-w-lg flex flex-col gap-5 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={handleKeyDown}
-      >
-
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center">
-              <IconTags className="w-5 h-5 text-accent-bright" />
-            </div>
-            <div>
-              <h3 className="font-display font-semibold text-lg">
-                {t('manage_tags')}
-              </h3>
-              <p className="text-xs text-muted font-mono truncate max-w-sm">
-                {project.name}
-              </p>
-            </div>
+  return (
+    <ModalShell
+      icon={<IconTags className="w-5 h-5 text-accent-bright" />}
+      title={t('manage_tags')}
+      description={project.name}
+      maxWidth="max-w-lg"
+      onClose={onClose}
+      showClose={false}
+      onKeyDown={handleKeyDown}
+      footer={
+        <>
+          <span className="text-xs text-muted/60">
+            {tags.length === 0
+              ? t('no_tags')
+              : t('tag_count', { count: tags.length })}
+          </span>
+          <div className="ml-auto flex items-center gap-2.5">
+            <motion.button
+              whileHover={{ y: -1 }}
+              whileTap={{ scale: 0.96 }}
+              onClick={onClose}
+              className="focus-ring cursor-pointer px-4 py-2.5 rounded-btn text-sm text-muted hover:text-ink hover:bg-raised transition-colors"
+            >
+              {t('cancel')}
+            </motion.button>
+            <motion.button
+              whileHover={saving ? undefined : { y: -1 }}
+              whileTap={saving ? undefined : { scale: 0.96 }}
+              onClick={handleSave}
+              disabled={saving}
+              className="focus-ring cursor-pointer inline-flex items-center gap-1.5 px-5 py-2.5 rounded-btn bg-accent hover:bg-accent-bright disabled:opacity-50 text-sm font-medium text-white transition-colors"
+            >
+              {saving ? (
+                <>
+                  <div className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                  {t('saving')}
+                </>
+              ) : (
+                <>
+                  <IconCheck className="w-3.5 h-3.5" />
+                  {t('save')}
+                </>
+              )}
+            </motion.button>
           </div>
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={onClose}
-            className="focus-ring cursor-pointer p-1.5 rounded-lg text-muted hover:text-ink hover:bg-raised transition-colors"
-            aria-label={t('close')}
-          >
-            <IconX className="w-4 h-4" />
-          </motion.button>
-        </div>
-
+        </>
+      }
+    >
+      <div className="p-6 pt-0 flex flex-col gap-4">
         <AnimatePresence>
           {error && (
             <motion.div
@@ -264,14 +264,15 @@ export function TagManagerModal({ project, onClose, onSaved }: Props) {
                       autoFocus
                     />
                   ) : (
-                    <span
-                      className="flex-1 text-sm font-medium font-mono cursor-pointer py-1"
-                      style={{ color }}
-                      onClick={() => startEdit(index)}
-                      title={t('tag_rename_hint')}
-                    >
-                      {tag}
-                    </span>
+                    <Tooltip content={t('tag_rename_hint')} side="top" className="flex-1 min-w-0">
+                      <span
+                        className="block text-sm font-medium font-mono cursor-pointer py-1 truncate"
+                        style={{ color }}
+                        onClick={() => startEdit(index)}
+                      >
+                        {tag}
+                      </span>
+                    </Tooltip>
                   )}
 
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -297,45 +298,7 @@ export function TagManagerModal({ project, onClose, onSaved }: Props) {
             })
           )}
         </div>
-
-        <div className="flex items-center justify-between pt-1">
-          <span className="text-xs text-muted/60">
-            {tags.length === 0
-              ? t('no_tags')
-              : t('tag_count', { count: tags.length })}
-          </span>
-          <div className="flex items-center gap-2.5">
-            <motion.button
-              whileHover={{ y: -1 }}
-              whileTap={{ scale: 0.96 }}
-              onClick={onClose}
-              className="focus-ring cursor-pointer px-4 py-2.5 rounded-lg text-sm text-muted hover:text-ink hover:bg-raised transition-colors"
-            >
-              {t('cancel')}
-            </motion.button>
-            <motion.button
-              whileHover={saving ? undefined : { y: -1 }}
-              whileTap={saving ? undefined : { scale: 0.96 }}
-              onClick={handleSave}
-              disabled={saving}
-              className="focus-ring cursor-pointer inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-accent hover:bg-accent-bright disabled:opacity-50 text-sm font-medium text-white transition-colors"
-            >
-              {saving ? (
-                <>
-                  <div className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                  {t('saving')}
-                </>
-              ) : (
-                <>
-                  <IconCheck className="w-3.5 h-3.5" />
-                  {t('save')}
-                </>
-              )}
-            </motion.button>
-          </div>
-        </div>
-      </motion.div>
-    </motion.div>,
-    document.body,
+      </div>
+    </ModalShell>
   )
 }

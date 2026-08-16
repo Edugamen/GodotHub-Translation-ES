@@ -7,18 +7,18 @@ import {
 import { motion } from 'framer-motion'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { version } from '../../../../../package.json'
-import { IconStar, IconHeart } from '../../lib/Icons'
+import { IconStar, IconHeart, IconBug } from '../../lib/Icons'
 import { isMac } from '../../../../lib/platform'
 import { TaskTray } from './TaskTray'
 import { Tooltip } from '../reusables/Tooltip'
 import { useSettings } from '../../../../hooks/useSettings'
 import { LanguageMenu } from '../LanguageMenu'
 
-export function TitleBar() {
+export function TitleBar({ minimal = false }: { minimal?: boolean }) {
   const { t } = useTranslation('common')
   const { settings } = useSettings()
-  const showSupport = settings.show_support_button
-  const showStar = settings.show_star_button
+  const showSupport = !minimal && settings.show_support_button
+  const showStar = !minimal && settings.show_star_button
   const useOsDec = settings.use_os_decorations
   const [appWindow, setAppWindow] = useState<TauriWindow | null>(null)
   const [isMaximized, setIsMaximized] = useState(false)
@@ -102,7 +102,7 @@ export function TitleBar() {
               <motion.button
                 onClick={() => openUrl('https://www.patreon.com/cw/TheRyko/membership')}
                 aria-label={t('support_dev')}
-                className="focus-ring cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-500/15 text-red-400 hover:bg-red-500/25 hover:text-red-300 transition-colors text-xs font-medium"
+                className="focus-ring cursor-pointer flex items-center gap-1.5 px-3 py-1 rounded-md bg-red-500/15 text-red-400 hover:bg-red-500/25 hover:text-red-300 transition-colors text-xs font-medium"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
@@ -124,9 +124,24 @@ export function TitleBar() {
               </motion.button>
             </Tooltip>
           )}
+          {!minimal && (
+            <Tooltip content={t('report_a_bug')} side="bottom">
+              <motion.button
+                onClick={() =>
+                  window.dispatchEvent(new Event('app:report-bug'))
+                }
+                aria-label={t('report_a_bug')}
+                className="focus-ring cursor-pointer w-7 h-7 flex items-center justify-center rounded-md text-muted/60 hover:text-danger hover:bg-danger/10 transition-colors"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+              >
+                <IconBug className="w-3.5 h-3.5" />
+              </motion.button>
+            </Tooltip>
+          )}
         </div>
-        <div className="w-px h-5 self-center bg-line/40" />
-        <TaskTray />
+        {!minimal && <div className="w-px h-5 self-center bg-line/40" />}
+        {!minimal && <TaskTray />}
         {!isMac && (
           <>
             <div className="w-px h-5 self-center bg-line/40" />

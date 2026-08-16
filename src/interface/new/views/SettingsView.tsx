@@ -12,7 +12,11 @@ import { Slider } from '../components/ui/Slider'
 import { viewTransition } from '../../../lib/motion'
 import { markUiSwitchToSettings } from '../../../lib/uiTransition'
 import { useSettings } from '../../../hooks/useSettings'
+import { openUrl } from '@tauri-apps/plugin-opener'
 import { useProjectsContext } from '../../../hooks/projectsContext'
+import { useCategoriesContext } from '../../../hooks/categoriesContext'
+import { useWorkspaces } from '../../../hooks/useWorkspaces'
+import { useAppVersion } from '../../../hooks/useAppVersion'
 import { LANGUAGES } from '../../../i18n/languages'
 import { api } from '../../../lib/api'
 import {
@@ -33,6 +37,8 @@ import {
 import { ColorSwatchPicker } from '../components/ui/ColorSwatchPicker'
 import { OverlayScrollArea } from '../components/reusables/OverlayScrollArea'
 import { DirList } from '../components/reusables/DirList'
+import { Tooltip } from '../components/reusables/Tooltip'
+import { LanguageFlag } from '../components/reusables/LanguageFlag'
 import { KeyRecorder } from '../components/ui/KeyRecorder'
 import { matchesSearch, useSectionSearch } from '../hooks/useSectionSearch'
 import { Dropdown } from '../components/ui/Dropdown'
@@ -60,9 +66,13 @@ import {
   IconFlask,
   IconBomb,
   IconPlug,
+  IconUniversalAccess,
   IconGitBranch,
   IconPlus,
   IconTrash,
+  IconX,
+  IconCloudArrowDown,
+  IconExternalLink,
 } from '../lib/icons'
 import type { IconProps } from '../lib/icons'
 import type { AppSettings, GitAuthState } from '../../../types'
@@ -74,6 +84,7 @@ type SettingsCat =
   | 'storage'
   | 'behavior'
   | 'integrations'
+  | 'accessibility'
   | 'advanced'
 
 interface CatDef {
@@ -87,6 +98,7 @@ const CATEGORIES: CatDef[] = [
   { id: 'storage', icon: IconHardDrive },
   { id: 'behavior', icon: IconGear },
   { id: 'integrations', icon: IconPlug },
+  { id: 'accessibility', icon: IconUniversalAccess },
   { id: 'advanced', icon: IconFlask },
 ]
 
@@ -94,6 +106,13 @@ const DEFAULT_RADIUS = defaultCornerRadius
 const DEFAULT_DENSITY = 1.05
 const DEFAULT_FONT_SCALE = 1.0
 const DEFAULT_PROJECT_ICON_OPACITY = 14
+
+const LANDING_TABS: { id: string; label: string }[] = [
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'projects', label: 'Projects' },
+  { id: 'versions', label: 'Versions' },
+  { id: 'news', label: 'Godot News' },
+]
 
 function Subsection({
   id,
@@ -203,12 +222,26 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
   const { t } = useTranslation('nav')
   const { t: ts, i18n } = useTranslation('settings')
   const { settings, update, resetToDefaults } = useSettings()
-  const { refresh: refreshProjects } = useProjectsContext()
+  const appVersion = useAppVersion()
+  const { projects, refresh: refreshProjects } = useProjectsContext()
+  const { refresh: refreshCategories } = useCategoriesContext()
+  const { refresh: refreshWorkspaces } = useWorkspaces()
   const [cat, setCat] = useState<SettingsCat>('appearance')
   const [presetModal, setPresetModal] = useState<'light' | 'dark' | null>(null)
   const [confirmingUiSwitch, setConfirmingUiSwitch] = useState<boolean | null>(null)
   const [statsBusy, setStatsBusy] = useState<'export' | 'import' | null>(null)
   const [statsMessage, setStatsMessage] = useState<string | null>(null)
+  const [settingsBusy, setSettingsBusy] = useState<'export' | 'import' | null>(null)
+  const [settingsMessage, setSettingsMessage] = useState<string | null>(null)
+  const [wsBackupBusy, setWsBackupBusy] = useState<'export' | 'import' | null>(null)
+  const [wsBackupMessage, setWsBackupMessage] = useState<string | null>(null)
+  const [appBackupBusy, setAppBackupBusy] = useState<
+    'export' | 'import' | null
+  >(null)
+  const [appBackupMessage, setAppBackupMessage] = useState<string | null>(null)
+  const [syncBusy, setSyncBusy] = useState<'push' | 'pull' | null>(null)
+  const [syncMessage, setSyncMessage] = useState<string | null>(null)
+  const [syncUrl, setSyncUrl] = useState<string | null>(null)
   const [cssDraft, setCssDraft] = useState(settings.custom_css)
   const [cssStatus, setCssStatus] = useState<'idle' | 'applied'>('idle')
   const [scanMessage, setScanMessage] = useState<string | null>(null)
@@ -220,6 +253,7 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
   const [confirmingReset, setConfirmingReset] = useState(false)
   const [confirmingWipe, setConfirmingWipe] = useState(false)
   const [confirmingOsDec, setConfirmingOsDec] = useState<boolean | null>(null)
+  const [confirmingRestart, setConfirmingRestart] = useState(false)
   const [showUpdates, setShowUpdates] = useState(false)
   const [showBugReport, setShowBugReport] = useState(false)
   const [gitAuth, setGitAuth] = useState<GitAuthState | null>(null)
@@ -285,6 +319,138 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
       setStatsMessage(String(e))
     } finally {
       setStatsBusy(null)
+    }
+  }
+
+  const handleExportSettings = async () => {
+    setSettingsBusy('export')
+    setSettingsMessage(null)
+    try {
+      const path = await api.pickSavePath('godothub-settings.json')
+      if (!path) return
+      await api.exportSettings(path)
+      setSettingsMessage(ts('settings_exported'))
+    } catch (e) {
+      setSettingsMessage(String(e))
+    } finally {
+      setSettingsBusy(null)
+    }
+  }
+
+  const handleImportSettings = async () => {
+    setSettingsBusy('import')
+    setSettingsMessage(null)
+    try {
+      const path = await api.pickDataFile()
+      if (!path) return
+      const imported = await api.importSettings(path)
+      await update(imported)
+      await refreshProjects()
+      setSettingsMessage(ts('settings_imported'))
+    } catch (e) {
+      setSettingsMessage(String(e))
+    } finally {
+      setSettingsBusy(null)
+    }
+  }
+
+  const handleExportWorkspace = async () => {
+    setWsBackupBusy('export')
+    setWsBackupMessage(null)
+    try {
+      const path = await api.pickSavePath('godothub-workspace-backup.json')
+      if (!path) return
+      await api.exportWorkspaceBackup(path)
+      setWsBackupMessage(ts('workspace_backup_exported'))
+    } catch (e) {
+      setWsBackupMessage(String(e))
+    } finally {
+      setWsBackupBusy(null)
+    }
+  }
+
+  const handleImportWorkspace = async () => {
+    setWsBackupBusy('import')
+    setWsBackupMessage(null)
+    try {
+      const path = await api.pickDataFile()
+      if (!path) return
+      const imported = await api.importWorkspaceBackup(path)
+      await update(imported)
+      await refreshProjects()
+      await refreshCategories()
+      window.dispatchEvent(new Event('app:refresh-templates'))
+      setWsBackupMessage(ts('workspace_backup_imported'))
+    } catch (e) {
+      setWsBackupMessage(String(e))
+    } finally {
+      setWsBackupBusy(null)
+    }
+  }
+
+  const handleExportApp = async () => {
+    setAppBackupBusy('export')
+    setAppBackupMessage(null)
+    try {
+      const path = await api.pickSavePath('godothub-full-backup.json')
+      if (!path) return
+      await api.exportAppBackup(path)
+      setAppBackupMessage(ts('app_backup_exported'))
+    } catch (e) {
+      setAppBackupMessage(String(e))
+    } finally {
+      setAppBackupBusy(null)
+    }
+  }
+
+  const handleImportApp = async () => {
+    setAppBackupBusy('import')
+    setAppBackupMessage(null)
+    try {
+      const path = await api.pickDataFile()
+      if (!path) return
+      const imported = await api.importAppBackup(path)
+      await update(imported)
+      await refreshProjects()
+      await refreshCategories()
+      await refreshWorkspaces()
+      window.dispatchEvent(new Event('app:refresh-templates'))
+      setAppBackupMessage(ts('app_backup_imported'))
+    } catch (e) {
+      setAppBackupMessage(String(e))
+    } finally {
+      setAppBackupBusy(null)
+    }
+  }
+
+  const handleSyncPush = async () => {
+    setSyncBusy('push')
+    setSyncMessage(null)
+    try {
+      const res = await api.gistSyncPush()
+      setSyncUrl(res.gist_url)
+      setSyncMessage(ts('sync_push_done'))
+    } catch (e) {
+      setSyncMessage(String(e))
+    } finally {
+      setSyncBusy(null)
+    }
+  }
+
+  const handleSyncPull = async () => {
+    setSyncBusy('pull')
+    setSyncMessage(null)
+    try {
+      const imported = await api.gistSyncPull()
+      await update(imported)
+      await refreshProjects()
+      await refreshCategories()
+      window.dispatchEvent(new Event('app:refresh-templates'))
+      setSyncMessage(ts('sync_pull_done'))
+    } catch (e) {
+      setSyncMessage(String(e))
+    } finally {
+      setSyncBusy(null)
     }
   }
 
@@ -408,6 +574,12 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
     await relaunch()
   }
 
+  const handleRestart = async () => {
+    setConfirmingRestart(false)
+    await flushPendingSave()
+    await relaunch()
+  }
+
   useEffect(() => {
     return () => {
       void flushPendingSave()
@@ -492,6 +664,43 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
               update({ ...settings, card_layout: checked })
             }
             label={ts('card_layout_label')}
+          />
+        </SettingRow>
+      </Subsection>
+
+      <Subsection
+        id="appearance-landing"
+        title={ts('landing_tab_label')}
+        description={ts('landing_tab_desc')}
+        searchText={`${ts('landing_tab_label')} ${ts('landing_tab_desc')} ${LANDING_TABS.map((l) => l.label).join(' ')}`}
+        query={searchQuery}
+        onMatch={reportMatch}
+      >
+        <SettingRow label={ts('landing_tab_label')}>
+          <Dropdown
+            align="right"
+            trigger={({ open, toggle }) => (
+              <button
+                type="button"
+                onClick={toggle}
+                aria-expanded={open}
+                className="focus-ring cursor-pointer inline-flex items-center gap-2 px-3.5 py-2 rounded-btn bg-overlay border border-outline/50 text-xs font-medium text-ink hover:border-accent-dim transition-colors"
+              >
+                {LANDING_TABS.find((l) => l.id === settings.default_landing_tab)?.label ??
+                  LANDING_TABS[0].label}
+                <IconChevronDown
+                  className={`w-3 h-3 text-muted transition-transform duration-200 ${
+                    open ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+            )}
+            items={LANDING_TABS.map((l) => ({
+              key: l.id,
+              label: l.label,
+              active: settings.default_landing_tab === l.id,
+              onClick: () => update({ ...settings, default_landing_tab: l.id }),
+            }))}
           />
         </SettingRow>
       </Subsection>
@@ -656,84 +865,15 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
       </Subsection>
 
       <Subsection
-        id="appearance-density"
-        title={ts('ui_density_label')}
-        description={ts('density_desc')}
-        searchText={`${ts('ui_density_label')} ${ts('density_desc')}`}
-        query={searchQuery}
-        onMatch={reportMatch}
-      >
-        <div className="flex flex-col gap-2">
-          <Slider
-            label={ts('ui_density_label')}
-            display={
-              <span className="text-xs font-mono text-ink tabular-nums">
-                {Math.round(settings.ui_density * 100)}%
-              </span>
-            }
-            value={settings.ui_density}
-            min={0.75}
-            max={1.25}
-            step={0.05}
-            defaultValue={DEFAULT_DENSITY}
-            onChange={(v) => update({ ...settings, ui_density: v })}
-          />
-        </div>
-      </Subsection>
-
-      <Subsection
-        id="appearance-text-size"
-        title={ts('text_size_label')}
-        description={ts('text_size_desc')}
-        searchText={`${ts('text_size_label')} ${ts('text_size_desc')}`}
-        query={searchQuery}
-        onMatch={reportMatch}
-      >
-        <div className="flex flex-col gap-2">
-          <Slider
-            label={ts('text_size_label')}
-            display={
-              <span className="text-xs font-mono text-ink tabular-nums">
-                {Math.round(settings.font_scale * 100)}%
-              </span>
-            }
-            value={settings.font_scale}
-            min={0.85}
-            max={1.3}
-            step={0.05}
-            defaultValue={DEFAULT_FONT_SCALE}
-            onChange={(v) => update({ ...settings, font_scale: v })}
-          />
-        </div>
-      </Subsection>
-
-      <Subsection
-        id="appearance-motion"
-        title={ts('animation_intensity_label')}
-        description={ts('animation_intensity_desc')}
-        searchText={`${ts('animation_intensity_label')} ${ts('animation_intensity_desc')} ${ts('animation_full')} ${ts('animation_subtle')} ${ts('animation_none')} ${ts('view_entrance_label')} ${ts('view_entrance_desc')} ${ts('entrance_fade')} ${ts('entrance_slide')} ${ts('entrance_scale')} ${ts('entrance_none')}`}
+        id="appearance-view-entrance"
+        title={ts('view_entrance_label')}
+        description={ts('view_entrance_desc')}
+        searchText={`${ts('view_entrance_label')} ${ts('view_entrance_desc')} ${ts('entrance_fade')} ${ts('entrance_slide')} ${ts('entrance_scale')} ${ts('entrance_none')}`}
         query={searchQuery}
         onMatch={reportMatch}
       >
         <div className="flex flex-col gap-3">
-          <SettingRow label={ts('animation_intensity_label')}>
-            <Segmented
-              value={settings.animation_intensity}
-              onChange={(v) =>
-                update({
-                  ...settings,
-                  animation_intensity: v as AppSettings['animation_intensity'],
-                })
-              }
-              options={[
-                { value: 'full', label: ts('animation_full') },
-                { value: 'subtle', label: ts('animation_subtle') },
-                { value: 'none', label: ts('animation_none') },
-              ]}
-            />
-          </SettingRow>
-
-          <SettingRow label={ts('view_entrance_label')} divider>
+          <SettingRow label={ts('view_entrance_label')}>
             <Segmented
               value={settings.view_entrance}
               onChange={(v) =>
@@ -785,20 +925,20 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
       </Subsection>
 
       <Subsection
-        id="appearance-scrollbars"
-        title={ts('show_scrollbar_label')}
-        description={ts('scrollbar_desc')}
-        searchText={`${ts('show_scrollbar_label')} ${ts('scrollbar_desc')}`}
+        id="appearance-animated-numbers"
+        title={ts('animated_numbers_label')}
+        description={ts('animated_numbers_desc')}
+        searchText={`${ts('animated_numbers_label')} ${ts('animated_numbers_desc')}`}
         query={searchQuery}
         onMatch={reportMatch}
       >
-        <SettingRow label={ts('show_scrollbar_label')}>
+        <SettingRow label={ts('animated_numbers_label')}>
           <Toggle
-            checked={settings.show_scrollbars}
+            checked={settings.animated_numbers}
             onChange={(checked) =>
-              update({ ...settings, show_scrollbars: checked })
+              update({ ...settings, animated_numbers: checked })
             }
-            label={ts('show_scrollbar_label')}
+            label={ts('animated_numbers_label')}
           />
         </SettingRow>
       </Subsection>
@@ -975,6 +1115,7 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
                 aria-expanded={open}
                 className="focus-ring cursor-pointer inline-flex items-center gap-2 px-3.5 py-2 rounded-btn bg-overlay border border-outline/50 text-xs font-medium text-ink hover:border-accent-dim transition-colors self-start"
               >
+                <LanguageFlag country={current.country} />
                 {current.label}
                 <IconChevronDown
                   className={`w-3 h-3 text-muted transition-transform duration-200 ${
@@ -1160,6 +1301,31 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
             max={10}
             defaultValue={2}
             onChange={(value) => update({ ...settings, scan_depth: value })}
+          />
+        </div>
+      </Subsection>
+
+      <Subsection
+        id="storage-icon-scan-depth"
+        title={ts('icon_scan_depth_label')}
+        description={ts('icon_scan_depth_desc')}
+        searchText={`${ts('icon_scan_depth_label')} ${ts('icon_scan_depth_desc')}`}
+        query={searchQuery}
+        onMatch={reportMatch}
+      >
+        <div className="flex flex-col gap-2">
+          <Slider
+            label={ts('icon_scan_depth_label')}
+            display={
+              <span className="text-xs font-medium text-ink tabular-nums">
+                {ts('folders_deep', { count: settings.icon_scan_depth })}
+              </span>
+            }
+            value={settings.icon_scan_depth}
+            min={1}
+            max={20}
+            defaultValue={4}
+            onChange={(value) => update({ ...settings, icon_scan_depth: value })}
           />
         </div>
       </Subsection>
@@ -1365,7 +1531,7 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
         id="behavior-projects"
         title={ts('behavior_projects_title')}
         description={ts('behavior_projects_desc')}
-        searchText={`${ts('behavior_projects_title')} ${ts('behavior_projects_desc')} ${ts('auto_scan_label')} ${ts('use_categories_label')} ${ts('use_workspaces_label')} ${ts('git_init_new_projects_label')} ${ts('naming_convention_label')} ${ts('tooltip_delay_label')}`}
+        searchText={`${ts('behavior_projects_title')} ${ts('behavior_projects_desc')} ${ts('auto_scan_label')} ${ts('use_categories_label')} ${ts('use_workspaces_label')} ${ts('git_init_new_projects_label')} ${ts('naming_convention_label')}`}
         query={searchQuery}
         onMatch={reportMatch}
       >
@@ -1475,27 +1641,6 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
             </p>
           </div>
 
-          <div className="flex flex-col gap-2.5 pt-5 border-t border-line">
-            <Slider
-              label={ts('tooltip_delay_label')}
-              display={
-                <span className="text-xs text-ink tabular-nums">
-                  {settings.tooltip_delay}ms
-                </span>
-              }
-              value={settings.tooltip_delay}
-              min={100}
-              max={1000}
-              step={50}
-              defaultValue={350}
-              onChange={(value) =>
-                update({ ...settings, tooltip_delay: value })
-              }
-            />
-            <p className="text-[11px] text-muted leading-relaxed">
-              {ts('tooltip_delay_desc')}
-            </p>
-          </div>
         </div>
       </Subsection>
 
@@ -1742,18 +1887,19 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
                       {pat.username}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    aria-label={ts('git_pat_remove')}
-                    title={ts('git_pat_remove')}
-                    onClick={async () => {
-                      await api.gitAuthRemovePat(pat.host)
-                      await refreshGitAuth()
-                    }}
-                    className="focus-ring cursor-pointer p-1.5 rounded-btn text-muted/60 hover:text-danger hover:bg-danger/10 transition-colors shrink-0"
-                  >
-                    <IconTrash className="w-3.5 h-3.5" />
-                  </button>
+                  <Tooltip content={ts('git_pat_remove')} side="top">
+                    <button
+                      type="button"
+                      aria-label={ts('git_pat_remove')}
+                      onClick={async () => {
+                        await api.gitAuthRemovePat(pat.host)
+                        await refreshGitAuth()
+                      }}
+                      className="focus-ring cursor-pointer p-1.5 rounded-btn text-muted/60 hover:text-danger hover:bg-danger/10 transition-colors shrink-0"
+                    >
+                      <IconTrash className="w-3.5 h-3.5" />
+                    </button>
+                  </Tooltip>
                 </div>
               ))}
             </div>
@@ -1870,6 +2016,476 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
           )}
         </div>
       </Subsection>
+
+      <Subsection
+        id="integrations-discord"
+        title={ts('discord_rpc_label')}
+        description={ts('discord_rpc_desc')}
+        searchText={`${ts('discord_rpc_label')} ${ts('discord_rpc_desc')} ${ts('discord_app_id_label')} ${ts('discord_app_id_desc')} ${ts('discord_developer_portal')} ${ts('discord_show_projects_label')} ${ts('discord_show_projects_desc')} ${ts('discord_excluded_label')} ${ts('discord_excluded_desc')} ${ts('discord_custom_label')} ${ts('discord_custom_desc')}`}
+        query={searchQuery}
+        onMatch={reportMatch}
+      >
+        <div className="flex flex-col gap-5">
+          <SettingRow label={ts('discord_rpc_label')}>
+            <Toggle
+              checked={settings.discord_rpc_enabled}
+              onChange={(checked) =>
+                update({ ...settings, discord_rpc_enabled: checked })
+              }
+              label={ts('discord_rpc_label')}
+            />
+          </SettingRow>
+
+          <div className="flex flex-col gap-2.5">
+            <span className="text-xs font-medium text-muted">
+              {ts('discord_app_id_label')}
+            </span>
+            <input
+              type="text"
+              value={settings.discord_app_id ?? ''}
+              onChange={(e) =>
+                update({ ...settings, discord_app_id: e.target.value || null })
+              }
+              placeholder={ts('discord_app_id_placeholder')}
+              className="focus-ring w-full bg-base border border-outline/50 rounded-btn px-3.5 py-2.5 text-sm font-mono focus:border-accent-dim transition-colors"
+            />
+            {!settings.discord_app_id?.trim() && (
+              <span className="text-[11px] text-mint font-medium">
+                {ts('discord_builtin_hint')}
+              </span>
+            )}
+            <p className="text-[11px] text-muted leading-relaxed">
+              {ts('discord_app_id_desc')}{' '}
+              <a
+                href="https://discord.com/developers/applications"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent hover:text-accent-bright underline underline-offset-2"
+              >
+                {ts('discord_developer_portal')}
+              </a>
+              .
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2.5 pt-5 border-t border-line">
+            <SettingRow label={ts('discord_show_projects_label')}>
+              <Toggle
+                checked={settings.discord_rpc_show_projects}
+                onChange={(checked) =>
+                  update({ ...settings, discord_rpc_show_projects: checked })
+                }
+                label={ts('discord_show_projects_label')}
+              />
+            </SettingRow>
+            <p className="text-[11px] text-muted leading-relaxed">
+              {ts('discord_show_projects_desc')}
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2.5 pt-5 border-t border-line">
+            <span className="text-xs font-medium text-muted">
+              {ts('discord_excluded_label')}
+            </span>
+            <p className="text-[11px] text-muted leading-relaxed">
+              {ts('discord_excluded_desc')}
+            </p>
+            <Dropdown
+              trigger={({ toggle }) => (
+                <button
+                  type="button"
+                  onClick={toggle}
+                  className="focus-ring cursor-pointer self-start inline-flex items-center gap-1.5 h-8 px-4 rounded-item border border-outline/50 text-muted hover:text-ink hover:border-accent-dim hover:bg-raised text-xs font-medium transition-colors"
+                >
+                  <IconPlus className="w-3.5 h-3.5" />
+                  {ts('discord_exclude_project')}
+                </button>
+              )}
+              items={projects
+                .filter(
+                  (p) =>
+                    !settings.discord_rpc_excluded_projects.includes(p.id),
+                )
+                .map((p) => ({
+                  key: p.id,
+                  label: p.name,
+                  onClick: () =>
+                    update({
+                      ...settings,
+                      discord_rpc_excluded_projects: [
+                        ...settings.discord_rpc_excluded_projects,
+                        p.id,
+                      ],
+                    }),
+                }))}
+            />
+            {settings.discord_rpc_excluded_projects.length > 0 ? (
+              <div className="flex flex-col gap-1.5">
+                {settings.discord_rpc_excluded_projects.map((id) => {
+                  const proj = projects.find((p) => p.id === id)
+                  return (
+                    <div
+                      key={id}
+                      className="flex items-center justify-between gap-3 rounded-item bg-raised border border-line px-3 py-2"
+                    >
+                      <span className="text-xs text-ink truncate">
+                        {proj?.name ?? id}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          update({
+                            ...settings,
+                            discord_rpc_excluded_projects:
+                              settings.discord_rpc_excluded_projects.filter(
+                                (x) => x !== id,
+                              ),
+                          })
+                        }
+                        aria-label={ts('discord_excluded_remove')}
+                        className="focus-ring cursor-pointer shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-muted hover:text-danger hover:bg-danger/10 transition-colors"
+                      >
+                        <IconX className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="text-[11px] text-muted/70">
+                {ts('discord_excluded_empty')}
+              </p>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-2.5 pt-5 border-t border-line">
+            <span className="text-xs font-medium text-muted">
+              {ts('discord_custom_label')}
+            </span>
+            <p className="text-[11px] text-muted leading-relaxed">
+              {ts('discord_custom_desc')}
+            </p>
+            <Dropdown
+              trigger={({ toggle }) => (
+                <button
+                  type="button"
+                  onClick={toggle}
+                  className="focus-ring cursor-pointer self-start inline-flex items-center gap-1.5 h-8 px-4 rounded-item border border-outline/50 text-muted hover:text-ink hover:border-accent-dim hover:bg-raised text-xs font-medium transition-colors"
+                >
+                  <IconPlus className="w-3.5 h-3.5" />
+                  {ts('discord_custom_add')}
+                </button>
+              )}
+              items={projects
+                .filter(
+                  (p) =>
+                    !settings.discord_rpc_project_presences.some(
+                      (pr) => pr.id === p.id,
+                    ) &&
+                    !settings.discord_rpc_excluded_projects.includes(p.id),
+                )
+                .map((p) => ({
+                  key: p.id,
+                  label: p.name,
+                  onClick: () =>
+                    update({
+                      ...settings,
+                      discord_rpc_project_presences: [
+                        ...settings.discord_rpc_project_presences,
+                        { id: p.id, details: null, state: null },
+                      ],
+                    }),
+                }))}
+            />
+            {settings.discord_rpc_project_presences.length > 0 && (
+              <div className="flex flex-col gap-2">
+                {settings.discord_rpc_project_presences.map((pr) => {
+                  const proj = projects.find((p) => p.id === pr.id)
+                  const setPresence = (
+                    field: 'details' | 'state',
+                    value: string,
+                  ) =>
+                    update({
+                      ...settings,
+                      discord_rpc_project_presences:
+                        settings.discord_rpc_project_presences.map((x) =>
+                          x.id === pr.id
+                            ? { ...x, [field]: value || null }
+                            : x,
+                        ),
+                    })
+                  return (
+                    <div
+                      key={pr.id}
+                      className="rounded-item bg-raised border border-line p-3 flex flex-col gap-2"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-xs font-medium text-ink truncate">
+                          {proj?.name ?? pr.id}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            update({
+                              ...settings,
+                              discord_rpc_project_presences:
+                                settings.discord_rpc_project_presences.filter(
+                                  (x) => x.id !== pr.id,
+                                ),
+                            })
+                          }
+                          aria-label={ts('discord_custom_remove')}
+                          className="focus-ring cursor-pointer shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-muted hover:text-danger hover:bg-danger/10 transition-colors"
+                        >
+                          <IconX className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <input
+                          type="text"
+                          value={pr.details ?? ''}
+                          onChange={(e) =>
+                            setPresence('details', e.target.value)
+                          }
+                          placeholder={ts('discord_custom_details_placeholder')}
+                          className="focus-ring w-full bg-base border border-outline/50 rounded-btn px-3 py-2 text-xs focus:border-accent-dim transition-colors"
+                        />
+                        <input
+                          type="text"
+                          value={pr.state ?? ''}
+                          onChange={(e) => setPresence('state', e.target.value)}
+                          placeholder={ts('discord_custom_state_placeholder')}
+                          className="focus-ring w-full bg-base border border-outline/50 rounded-btn px-3 py-2 text-xs focus:border-accent-dim transition-colors"
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </Subsection>
+
+      <Subsection
+        id="integrations-sync"
+        title={
+          <span className="inline-flex items-center gap-2">
+            <IconCloudArrowDown className="w-3.5 h-3.5 text-muted" />
+            {ts('sync_title')}
+          </span>
+        }
+        description={ts('sync_desc')}
+        searchText={`${ts('sync_title')} ${ts('sync_desc')} ${ts('sync_push_btn')} ${ts('sync_pull_btn')}`}
+        query={searchQuery}
+        onMatch={reportMatch}
+      >
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-xs text-muted leading-relaxed">
+                {ts('sync_desc')}
+              </p>
+              {syncMessage && (
+                <p className="text-xs text-muted mt-1.5 break-words">
+                  {syncMessage}
+                </p>
+              )}
+              {syncUrl && (
+                <button
+                  type="button"
+                  onClick={() => openUrl(syncUrl)}
+                  className="focus-ring cursor-pointer mt-1.5 inline-flex items-center gap-1.5 text-xs text-accent-bright hover:underline"
+                >
+                  <IconExternalLink className="w-3 h-3" />
+                  {ts('sync_open_gist')}
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleSyncPush}
+                disabled={syncBusy !== null}
+                className="focus-ring cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-item border border-outline/50 hover:border-accent-dim hover:bg-raised text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <IconCloudArrowDown className="w-4 h-4" />
+                {syncBusy === 'push'
+                  ? ts('saving')
+                  : ts('sync_push_btn')}
+              </button>
+              <button
+                type="button"
+                onClick={handleSyncPull}
+                disabled={syncBusy !== null}
+                className="focus-ring cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-item bg-accent hover:bg-accent-bright text-sm font-medium text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {syncBusy === 'pull'
+                  ? ts('saving')
+                  : ts('sync_pull_btn')}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Subsection>
+    </div>
+  )
+
+  const renderAccessibility = () => (
+    <div className="flex flex-col gap-3">
+      <Subsection
+        id="accessibility-density"
+        title={ts('ui_density_label')}
+        description={ts('density_desc')}
+        searchText={`${ts('ui_density_label')} ${ts('density_desc')}`}
+        query={searchQuery}
+        onMatch={reportMatch}
+      >
+        <div className="flex flex-col gap-2">
+          <Slider
+            label={ts('ui_density_label')}
+            display={
+              <span className="text-xs font-mono text-ink tabular-nums">
+                {Math.round(settings.ui_density * 100)}%
+              </span>
+            }
+            value={settings.ui_density}
+            min={0.75}
+            max={1.25}
+            step={0.05}
+            defaultValue={DEFAULT_DENSITY}
+            onChange={(v) => update({ ...settings, ui_density: v })}
+          />
+        </div>
+      </Subsection>
+
+      <Subsection
+        id="accessibility-text-size"
+        title={ts('text_size_label')}
+        description={ts('text_size_desc')}
+        searchText={`${ts('text_size_label')} ${ts('text_size_desc')}`}
+        query={searchQuery}
+        onMatch={reportMatch}
+      >
+        <div className="flex flex-col gap-2">
+          <Slider
+            label={ts('text_size_label')}
+            display={
+              <span className="text-xs font-mono text-ink tabular-nums">
+                {Math.round(settings.font_scale * 100)}%
+              </span>
+            }
+            value={settings.font_scale}
+            min={0.85}
+            max={1.3}
+            step={0.05}
+            defaultValue={DEFAULT_FONT_SCALE}
+            onChange={(v) => update({ ...settings, font_scale: v })}
+          />
+        </div>
+      </Subsection>
+
+      <Subsection
+        id="accessibility-screen-reader"
+        title={
+          <span className="inline-flex items-center gap-2">
+            {ts('screen_reader_label')}
+            <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-tag bg-amber/15 text-amber border border-amber/30">
+              {ts('git_beta_badge', { ns: 'common' })}
+            </span>
+          </span>
+        }
+        description={ts('screen_reader_desc')}
+        searchText={`${ts('screen_reader_label')} ${ts('screen_reader_desc')} ${ts('screen_reader_beta_desc')} ${ts('accessibility')} ${ts('accessibility_desc')}`}
+        query={searchQuery}
+        onMatch={reportMatch}
+      >
+        <SettingRow label={ts('screen_reader_label')}>
+          <Toggle
+            checked={settings.screen_reader_announcements}
+            onChange={(checked) =>
+              update({ ...settings, screen_reader_announcements: checked })
+            }
+            label={ts('screen_reader_label')}
+          />
+        </SettingRow>
+        <p className="text-[11px] text-amber/90 leading-relaxed mt-1">
+          {ts('screen_reader_beta_desc')}
+        </p>
+      </Subsection>
+
+      <Subsection
+        id="accessibility-motion"
+        title={ts('animation_intensity_label')}
+        description={ts('animation_intensity_desc')}
+        searchText={`${ts('animation_intensity_label')} ${ts('animation_intensity_desc')} ${ts('animation_full')} ${ts('animation_subtle')} ${ts('animation_none')}`}
+        query={searchQuery}
+        onMatch={reportMatch}
+      >
+        <SettingRow label={ts('animation_intensity_label')}>
+          <Segmented
+            value={settings.animation_intensity}
+            onChange={(v) =>
+              update({
+                ...settings,
+                animation_intensity: v as AppSettings['animation_intensity'],
+              })
+            }
+            options={[
+              { value: 'full', label: ts('animation_full') },
+              { value: 'subtle', label: ts('animation_subtle') },
+              { value: 'none', label: ts('animation_none') },
+            ]}
+          />
+        </SettingRow>
+      </Subsection>
+
+      <Subsection
+        id="accessibility-scrollbars"
+        title={ts('show_scrollbar_label')}
+        description={ts('scrollbar_desc')}
+        searchText={`${ts('show_scrollbar_label')} ${ts('scrollbar_desc')}`}
+        query={searchQuery}
+        onMatch={reportMatch}
+      >
+        <SettingRow label={ts('show_scrollbar_label')}>
+          <Toggle
+            checked={settings.show_scrollbars}
+            onChange={(checked) =>
+              update({ ...settings, show_scrollbars: checked })
+            }
+            label={ts('show_scrollbar_label')}
+          />
+        </SettingRow>
+      </Subsection>
+
+      <Subsection
+        id="accessibility-tooltip-delay"
+        title={ts('tooltip_delay_label')}
+        description={ts('tooltip_delay_desc')}
+        searchText={`${ts('tooltip_delay_label')} ${ts('tooltip_delay_desc')}`}
+        query={searchQuery}
+        onMatch={reportMatch}
+      >
+        <div className="flex flex-col gap-2">
+          <Slider
+            label={ts('tooltip_delay_label')}
+            display={
+              <span className="text-xs text-ink tabular-nums">
+                {settings.tooltip_delay}ms
+              </span>
+            }
+            value={settings.tooltip_delay}
+            min={100}
+            max={1000}
+            step={50}
+            defaultValue={350}
+            onChange={(value) =>
+              update({ ...settings, tooltip_delay: value })
+            }
+          />
+        </div>
+      </Subsection>
     </div>
   )
 
@@ -1917,6 +2533,25 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
         <div className="rounded-item bg-overlay px-4 py-4 flex items-center justify-between gap-6">
           <div className="min-w-0">
             <h3 className="text-sm font-medium text-ink">
+              {ts('restart_app')}
+            </h3>
+            <p className="text-xs text-muted mt-1.5 leading-relaxed">
+              {ts('restart_app_desc')}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setConfirmingRestart(true)}
+            className="focus-ring cursor-pointer shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-item border border-outline/50 hover:border-accent-dim hover:bg-raised text-sm font-medium transition-colors"
+          >
+            <IconRefresh className="w-4 h-4" />
+            {ts('restart_app')}
+          </button>
+        </div>
+
+        <div className="rounded-item bg-overlay px-4 py-4 flex items-center justify-between gap-6">
+          <div className="min-w-0">
+            <h3 className="text-sm font-medium text-ink">
               {ts('report_bug_title')}
             </h3>
             <p className="text-xs text-muted mt-1.5 leading-relaxed">
@@ -1931,6 +2566,120 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
             <IconBug className="w-4 h-4" />
             {ts('report_bug')}
           </button>
+        </div>
+
+        <div className="rounded-item bg-overlay px-4 py-4 flex items-center justify-between gap-6">
+          <div className="min-w-0">
+            <h3 className="text-sm font-medium text-ink">
+              {ts('settings_backup_title')}
+            </h3>
+            <p className="text-xs text-muted mt-1.5 leading-relaxed">
+              {ts('settings_backup_desc')}
+            </p>
+            {settingsMessage && (
+              <span className="text-xs text-muted block mt-1.5">
+                {settingsMessage}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleExportSettings}
+              disabled={settingsBusy !== null}
+              className="focus-ring cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-item border border-outline/50 hover:border-accent-dim hover:bg-raised text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {settingsBusy === 'export'
+                ? ts('saving')
+                : ts('export_settings_btn')}
+            </button>
+            <button
+              type="button"
+              onClick={handleImportSettings}
+              disabled={settingsBusy !== null}
+              className="focus-ring cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-item border border-outline/50 hover:border-accent-dim hover:bg-raised text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {settingsBusy === 'import'
+                ? ts('saving')
+                : ts('import_settings_btn')}
+            </button>
+          </div>
+        </div>
+
+        <div className="rounded-item bg-overlay px-4 py-4 flex items-center justify-between gap-6">
+          <div className="min-w-0">
+            <h3 className="text-sm font-medium text-ink">
+              {ts('workspace_backup_title')}
+            </h3>
+            <p className="text-xs text-muted mt-1.5 leading-relaxed">
+              {ts('workspace_backup_desc')}
+            </p>
+            {wsBackupMessage && (
+              <span className="text-xs text-muted block mt-1.5">
+                {wsBackupMessage}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleExportWorkspace}
+              disabled={wsBackupBusy !== null}
+              className="focus-ring cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-item border border-outline/50 hover:border-accent-dim hover:bg-raised text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {wsBackupBusy === 'export'
+                ? ts('saving')
+                : ts('workspace_backup_export_btn')}
+            </button>
+            <button
+              type="button"
+              onClick={handleImportWorkspace}
+              disabled={wsBackupBusy !== null}
+              className="focus-ring cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-item border border-outline/50 hover:border-accent-dim hover:bg-raised text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {wsBackupBusy === 'import'
+                ? ts('saving')
+                : ts('workspace_backup_restore_btn')}
+            </button>
+          </div>
+        </div>
+
+        <div className="rounded-item bg-overlay px-4 py-4 flex items-center justify-between gap-6">
+          <div className="min-w-0">
+            <h3 className="text-sm font-medium text-ink">
+              {ts('app_backup_title')}
+            </h3>
+            <p className="text-xs text-muted mt-1.5 leading-relaxed">
+              {ts('app_backup_desc')}
+            </p>
+            {appBackupMessage && (
+              <span className="text-xs text-muted block mt-1.5">
+                {appBackupMessage}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleExportApp}
+              disabled={appBackupBusy !== null}
+              className="focus-ring cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-item border border-outline/50 hover:border-accent-dim hover:bg-raised text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {appBackupBusy === 'export'
+                ? ts('saving')
+                : ts('app_backup_export_btn')}
+            </button>
+            <button
+              type="button"
+              onClick={handleImportApp}
+              disabled={appBackupBusy !== null}
+              className="focus-ring cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-item border border-outline/50 hover:border-accent-dim hover:bg-raised text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {appBackupBusy === 'import'
+                ? ts('saving')
+                : ts('app_backup_restore_btn')}
+            </button>
+          </div>
         </div>
 
         <div className="rounded-item bg-overlay px-4 py-4 flex items-center justify-between gap-6">
@@ -1985,6 +2734,8 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
         return renderBehavior()
       case 'integrations':
         return renderIntegrations()
+      case 'accessibility':
+        return renderAccessibility()
       case 'advanced':
         return renderAdvanced()
     }
@@ -2064,6 +2815,13 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
               </button>
             )
           })}
+          {appVersion && (
+            <div className="mt-auto pt-6 pl-1">
+              <span className="text-[10px] font-mono text-muted/50 select-none">
+                {ts('app_version_label', { version: appVersion })}
+              </span>
+            </div>
+          )}
         </nav>
 
         <div
@@ -2075,6 +2833,7 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
             className="flex-1 min-w-0"
             hideThumb={!settings.show_scrollbars}
             hideTopButton
+            scrollToTopOn={cat}
           >
             <div className="min-h-full px-5 pb-4">
               <div className="sticky top-0 z-10 -mx-5 px-5 pt-4 pb-3 bg-raised border-b border-line/60 mb-3 flex items-center gap-3">
@@ -2141,6 +2900,9 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
             onCancel={() => setConfirmingUiSwitch(null)}
           />
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {presetModal && (
           <ThemePresetsModal
             mode={presetModal}
@@ -2149,6 +2911,9 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
             onClose={() => setPresetModal(null)}
           />
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {confirmingReset && (
           <ConfirmDialog
             title={ts('reset_all_title')}
@@ -2159,6 +2924,9 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
             onCancel={() => setConfirmingReset(false)}
           />
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {confirmingWipe && (
           <ConfirmDialog
             title={ts('delete_all_title')}
@@ -2169,6 +2937,9 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
             onCancel={() => setConfirmingWipe(false)}
           />
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {confirmingOsDec !== null && (
           <ConfirmDialog
             title={ts('restart_required_title', { ns: 'common' })}
@@ -2179,6 +2950,22 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
             onCancel={() => setConfirmingOsDec(null)}
           />
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {confirmingRestart && (
+          <ConfirmDialog
+            title={ts('restart_app_confirm_title')}
+            description={ts('restart_app_confirm_desc')}
+            confirmLabel={ts('restart_app')}
+            variant="default"
+            onConfirm={handleRestart}
+            onCancel={() => setConfirmingRestart(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {showUpdates && (
           <CheckForUpdatesModal
             onClose={() => setShowUpdates(false)}
@@ -2188,9 +2975,15 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
             }}
           />
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {showBugReport && (
           <BugReportModal onClose={() => setShowBugReport(false)} />
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {gitAuthFlow && (
           <GitAuthModal
             provider={gitAuthFlow}

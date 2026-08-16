@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react'
 import { AnimatePresence, motion, type Transition } from 'framer-motion'
-import NumberFlow from '@number-flow/react'
+import { AnimatedNumber } from '../reusables/AnimatedNumber'
 import { useTranslation } from 'react-i18next'
 import { IconNode, IconPin } from '../../lib/icons'
 import { isReducedMotion } from '../../../../lib/appearance'
@@ -68,7 +68,7 @@ export function ProjectCardList({
         {t('pinned_section')}
       </span>
       <span className="text-[10px] font-medium text-muted/50 tabular-nums">
-        · <NumberFlow value={pinnedProjects.length} />
+        · <AnimatedNumber value={pinnedProjects.length} />
       </span>
       <div className="flex-1 h-px bg-outline/50" />
     </div>

@@ -2,9 +2,12 @@ import { motion } from 'framer-motion'
 import { useRef, useState } from 'react'
 import type { ComponentType } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconChevronsLeft } from '../../lib/icons'
+import { IconChevronsLeft, IconHouse, IconSearch, IconX } from '../../lib/icons'
 import type { IconProps } from '../../lib/icons'
 import { Tooltip } from '../reusables/Tooltip'
+import { WorkspaceSwitcher } from './WorkspaceSwitcher'
+import { useSettings } from '../../../../hooks/useSettings'
+import { useUpdatesBadge } from '../../../../hooks/useUpdatesBadge'
 
 export interface SidebarTab {
   id: string
@@ -25,13 +28,20 @@ export function Sidebar({
   activeTab,
   onTabChange,
   connected = false,
+  paletteKey = 'p',
+  onOpenCommandPalette,
 }: {
   tabs: SidebarTab[]
   activeTab: string
   onTabChange: (id: string) => void
   connected?: boolean
+  paletteKey?: string
+  onOpenCommandPalette?: () => void
 }) {
   const { t } = useTranslation('nav')
+  const { t: tc } = useTranslation('common')
+  const { settings } = useSettings()
+  const { hasUnseen } = useUpdatesBadge()
   const [width, setWidth] = useState(() => {
     try {
       return Math.min(
@@ -45,6 +55,13 @@ export function Sidebar({
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return localStorage.getItem('new_ui_sidebar_collapsed') === '1'
+    } catch {
+      return false
+    }
+  })
+  const [paletteHintDismissed, setPaletteHintDismissed] = useState(() => {
+    try {
+      return localStorage.getItem('new_ui_sidebar_palette_hint_dismissed') === '1'
     } catch {
       return false
     }
@@ -156,6 +173,12 @@ export function Sidebar({
         {!hideLabel && (
           <span className={`relative transition-colors duration-200 ${active ? 'text-ink' : ''}`}>{tab.label}</span>
         )}
+        {hasUnseen && tab.id === 'updates' && !active && (
+          <span className="absolute top-1.5 right-1.5 flex w-2 h-2" aria-hidden="true">
+            <span className="absolute inline-flex h-full w-full rounded-full bg-accent-bright opacity-75 animate-ping" />
+            <span className="relative inline-flex rounded-full w-2 h-2 bg-accent-bright shadow-[0_0_6px_2px] shadow-accent/50" />
+          </span>
+        )}
       </button>
     )
     return collapsedView ? (
@@ -172,8 +195,12 @@ export function Sidebar({
       type="button"
       onClick={toggleCollapsed}
       aria-label={collapsed ? t('expand_sidebar') : t('collapse_sidebar')}
-      className={`focus-ring cursor-pointer relative flex items-center justify-center rounded-item text-sm font-medium transition-colors border border-transparent text-muted hover:text-ink hover:bg-raised/60 ${
-        collapsed ? 'w-11 h-11 shrink-0' : 'w-9 h-9 ml-auto shrink-0'
+      className={`focus-ring cursor-pointer flex items-center justify-center rounded-item text-sm font-medium transition-colors text-muted hover:text-ink hover:bg-raised/60 border ${
+        collapsed
+          ? `absolute top-2 -right-4 w-8 h-8 shrink-0 bg-raised border-line shadow-md shadow-black/10 transition-opacity duration-200 ease-out ${
+              revealed ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`
+          : 'border-transparent w-9 h-9 ml-auto shrink-0'
       }`}
     >
       <motion.span
@@ -213,25 +240,39 @@ export function Sidebar({
         }`}
       >
         {!collapsed && (
-          <>
-            <span className="font-display font-semibold tracking-tight text-ink min-w-0 truncate">
+          <Tooltip content={t('dashboard')} side="right">
+            <button
+              type="button"
+              onClick={() => onTabChange('dashboard')}
+              className="focus-ring cursor-pointer font-display pl-2 font-black text-2xl tracking-tight text-ink/50 hover:text-ink min-w-0 truncate text-left transition-colors"
+            >
               GodotHub
-            </span>
-            <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-tag bg-accent/15 text-accent-bright border border-accent-dim/40">
-              New UI
-            </span>
-          </>
+            </button>
+          </Tooltip>
         )}
         {collapsed ? (
-          <Tooltip content={t('expand_sidebar')} side="right">
-            {collapseBtn}
+          <Tooltip content={t('dashboard')} side="right">
+            <button
+              type="button"
+              onClick={() => onTabChange('dashboard')}
+              aria-label={t('dashboard')}
+              className="focus-ring cursor-pointer w-6 h-6 shrink-0 flex items-center justify-center rounded-item text-muted hover:text-ink hover:bg-raised/60 transition-colors"
+            >
+              <IconHouse className="w-4 h-4" />
+            </button>
           </Tooltip>
         ) : (
           collapseBtn
         )}
       </div>
 
-      <nav className={`flex-1 p-3 flex flex-col gap-1 ${collapsed ? 'items-center' : ''}`}>
+      {settings.workspaces_enabled && (
+        <div className={`shrink-0 ${collapsed ? 'flex justify-center px-0 py-2' : 'px-3 pb-1'}`}>
+          <WorkspaceSwitcher collapsed={collapsed} />
+        </div>
+      )}
+
+      <nav className={`flex-1 p-3 pt-2 flex flex-col gap-1 ${collapsed ? 'items-center' : ''}`}>
         {mainTabs.map((tab) =>
           renderTabButton(
             tab,
@@ -247,6 +288,43 @@ export function Sidebar({
               collapsed ? 'gap-1 items-center' : 'gap-1.5 items-stretch'
             }`}
           >
+            {!collapsed && onOpenCommandPalette && !paletteHintDismissed && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={onOpenCommandPalette}
+                  className="focus-ring cursor-pointer w-full flex items-center gap-2 px-3 py-2 rounded-item border border-dashed border-outline/50 text-[11px] font-medium text-muted/60 hover:text-muted hover:border-outline hover:bg-raised/50 transition-colors"
+                >
+                  <kbd className="font-mono text-[9px] px-1.5 py-0.5 rounded-tag bg-overlay border border-outline/50">
+                    {navigator.platform.includes('Mac')
+                      ? `⌘${paletteKey.toUpperCase()}`
+                      : `Ctrl+${paletteKey.toUpperCase()}`}
+                  </kbd>
+                  <span className="flex items-center gap-1.5">
+                    <IconSearch className="w-3 h-3" />
+                    {tc('quick_commands')}
+                  </span>
+                </button>
+                <Tooltip content={tc('close')} side="top" className="absolute -top-1.5 -right-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      try {
+                        localStorage.setItem(
+                          'new_ui_sidebar_palette_hint_dismissed',
+                          '1',
+                        )
+                      } catch {}
+                      setPaletteHintDismissed(true)
+                    }}
+                    aria-label={tc('close')}
+                    className="focus-ring cursor-pointer w-4 h-4 rounded-full bg-raised border border-outline/60 text-muted/60 hover:text-ink hover:border-outline flex items-center justify-center transition-colors"
+                  >
+                    <IconX className="w-2.5 h-2.5" />
+                  </button>
+                </Tooltip>
+              </div>
+            )}
             {footerTabs.slice(0, -2).map((tab) =>
               renderTabButton(
                 tab,
@@ -279,6 +357,11 @@ export function Sidebar({
         </nav>
       )}
       </motion.div>
+      {collapsed && (
+        <Tooltip content={t('expand_sidebar')} side="right">
+          {collapseBtn}
+        </Tooltip>
+      )}
       {!collapsed && (
       <div
         onPointerDown={beginDrag}

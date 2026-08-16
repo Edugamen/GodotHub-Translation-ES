@@ -640,6 +640,32 @@ pub fn download_godot_version(
     Ok(())
 }
 
+/// Moves a queued download one step earlier (-1) or later (+1) in the queue.
+#[tauri::command]
+pub fn reorder_download_queue(
+    app: AppHandle,
+    key: String,
+    direction: i8,
+) -> Result<(), String> {
+    let order = {
+        let mut mgr = dm().lock().unwrap();
+        let idx = mgr
+            .queue
+            .iter()
+            .position(|k| k == &key)
+            .ok_or("Not queued")?;
+        let max = mgr.queue.len() as isize - 1;
+        let target = (idx as isize + direction as isize).clamp(0, max) as usize;
+        if idx != target {
+            let k = mgr.queue.remove(idx).unwrap_or_default();
+            mgr.queue.insert(target, k);
+        }
+        mgr.queue.iter().cloned().collect::<Vec<String>>()
+    };
+    let _ = app.emit("godot-download-queue", order);
+    Ok(())
+}
+
 #[tauri::command]
 pub fn pause_download(key: String) -> Result<(), String> {
     let mgr = dm().lock().unwrap();
@@ -789,60 +815,72 @@ async fn run_download(app: AppHandle, key: String) {
 
     let app2 = app.clone();
     let job2 = job.clone();
-    let result = tokio::task::spawn_blocking(move || -> Result<InstalledGodotVersion, String> {
-        let zip_file = fs::File::open(&zip_path).map_err(|e| e.to_string())?;
-        let mut archive = zip::ZipArchive::new(zip_file).map_err(|e| e.to_string())?;
-        archive.extract(&target_dir).map_err(|e| e.to_string())?;
-        let _ = fs::remove_file(&zip_path);
-
-        let exe_path = find_executable(&target_dir)
-            .ok_or_else(|| "Could not locate Godot executable after extraction".to_string())?;
-
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            if let Ok(meta) = fs::metadata(&exe_path) {
-                let mut perms = meta.permissions();
-                perms.set_mode(0o755);
-                let _ = fs::set_permissions(&exe_path, perms);
-            }
-        }
-
-        let version_number = job2
-            .tag
-            .split('-')
-            .next()
-            .unwrap_or(&job2.tag)
-            .trim_start_matches('v')
-            .to_string();
-        let is_mono = job2.asset_name.to_lowercase().contains("mono");
-        let installed = InstalledGodotVersion {
-            tag: if is_mono {
-                format!("{}-mono", job2.tag)
-            } else {
-                job2.tag.clone()
-            },
-            version: version_number,
-            executable_path: exe_path.to_string_lossy().to_string(),
-            is_mono,
-            installed_at: chrono::Utc::now().to_rfc3339(),
-            custom_name: None,
-            install_root: Some(target_dir.to_string_lossy().to_string()),
-            supports_console: false,
-        };
-        register_version(&app2, installed.clone()).map_err(|e| e.to_string())?;
-        crate::projects::rebind_projects_to_version(&app2, &installed);
-        Ok(installed)
-    }).await;
+    let target2 = target_dir.clone();
+    let result = tokio::task::spawn_blocking(move || -> Result<(), String> {
+        install_version_archive(&app2, &job2, &zip_path, &target2)
+    })
+    .await;
 
     match result {
-        Ok(Ok(_)) => {
+        Ok(Ok(())) => {
             release_slot(&app, &key, true);
             let _ = app.emit("godot-download-complete", &key);
         }
         Ok(Err(e)) => finish_with_error(&app, &key, e),
         Err(e) => finish_with_error(&app, &key, e.to_string()),
     }
+}
+
+/// Extracts a Godot editor archive and registers the version.
+fn install_version_archive(
+    app: &AppHandle,
+    job: &DownloadJob,
+    zip_path: &Path,
+    target_dir: &Path,
+) -> Result<(), String> {
+    let zip_file = fs::File::open(zip_path).map_err(|e| e.to_string())?;
+    let mut archive = zip::ZipArchive::new(zip_file).map_err(|e| e.to_string())?;
+    archive.extract(&target_dir).map_err(|e| e.to_string())?;
+    let _ = fs::remove_file(zip_path);
+
+    let exe_path = find_executable(&target_dir)
+        .ok_or_else(|| "Could not locate Godot executable after extraction".to_string())?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if let Ok(meta) = fs::metadata(&exe_path) {
+            let mut perms = meta.permissions();
+            perms.set_mode(0o755);
+            let _ = fs::set_permissions(&exe_path, perms);
+        }
+    }
+
+    let version_number = job
+        .tag
+        .split('-')
+        .next()
+        .unwrap_or(&job.tag)
+        .trim_start_matches('v')
+        .to_string();
+    let is_mono = job.asset_name.to_lowercase().contains("mono");
+    let installed = InstalledGodotVersion {
+        tag: if is_mono {
+            format!("{}-mono", job.tag)
+        } else {
+            job.tag.clone()
+        },
+        version: version_number,
+        executable_path: exe_path.to_string_lossy().to_string(),
+        is_mono,
+        installed_at: chrono::Utc::now().to_rfc3339(),
+        custom_name: None,
+        install_root: Some(target_dir.to_string_lossy().to_string()),
+        supports_console: false,
+    };
+    register_version(app, installed.clone()).map_err(|e| e.to_string())?;
+    crate::projects::rebind_projects_to_version(app, &installed);
+    Ok(())
 }
 
 pub fn find_executable(dir: &Path) -> Option<PathBuf> {

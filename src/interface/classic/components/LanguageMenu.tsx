@@ -11,6 +11,7 @@ import {
 import { IconLanguage, IconCheck } from '../lib/Icons'
 import { useSettings } from '../../../hooks/useSettings'
 import { Tooltip } from './reusables/Tooltip'
+import { LanguageFlag } from '../../new/components/reusables/LanguageFlag'
 
 const STATUS_BADGE_CLASS: Record<LanguageStatus, string> = {
   complete: 'bg-mint/10 text-mint border-mint/30',
@@ -143,6 +144,7 @@ export function LanguageMenu() {
                     }`}
                   >
                     <span className="flex items-center gap-1.5 min-w-0">
+                      <LanguageFlag country={lang.country} />
                       <span className="truncate">{lang.label}</span>
                       {badge(lang.status)}
                     </span>

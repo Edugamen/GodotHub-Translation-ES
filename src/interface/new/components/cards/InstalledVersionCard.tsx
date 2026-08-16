@@ -5,6 +5,7 @@ import type { InstalledGodotVersion } from '../../../../types'
 import { api } from '../../../../lib/api'
 import { ConfirmDialog } from '../modals/ConfirmDialog'
 import { OpenButton } from '../reusables/OpenButton'
+import { Tooltip } from '../reusables/Tooltip'
 import {
   IconCheck,
   IconExternalLink,
@@ -97,16 +98,17 @@ export function InstalledVersionCard({
                 <h3 className="font-display font-medium text-xl text-ink truncate">
                   {v.custom_name || v.tag}
                 </h3>
-                <motion.button
-                  type="button"
-                  whileTap={{ scale: 0.92 }}
-                  onClick={startEditing}
-                  aria-label={tc('version_rename_aria')}
-                  title={tc('version_rename_tooltip')}
-                  className="focus-ring cursor-pointer p-1 rounded-btn text-muted/60 hover:text-ink hover:bg-raised transition-colors shrink-0"
-                >
-                  <IconPencil className="w-3.5 h-3.5" />
-                </motion.button>
+                <Tooltip content={tc('version_rename_tooltip')} side="top">
+                  <motion.button
+                    type="button"
+                    whileTap={{ scale: 0.92 }}
+                    onClick={startEditing}
+                    aria-label={tc('version_rename_aria')}
+                    className="focus-ring cursor-pointer p-1 rounded-btn text-muted/60 hover:text-ink hover:bg-raised transition-colors shrink-0"
+                  >
+                    <IconPencil className="w-3.5 h-3.5" />
+                  </motion.button>
+                </Tooltip>
                 <span
                   className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-tag text-[10px] font-semibold shrink-0 border ${
                     v.is_mono

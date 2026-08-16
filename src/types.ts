@@ -42,6 +42,28 @@ export interface ChangelogEntry {
   created_at: number
 }
 
+export interface ChangelogDraftNote {
+  category: ChangelogNote['category']
+  text: string
+  hash: string
+  author: string
+}
+
+export interface ChangelogDraftSkipped {
+  hash: string
+  subject: string
+  reason: 'merge' | 'revert' | 'bump' | 'unrecognized'
+}
+
+export interface ChangelogDraft {
+  from: string
+  to: string
+  count: number
+  next_version: string
+  notes: ChangelogDraftNote[]
+  skipped: ChangelogDraftSkipped[]
+}
+
 export type UpdateKind =
   | 'announcement'
   | 'new-feature'
@@ -59,6 +81,15 @@ export interface UpdateEntry {
   featured: boolean
   link?: string | null
   created_at: number
+}
+
+export interface TimeInsights {
+  total_seconds: number
+  longest_streak_days: number
+  current_streak_days: number
+  most_productive_weekday: number | null
+  this_month_seconds: number
+  last_month_seconds: number
 }
 
 export interface UpdatesResponse {
@@ -168,6 +199,7 @@ export interface NewsItem {
   summary: string | null
   author: string | null
   category: string | null
+  image: string | null
 }
 
 export interface NewsResponse {
@@ -292,12 +324,19 @@ export type NamingConvention =
   | 'PascalCase'
   | 'Title Case'
 
+export interface DiscordProjectPresence {
+  id: string
+  details: string | null
+  state: string | null
+}
+
 export interface AppSettings {
   download_dir: string | null
   default_project_location: string | null
   project_scan_dirs: string[]
   version_scan_dirs: string[]
   scan_depth: number
+  icon_scan_depth: number
   download_concurrency: number
   accent_color: string
   background_color: string
@@ -322,6 +361,11 @@ export interface AppSettings {
   command_palette_keybind: string
   external_editor_path: string | null
   github_token: string | null
+  discord_app_id: string | null
+  discord_rpc_enabled: boolean
+  discord_rpc_show_projects: boolean
+  discord_rpc_excluded_projects: string[]
+  discord_rpc_project_presences: DiscordProjectPresence[]
   template_scan_dir: string | null
   auto_watch_project_dirs: boolean
   auto_watch_version_dirs: boolean
@@ -331,6 +375,8 @@ export interface AppSettings {
   show_support_button: boolean
   show_star_button: boolean
   show_scrollbars: boolean
+  animated_numbers: boolean
+  screen_reader_announcements: boolean
   project_icon_opacity: number
   animation_threshold: number
   language: string
@@ -341,6 +387,22 @@ export interface AppSettings {
   open_after_import: boolean
   new_ui: boolean
   card_layout: boolean
+  dashboard_custom_name: string | null
+  default_landing_tab: string
+  dashboard_sections: string[]
+  dashboard_section_order: string[]
+  dashboard_section_spans: string[]
+  dashboard_tall_sections: string[]
+  dashboard_custom_presets: DashboardCustomPreset[]
+}
+
+export interface DashboardCustomPreset {
+  id: string
+  name: string
+  sections: string[]
+  order: string[]
+  spans: string[]
+  tall: string[]
 }
 
 export interface ScanResult {

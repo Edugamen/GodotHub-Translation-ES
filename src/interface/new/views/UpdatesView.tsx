@@ -5,9 +5,11 @@ import { openUrl } from '@tauri-apps/plugin-opener'
 import { MarkdownBody } from '../components/reusables/MarkdownBody'
 import { OverlayScrollArea } from '../components/reusables/OverlayScrollArea'
 import { ScanButton } from '../components/reusables/ScanButton'
+import { Tooltip } from '../components/reusables/Tooltip'
 import { ViewHeader } from '../components/reusables/ViewHeader'
 import { useSettings } from '../../../hooks/useSettings'
 import { useUpdates } from '../../../hooks/useUpdates'
+import { useUpdatesBadge } from '../../../hooks/useUpdatesBadge'
 import type { UpdateEntry, UpdateKind } from '../../../types'
 import {
   IconAlertTriangle,
@@ -172,18 +174,19 @@ function CardContent({
           <code className="flex-1 min-w-0 font-mono text-xs text-ink whitespace-pre-wrap break-all">
             {entry.command}
           </code>
-          <button
-            onClick={copyCommand}
-            aria-label={copied ? t('updates_copied') : t('updates_copy')}
-            title={copied ? t('updates_copied') : t('updates_copy')}
-            className="focus-ring cursor-pointer shrink-0 p-1.5 rounded-btn text-muted/60 hover:text-ink hover:bg-raised transition-colors"
-          >
-            {copied ? (
-              <IconCheck className="w-3.5 h-3.5 text-mint" />
-            ) : (
-              <IconCopy className="w-3.5 h-3.5" />
-            )}
-          </button>
+          <Tooltip content={copied ? t('updates_copied') : t('updates_copy')} side="top">
+            <button
+              onClick={copyCommand}
+              aria-label={copied ? t('updates_copied') : t('updates_copy')}
+              className="focus-ring cursor-pointer shrink-0 p-1.5 rounded-btn text-muted/60 hover:text-ink hover:bg-raised transition-colors"
+            >
+              {copied ? (
+                <IconCheck className="w-3.5 h-3.5 text-mint" />
+              ) : (
+                <IconCopy className="w-3.5 h-3.5" />
+              )}
+            </button>
+          </Tooltip>
         </div>
       )}
     </div>
@@ -276,6 +279,11 @@ export function UpdatesView({ connected = false }: { connected?: boolean }) {
   const { t: tc } = useTranslation('common')
   const { settings } = useSettings()
   const { entries, loading, fromCache, fetchedAt, refresh } = useUpdates()
+  const { markSeen } = useUpdatesBadge()
+
+  useEffect(() => {
+    if (!loading && entries.length > 0) markSeen()
+  }, [loading, entries, markSeen])
 
   const featured = entries.filter((e) => e.featured)
   const regular = entries.filter((e) => !e.featured)

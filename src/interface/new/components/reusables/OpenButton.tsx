@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { IconMore, IconTerminal } from '../../lib/icons'
 import { Dropdown, type NewDropdownItem } from '../ui/Dropdown'
+import { Tooltip } from '../reusables/Tooltip'
 
 const SPRING = { type: 'spring', stiffness: 500, damping: 30 } as const
 
@@ -51,28 +52,29 @@ export function OpenButton({
       </motion.button>
 
       {consoleSupported && (
-        <motion.button
-          key={consoleEnabled ? 'console-on' : 'console-off'}
-          initial={{ scale: 0.9, opacity: 0.6 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: 'spring', stiffness: 500, damping: 24 }}
-          whileHover={{ scale: 1.04 }}
-          whileTap={{ scale: 0.9 }}
-          type="button"
-          onClick={() => setConsoleEnabled((v) => !v)}
-          aria-label={t('open_with_console')}
-          aria-pressed={consoleEnabled}
-          title={t('open_with_console')}
-          className={`focus-ring cursor-pointer p-2 h-12 rounded-[4px] font-semibold text-[17px] shadow-md shadow-black/10 border transition-colors duration-200 ${
-            consoleEnabled
-              ? 'bg-raised text-ink border-mint'
-              : 'bg-overlay text-muted border-outline/50 hover:text-mint hover:border-mint/50'
-          }`}
-        >
-          <IconTerminal
-            className={`w-4 h-4 ${consoleEnabled ? 'text-mint' : ''}`}
-          />
-        </motion.button>
+        <Tooltip content={t('open_with_console')} side="top">
+          <motion.button
+            key={consoleEnabled ? 'console-on' : 'console-off'}
+            initial={{ scale: 0.9, opacity: 0.6 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 24 }}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.9 }}
+            type="button"
+            onClick={() => setConsoleEnabled((v) => !v)}
+            aria-label={t('open_with_console')}
+            aria-pressed={consoleEnabled}
+            className={`focus-ring cursor-pointer p-2 h-12 rounded-[4px] font-semibold text-[17px] shadow-md shadow-black/10 border transition-colors duration-200 ${
+              consoleEnabled
+                ? 'bg-raised text-ink border-mint'
+                : 'bg-overlay text-muted border-outline/50 hover:text-mint hover:border-mint/50'
+            }`}
+          >
+            <IconTerminal
+              className={`w-4 h-4 ${consoleEnabled ? 'text-mint' : ''}`}
+            />
+          </motion.button>
+        </Tooltip>
       )}
 
       <Dropdown

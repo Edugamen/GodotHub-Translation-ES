@@ -83,7 +83,7 @@ fn unique_folder_name(scan_dir: &Path, base: &str) -> String {
     name
 }
 
-fn read_template_json(dir: &Path) -> Option<ProjectTemplate> {
+pub(crate) fn read_template_json(dir: &Path) -> Option<ProjectTemplate> {
     let file = dir.join("template.json");
     if !file.exists() {
         return None;
@@ -91,7 +91,7 @@ fn read_template_json(dir: &Path) -> Option<ProjectTemplate> {
     serde_json::from_str(&fs::read_to_string(&file).ok()?).ok()
 }
 
-fn write_template_json(dir: &Path, template: &ProjectTemplate) -> Result<(), String> {
+pub(crate) fn write_template_json(dir: &Path, template: &ProjectTemplate) -> Result<(), String> {
     fs::write(
         dir.join("template.json"),
         serde_json::to_string_pretty(template).map_err(|e| e.to_string())?,

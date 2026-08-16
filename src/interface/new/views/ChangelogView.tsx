@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useChangelog } from '../../../hooks/useChangelog'
 import { useSettings } from '../../../hooks/useSettings'
 import { ChangelogEntryModal } from '../components/modals/ChangelogEntryModal'
+import { ReleaseNotesDraftModal } from '../components/modals/ReleaseNotesDraftModal'
 import { ConfirmDialog } from '../components/modals/ConfirmDialog'
 import { OverlayScrollArea } from '../components/reusables/OverlayScrollArea'
 import { ViewHeader } from '../components/reusables/ViewHeader'
@@ -13,6 +14,7 @@ import {
   IconClock,
   IconPencil,
   IconPlus,
+  IconRocket,
   IconTrash,
 } from '../lib/icons'
 import type { ChangelogEntry, ChangelogNote } from '../../../types'
@@ -219,9 +221,26 @@ export function ChangelogView({
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(
     null,
   )
+  const [draftOpen, setDraftOpen] = useState(false)
+  const [prefill, setPrefill] = useState<{
+    version?: string
+    date?: string
+    notes?: ChangelogNote[]
+  } | null>(null)
 
   const openCreate = () => {
     setEditingEntry(null)
+    setPrefill(null)
+    setModalOpen(true)
+  }
+  const openFromDraft = (
+    notes: ChangelogNote[],
+    version: string,
+    date: string,
+  ) => {
+    setDraftOpen(false)
+    setEditingEntry(null)
+    setPrefill({ version, date, notes })
     setModalOpen(true)
   }
   const openEdit = (entry: ChangelogEntry) => {
@@ -237,16 +256,28 @@ export function ChangelogView({
         title={t('changelog_title')}
         actions={
           IS_DEV ? (
-            <motion.button
-              type="button"
-              whileHover={{ y: -1 }}
-              whileTap={{ scale: 0.96 }}
-              onClick={openCreate}
-              className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-8 px-4 rounded-item bg-accent hover:bg-accent-bright text-xs font-medium text-white transition-colors"
-            >
-              <IconPlus className="w-3.5 h-3.5" />
-              {tc('add_entry')}
-            </motion.button>
+            <div className="flex items-center gap-2">
+              <motion.button
+                type="button"
+                whileHover={{ y: -1 }}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => setDraftOpen(true)}
+                className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-8 px-4 rounded-item bg-overlay border border-outline/50 text-muted hover:text-ink hover:border-accent-dim text-xs font-medium transition-colors"
+              >
+                <IconRocket className="w-3.5 h-3.5" />
+                {tc('changelog_generate_from_git')}
+              </motion.button>
+              <motion.button
+                type="button"
+                whileHover={{ y: -1 }}
+                whileTap={{ scale: 0.96 }}
+                onClick={openCreate}
+                className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-8 px-4 rounded-item bg-accent hover:bg-accent-bright text-xs font-medium text-white transition-colors"
+              >
+                <IconPlus className="w-3.5 h-3.5" />
+                {tc('add_entry')}
+              </motion.button>
+            </div>
           ) : undefined
         }
       >
@@ -298,7 +329,11 @@ export function ChangelogView({
         {modalOpen && (
           <ChangelogEntryModal
             entry={editingEntry ?? undefined}
-            onClose={() => setModalOpen(false)}
+            initial={prefill ?? undefined}
+            onClose={() => {
+              setModalOpen(false)
+              setPrefill(null)
+            }}
             onSave={async (version, date, notes, knownIssues) => {
               if (editingEntry)
                 await updateEntry(
@@ -309,7 +344,17 @@ export function ChangelogView({
                   knownIssues,
                 )
               else await addEntry(version, date, notes, knownIssues)
+              setPrefill(null)
             }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {draftOpen && (
+          <ReleaseNotesDraftModal
+            onClose={() => setDraftOpen(false)}
+            onUseDraft={openFromDraft}
           />
         )}
       </AnimatePresence>

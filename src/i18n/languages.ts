@@ -3,6 +3,8 @@ export type LanguageStatus = 'complete' | 'beta' | 'incomplete'
 export interface LanguageOption {
   value: string
   label: string
+  /** ISO 3166-1 alpha-2 country code (upper-case) for the flag icon. */
+  country: string
   status: LanguageStatus
 }
 

@@ -9,6 +9,7 @@ import {
   faDiagramProject,
   faChevronUp,
   faChevronDown,
+  faChevronLeft,
   faChevronRight,
   faXmark,
   faGear,
@@ -70,6 +71,7 @@ import {
   faStopwatch,
   faFont,
   faDesktop,
+  faUniversalAccess,
   faMinus,
   faSquare,
   faClone,
@@ -99,6 +101,7 @@ export const IconDownload = solid(faDownload)
 export const IconNode = solid(faDiagramProject)
 export const IconChevronUp = solid(faChevronUp)
 export const IconChevronDown = solid(faChevronDown)
+export const IconChevronLeft = solid(faChevronLeft)
 export const IconChevronRight = solid(faChevronRight)
 export const IconX = solid(faXmark)
 export const IconGear = solid(faGear)
@@ -127,6 +130,7 @@ export const IconWifiOff = solid(faWifi)
 export const IconBriefcase = solid(faBriefcase)
 export const IconHouse = solid(faHouse)
 export const IconUser = solid(faUser)
+export const IconUniversalAccess = solid(faUniversalAccess)
 export const IconCode = solid(faCode)
 export const IconGitBranch = solid(faCodeBranch)
 export const IconTerminal = solid(faTerminal)

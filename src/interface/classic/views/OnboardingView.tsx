@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -6,28 +6,20 @@ import {
   ACCENT_PRESETS_LIGHT,
   BG_PRESETS_DARK,
   BG_PRESETS_LIGHT,
-  DEFAULT_BG,
-  DEFAULT_BG_LIGHT,
   LIGHT_THEME_PRESETS,
   DARK_THEME_PRESETS,
-  applyTheme,
-  applyThemePreset,
-  customThemeDefaults,
-  getThemePreset,
-  isDarkColor,
   resolveThemeMode,
-  type ThemeModeSetting,
 } from '../../../lib/colors'
-import { applyRadius } from '../../../lib/appearance'
 import { defaultCornerRadius } from '../../../lib/platform'
-import { useCategoriesContext } from '../../../hooks/categoriesContext'
-import { useWorkspaces } from '../../../hooks/useWorkspaces'
+import {
+  useOnboarding,
+  STARTER_CATEGORIES,
+} from '../../../hooks/useOnboarding'
 import { DirList } from '../components/ui/DirList'
 import { ColorSwatchPicker } from '../components/ui/ColorSwatchPicker'
 import { Slider } from '../components/ui/Slider'
-import { useTauriEvent } from '../../../lib/useTauriEvent'
+import { TitleBar } from '../components/titlebar/Titlebar'
 import { api } from '../../../lib/api'
-import type { WorkspaceScanDirs } from '../../../types'
 import {
   IconLayoutGrid,
   IconLayoutList,
@@ -41,6 +33,7 @@ import {
   IconArrowUpDown,
   IconCopy,
   IconRefresh,
+  IconRocket,
   IconSun,
   IconMoon,
   IconMonitor,
@@ -48,30 +41,11 @@ import {
 } from '../lib/Icons'
 import type { AppSettings } from '../../../types'
 
-const STARTER_CATEGORIES = [
-  'In Progress',
-  'Prototypes',
-  'Finished',
-  'Game Jams',
-]
-
 interface Props {
   settings: AppSettings
   onComplete: (settings: AppSettings) => Promise<AppSettings> | void
+  onChooseNew?: () => void
 }
-
-type StepId =
-  'welcome' | 'projects' | 'versions' | 'templates' | 'categories' | 'customize' | 'finish'
-
-const ALL_STEPS: { id: StepId }[] = [
-  { id: 'welcome' },
-  { id: 'projects' },
-  { id: 'versions' },
-  { id: 'templates' },
-  { id: 'categories' },
-  { id: 'customize' },
-  { id: 'finish' },
-]
 
 function StepShell({
   icon,
@@ -102,17 +76,6 @@ function StepShell({
       {children}
     </div>
   )
-}
-
-const dedupePaths = (
-  items: { path: string; source: string }[],
-): { path: string; source: string }[] => {
-  const seen = new Set<string>()
-  return items.filter((item) => {
-    if (seen.has(item.path)) return false
-    seen.add(item.path)
-    return true
-  })
 }
 
 function ProgressRow({
@@ -170,204 +133,48 @@ function ProgressRow({
   )
 }
 
-export function OnboardingView({ settings, onComplete }: Props) {
+export function OnboardingView({ settings, onComplete, onChooseNew }: Props) {
   const { t } = useTranslation('onboarding')
   const { t: tc, i18n } = useTranslation('common')
-  const STEPS = useMemo(
-    () =>
-      ALL_STEPS.filter(
-        (s) => s.id !== 'categories' || settings.categories_enabled,
-      ),
-    [settings.categories_enabled],
-  )
-  const { activeId } = useWorkspaces()
-  const [stepIndex, setStepIndex] = useState(0)
+  const { t: ts } = useTranslation('settings')
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
-  const [draft, setDraft] = useState<AppSettings>(settings)
-  const [finishing, setFinishing] = useState(false)
-  const [workspaceSuggestions, setWorkspaceSuggestions] = useState<
-    WorkspaceScanDirs[]
-  >([])
-
-  useEffect(() => {
-    api.listWorkspaceScanDirs().then(setWorkspaceSuggestions).catch(() => {})
-  }, [])
-
-  const projectSuggestions = useMemo(
-    () =>
-      dedupePaths(
-        workspaceSuggestions
-          .filter((w) => w.workspace_id !== activeId)
-          .flatMap((w) =>
-            w.project_scan_dirs.map((path) => ({
-              path,
-              source: w.workspace_name,
-            })),
-          ),
-      ),
-    [workspaceSuggestions, activeId],
-  )
-  const versionSuggestions = useMemo(
-    () =>
-      dedupePaths(
-        workspaceSuggestions
-          .filter((w) => w.workspace_id !== activeId)
-          .flatMap((w) =>
-            w.version_scan_dirs.map((path) => ({
-              path,
-              source: w.workspace_name,
-            })),
-          ),
-      ),
-    [workspaceSuggestions, activeId],
-  )
-  const templateSuggestions = useMemo(
-    () =>
-      dedupePaths(
-        workspaceSuggestions
-          .filter((w) => w.workspace_id !== activeId)
-          .flatMap((w) =>
-            w.template_scan_dir
-              ? [{ path: w.template_scan_dir, source: w.workspace_name }]
-              : [],
-          ),
-      ),
-    [workspaceSuggestions, activeId],
-  )
-  const pendingTemplateSuggestions = templateSuggestions.filter(
-    (s) => s.path !== draft.template_scan_dir,
-  )
-  const [scanProgress, setScanProgress] = useState<{
-    projects: { current: number; total: number } | null
-    versions: { current: number; total: number } | null
-  }>({ projects: null, versions: null })
-
-  useTauriEvent<[number, number]>('project-scan-progress', ([current, total]) => {
-    setScanProgress((prev) => ({ ...prev, projects: { current, total } }))
-  })
-  useTauriEvent<[number, number]>('version-scan-progress', ([current, total]) => {
-    setScanProgress((prev) => ({ ...prev, versions: { current, total } }))
-  })
   const {
+    STEPS,
+    stepIndex,
+    step,
+    goNext,
+    goBack,
+    draft,
+    setDraft,
+    setField,
+    finishing,
+    finish,
+    presetActive,
+    selectPreset,
+    setThemeMode,
+    setAccentColor,
+    setBackgroundColor,
+    setCornerRadius,
+    projectSuggestions,
+    versionSuggestions,
+    pendingTemplateSuggestions,
+    scanProgress,
     categories,
-    create: createCategory,
-    remove: removeCategory,
-  } = useCategoriesContext()
-  const [categoryDraft, setCategoryDraft] = useState('')
-  const [categoryBusy, setCategoryBusy] = useState(false)
-
-  const step = STEPS[stepIndex]
-
-  const setField = <K extends keyof AppSettings>(
-    key: K,
-    value: AppSettings[K],
-  ) => {
-    setDraft((prev) => ({ ...prev, [key]: value }))
-  }
-
-  const presetActive = draft.theme_preset !== 'custom'
-
-  const selectPreset = (id: string) => {
-    if (id === draft.theme_preset) return
-    if (id === 'custom') {
-      const defaults = customThemeDefaults(resolveThemeMode(draft.theme_mode))
-      setDraft((prev) => ({ ...prev, theme_preset: id, ...defaults }))
-      applyTheme(
-        defaults.accent_color,
-        defaults.background_color,
-        resolveThemeMode(draft.theme_mode),
-        undefined,
-        draft.raised_contrast,
-      )
-    } else {
-      const preset = getThemePreset(id)
-      if (preset) {
-        setDraft((prev) => ({
-          ...prev,
-          theme_preset: id,
-          theme_mode: preset.mode,
-        }))
-        applyThemePreset(preset)
-      }
-    }
-  }
-
-  const setThemeMode = (mode: ThemeModeSetting) => {
-    const resolved = resolveThemeMode(mode)
-    const targetDark = resolved === 'dark'
-    const bg = isDarkColor(draft.background_color) === targetDark
-      ? draft.background_color
-      : targetDark ? DEFAULT_BG : DEFAULT_BG_LIGHT
-    setDraft((prev) => ({ ...prev, theme_mode: mode, background_color: bg }))
-    applyTheme(
-      draft.accent_color,
-      bg,
-      resolved,
-      undefined,
-      draft.raised_contrast,
-    )
-  }
-
-  const goNext = () => setStepIndex((i) => Math.min(i + 1, STEPS.length - 1))
-  const goBack = () => setStepIndex((i) => Math.max(i - 1, 0))
-
-  const categoryLabels: Record<string, string> = useMemo(() => ({
-    'In Progress': t('in_progress'),
-    'Prototypes': t('prototypes'),
-    'Finished': t('finished'),
-    'Game Jams': t('game_jams'),
-  }), [t])
-
-  const addStarterCategory = async (name: string) => {
-    if (categories.some((c) => c.name.toLowerCase() === name.toLowerCase()))
-      return
-    setCategoryBusy(true)
-    try {
-      await createCategory(name)
-    } finally {
-      setCategoryBusy(false)
-    }
-  }
-
-  const addCustomCategory = async () => {
-    const name = categoryDraft.trim()
-    if (!name) return
-    setCategoryBusy(true)
-    try {
-      await createCategory(name)
-      setCategoryDraft('')
-    } finally {
-      setCategoryBusy(false)
-    }
-  }
-
-  const finish = async (skip: boolean) => {
-    setFinishing(true)
-    setScanProgress({ projects: null, versions: null })
-    const final: AppSettings = skip
-      ? { ...settings, setup_complete: true, language: draft.language }
-      : { ...draft, setup_complete: true }
-    await Promise.all([
-      final.project_scan_dirs.length
-        ? api.scanForProjects(final.project_scan_dirs, final.scan_depth)
-        : Promise.resolve(),
-      final.version_scan_dirs.length
-        ? api.scanForVersions(final.version_scan_dirs, final.scan_depth)
-        : Promise.resolve(),
-      final.template_scan_dir
-        ? api.syncTemplatesWithScanDir().catch(() => {})
-        : Promise.resolve(),
-    ])
-    await onComplete(final)
-    setFinishing(false)
-  }
+    removeCategory,
+    categoryDraft,
+    setCategoryDraft,
+    categoryBusy,
+    addStarterCategory,
+    addCustomCategory,
+    categoryLabels,
+  } = useOnboarding({ settings, onComplete })
 
   return (
     <div className="h-screen w-screen flex flex-col bg-base text-ink font-body select-none">
-
-      <div data-tauri-drag-region className="h-10 shrink-0" />
-      <div className="flex-1 flex flex-col items-center justify-center px-8 py-12 overflow-y-auto">
-        <div className="flex items-center gap-2 mb-12">
+      <TitleBar minimal />
+      <div className="flex-1 flex flex-col min-h-0 px-8 pb-8">
+        <div className="shrink-0 flex items-center justify-center pt-8 pb-6">
+        <div className="flex items-center gap-2">
           {STEPS.map((s, i) => (
             <div
               key={s.id}
@@ -382,7 +189,10 @@ export function OnboardingView({ settings, onComplete }: Props) {
             />
           ))}
         </div>
+        </div>
 
+        <div className="flex-1 min-h-0 overflow-y-auto flex justify-center">
+        <div className="w-full max-w-xl flex flex-col items-center py-2">
         <AnimatePresence mode="wait">
           <motion.div
             key={step.id}
@@ -453,6 +263,46 @@ export function OnboardingView({ settings, onComplete }: Props) {
                       <p className="text-[11px] text-muted leading-relaxed">
                         {t('onboarding_stay_current', { ns: 'common' })}
                       </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2.5">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+                      {ts('interface_label')}
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="flex flex-col items-start gap-1.5 rounded-lg border border-accent bg-accent/10 p-3.5 text-left">
+                        <span className="flex items-center gap-2 w-full">
+                          <IconLayoutList className="w-3.5 h-3.5 text-accent-bright" />
+                          <span className="text-xs font-medium text-ink">
+                            {ts('classic_ui_label')}
+                          </span>
+                          <IconCheck className="w-3.5 h-3.5 text-accent-bright ml-auto" />
+                        </span>
+                        <p className="text-[11px] text-muted leading-relaxed">
+                          {ts('switch_to_classic_ui_desc')}
+                        </p>
+                      </div>
+
+                      <motion.button
+                        whileHover={{ y: -1 }}
+                        whileTap={{ scale: 0.96 }}
+                        onClick={onChooseNew}
+                        className="focus-ring cursor-pointer flex flex-col items-start gap-1.5 rounded-lg border border-line p-3.5 text-left hover:border-accent-dim hover:bg-raised transition-colors"
+                      >
+                        <span className="flex items-center gap-2 w-full">
+                          <IconRocket className="w-3.5 h-3.5 text-muted" />
+                          <span className="text-xs font-medium text-ink">
+                            {ts('new_ui_label')}
+                          </span>
+                          <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber/15 text-amber border border-amber/30">
+                            {tc('git_beta_badge')}
+                          </span>
+                        </span>
+                        <p className="text-[11px] text-muted leading-relaxed">
+                          {ts('new_ui_desc')}
+                        </p>
+                      </motion.button>
                     </div>
                   </div>
                 </div>
@@ -797,14 +647,7 @@ export function OnboardingView({ settings, onComplete }: Props) {
                         : ACCENT_PRESETS_DARK
                     }
                       onChange={(hex) => {
-                        setField('accent_color', hex)
-                        applyTheme(
-                          hex,
-                          draft.background_color,
-                          resolveThemeMode(draft.theme_mode),
-                          undefined,
-                          draft.raised_contrast,
-                        )
+                        setAccentColor(hex)
                       }}
                     />
                     <ColorSwatchPicker
@@ -816,14 +659,7 @@ export function OnboardingView({ settings, onComplete }: Props) {
                         : BG_PRESETS_DARK
                     }
                       onChange={(hex) => {
-                        setField('background_color', hex)
-                        applyTheme(
-                          draft.accent_color,
-                          hex,
-                          resolveThemeMode(draft.theme_mode),
-                          undefined,
-                          draft.raised_contrast,
-                        )
+                        setBackgroundColor(hex)
                       }}
                     />
                   </div>
@@ -873,8 +709,7 @@ export function OnboardingView({ settings, onComplete }: Props) {
                       defaultValue={defaultCornerRadius}
                       label={t('onboarding_corner_radius', { ns: 'common' })}
                       onChange={(v) => {
-                        setField('corner_radius', v)
-                        applyRadius(v)
+                        setCornerRadius(v)
                       }}
                     />
                   </label>
@@ -969,8 +804,10 @@ export function OnboardingView({ settings, onComplete }: Props) {
             )}
           </motion.div>
         </AnimatePresence>
+        </div>
+        </div>
 
-        <div className="w-full max-w-xl flex items-center justify-between mt-10">
+        <div className="shrink-0 w-full max-w-xl mx-auto flex items-center justify-between mt-6">
           <button
             onClick={() => (stepIndex === 0 ? finish(true) : goBack())}
             disabled={finishing}

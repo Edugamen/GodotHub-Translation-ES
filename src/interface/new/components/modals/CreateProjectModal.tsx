@@ -16,12 +16,10 @@ import { Toggle } from '../ui/Toggle'
 import { Checkbox } from '../ui/Checkbox'
 import {
   IconFolderPlus,
-  IconX,
   IconCheck,
   IconBookOpen,
   IconAlertTriangle,
   IconSpinner,
-  IconGitBranch,
 } from '../../lib/icons'
 
 interface Props {
@@ -93,9 +91,6 @@ export function CreateProjectModal({
     () => applyNamingConvention(name, settings.directory_naming_convention),
     [name, settings.directory_naming_convention],
   )
-
-  const selectedVersion = installedVersions.find((v) => v.tag === version)
-  const selectedCategory = categories.find((c) => c.name === category)
 
   const projectNamePlaceholder = useMemo(() => {
     const names = [
@@ -270,10 +265,8 @@ export function CreateProjectModal({
     }
   }
 
-  const previewName = name.trim() || t('untitled_project')
-
   const inputClass = (invalid: boolean) =>
-    `focus-ring bg-overlay border rounded-item px-3.5 py-2.5 text-sm font-body text-ink placeholder:text-muted/70 transition-colors ${
+    `focus-ring bg-overlay border rounded-item px-3.5 py-2.5 text-sm font-mono text-ink placeholder:text-muted/70 transition-colors ${
       invalid ? 'border-danger/70 focus:border-danger' : 'border-outline/50 focus:border-accent-dim'
     }`
 
@@ -301,16 +294,16 @@ export function CreateProjectModal({
         initial={{ opacity: 0, y: 14, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-        className="bg-surface border border-line rounded-card w-full max-w-4xl max-h-[88vh] flex flex-col shadow-2xl"
+        className="bg-surface rounded-modal w-full max-w-2xl max-h-[88vh] flex flex-col shadow-2xl overflow-clip"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-4 p-6 pb-4 border-b border-line">
-          <div className="flex items-start gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-tile bg-accent/10 border border-accent-dim/30 flex items-center justify-center shrink-0">
+        <div className="flex items-start justify-between gap-4 p-5 pb-2">
+          <div className="flex items-start gap-1 min-w-0 bg-black/15 px-3 py-4 rounded-btn shrink-0">
+            <div className="w-10 h-10 rounded-tile flex items-center justify-center shrink-0">
               <IconFolderPlus className="w-5 h-5 text-accent-bright" />
             </div>
             <div className="min-w-0">
-              <h3 className="font-display font-semibold text-xl text-ink">
+              <h3 className="uppercase font-semibold text-xl text-ink">
                 {t('create_project_title')}
               </h3>
               <p className="text-xs text-muted mt-0.5">
@@ -318,19 +311,12 @@ export function CreateProjectModal({
               </p>
             </div>
           </div>
-          <button
-            onClick={dismiss}
-            className="focus-ring cursor-pointer p-1.5 rounded-btn text-muted hover:text-ink hover:bg-raised transition-colors shrink-0"
-            aria-label={t('close')}
-          >
-            <IconX className="w-4 h-4" />
-          </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 p-6 flex-1 overflow-y-auto">
-          <div className="md:col-span-3 flex flex-col gap-5">
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-medium text-muted">
+        <div className="gap-6 p-6 flex-1 overflow-y-auto">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-0.5">
+              <label className="pl-3 text-xs font-medium text-muted">
                 {t('project_name_label')}
               </label>
               <input
@@ -356,8 +342,8 @@ export function CreateProjectModal({
               </div>
             </div>
 
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-medium text-muted">
+            <div className="flex flex-col gap-0.5">
+              <label className="pl-3 text-xs font-medium text-muted">
                 {t('project_location_label')}
               </label>
               <div className="flex gap-2.5">
@@ -736,64 +722,6 @@ export function CreateProjectModal({
             </div>
           </div>
 
-          <div className="md:col-span-2 flex flex-col gap-2">
-            <label className="text-xs font-medium text-muted">
-              {t('preview_label')}
-            </label>
-            <div className="flex-1">
-              <div className="relative overflow-hidden rounded-card border border-outline/50 bg-overlay p-4 isolate h-full min-h-44">
-                <div className="relative flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-tile border border-outline/50 bg-raised flex items-center justify-center overflow-hidden shrink-0">
-                    {iconPreview ? (
-                      <img
-                        src={iconPreview}
-                        alt=""
-                        className="w-full h-full object-contain"
-                      />
-                    ) : (
-                      ICON_PRESET_SVG
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className="font-display font-semibold text-lg text-ink truncate">
-                      {previewName}
-                    </h4>
-                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                      {selectedVersion && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-tag bg-mint/10 border border-mint/25 text-mint text-[10px] font-mono font-medium">
-                          <span className="w-1.5 h-1.5 rounded-full bg-mint" />
-                          {selectedVersion.custom_name || selectedVersion.tag}
-                        </span>
-                      )}
-                      {selectedCategory && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-tag bg-raised border border-line text-[10px] font-mono text-muted">
-                          <span
-                            className="w-1.5 h-1.5 rounded-full ring-1 ring-black/10"
-                            style={{ backgroundColor: selectedCategory.color }}
-                          />
-                          {selectedCategory.name}
-                        </span>
-                      )}
-                      {initGit && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-tag bg-accent/10 border border-accent/25 text-accent-bright text-[10px] font-mono font-medium">
-                          <IconGitBranch className="w-3 h-3" />
-                          git
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="relative mt-3 pt-3 border-t border-line">
-                  {settings.directory_naming_convention !== 'keep' && (
-                    <p className="text-[10px] font-mono text-accent-bright/80 mt-1">
-                      {t('folder_name_preview', { name: folderName })}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
         <AnimatePresence>
@@ -864,7 +792,6 @@ export function CreateProjectModal({
         <div className="flex justify-end gap-2.5 p-6 pt-4 border-t border-line">
           {gitWarning || remoteSuccess ? (
             <motion.button
-              whileHover={{ y: -1 }}
               whileTap={{ scale: 0.96 }}
               onClick={onCreated}
               className="focus-ring px-5 cursor-pointer py-2.5 rounded-btn bg-accent hover:bg-accent-bright text-sm font-medium text-white transition-colors"
@@ -874,7 +801,6 @@ export function CreateProjectModal({
           ) : (
             <>
               <motion.button
-                whileHover={{ y: -1 }}
                 whileTap={{ scale: 0.96 }}
                 onClick={onClose}
                 disabled={busy}
@@ -883,7 +809,6 @@ export function CreateProjectModal({
                 {t('cancel')}
               </motion.button>
               <motion.button
-                whileHover={busy ? undefined : { y: -1 }}
                 whileTap={busy ? undefined : { scale: 0.96 }}
                 onClick={submit}
                 disabled={busy}

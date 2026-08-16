@@ -13,6 +13,7 @@ import {
   type ContextMenuSection,
 } from '../ui/ContextMenu'
 import { Tooltip } from '../reusables/Tooltip'
+import { useProjectResolutionEpoch } from '../../../../hooks/useProjectResolutionEpoch'
 
 import { IconGrip, IconMore, IconPin, IconPlay, IconTrash, IconClock, IconExternalLink, IconCode, IconGitBranch, IconX, IconTags, IconCopy, IconHardDrive, IconCheckCircle, IconTerminal } from '../../lib/Icons'
 import {
@@ -97,6 +98,7 @@ export const ProjectCard = memo(function ProjectCard({
   variant = 'list',
 }: Props) {
   const { t } = useTranslation('common')
+  const resolutionEpoch = useProjectResolutionEpoch()
   const [icon, setIcon] = useState<string | null>(() => getCachedProjectIcon(project.path))
   const [settingsName, setSettingsName] = useState<string | null>(() => getCachedProjectName(project.path))
   const displayName = settingsName ?? project.name
@@ -147,7 +149,7 @@ export const ProjectCard = memo(function ProjectCard({
     return () => {
       cancelled = true
     }
-  }, [project.path])
+  }, [project.path, resolutionEpoch])
 
   useEffect(() => {
     let cancelled = false
@@ -157,7 +159,7 @@ export const ProjectCard = memo(function ProjectCard({
     return () => {
       cancelled = true
     }
-  }, [project.path])
+  }, [project.path, resolutionEpoch])
 
   const openFolder = () =>
     api.openProjectFolder(project.path).catch((e) => alert(e))

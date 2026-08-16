@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { api } from '../../../../lib/api'
 import { useTauriEvent } from '../../../../lib/useTauriEvent'
 import { formatDuration } from '../../lib/duration'
+import { Tooltip } from '../reusables/Tooltip'
 import { IconPlay, IconTerminal, IconX } from '../../lib/icons'
 
 const TIMER_START_DELAY_MS = 3000
@@ -139,27 +140,28 @@ export function RunningProjectsChip() {
             onMouseDown={noDrag}
             className="relative"
           >
-            <motion.button
-              type="button"
-              onClick={() => setOpen((o) => !o)}
-              aria-label={t('running')}
-              aria-haspopup="menu"
-              aria-expanded={open}
-              title={t('running')}
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.94 }}
-              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-              className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-8 px-3 rounded-item bg-overlay border border-outline/50 text-muted hover:text-ink hover:border-accent-dim transition-colors"
-            >
-              <span className="relative flex w-2 h-2">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-mint opacity-60 animate-ping" />
-                <span className="relative inline-flex rounded-full w-2 h-2 bg-mint" />
-              </span>
-              <IconPlay className="w-3 h-3 text-mint" />
-              <span className="text-[13px] font-semibold tabular-nums">
-                {running.length}
-              </span>
-            </motion.button>
+            <Tooltip content={t('running')} side="top">
+              <motion.button
+                type="button"
+                onClick={() => setOpen((o) => !o)}
+                aria-label={t('running')}
+                aria-haspopup="menu"
+                aria-expanded={open}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.94 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-8 px-3 rounded-item bg-overlay border border-outline/50 text-muted hover:text-ink hover:border-accent-dim transition-colors"
+              >
+                <span className="relative flex w-2 h-2">
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-mint opacity-60 animate-ping" />
+                  <span className="relative inline-flex rounded-full w-2 h-2 bg-mint" />
+                </span>
+                <IconPlay className="w-3 h-3 text-mint" />
+                <span className="text-[13px] font-semibold tabular-nums">
+                  {running.length}
+                </span>
+              </motion.button>
+            </Tooltip>
 
             <AnimatePresence>
               {open && (
@@ -210,16 +212,17 @@ export function RunningProjectsChip() {
                               {formatDuration(now - p.startedAt)}
                             </p>
                           </div>
-                          <button
-                            type="button"
-                            role="menuitem"
-                            onClick={() => stop(p.id)}
-                            aria-label={`${t('stop')} ${p.name}`}
-                            title={t('stop')}
-                            className="focus-ring cursor-pointer w-6 h-6 rounded-btn inline-flex items-center justify-center text-muted/50 hover:text-danger hover:bg-danger/10 transition-colors shrink-0"
-                          >
-                            <IconX className="w-3.5 h-3.5" />
-                          </button>
+                          <Tooltip content={t('stop')} side="top">
+                            <button
+                              type="button"
+                              role="menuitem"
+                              onClick={() => stop(p.id)}
+                              aria-label={`${t('stop')} ${p.name}`}
+                              className="focus-ring cursor-pointer w-6 h-6 rounded-btn inline-flex items-center justify-center text-muted/50 hover:text-danger hover:bg-danger/10 transition-colors shrink-0"
+                            >
+                              <IconX className="w-3.5 h-3.5" />
+                            </button>
+                          </Tooltip>
                         </motion.div>
                       ))}
                     </AnimatePresence>

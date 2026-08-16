@@ -10,6 +10,8 @@ import type {
   Project,
 } from '../../../../types'
 import { api } from '../../../../lib/api'
+import { announce } from '../../../../lib/screenReader'
+import { useProjectResolutionEpoch } from '../../../../hooks/useProjectResolutionEpoch'
 import { DiffViewer } from './DiffViewer'
 import { GitResultDialog, parseGitError } from './GitResultDialog'
 import { MergeConflictDialog } from './MergeConflictDialog'
@@ -78,6 +80,7 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
   const { t } = useTranslation('git')
   const { t: tc } = useTranslation('common')
   const { settings } = useSettings()
+  const resolutionEpoch = useProjectResolutionEpoch()
   const [displayName, setDisplayName] = useState<string | null>(null)
   const [remoteUrl, setRemoteUrl] = useState<string | null>(null)
   const [logEntries, setLogEntries] = useState<GitLogEntry[]>([])
@@ -120,7 +123,9 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
 
   const addToast = useCallback((type: Toast['type'], message: string) => {
     const id = ++toastId
-    setToasts((prev) => [...prev, { id, type, message: truncateMessage(message) }])
+    const text = truncateMessage(message)
+    setToasts((prev) => [...prev, { id, type, message: text }])
+    announce(text)
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id))
     }, 5000)
@@ -225,7 +230,7 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
     let cancelled = false
     api.getProjectName(project.path).then((name) => { if (!cancelled) setDisplayName(name) })
     return () => { cancelled = true }
-  }, [project.path])
+  }, [project.path, resolutionEpoch])
 
   useEffect(() => {
     void refreshGitAuth()
@@ -571,14 +576,15 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
         <IconPlug className="w-3.5 h-3.5 text-muted shrink-0" />
         <div className="flex items-center gap-1.5 min-w-0 flex-1 flex-wrap">
           {gitAuth?.github ? (
-            <span
-              title={`GitHub · @${gitAuth.github.username}`}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-mint/10 border border-mint/30 text-[11px] text-mint"
-            >
-              <IconCheck className="w-3 h-3 shrink-0" />
-              <span className="font-medium">GitHub</span>
-              <span className="text-mint/70 truncate max-w-[110px]">@{gitAuth.github.username}</span>
-            </span>
+            <Tooltip content={`GitHub · @${gitAuth.github.username}`} side="top">
+              <span
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-mint/10 border border-mint/30 text-[11px] text-mint"
+              >
+                <IconCheck className="w-3 h-3 shrink-0" />
+                <span className="font-medium">GitHub</span>
+                <span className="text-mint/70 truncate max-w-[110px]">@{gitAuth.github.username}</span>
+              </span>
+            </Tooltip>
           ) : (
             <button
               onClick={() => setGitAuthFlow('github')}
@@ -589,16 +595,20 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
             </button>
           )}
           {gitAuth?.gitlab ? (
-            <span
-              title={`GitLab · ${gitAuth.gitlab.host ?? `@${gitAuth.gitlab.username}`}`}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-mint/10 border border-mint/30 text-[11px] text-mint"
+            <Tooltip
+              content={`GitLab · ${gitAuth.gitlab.host ?? `@${gitAuth.gitlab.username}`}`}
+              side="top"
             >
-              <IconCheck className="w-3 h-3 shrink-0" />
-              <span className="font-medium">GitLab</span>
-              <span className="text-mint/70 truncate max-w-[110px]">
-                {gitAuth.gitlab.host ?? `@${gitAuth.gitlab.username}`}
+              <span
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-mint/10 border border-mint/30 text-[11px] text-mint"
+              >
+                <IconCheck className="w-3 h-3 shrink-0" />
+                <span className="font-medium">GitLab</span>
+                <span className="text-mint/70 truncate max-w-[110px]">
+                  {gitAuth.gitlab.host ?? `@${gitAuth.gitlab.username}`}
+                </span>
               </span>
-            </span>
+            </Tooltip>
           ) : (
             <button
               onClick={() => setGitAuthFlow('gitlab')}
@@ -609,15 +619,15 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
             </button>
           )}
           {(gitAuth?.pats ?? []).map((pat) => (
-            <span
-              key={pat.host}
-              title={`${pat.host} · @${pat.username}`}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-mint/10 border border-mint/30 text-[11px] text-mint"
-            >
-              <IconPlug className="w-3 h-3 shrink-0" />
-              <span className="font-medium">{pat.host}</span>
-              <span className="text-mint/70 truncate max-w-[110px]">@{pat.username}</span>
-            </span>
+            <Tooltip key={pat.host} content={`${pat.host} · @${pat.username}`} side="top">
+              <span
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-mint/10 border border-mint/30 text-[11px] text-mint"
+              >
+                <IconPlug className="w-3 h-3 shrink-0" />
+                <span className="font-medium">{pat.host}</span>
+                <span className="text-mint/70 truncate max-w-[110px]">@{pat.username}</span>
+              </span>
+            </Tooltip>
           ))}
         </div>
       </div>
@@ -658,24 +668,25 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
                 </button>
               </div>
             )}
-            <button disabled={busyAction !== null || showMergeConflicts}
-              onClick={() => doAction('pull', async () => {
-                const r = await api.gitPull(project.path)
-                if (r) {
-                  pushUndo(
-                    `Pull`,
-                    async () => { await api.gitUndoPull(project.path) },
-                    async () => { const r2 = await api.gitPull(project.path); if (r2) addToast('info', r2) },
-                  )
-                  showGitSuccess(t('pull_complete'), r)
-                }
-              })}
-              className={`focus-ring cursor-pointer flex items-center gap-1.5 px-3 py-2 rounded-item disabled:opacity-50 disabled:cursor-not-allowed text-[11px] font-medium text-white transition-colors ${
-                showMergeConflicts ? 'bg-danger/40 text-danger/60' : 'bg-accent hover:bg-accent-bright'
-              }`}
-              title={showMergeConflicts ? t('resolve_first') : t('pull_latest')}>
-              <IconCloudArrowDown className="w-3 h-3" />{busyAction === 'pull' ? '…' : showMergeConflicts ? t('conflicts') : t('pull')}
-            </button>
+            <Tooltip content={showMergeConflicts ? t('resolve_first') : t('pull_latest')} side="top">
+              <button disabled={busyAction !== null || showMergeConflicts}
+                onClick={() => doAction('pull', async () => {
+                  const r = await api.gitPull(project.path)
+                  if (r) {
+                    pushUndo(
+                      `Pull`,
+                      async () => { await api.gitUndoPull(project.path) },
+                      async () => { const r2 = await api.gitPull(project.path); if (r2) addToast('info', r2) },
+                    )
+                    showGitSuccess(t('pull_complete'), r)
+                  }
+                })}
+                className={`focus-ring cursor-pointer flex items-center gap-1.5 px-3 py-2 rounded-item disabled:opacity-50 disabled:cursor-not-allowed text-[11px] font-medium text-white transition-colors ${
+                  showMergeConflicts ? 'bg-danger/40 text-danger/60' : 'bg-accent hover:bg-accent-bright'
+                }`}>
+                <IconCloudArrowDown className="w-3 h-3" />{busyAction === 'pull' ? '…' : showMergeConflicts ? t('conflicts') : t('pull')}
+              </button>
+            </Tooltip>
             <button onClick={handlePushAction} disabled={busyAction !== null}
               className="focus-ring cursor-pointer flex items-center gap-1.5 px-3 py-2 rounded-item bg-accent hover:bg-accent-bright disabled:opacity-50 disabled:cursor-not-allowed text-[11px] font-medium text-white transition-colors">
               <IconArrowUpDown className="w-3 h-3" />{busyAction === 'push' ? '…' : t('push')}
@@ -690,10 +701,12 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
               className="focus-ring cursor-pointer flex items-center gap-1.5 px-3 py-2 rounded-item border border-outline/50 text-muted hover:text-ink hover:border-accent-dim disabled:opacity-50 disabled:cursor-not-allowed text-[11px] font-medium transition-colors">
               <IconRefresh className={`w-3 h-3 ${busyAction === 'fetch' ? 'animate-spin' : ''}`} />{busyAction === 'fetch' ? '…' : t('fetch')}
             </button>
-            <button onClick={() => api.openTerminal(project.path)} title={tc('git_open_in_terminal')}
-              className="focus-ring cursor-pointer px-2 py-2 rounded-item border border-outline/50 text-muted hover:text-ink hover:border-accent-dim transition-colors">
-              <IconTerminal className="w-3 h-3" />
-            </button>
+            <Tooltip content={tc('git_open_in_terminal')} side="top">
+              <button onClick={() => api.openTerminal(project.path)}
+                className="focus-ring cursor-pointer px-2 py-2 rounded-item border border-outline/50 text-muted hover:text-ink hover:border-accent-dim transition-colors">
+                <IconTerminal className="w-3 h-3" />
+              </button>
+            </Tooltip>
           </div>
 
           <OverlayScrollArea
@@ -724,11 +737,15 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
                   </div>
                 ) : remoteUrl ? (
                   <div className="flex items-center gap-1.5">
-                    <span className="flex-1 text-[11px] font-mono text-muted truncate" title={remoteUrl}>{remoteUrl}</span>
-                    <button onClick={() => setShowRemoveRemoteConfirm(true)} disabled={busyAction !== null} title={tc('git_remove_remote')}
-                      className="focus-ring cursor-pointer p-1 rounded text-muted hover:text-danger transition-colors">
-                      <IconTrash className="w-3 h-3" />
-                    </button>
+                    <Tooltip content={remoteUrl} side="top" className="flex-1 min-w-0">
+                      <span className="block text-[11px] font-mono text-muted truncate">{remoteUrl}</span>
+                    </Tooltip>
+                    <Tooltip content={tc('git_remove_remote')} side="top">
+                      <button onClick={() => setShowRemoveRemoteConfirm(true)} disabled={busyAction !== null}
+                        className="focus-ring cursor-pointer p-1 rounded text-muted hover:text-danger transition-colors">
+                        <IconTrash className="w-3 h-3" />
+                      </button>
+                    </Tooltip>
                   </div>
                 ) : (
                   <p className="text-[11px] text-muted/50 py-1">{tc('git_no_remote')}</p>
@@ -774,15 +791,19 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
                             </span>
                           ) : (
                             <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={() => handleSwitchBranch(b.name)} disabled={busyAction !== null}
-                                className="focus-ring cursor-pointer p-1 rounded text-muted hover:text-accent-bright hover:bg-raised disabled:opacity-40 transition-colors" title={`Switch to ${b.name}`}>
-                                <IconCheck className="w-3 h-3" />
-                              </button>
-                              {b.name !== 'main' && b.name !== 'master' && (
-                                <button onClick={() => setConfirmBranchDelete(b.name)} disabled={busyAction !== null}
-                                  className="focus-ring cursor-pointer p-1 rounded text-muted hover:text-danger hover:bg-raised disabled:opacity-40 transition-colors" title={`Delete ${b.name}`}>
-                                  <IconTrash className="w-3 h-3" />
+                              <Tooltip content={`Switch to ${b.name}`} side="top">
+                                <button onClick={() => handleSwitchBranch(b.name)} disabled={busyAction !== null}
+                                  className="focus-ring cursor-pointer p-1 rounded text-muted hover:text-accent-bright hover:bg-raised disabled:opacity-40 transition-colors">
+                                  <IconCheck className="w-3 h-3" />
                                 </button>
+                              </Tooltip>
+                              {b.name !== 'main' && b.name !== 'master' && (
+                                <Tooltip content={`Delete ${b.name}`} side="top">
+                                  <button onClick={() => setConfirmBranchDelete(b.name)} disabled={busyAction !== null}
+                                    className="focus-ring cursor-pointer p-1 rounded text-muted hover:text-danger hover:bg-raised disabled:opacity-40 transition-colors">
+                                    <IconTrash className="w-3 h-3" />
+                                  </button>
+                                </Tooltip>
                               )}
                             </div>
                           )}
@@ -972,10 +993,14 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
                           <IconHistory className="w-3 h-3 text-muted shrink-0" />
                           <span className="text-[11px] font-mono text-muted truncate flex-1">{s.message}</span>
                           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => handleStashApply(s.index)} disabled={busyAction !== null}
-                              className="focus-ring cursor-pointer p-1 rounded text-muted hover:text-accent-bright transition-colors" title={tc('git_apply_stash')}><IconCheck className="w-3 h-3" /></button>
-                            <button onClick={() => handleStashDrop(s.index)} disabled={busyAction !== null}
-                              className="focus-ring cursor-pointer p-1 rounded text-muted hover:text-danger transition-colors" title={tc('git_drop_stash')}><IconTrash className="w-3 h-3" /></button>
+                            <Tooltip content={tc('git_apply_stash')} side="top">
+                              <button onClick={() => handleStashApply(s.index)} disabled={busyAction !== null}
+                                className="focus-ring cursor-pointer p-1 rounded text-muted hover:text-accent-bright transition-colors"><IconCheck className="w-3 h-3" /></button>
+                            </Tooltip>
+                            <Tooltip content={tc('git_drop_stash')} side="top">
+                              <button onClick={() => handleStashDrop(s.index)} disabled={busyAction !== null}
+                                className="focus-ring cursor-pointer p-1 rounded text-muted hover:text-danger transition-colors"><IconTrash className="w-3 h-3" /></button>
+                            </Tooltip>
                           </div>
                         </div>
                       ))}

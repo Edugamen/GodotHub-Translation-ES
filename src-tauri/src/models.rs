@@ -25,6 +25,8 @@ pub struct NewsItem {
     pub summary: Option<String>,
     pub author: Option<String>,
     pub category: Option<String>,
+    #[serde(default)]
+    pub image: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -155,6 +157,8 @@ pub struct AppSettings {
     pub version_scan_dirs: Vec<String>,
     #[serde(default = "default_scan_depth")]
     pub scan_depth: u32,
+    #[serde(default = "default_icon_scan_depth")]
+    pub icon_scan_depth: u32,
     #[serde(default = "default_download_concurrency")]
     pub download_concurrency: u32,
     #[serde(default = "default_accent")]
@@ -205,6 +209,16 @@ pub struct AppSettings {
     pub github_token: Option<String>,
     #[serde(default)]
     pub template_scan_dir: Option<String>,
+    #[serde(default)]
+    pub discord_app_id: Option<String>,
+    #[serde(default)]
+    pub discord_rpc_enabled: bool,
+    #[serde(default = "default_true")]
+    pub discord_rpc_show_projects: bool,
+    #[serde(default)]
+    pub discord_rpc_excluded_projects: Vec<String>,
+    #[serde(default)]
+    pub discord_rpc_project_presences: Vec<DiscordProjectPresence>,
     #[serde(default = "default_tooltip_delay")]
     pub tooltip_delay: u32,
     #[serde(default = "default_watch_projects")]
@@ -221,6 +235,10 @@ pub struct AppSettings {
     pub show_star_button: bool,
     #[serde(default = "default_true")]
     pub show_scrollbars: bool,
+    #[serde(default = "default_true")]
+    pub animated_numbers: bool,
+    #[serde(default = "default_true")]
+    pub screen_reader_announcements: bool,
     #[serde(default = "default_project_icon_opacity")]
     pub project_icon_opacity: u32,
     #[serde(default = "default_animation_threshold")]
@@ -239,10 +257,34 @@ pub struct AppSettings {
     pub git_init_new_projects: bool,
     #[serde(default = "default_true")]
     pub open_after_import: bool,
-    #[serde(default)]
+    #[serde(default = "default_true")]
     pub new_ui: bool,
     #[serde(default = "default_true")]
     pub card_layout: bool,
+    #[serde(default)]
+    pub dashboard_custom_name: Option<String>,
+    #[serde(default = "default_landing_tab")]
+    pub default_landing_tab: String,
+    #[serde(default)]
+    pub dashboard_sections: Vec<String>,
+    #[serde(default)]
+    pub dashboard_section_order: Vec<String>,
+    #[serde(default)]
+    pub dashboard_section_spans: Vec<String>,
+    #[serde(default)]
+    pub dashboard_tall_sections: Vec<String>,
+    #[serde(default)]
+    pub dashboard_custom_presets: Vec<DashboardCustomPreset>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct DashboardCustomPreset {
+    pub id: String,
+    pub name: String,
+    pub sections: Vec<String>,
+    pub order: Vec<String>,
+    pub spans: Vec<String>,
+    pub tall: Vec<String>,
 }
 
 fn default_language() -> String {
@@ -255,6 +297,10 @@ fn default_naming_convention() -> String {
 
 fn default_theme_preset() -> String {
     "custom".to_string()
+}
+
+fn default_landing_tab() -> String {
+    "projects".to_string()
 }
 
 fn default_project_icon_opacity() -> u32 {
@@ -294,6 +340,9 @@ pub(crate) fn default_accent() -> String {
 }
 fn default_scan_depth() -> u32 {
     2
+}
+fn default_icon_scan_depth() -> u32 {
+    4
 }
 fn default_download_concurrency() -> u32 {
     3
@@ -370,6 +419,15 @@ pub struct Workspace {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiscordProjectPresence {
+    pub id: String,
+    #[serde(default)]
+    pub details: Option<String>,
+    #[serde(default)]
+    pub state: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkspacesState {
     pub workspaces: Vec<Workspace>,
     pub active_id: String,
@@ -440,6 +498,7 @@ impl Default for AppSettings {
             project_scan_dirs: vec![],
             version_scan_dirs: vec![],
             scan_depth: default_scan_depth(),
+            icon_scan_depth: default_icon_scan_depth(),
             download_concurrency: default_download_concurrency(),
             accent_color: default_accent(),
             background_color: default_background(),
@@ -467,12 +526,19 @@ tooltip_delay: default_tooltip_delay(),
             external_editor_path: None,
             github_token: None,
             template_scan_dir: None,
+            discord_app_id: None,
+            discord_rpc_enabled: false,
+            discord_rpc_show_projects: true,
+            discord_rpc_excluded_projects: vec![],
+            discord_rpc_project_presences: vec![],
             auto_watch_project_dirs: default_watch_projects(),
             auto_watch_version_dirs: default_watch_versions(),
             auto_watch_template_dir: default_watch_templates(),
             show_support_button: true,
             show_star_button: true,
             show_scrollbars: true,
+            animated_numbers: true,
+            screen_reader_announcements: true,
             project_icon_opacity: 14,
             animation_threshold: default_animation_threshold(),
             language: default_language(),
@@ -482,8 +548,15 @@ tooltip_delay: default_tooltip_delay(),
             theme_preset: default_theme_preset(),
             git_init_new_projects: false,
             open_after_import: true,
-            new_ui: false,
+            new_ui: true,
             card_layout: true,
+            dashboard_custom_name: None,
+            default_landing_tab: default_landing_tab(),
+            dashboard_sections: vec![],
+            dashboard_section_order: vec![],
+            dashboard_section_spans: vec![],
+            dashboard_tall_sections: vec![],
+            dashboard_custom_presets: vec![],
         }
     }
 }

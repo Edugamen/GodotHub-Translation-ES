@@ -8,21 +8,29 @@ import {
 } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import NumberFlow from '@number-flow/react'
+import { AnimatedNumber } from '../components/reusables/AnimatedNumber'
 import { useProjectsContext } from '../../../hooks/projectsContext'
 import { useCategoriesContext } from '../../../hooks/categoriesContext'
 import { useGodotVersionsContext } from '../../../hooks/godotVersionsContext'
 import {
   IconArrowUpDown,
+  IconCheck,
+  IconCheckCircle,
   IconFilter,
+  IconFolder,
   IconGitBranch,
+  IconPin,
+  IconPlay,
   IconPlus,
+  IconTags,
+  IconTrash,
   IconX,
 } from '../lib/icons'
 import { tagColor } from '../../../lib/colors'
 import { Dropdown } from '../components/ui/Dropdown'
 import { ImportButton } from '../components/reusables/ImportButton'
 import { OverlayScrollArea } from '../components/reusables/OverlayScrollArea'
+import { Tooltip } from '../components/reusables/Tooltip'
 import { ProjectCard } from '../components/cards/ProjectCard'
 import { ProjectCardList } from '../components/cards/ProjectCardList'
 import { useSettings } from '../../../hooks/useSettings'
@@ -39,6 +47,7 @@ import { SearchBar } from '../components/ui/SearchBar'
 import { ViewHeader } from '../components/reusables/ViewHeader'
 import { CreateProjectModal } from '../components/modals/CreateProjectModal'
 import { CloneRepoModal } from '../components/modals/CloneRepoModal'
+import { ConfirmDialog } from '../components/modals/ConfirmDialog'
 
 const UNCATEGORIZED = '__uncategorized__'
 
@@ -51,8 +60,15 @@ export function ProjectsView({
 }) {
   const { t } = useTranslation('nav')
   const { t: tc } = useTranslation('common')
-  const { projects, refresh, remove, updateVersion, setPinned, updateTags } =
-    useProjectsContext()
+  const {
+    projects,
+    refresh,
+    remove,
+    updateVersion,
+    setPinned,
+    updateTags,
+    setCategory,
+  } = useProjectsContext()
   const { categories } = useCategoriesContext()
   const { installed } = useGodotVersionsContext()
   const { settings } = useSettings()
@@ -65,6 +81,11 @@ export function ProjectsView({
     return () => clearTimeout(id)
   }, [query])
   const [filterBy, setFilterBy] = useState<string>('all')
+  const [selecting, setSelecting] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [confirmBatchAction, setConfirmBatchAction] = useState<
+    'remove' | 'delete' | null
+  >(null)
   const [tagFilter, setTagFilter] = useState<string | null>(() => {
     try {
       const raw = sessionStorage.getItem('godothub_projects_tag_filter')
@@ -206,6 +227,86 @@ export function ProjectsView({
   const hasActiveFilters =
     query.trim() !== '' || filterBy !== 'all' || tagFilter !== null
 
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }, [])
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set())
+    setSelecting(false)
+  }, [])
+
+  const allVisibleSelected =
+    filtered.length > 0 && filtered.every((p) => selectedIds.has(p.id))
+
+  const toggleSelectAllVisible = useCallback(() => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (allVisibleSelected) {
+        for (const p of filtered) next.delete(p.id)
+      } else {
+        for (const p of filtered) next.add(p.id)
+      }
+      return next
+    })
+  }, [allVisibleSelected, filtered])
+
+  const batchLaunch = useCallback(() => {
+    for (const id of selectedIds) {
+      window.dispatchEvent(
+        new CustomEvent('app:open-project', {
+          detail: { id, console: settings.launch_with_console },
+        }),
+      )
+    }
+    clearSelection()
+  }, [selectedIds, settings.launch_with_console, clearSelection])
+
+  const batchPin = useCallback(() => {
+    const ids = [...selectedIds]
+    const allPinned = ids.every(
+      (id) => projects.find((p) => p.id === id)?.pinned,
+    )
+    for (const id of ids) setPinned(id, !allPinned)
+    clearSelection()
+  }, [selectedIds, projects, setPinned, clearSelection])
+
+  const batchSetCategory = useCallback(
+    (category: string) => {
+      for (const id of selectedIds) setCategory(id, category)
+      clearSelection()
+    },
+    [selectedIds, setCategory, clearSelection],
+  )
+
+  const executeBatchRemove = useCallback(async () => {
+    setConfirmBatchAction(null)
+    for (const id of selectedIds) await remove(id, false)
+    clearSelection()
+  }, [selectedIds, remove, clearSelection])
+
+  const executeBatchDelete = useCallback(async () => {
+    setConfirmBatchAction(null)
+    for (const id of selectedIds) await remove(id, true)
+    clearSelection()
+  }, [selectedIds, remove, clearSelection])
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedIds.size > 0) clearSelection()
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [selectedIds.size, clearSelection])
+
   return (
     <div className="flex-1 min-w-0 h-full flex flex-col">
       <div className="shrink-0 flex flex-col gap-2">
@@ -228,7 +329,7 @@ export function ProjectsView({
         metric={
           <>
             <h2 className="text-4xl font-bold text-muted">
-              <NumberFlow value={filtered.length} />
+              <AnimatedNumber value={filtered.length} />
             </h2>
             <p className="text-lg font-medium uppercase text-muted">
               {t('projects')}
@@ -330,23 +431,160 @@ export function ProjectsView({
           }))}
         />
 
-        {tagFilter && (
-          <button
+        <Tooltip
+          content={selecting ? tc('exit_selection') : tc('select_projects')}
+          side="top"
+        >
+          <motion.button
             type="button"
-            onClick={() => setTagFilter(null)}
-            title={tc('clear_tag_filter')}
-            className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-8 px-3 rounded-item bg-accent/15 text-accent-bright ring-1 ring-accent-dim/70 hover:bg-accent/25 transition-colors"
+            aria-pressed={selecting}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.94 }}
+            onClick={() => {
+              setSelecting((v) => !v)
+              setSelectedIds(new Set())
+            }}
+            className={`focus-ring cursor-pointer flex items-center justify-center gap-1 h-8 px-4 rounded-item transition-colors ${
+              selecting
+                ? 'bg-accent/15 text-accent-bright ring-1 ring-accent-dim/70'
+                : 'bg-overlay text-muted hover:text-ink hover:bg-raised'
+            }`}
           >
-            <span
-              className="w-1.5 h-1.5 rounded-full shrink-0"
-              style={{ backgroundColor: tagColor(tagFilter) }}
+            <IconCheckCircle
+              className="w-3 h-3 text-muted"
+              fill={selecting ? 'currentColor' : 'none'}
             />
-            <span className="text-[16px] font-medium">{tagFilter}</span>
-            <IconX className="w-3 h-3" />
-          </button>
+            <span className="text-[16px] font-medium">
+              {tc('select_projects')}
+            </span>
+          </motion.button>
+        </Tooltip>
+
+        {tagFilter && (
+          <Tooltip content={tc('clear_tag_filter')} side="top">
+            <button
+              type="button"
+              onClick={() => setTagFilter(null)}
+              className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-8 px-3 rounded-item bg-accent/15 text-accent-bright ring-1 ring-accent-dim/70 hover:bg-accent/25 transition-colors"
+            >
+              <span
+                className="w-1.5 h-1.5 rounded-full shrink-0"
+                style={{ backgroundColor: tagColor(tagFilter) }}
+              />
+              <span className="text-[16px] font-medium">{tagFilter}</span>
+              <IconX className="w-3 h-3" />
+            </button>
+          </Tooltip>
         )}
 
       </div>
+
+      <AnimatePresence>
+        {selecting && selectedIds.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+            className="overflow-hidden shrink-0"
+          >
+            <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-item bg-accent/10 border border-accent-dim/40">
+              <button
+                type="button"
+                onClick={toggleSelectAllVisible}
+                aria-label={tc('select_all_visible')}
+                className={`focus-ring cursor-pointer w-5 h-5 rounded-item border-2 flex items-center justify-center transition-colors ${
+                  allVisibleSelected
+                    ? 'bg-accent border-accent text-white'
+                    : 'border-muted/40 text-transparent hover:border-accent/60'
+                }`}
+              >
+                <IconCheck className="w-3 h-3" />
+              </button>
+              <span className="text-sm font-medium text-ink tabular-nums">
+                {tc('selected_count', { count: selectedIds.size })}
+              </span>
+              <div className="flex-1" />
+              <button
+                type="button"
+                onClick={batchLaunch}
+                className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-8 px-3 rounded-btn bg-accent text-ink hover:bg-accent-bright transition-colors"
+              >
+                <IconPlay className="w-3 h-3" />
+                <span className="text-xs font-medium">{tc('bulk_launch')}</span>
+              </button>
+              <button
+                type="button"
+                onClick={batchPin}
+                className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-8 px-3 rounded-btn bg-raised text-muted hover:text-ink hover:bg-overlay transition-colors"
+              >
+                <IconPin className="w-3 h-3" />
+                <span className="text-xs font-medium">
+                  {tc('bulk_pin')}
+                </span>
+              </button>
+              <Dropdown
+                align="left"
+                trigger={({ open, toggle }) => (
+                  <button
+                    type="button"
+                    aria-expanded={open}
+                    onClick={toggle}
+                    className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-8 px-3 rounded-btn bg-raised text-muted hover:text-ink hover:bg-overlay transition-colors"
+                  >
+                    <IconTags className="w-3 h-3" />
+                    <span className="text-xs font-medium">
+                      {tc('bulk_move_to_category')}
+                    </span>
+                  </button>
+                )}
+                items={[
+                  ...categories.map((c) => ({
+                    key: c.name,
+                    label: c.name,
+                    dotColor: c.color,
+                    onClick: () => batchSetCategory(c.name),
+                  })),
+                  {
+                    key: UNCATEGORIZED,
+                    label: tc('uncategorized'),
+                    icon: IconFolder,
+                    onClick: () => batchSetCategory(''),
+                  },
+                ]}
+              />
+              <button
+                type="button"
+                onClick={() => setConfirmBatchAction('remove')}
+                className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-8 px-3 rounded-btn bg-raised text-muted hover:text-ink hover:bg-overlay transition-colors"
+              >
+                <IconX className="w-3 h-3" />
+                <span className="text-xs font-medium">
+                  {tc('bulk_remove')}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmBatchAction('delete')}
+                className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-8 px-3 rounded-btn bg-danger/10 text-danger hover:bg-danger/20 transition-colors"
+              >
+                <IconTrash className="w-3 h-3" />
+                <span className="text-xs font-medium">
+                  {tc('bulk_delete')}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={clearSelection}
+                aria-label={tc('clear_selection')}
+                className="focus-ring cursor-pointer w-8 h-8 rounded-btn flex items-center justify-center text-muted hover:text-ink hover:bg-overlay transition-colors"
+              >
+                <IconX className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       </div>
 
       <OverlayScrollArea
@@ -387,6 +625,8 @@ export function ProjectsView({
               )
             }
             activeTag={tagFilter}
+            selected={selectedIds.has(p.id)}
+            onToggleSelect={selecting ? () => toggleSelect(p.id) : undefined}
           />
         )}
       />
@@ -404,6 +644,9 @@ export function ProjectsView({
             }}
           />
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {cloneRepoOpen && (
           <CloneRepoModal
             defaultLocation={settings.default_project_location}
@@ -413,6 +656,37 @@ export function ProjectsView({
               setCloneRepoOpen(false)
               refresh()
             }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {confirmBatchAction === 'remove' && (
+          <ConfirmDialog
+            title={tc('bulk_remove_title', {
+              count: selectedIds.size,
+            })}
+            description={tc('bulk_remove_desc', {
+              count: selectedIds.size,
+            })}
+            confirmLabel={tc('bulk_remove_confirm')}
+            onConfirm={executeBatchRemove}
+            onCancel={() => setConfirmBatchAction(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {confirmBatchAction === 'delete' && (
+          <ConfirmDialog
+            title={tc('bulk_delete_title', { count: selectedIds.size })}
+            description={tc('bulk_delete_desc', {
+              count: selectedIds.size,
+            })}
+            confirmLabel={tc('bulk_delete_confirm')}
+            variant="danger"
+            onConfirm={executeBatchDelete}
+            onCancel={() => setConfirmBatchAction(null)}
           />
         )}
       </AnimatePresence>

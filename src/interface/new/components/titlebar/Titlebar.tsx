@@ -12,9 +12,9 @@ import { RunningProjectsChip } from '../titlebar/RunningProjectsChip'
 import { TaskTray } from '../titlebar/TaskTray'
 import { LanguageMenu } from '../titlebar/LanguageMenu'
 import { Tooltip } from '../reusables/Tooltip'
-import { IconHeart, IconStar } from '../../lib/icons'
+import { IconHeart, IconStar, IconBug } from '../../lib/icons'
 
-export function Titlebar() {
+export function Titlebar({ minimal = false }: { minimal?: boolean }) {
   const { t } = useTranslation('common')
   const { settings } = useSettings()
   const [appWindow, setAppWindow] = useState<TauriWindow | null>(null)
@@ -68,20 +68,20 @@ export function Titlebar() {
   const noDrag = (e: React.MouseEvent) => e.stopPropagation()
 
   const windowDot =
-    'w-5 h-5 rounded-xl transition-[filter] duration-150 group-hover/win:brightness-125'
+    'w-4.5 h-4.5 rounded-xl transition-[filter] duration-150 group-hover/win:brightness-125'
 
   return (
     <header
       data-tauri-drag-region
       onDoubleClick={handleDoubleClick}
-      className={`shrink-0 h-12 flex items-center gap-3 select-none ${
+      className={`shrink-0 h-8 flex items-center gap-3 select-none ${
         settings.card_layout ? 'bg-raised/80' : 'bg-raised border-b border-line'
       } ${isMac ? 'pl-20' : 'pl-4'} ${showWindowControls ? '' : 'pr-4'}`}
     >
-      <RunningProjectsChip />
+      {!minimal && <RunningProjectsChip />}
 
       <div className="ml-auto flex items-center gap-1.5 self-stretch ">
-        {settings.show_support_button && (
+        {!minimal && settings.show_support_button && (
           <Tooltip content={t('support_dev')} side="bottom">
             <motion.button
               type="button"
@@ -93,7 +93,7 @@ export function Titlebar() {
                 openUrl('https://www.patreon.com/cw/TheRyko/membership')
               }
               aria-label={t('support_dev')}
-              className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-8 px-3 rounded-item bg-danger/10 text-danger hover:bg-danger/20 transition-colors text-xs font-semibold"
+              className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-6.5 px-3 rounded-item bg-danger/10 text-danger hover:bg-danger/20 transition-colors text-xs font-semibold"
             >
               <IconHeart className="w-3.5 h-3.5" />
               {t('support')}
@@ -101,7 +101,7 @@ export function Titlebar() {
           </Tooltip>
         )}
 
-        {settings.show_star_button && (
+        {!minimal && settings.show_star_button && (
           <Tooltip content={t('star_on_github')} side="bottom">
             <motion.button
               type="button"
@@ -118,9 +118,28 @@ export function Titlebar() {
           </Tooltip>
         )}
 
+        {!minimal && (
+          <Tooltip content={t('report_a_bug')} side="bottom">
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.9 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+              onMouseDown={noDrag}
+              onClick={() =>
+                window.dispatchEvent(new Event('app:report-bug'))
+              }
+              aria-label={t('report_a_bug')}
+              className="focus-ring cursor-pointer w-6 h-6 flex items-center justify-center rounded-item text-muted hover:text-danger hover:bg-danger/10 transition-colors"
+            >
+              <IconBug className="w-3.5 h-3.5" />
+            </motion.button>
+          </Tooltip>
+        )}
+
         <div className="w-px h-5 bg-line/40 mx-1 shrink-0" />
         <LanguageMenu />
-        <TaskTray />
+        {!minimal && <TaskTray />}
 
         {showWindowControls && (
           <>
@@ -136,7 +155,7 @@ export function Titlebar() {
                   onMouseDown={noDrag}
                   onClick={() => safe((w) => w.minimize())}
                   aria-label={t('minimize')}
-                  className="focus-ring cursor-pointer group/win w-10 h-full flex items-center justify-center"
+                  className="focus-ring cursor-pointer group/win w-9 h-full flex items-center justify-center"
                 >
                   <motion.span
                     whileHover={{ scale: 1.12 }}
@@ -157,7 +176,7 @@ export function Titlebar() {
                   onMouseDown={noDrag}
                   onClick={() => safe((w) => w.toggleMaximize())}
                   aria-label={isMaximized ? t('restore') : t('maximize')}
-                  className="focus-ring cursor-pointer group/win w-10 h-full flex items-center justify-center"
+                  className="focus-ring cursor-pointer group/win w-9 h-full flex items-center justify-center"
                 >
                   <motion.span
                     whileHover={{ scale: 1.12 }}
@@ -178,7 +197,7 @@ export function Titlebar() {
                   onMouseDown={noDrag}
                   onClick={() => safe((w) => w.close())}
                   aria-label={t('close')}
-                  className="focus-ring cursor-pointer group/win w-10 h-full flex items-center justify-center"
+                  className="focus-ring cursor-pointer group/win w-9 h-full flex items-center justify-center"
                 >
                   <motion.span
                     whileHover={{ scale: 1.12 }}
