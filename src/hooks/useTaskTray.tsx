@@ -129,11 +129,14 @@ export function TaskTrayProvider({ children }: { children: ReactNode }) {
     }
   })
 
+  const godotDownloadLabel = (key: string) =>
+    i18n.t('common:downloading_version', { version: key })
+
   useTauriEvent<string>('godot-download-queued', (key) => {
     registerTask({
       id: `download-${key}`,
       type: 'download-godot',
-      label: i18n.t('common:downloading_version', { version: key }),
+      label: godotDownloadLabel(key),
       description: i18n.t('common:queued'),
       progress: null,
       status: 'queued',
@@ -148,7 +151,7 @@ export function TaskTrayProvider({ children }: { children: ReactNode }) {
     registerTask({
       id,
       type: 'download-godot',
-      label: i18n.t('common:downloading_version', { version: tag }),
+      label: godotDownloadLabel(tag),
       description:
         total > 0
           ? `${(downloaded / 1024 / 1024).toFixed(1)} / ${(total / 1024 / 1024).toFixed(1)} MB (${pct}%)`
@@ -164,6 +167,20 @@ export function TaskTrayProvider({ children }: { children: ReactNode }) {
 
   useTauriEvent<string>('godot-download-canceled', (key) => {
     unregisterTask(`download-${key}`)
+  })
+
+  useTauriEvent<string[]>('godot-download-queue', (keys) => {
+    // Reflect the backend queue order: download tasks first (in queue order),
+    // then any other tasks.
+    setTasks((prev) => {
+      const ordered = keys.map((k) => `download-${k}`)
+      const ids = new Set(ordered)
+      const byId = new Map(prev.map((t) => [t.id, t]))
+      const rest = prev.filter((t) => !ids.has(t.id)).map((t) => t.id)
+      return [...ordered, ...rest]
+        .filter((id) => byId.has(id))
+        .map((id) => byId.get(id)!)
+    })
   })
 
   useTauriEvent<{ tag: string; message: string }>('godot-download-error', (payload) => {

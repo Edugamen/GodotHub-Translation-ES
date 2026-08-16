@@ -23,6 +23,7 @@ import { DirList } from '../components/reusables/DirList'
 import { ColorSwatchPicker } from '../components/ui/ColorSwatchPicker'
 import { Slider } from '../components/ui/Slider'
 import { OverlayScrollArea } from '../components/reusables/OverlayScrollArea'
+import { LanguageFlag } from '../components/reusables/LanguageFlag'
 import { ThemePresetsModal } from '../components/modals/ThemePresetsModal'
 import {
   IconCheck,
@@ -374,12 +375,7 @@ export function OnboardingView({
                               {t('language_heading')}
                             </span>
                             <div className="inline-flex self-start rounded-btn border border-outline/50 bg-overlay p-1 gap-1">
-                              {[
-                                { value: 'en-US', label: 'English' },
-                                { value: 'zh-CN', label: '简体中文' },
-                                { value: 'ru-RU', label: 'Русский' },
-                                { value: 'ar-MA', label: 'العربية' },
-                              ].map(({ value, label }) => {
+                              {LANGUAGES.map(({ value, label, country }) => {
                                 const active =
                                   i18n.language === value ||
                                   i18n.language.startsWith(
@@ -396,12 +392,13 @@ export function OnboardingView({
                                         language: value,
                                       }))
                                     }}
-                                    className={`focus-ring cursor-pointer px-3.5 py-1.5 rounded-btn text-sm font-medium transition-colors ${
+                                    className={`focus-ring cursor-pointer inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-btn text-sm font-medium transition-colors ${
                                       active
                                         ? 'bg-accent text-white'
                                         : 'text-muted hover:text-ink hover:bg-raised'
                                     }`}
                                   >
+                                    <LanguageFlag country={country} />
                                     {label}
                                   </button>
                                 )
@@ -990,13 +987,23 @@ export function OnboardingView({
                               <SummaryRow
                                 label={ts('language_label')}
                                 value={
-                                  LANGUAGES.find(
-                                    (l) =>
-                                      draft.language === l.value ||
-                                      draft.language.startsWith(
-                                        l.value.split('-')[0],
-                                      ),
-                                  )?.label ?? draft.language
+                                  (() => {
+                                    const lang = LANGUAGES.find(
+                                      (l) =>
+                                        draft.language === l.value ||
+                                        draft.language.startsWith(
+                                          l.value.split('-')[0],
+                                        ),
+                                    )
+                                    return lang ? (
+                                      <span className="inline-flex items-center gap-1.5">
+                                        <LanguageFlag country={lang.country} />
+                                        {lang.label}
+                                      </span>
+                                    ) : (
+                                      draft.language
+                                    )
+                                  })()
                                 }
                               />
                               <SummaryRow

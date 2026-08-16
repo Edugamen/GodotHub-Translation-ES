@@ -123,6 +123,41 @@ pub fn list_workspace_scan_dirs(app: AppHandle) -> Vec<WorkspaceScanDirs> {
 }
 
 #[tauri::command]
+/// Creates a workspace without switching to it or restarting watchers.
+/// Used by the whole-app backup restore, which creates many workspaces at once.
+pub fn create_workspace_silent(
+    app: &AppHandle,
+    name: String,
+    icon: String,
+    color: String,
+) -> Result<Workspace, String> {
+    let trimmed = name.trim().to_string();
+    if trimmed.is_empty() {
+        return Err("Workspace name can't be empty".into());
+    }
+    let mut state = read_state(app);
+    if state
+        .workspaces
+        .iter()
+        .any(|w| w.name.eq_ignore_ascii_case(&trimmed))
+    {
+        return Err("A workspace with this name already exists".into());
+    }
+    let id = Uuid::new_v4().to_string();
+    workspace_dir(app, &id);
+    let workspace = Workspace {
+        id: id.clone(),
+        name: trimmed,
+        icon,
+        color,
+        created_at: chrono::Utc::now().to_rfc3339(),
+    };
+    state.workspaces.push(workspace.clone());
+    write_state(app, &state)?;
+    Ok(workspace)
+}
+
+#[tauri::command]
 pub fn create_workspace(
     app: AppHandle,
     name: String,

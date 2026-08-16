@@ -3,14 +3,16 @@ export type LanguageStatus = 'complete' | 'beta' | 'incomplete'
 export interface LanguageOption {
   value: string
   label: string
+  /** ISO 3166-1 alpha-2 country code (upper-case) for the flag icon. */
+  country: string
   status: LanguageStatus
 }
 
 export const LANGUAGES: LanguageOption[] = [
-  { value: 'en-US', label: 'English', status: 'complete' },
-  { value: 'zh-CN', label: '简体中文', status: 'beta' },
-  { value: 'ru-RU', label: 'Русский', status: 'incomplete' },
-  { value: 'ar-MA', label: 'العربية', status: 'incomplete' },
+  { value: 'en-US', label: 'English', country: 'US', status: 'complete' },
+  { value: 'zh-CN', label: '简体中文', country: 'CN', status: 'beta' },
+  { value: 'ru-RU', label: 'Русский', country: 'RU', status: 'incomplete' },
+  { value: 'ar-MA', label: 'العربية', country: 'MA', status: 'incomplete' },
 ]
 
 export function languageStatusLabelKey(status: LanguageStatus): string {

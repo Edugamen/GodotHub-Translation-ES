@@ -14,6 +14,7 @@ interface WorkspacesContextValue {
   workspaces: Workspace[]
   activeId: string
   loaded: boolean
+  refresh: () => Promise<void>
   switchWorkspace: (id: string) => Promise<void>
   createWorkspace: (name: string, icon: string, color: string) => Promise<void>
   renameWorkspace: (id: string, name: string) => Promise<void>
@@ -41,6 +42,11 @@ export function WorkspacesProvider({ children }: { children: ReactNode }) {
       .catch(() => {})
       .finally(() => setLoaded(true))
   }, [])
+
+  const refresh = async () => {
+    const s = await api.listWorkspaces()
+    setState(s)
+  }
 
   const switchWorkspace = async (id: string) => {
     if (id === state.active_id) return
@@ -77,6 +83,7 @@ export function WorkspacesProvider({ children }: { children: ReactNode }) {
         workspaces: state.workspaces,
         activeId: state.active_id,
         loaded,
+        refresh,
         switchWorkspace,
         createWorkspace,
         renameWorkspace,

@@ -42,6 +42,28 @@ export interface ChangelogEntry {
   created_at: number
 }
 
+export interface ChangelogDraftNote {
+  category: ChangelogNote['category']
+  text: string
+  hash: string
+  author: string
+}
+
+export interface ChangelogDraftSkipped {
+  hash: string
+  subject: string
+  reason: 'merge' | 'revert' | 'bump' | 'unrecognized'
+}
+
+export interface ChangelogDraft {
+  from: string
+  to: string
+  count: number
+  next_version: string
+  notes: ChangelogDraftNote[]
+  skipped: ChangelogDraftSkipped[]
+}
+
 export type UpdateKind =
   | 'announcement'
   | 'new-feature'
@@ -59,6 +81,15 @@ export interface UpdateEntry {
   featured: boolean
   link?: string | null
   created_at: number
+}
+
+export interface TimeInsights {
+  total_seconds: number
+  longest_streak_days: number
+  current_streak_days: number
+  most_productive_weekday: number | null
+  this_month_seconds: number
+  last_month_seconds: number
 }
 
 export interface UpdatesResponse {

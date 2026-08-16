@@ -60,20 +60,27 @@ fn icon_cache() -> &'static Mutex<HashMap<String, CachedIcon>> {
     CACHE.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
-fn projects_file(app: &AppHandle) -> PathBuf {
-    crate::workspace::active_workspace_dir(app).join("projects.json")
-}
-
-pub(crate) fn read_projects(app: &AppHandle) -> Vec<Project> {
-    let file = projects_file(app);
+pub(crate) fn read_projects_from(dir: &std::path::Path) -> Vec<Project> {
+    let file = dir.join("projects.json");
     if !file.exists() {
         return vec![];
     }
     serde_json::from_str(&fs::read_to_string(&file).unwrap_or_default()).unwrap_or_default()
 }
 
+pub(crate) fn read_projects(app: &AppHandle) -> Vec<Project> {
+    read_projects_from(&crate::workspace::active_workspace_dir(app))
+}
+
+pub(crate) fn write_projects_to(
+    dir: &std::path::Path,
+    projects: &Vec<Project>,
+) -> Result<(), String> {
+    persist::write_json(&dir.join("projects.json"), projects).map_err(|e| e.to_string())
+}
+
 pub(crate) fn write_projects(app: &AppHandle, projects: &Vec<Project>) -> Result<(), String> {
-    persist::write_json(&projects_file(app), projects).map_err(|e| e.to_string())
+    write_projects_to(&crate::workspace::active_workspace_dir(app), projects)
 }
 
 pub(crate) fn epoch_ms() -> u64 {

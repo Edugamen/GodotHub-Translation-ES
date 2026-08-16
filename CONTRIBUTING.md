@@ -355,14 +355,17 @@ Say you want to add **Japanese** (`ja-JP`):
 4. **Add it to the language picker** in `src/i18n/languages.ts`:
    ```ts
    export const LANGUAGES: LanguageOption[] = [
-     { value: 'en-US', label: 'English', status: 'complete' },
-     { value: 'ja-JP', label: '日本語', status: 'incomplete' },
+     { value: 'en-US', label: 'English', country: 'US', status: 'complete' },
+     { value: 'ja-JP', label: '日本語', country: 'JP', status: 'incomplete' },
      // …
    ]
    ```
-   The `value` must match the key in `resources` exactly. The language picker
-   (both classic and new UI) reads this array, so adding the entry here makes
-   the language appear everywhere automatically.
+   The `value` must match the key in `resources` exactly, and `country` is the
+   ISO 3166-1 alpha-2 code (upper-case) used for the flag icon shown before
+   the label in every language picker. If the flag doesn't render, add a
+   mapping in `src/interface/new/components/reusables/LanguageFlag.tsx`. The
+   language picker (both classic and new UI) reads this array, so adding the
+   entry here makes the language appear everywhere automatically.
 5. **Set a status badge.** `status` is one of:
    - `complete`, every key translated and verified.
    - `beta`, mostly translated; minor gaps or needs a native-speaker review.

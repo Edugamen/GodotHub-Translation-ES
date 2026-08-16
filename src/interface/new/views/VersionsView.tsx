@@ -735,6 +735,7 @@ export function VersionsView({
         <div className="shrink-0 h-4" aria-hidden="true" />
         </div>
       </OverlayScrollArea>
+
     </div>
   )
 }

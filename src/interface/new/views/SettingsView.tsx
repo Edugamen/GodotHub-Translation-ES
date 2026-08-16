@@ -12,7 +12,11 @@ import { Slider } from '../components/ui/Slider'
 import { viewTransition } from '../../../lib/motion'
 import { markUiSwitchToSettings } from '../../../lib/uiTransition'
 import { useSettings } from '../../../hooks/useSettings'
+import { openUrl } from '@tauri-apps/plugin-opener'
 import { useProjectsContext } from '../../../hooks/projectsContext'
+import { useCategoriesContext } from '../../../hooks/categoriesContext'
+import { useWorkspaces } from '../../../hooks/useWorkspaces'
+import { useAppVersion } from '../../../hooks/useAppVersion'
 import { LANGUAGES } from '../../../i18n/languages'
 import { api } from '../../../lib/api'
 import {
@@ -34,6 +38,7 @@ import { ColorSwatchPicker } from '../components/ui/ColorSwatchPicker'
 import { OverlayScrollArea } from '../components/reusables/OverlayScrollArea'
 import { DirList } from '../components/reusables/DirList'
 import { Tooltip } from '../components/reusables/Tooltip'
+import { LanguageFlag } from '../components/reusables/LanguageFlag'
 import { KeyRecorder } from '../components/ui/KeyRecorder'
 import { matchesSearch, useSectionSearch } from '../hooks/useSectionSearch'
 import { Dropdown } from '../components/ui/Dropdown'
@@ -66,6 +71,8 @@ import {
   IconPlus,
   IconTrash,
   IconX,
+  IconCloudArrowDown,
+  IconExternalLink,
 } from '../lib/icons'
 import type { IconProps } from '../lib/icons'
 import type { AppSettings, GitAuthState } from '../../../types'
@@ -215,7 +222,10 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
   const { t } = useTranslation('nav')
   const { t: ts, i18n } = useTranslation('settings')
   const { settings, update, resetToDefaults } = useSettings()
+  const appVersion = useAppVersion()
   const { projects, refresh: refreshProjects } = useProjectsContext()
+  const { refresh: refreshCategories } = useCategoriesContext()
+  const { refresh: refreshWorkspaces } = useWorkspaces()
   const [cat, setCat] = useState<SettingsCat>('appearance')
   const [presetModal, setPresetModal] = useState<'light' | 'dark' | null>(null)
   const [confirmingUiSwitch, setConfirmingUiSwitch] = useState<boolean | null>(null)
@@ -223,6 +233,15 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
   const [statsMessage, setStatsMessage] = useState<string | null>(null)
   const [settingsBusy, setSettingsBusy] = useState<'export' | 'import' | null>(null)
   const [settingsMessage, setSettingsMessage] = useState<string | null>(null)
+  const [wsBackupBusy, setWsBackupBusy] = useState<'export' | 'import' | null>(null)
+  const [wsBackupMessage, setWsBackupMessage] = useState<string | null>(null)
+  const [appBackupBusy, setAppBackupBusy] = useState<
+    'export' | 'import' | null
+  >(null)
+  const [appBackupMessage, setAppBackupMessage] = useState<string | null>(null)
+  const [syncBusy, setSyncBusy] = useState<'push' | 'pull' | null>(null)
+  const [syncMessage, setSyncMessage] = useState<string | null>(null)
+  const [syncUrl, setSyncUrl] = useState<string | null>(null)
   const [cssDraft, setCssDraft] = useState(settings.custom_css)
   const [cssStatus, setCssStatus] = useState<'idle' | 'applied'>('idle')
   const [scanMessage, setScanMessage] = useState<string | null>(null)
@@ -332,6 +351,106 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
       setSettingsMessage(String(e))
     } finally {
       setSettingsBusy(null)
+    }
+  }
+
+  const handleExportWorkspace = async () => {
+    setWsBackupBusy('export')
+    setWsBackupMessage(null)
+    try {
+      const path = await api.pickSavePath('godothub-workspace-backup.json')
+      if (!path) return
+      await api.exportWorkspaceBackup(path)
+      setWsBackupMessage(ts('workspace_backup_exported'))
+    } catch (e) {
+      setWsBackupMessage(String(e))
+    } finally {
+      setWsBackupBusy(null)
+    }
+  }
+
+  const handleImportWorkspace = async () => {
+    setWsBackupBusy('import')
+    setWsBackupMessage(null)
+    try {
+      const path = await api.pickDataFile()
+      if (!path) return
+      const imported = await api.importWorkspaceBackup(path)
+      await update(imported)
+      await refreshProjects()
+      await refreshCategories()
+      window.dispatchEvent(new Event('app:refresh-templates'))
+      setWsBackupMessage(ts('workspace_backup_imported'))
+    } catch (e) {
+      setWsBackupMessage(String(e))
+    } finally {
+      setWsBackupBusy(null)
+    }
+  }
+
+  const handleExportApp = async () => {
+    setAppBackupBusy('export')
+    setAppBackupMessage(null)
+    try {
+      const path = await api.pickSavePath('godothub-full-backup.json')
+      if (!path) return
+      await api.exportAppBackup(path)
+      setAppBackupMessage(ts('app_backup_exported'))
+    } catch (e) {
+      setAppBackupMessage(String(e))
+    } finally {
+      setAppBackupBusy(null)
+    }
+  }
+
+  const handleImportApp = async () => {
+    setAppBackupBusy('import')
+    setAppBackupMessage(null)
+    try {
+      const path = await api.pickDataFile()
+      if (!path) return
+      const imported = await api.importAppBackup(path)
+      await update(imported)
+      await refreshProjects()
+      await refreshCategories()
+      await refreshWorkspaces()
+      window.dispatchEvent(new Event('app:refresh-templates'))
+      setAppBackupMessage(ts('app_backup_imported'))
+    } catch (e) {
+      setAppBackupMessage(String(e))
+    } finally {
+      setAppBackupBusy(null)
+    }
+  }
+
+  const handleSyncPush = async () => {
+    setSyncBusy('push')
+    setSyncMessage(null)
+    try {
+      const res = await api.gistSyncPush()
+      setSyncUrl(res.gist_url)
+      setSyncMessage(ts('sync_push_done'))
+    } catch (e) {
+      setSyncMessage(String(e))
+    } finally {
+      setSyncBusy(null)
+    }
+  }
+
+  const handleSyncPull = async () => {
+    setSyncBusy('pull')
+    setSyncMessage(null)
+    try {
+      const imported = await api.gistSyncPull()
+      await update(imported)
+      await refreshProjects()
+      await refreshCategories()
+      window.dispatchEvent(new Event('app:refresh-templates'))
+      setSyncMessage(ts('sync_pull_done'))
+    } catch (e) {
+      setSyncMessage(String(e))
+    } finally {
+      setSyncBusy(null)
     }
   }
 
@@ -996,6 +1115,7 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
                 aria-expanded={open}
                 className="focus-ring cursor-pointer inline-flex items-center gap-2 px-3.5 py-2 rounded-btn bg-overlay border border-outline/50 text-xs font-medium text-ink hover:border-accent-dim transition-colors self-start"
               >
+                <LanguageFlag country={current.country} />
                 {current.label}
                 <IconChevronDown
                   className={`w-3 h-3 text-muted transition-transform duration-200 ${
@@ -2146,6 +2266,68 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
           </div>
         </div>
       </Subsection>
+
+      <Subsection
+        id="integrations-sync"
+        title={
+          <span className="inline-flex items-center gap-2">
+            <IconCloudArrowDown className="w-3.5 h-3.5 text-muted" />
+            {ts('sync_title')}
+          </span>
+        }
+        description={ts('sync_desc')}
+        searchText={`${ts('sync_title')} ${ts('sync_desc')} ${ts('sync_push_btn')} ${ts('sync_pull_btn')}`}
+        query={searchQuery}
+        onMatch={reportMatch}
+      >
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-xs text-muted leading-relaxed">
+                {ts('sync_desc')}
+              </p>
+              {syncMessage && (
+                <p className="text-xs text-muted mt-1.5 break-words">
+                  {syncMessage}
+                </p>
+              )}
+              {syncUrl && (
+                <button
+                  type="button"
+                  onClick={() => openUrl(syncUrl)}
+                  className="focus-ring cursor-pointer mt-1.5 inline-flex items-center gap-1.5 text-xs text-accent-bright hover:underline"
+                >
+                  <IconExternalLink className="w-3 h-3" />
+                  {ts('sync_open_gist')}
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleSyncPush}
+                disabled={syncBusy !== null}
+                className="focus-ring cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-item border border-outline/50 hover:border-accent-dim hover:bg-raised text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <IconCloudArrowDown className="w-4 h-4" />
+                {syncBusy === 'push'
+                  ? ts('saving')
+                  : ts('sync_push_btn')}
+              </button>
+              <button
+                type="button"
+                onClick={handleSyncPull}
+                disabled={syncBusy !== null}
+                className="focus-ring cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-item bg-accent hover:bg-accent-bright text-sm font-medium text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {syncBusy === 'pull'
+                  ? ts('saving')
+                  : ts('sync_pull_btn')}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Subsection>
     </div>
   )
 
@@ -2427,6 +2609,82 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
         <div className="rounded-item bg-overlay px-4 py-4 flex items-center justify-between gap-6">
           <div className="min-w-0">
             <h3 className="text-sm font-medium text-ink">
+              {ts('workspace_backup_title')}
+            </h3>
+            <p className="text-xs text-muted mt-1.5 leading-relaxed">
+              {ts('workspace_backup_desc')}
+            </p>
+            {wsBackupMessage && (
+              <span className="text-xs text-muted block mt-1.5">
+                {wsBackupMessage}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleExportWorkspace}
+              disabled={wsBackupBusy !== null}
+              className="focus-ring cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-item border border-outline/50 hover:border-accent-dim hover:bg-raised text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {wsBackupBusy === 'export'
+                ? ts('saving')
+                : ts('workspace_backup_export_btn')}
+            </button>
+            <button
+              type="button"
+              onClick={handleImportWorkspace}
+              disabled={wsBackupBusy !== null}
+              className="focus-ring cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-item border border-outline/50 hover:border-accent-dim hover:bg-raised text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {wsBackupBusy === 'import'
+                ? ts('saving')
+                : ts('workspace_backup_restore_btn')}
+            </button>
+          </div>
+        </div>
+
+        <div className="rounded-item bg-overlay px-4 py-4 flex items-center justify-between gap-6">
+          <div className="min-w-0">
+            <h3 className="text-sm font-medium text-ink">
+              {ts('app_backup_title')}
+            </h3>
+            <p className="text-xs text-muted mt-1.5 leading-relaxed">
+              {ts('app_backup_desc')}
+            </p>
+            {appBackupMessage && (
+              <span className="text-xs text-muted block mt-1.5">
+                {appBackupMessage}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleExportApp}
+              disabled={appBackupBusy !== null}
+              className="focus-ring cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-item border border-outline/50 hover:border-accent-dim hover:bg-raised text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {appBackupBusy === 'export'
+                ? ts('saving')
+                : ts('app_backup_export_btn')}
+            </button>
+            <button
+              type="button"
+              onClick={handleImportApp}
+              disabled={appBackupBusy !== null}
+              className="focus-ring cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-item border border-outline/50 hover:border-accent-dim hover:bg-raised text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {appBackupBusy === 'import'
+                ? ts('saving')
+                : ts('app_backup_restore_btn')}
+            </button>
+          </div>
+        </div>
+
+        <div className="rounded-item bg-overlay px-4 py-4 flex items-center justify-between gap-6">
+          <div className="min-w-0">
+            <h3 className="text-sm font-medium text-ink">
               {ts('reset_settings')}
             </h3>
             <p className="text-xs text-muted mt-1.5 leading-relaxed">
@@ -2557,6 +2815,13 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
               </button>
             )
           })}
+          {appVersion && (
+            <div className="mt-auto pt-6 pl-1">
+              <span className="text-[10px] font-mono text-muted/50 select-none">
+                {ts('app_version_label', { version: appVersion })}
+              </span>
+            </div>
+          )}
         </nav>
 
         <div

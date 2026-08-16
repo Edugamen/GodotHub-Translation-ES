@@ -16,6 +16,7 @@ import { Dropdown } from '../ui/Dropdown'
 import { Tooltip } from '../reusables/Tooltip'
 import { OpenButton } from '../reusables/OpenButton'
 import {
+  IconCheckCircle,
   IconChevronDown,
   IconChevronRight,
   IconClock,
@@ -47,6 +48,8 @@ interface ProjectCardProps {
   onTagClick?: (tag: string) => void
   onShowGitSidebar?: () => void
   activeTag?: string | null
+  selected?: boolean
+  onToggleSelect?: () => void
 }
 
 function isSameLocalDay(aMs: number, bMs: number): boolean {
@@ -94,6 +97,8 @@ export function ProjectCard({
   onTagClick,
   onShowGitSidebar,
   activeTag,
+  selected = false,
+  onToggleSelect,
 }: ProjectCardProps) {
   const { t } = useTranslation('common')
   const { settings } = useSettings()
@@ -261,8 +266,36 @@ export function ProjectCard({
     <div
       onMouseEnter={() => setCardHovered(true)}
       onMouseLeave={() => setCardHovered(false)}
-      className="group relative flex items-end gap-3.5 p-3.5 rounded-item bg-overlay border border-outline/50 hover:bg-raised hover:border-accent-dim/60 transition-colors"
+      className={`group relative flex items-end gap-3.5 p-3.5 rounded-item border transition-colors ${
+        selected
+          ? 'bg-accent/5 border-accent ring-1 ring-accent/30'
+          : 'bg-overlay border-outline/50 hover:bg-raised hover:border-accent-dim/60'
+      }`}
     >
+      {onToggleSelect && (
+        <div className="absolute top-2.5 left-2.5 z-20">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onToggleSelect()
+            }}
+            aria-label={
+              selected ? t('project_deselect_aria') : t('project_select_aria')
+            }
+            aria-pressed={selected}
+            className={`focus-ring cursor-pointer w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-150 ${
+              selected
+                ? 'bg-accent border-accent text-white scale-100 opacity-100'
+                : 'border-muted/40 bg-black/20 opacity-100 hover:border-accent/60 hover:scale-105'
+            }`}
+          >
+            {selected && (
+              <IconCheckCircle className="w-3.5 h-3.5" fill="currentColor" />
+            )}
+          </button>
+        </div>
+      )}
       <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-item isolate">
         {icon ? (
           <img
@@ -295,7 +328,7 @@ export function ProjectCard({
         )}
       </div>
 
-      <div className="min-w-0 flex-1">
+      <div className={`min-w-0 flex-1 ${onToggleSelect ? 'pl-8' : ''}`}>
         <div className="flex items-center gap-1.5 flex-wrap min-w-0">
           <h3 className="font-display font-medium text-xl text-ink truncate">
             {displayName}
