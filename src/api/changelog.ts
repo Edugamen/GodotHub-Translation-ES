@@ -1,8 +1,15 @@
 import { invoke } from '@tauri-apps/api/core'
-import type { ChangelogEntry, ChangelogNote } from '../types'
+import type {
+  ChangelogDraft,
+  ChangelogEntry,
+  ChangelogNote,
+} from '../types'
 
 export const changelogApi = {
   list: () => invoke<ChangelogEntry[]>('list_changelog_entries'),
+  listGitTags: () => invoke<string[]>('list_git_tags'),
+  generateDraft: (from: string, to: string) =>
+    invoke<ChangelogDraft>('generate_changelog_draft', { from, to }),
   add: (
     version: string,
     date: string,

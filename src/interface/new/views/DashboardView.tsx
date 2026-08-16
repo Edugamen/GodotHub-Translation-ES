@@ -33,6 +33,7 @@ import {
   IconCopy,
   IconFolder,
   IconFolderPlus,
+  IconGamepad,
   IconGear,
   IconGitBranch,
   IconHardDrive,
@@ -67,7 +68,7 @@ import {
   toggleTileTall,
   type DashboardTileId,
 } from '../lib/dashboardSections'
-import type { GitStatus, Project } from '../../../types'
+import type { GitStatus, Project, TimeInsights } from '../../../types'
 
 function dispatch(event: string, detail?: unknown) {
   window.dispatchEvent(
@@ -601,6 +602,134 @@ function ActivityChart({
           </div>
         )
       })}
+    </div>
+  )
+}
+
+function weekdayName(weekday: number): string {
+  // weekday: 0 = Monday .. 6 = Sunday. Jan 5, 2026 is a Monday.
+  return new Date(2026, 0, 5 + weekday).toLocaleDateString(undefined, {
+    weekday: 'long',
+  })
+}
+
+function InsightsTile({ active = true }: { active?: boolean }) {
+  const { t: tc } = useTranslation('common')
+  const [insights, setInsights] = useState<TimeInsights | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!active) return
+    let cancelled = false
+    api
+      .getTimeInsights()
+      .then((d) => {
+        if (cancelled) return
+        setInsights(d)
+        setLoading(false)
+      })
+      .catch(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [active])
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-2 gap-2 animate-pulse">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-20 rounded-item bg-raised" />
+        ))}
+      </div>
+    )
+  }
+
+  if (!insights || insights.total_seconds === 0) {
+    return <EmptyCard text={tc('dashboard_insights_empty')} />
+  }
+
+  const delta =
+    insights.last_month_seconds > 0
+      ? Math.round(
+          ((insights.this_month_seconds - insights.last_month_seconds) /
+            insights.last_month_seconds) *
+            100,
+        )
+      : null
+
+  const stats: Array<{
+    label: string
+    value: string
+    sub?: string
+    Icon: React.ComponentType<{ className?: string }>
+    accent: string
+  }> = [
+    {
+      label: tc('dashboard_insights_longest_streak'),
+      value: tc('dashboard_insights_days', {
+        count: insights.longest_streak_days,
+      }),
+      Icon: IconRocket,
+      accent: 'text-amber',
+    },
+    {
+      label: tc('dashboard_insights_current_streak'),
+      value: tc('dashboard_insights_days', {
+        count: insights.current_streak_days,
+      }),
+      Icon: IconClock,
+      accent: 'text-mint',
+    },
+    {
+      label: tc('dashboard_insights_productive_day'),
+      value:
+        insights.most_productive_weekday === null
+          ? '—'
+          : weekdayName(insights.most_productive_weekday),
+      Icon: IconGamepad,
+      accent: 'text-accent-bright',
+    },
+    {
+      label: tc('dashboard_insights_this_month'),
+      value: formatDuration(insights.this_month_seconds * 1000),
+      sub:
+        delta === null
+          ? undefined
+          : delta >= 0
+            ? tc('dashboard_insights_delta_up', { pct: delta })
+            : tc('dashboard_insights_delta_down', { pct: Math.abs(delta) }),
+      Icon: IconArrowUpDown,
+      accent: delta !== null && delta < 0 ? 'text-danger' : 'text-violet-400',
+    },
+  ]
+
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {stats.map((s) => (
+        <div
+          key={s.label}
+          className="flex items-start gap-2.5 p-3 rounded-item bg-overlay border border-outline/50"
+        >
+          <span className="w-7 h-7 shrink-0 rounded-btn bg-raised border border-outline/50 flex items-center justify-center">
+            <s.Icon className={`w-3.5 h-3.5 ${s.accent}`} />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-[10px] font-semibold uppercase tracking-wider text-muted/60 truncate">
+              {s.label}
+            </span>
+            <span className="block text-sm font-semibold text-ink truncate mt-0.5">
+              {s.value}
+            </span>
+            {s.sub && (
+              <span className="block text-[10px] text-muted/60 truncate mt-0.5">
+                {s.sub}
+              </span>
+            )}
+          </span>
+        </div>
+      ))}
     </div>
   )
 }
@@ -1169,6 +1298,7 @@ export function DashboardView({
   const tileTitle: Record<DashboardTileId, string> = {
     weekly: activityTitle[activityRange],
     top_time: tc('dashboard_top_time'),
+    insights: tc('dashboard_insights'),
     git: tc('dashboard_git'),
     storage: tc('dashboard_storage'),
     categories: tc('dashboard_categories'),
@@ -1346,6 +1476,16 @@ export function DashboardView({
             action={controls}
           >
             <TopProjectsByTime projects={projects} tall={tall} spanning={spanning} />
+          </Section>
+        )
+      case 'insights':
+        return (
+          <Section
+            title={tc('dashboard_insights')}
+            icon={<IconRocket className="w-3.5 h-3.5" />}
+            action={controls}
+          >
+            <InsightsTile active={active} />
           </Section>
         )
       case 'git':

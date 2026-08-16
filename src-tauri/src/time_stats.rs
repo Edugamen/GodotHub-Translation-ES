@@ -2,7 +2,6 @@ use crate::persist;
 use chrono::{Datelike, Duration};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
-use std::path::PathBuf;
 use tauri::AppHandle;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -21,16 +20,20 @@ pub struct TimeStatsStore {
     pub daily: HashMap<String, BTreeMap<String, u64>>,
 }
 
-fn stats_file(app: &AppHandle) -> PathBuf {
-    crate::workspace::active_workspace_dir(app).join("time_tracking.json")
+pub fn read_stats_from(dir: &std::path::Path) -> TimeStatsStore {
+    persist::read_json(&dir.join("time_tracking.json"))
 }
 
 pub fn read_stats(app: &AppHandle) -> TimeStatsStore {
-    persist::read_json(&stats_file(app))
+    read_stats_from(&crate::workspace::active_workspace_dir(app))
+}
+
+pub fn write_stats_to(dir: &std::path::Path, store: &TimeStatsStore) {
+    let _ = persist::write_json(&dir.join("time_tracking.json"), store);
 }
 
 pub fn write_stats(app: &AppHandle, store: &TimeStatsStore) {
-    let _ = persist::write_json(&stats_file(app), store);
+    write_stats_to(&crate::workspace::active_workspace_dir(app), store);
 }
 
 pub fn record_session(app: &AppHandle, project_id: &str, start_ms: u64, seconds: u64) {
@@ -155,6 +158,104 @@ pub fn get_activity(app: AppHandle, range: String) -> Vec<(String, u64)> {
             }
             out
         }
+    }
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct TimeInsights {
+    pub total_seconds: u64,
+    pub longest_streak_days: u32,
+    pub current_streak_days: u32,
+    /// Weekday with the most tracked time, 0 = Monday .. 6 = Sunday.
+    pub most_productive_weekday: Option<u32>,
+    pub this_month_seconds: u64,
+    pub last_month_seconds: u64,
+}
+
+/// Aggregates the tracked-time store into streak / productivity insights.
+#[tauri::command]
+pub fn get_time_insights(app: AppHandle) -> TimeInsights {
+    let store = read_stats(&app);
+    let now = chrono::Local::now();
+
+    // Aggregate every project's daily buckets into one date -> seconds map.
+    let mut by_date: std::collections::BTreeMap<chrono::NaiveDate, u64> =
+        std::collections::BTreeMap::new();
+    for by_project in store.daily.values() {
+        for (date, secs) in by_project {
+            if let Ok(d) = chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d") {
+                *by_date.entry(d).or_insert(0) += secs;
+            }
+        }
+    }
+
+    let mut total_seconds = 0u64;
+    let mut weekday_totals = [0u64; 7];
+    let mut this_month_seconds = 0u64;
+    let mut last_month_seconds = 0u64;
+    let (lm_year, lm_month) = if now.month() == 1 {
+        (now.year() - 1, 12)
+    } else {
+        (now.year(), now.month() - 1)
+    };
+    for (d, secs) in &by_date {
+        total_seconds += secs;
+        weekday_totals[d.weekday().num_days_from_monday() as usize] += secs;
+        if d.year() == now.year() && d.month() == now.month() {
+            this_month_seconds += secs;
+        }
+        if d.year() == lm_year && d.month() == lm_month {
+            last_month_seconds += secs;
+        }
+    }
+
+    let mut most_productive_weekday = None;
+    let mut best = 0u64;
+    for (i, v) in weekday_totals.iter().enumerate() {
+        if *v > best {
+            best = *v;
+            most_productive_weekday = Some(i as u32);
+        }
+    }
+
+    // Longest run of consecutive days (with tracked time).
+    let mut longest_streak_days = 0u32;
+    let mut run = 0u32;
+    let mut prev: Option<chrono::NaiveDate> = None;
+    for (d, secs) in &by_date {
+        if *secs == 0 {
+            continue;
+        }
+        run = match prev {
+            Some(p) if d.signed_duration_since(p).num_days() == 1 => run + 1,
+            _ => 1,
+        };
+        prev = Some(*d);
+        if run > longest_streak_days {
+            longest_streak_days = run;
+        }
+    }
+
+    // Current streak: consecutive days with time, ending today or yesterday.
+    let today = now.date_naive();
+    let mut current_streak_days = 0u32;
+    let mut cursor = if by_date.get(&today).copied().unwrap_or(0) > 0 {
+        today
+    } else {
+        today - Duration::days(1)
+    };
+    while by_date.get(&cursor).copied().unwrap_or(0) > 0 {
+        current_streak_days += 1;
+        cursor = cursor - Duration::days(1);
+    }
+
+    TimeInsights {
+        total_seconds,
+        longest_streak_days,
+        current_streak_days,
+        most_productive_weekday,
+        this_month_seconds,
+        last_month_seconds,
     }
 }
 

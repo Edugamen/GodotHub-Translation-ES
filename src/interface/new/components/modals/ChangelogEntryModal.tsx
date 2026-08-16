@@ -13,6 +13,11 @@ import type { ChangelogEntry, ChangelogNote } from '../../../../types'
 
 interface Props {
   entry?: ChangelogEntry
+  initial?: {
+    version?: string
+    date?: string
+    notes?: ChangelogNote[]
+  }
   onClose: () => void
   onSave: (
     version: string,
@@ -40,13 +45,15 @@ const CATEGORIES: {
 
 const todayIso = () => new Date().toISOString().slice(0, 10)
 
-export function ChangelogEntryModal({ entry, onClose, onSave }: Props) {
+export function ChangelogEntryModal({ entry, initial, onClose, onSave }: Props) {
   const { t } = useTranslation('common')
-  const [version, setVersion] = useState(entry?.version ?? '')
-  const [date, setDate] = useState(entry?.date ?? todayIso())
-  const [notes, setNotes] = useState<ChangelogNote[]>(
-    entry?.notes.length ? entry.notes : [{ category: 'add', text: '' }],
-  )
+  const [version, setVersion] = useState(entry?.version ?? initial?.version ?? '')
+  const [date, setDate] = useState(entry?.date ?? initial?.date ?? todayIso())
+  const [notes, setNotes] = useState<ChangelogNote[]>(() => {
+    if (entry?.notes.length) return entry.notes
+    if (initial?.notes?.length) return initial.notes
+    return [{ category: 'add', text: '' }]
+  })
   const [knownIssues, setKnownIssues] = useState<string[]>(
     entry?.known_issues?.length ? entry.known_issues : [],
   )

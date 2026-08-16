@@ -1,19 +1,23 @@
 use crate::error::AppResult;
 use crate::persist;
 use crate::models::AppSettings;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use tauri::{AppHandle, Manager};
 
-fn settings_file(app: &AppHandle) -> PathBuf {
-    crate::workspace::active_workspace_dir(app).join("settings.json")
+pub fn read_settings_from(dir: &Path) -> AppSettings {
+    persist::read_json(&dir.join("settings.json"))
 }
 
 pub fn read_settings(app: &AppHandle) -> AppSettings {
-    persist::read_json(&settings_file(app))
+    read_settings_from(&crate::workspace::active_workspace_dir(app))
+}
+
+pub fn write_settings_to(dir: &Path, settings: &AppSettings) -> AppResult<()> {
+    persist::write_json(&dir.join("settings.json"), settings)
 }
 
 pub fn write_settings(app: &AppHandle, settings: &AppSettings) -> AppResult<()> {
-    persist::write_json(&settings_file(app), settings)
+    write_settings_to(&crate::workspace::active_workspace_dir(app), settings)
 }
 
 #[tauri::command]

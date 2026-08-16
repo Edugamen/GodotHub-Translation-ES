@@ -1,4 +1,5 @@
 mod asset_library;
+mod backup;
 mod categories;
 mod changelog;
 mod error;
@@ -15,6 +16,7 @@ mod persist;
 mod projects;
 mod scan;
 mod settings;
+mod sync;
 mod templates;
 mod terminal;
 mod time_stats;
@@ -190,6 +192,7 @@ pub fn run() {
             godot_versions::pause_download,
             godot_versions::resume_download,
             godot_versions::cancel_download,
+            godot_versions::reorder_download_queue,
             godot_versions::list_installed_godot_versions,
             godot_versions::rename_godot_version,
             godot_versions::delete_godot_version,
@@ -225,6 +228,7 @@ pub fn run() {
             projects::export_project_stats,
             projects::import_project_stats,
             time_stats::get_activity,
+            time_stats::get_time_insights,
             categories::list_categories,
             categories::create_category,
             categories::update_category,
@@ -236,6 +240,12 @@ pub fn run() {
             settings::reset_settings,
             settings::export_settings,
             settings::import_settings,
+            backup::export_workspace_backup,
+            backup::import_workspace_backup,
+            backup::export_app_backup,
+            backup::import_app_backup,
+            sync::gist_sync_push,
+            sync::gist_sync_pull,
             settings::reset_app_data,
             get_os_username,
             workspace::list_workspaces,
@@ -267,6 +277,8 @@ pub fn run() {
             changelog::add_changelog_entry,
             changelog::update_changelog_entry,
             changelog::delete_changelog_entry,
+            changelog::list_git_tags,
+            changelog::generate_changelog_draft,
             updates::fetch_updates,
             install_mode::is_portable_install,
             git::clone_repo,

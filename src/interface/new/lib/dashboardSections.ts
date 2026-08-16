@@ -1,6 +1,7 @@
 export const DASHBOARD_TILE_IDS = [
   'weekly',
   'top_time',
+  'insights',
   'git',
   'storage',
   'categories',
@@ -55,6 +56,7 @@ export function moveTileId(
 export const TILE_LAYOUT_OPTIONS: Partial<Record<DashboardTileId, { span?: boolean; tall?: boolean }>> = {
   weekly: { span: true, tall: true },
   top_time: { span: true, tall: true },
+  insights: { span: true },
   git: { span: true, tall: true },
   storage: { span: true, tall: true },
   categories: { span: true, tall: true },

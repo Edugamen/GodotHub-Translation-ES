@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
+import { openUrl } from '@tauri-apps/plugin-opener'
 import { LANGUAGES } from '../../../i18n/languages'
 import { useSettings } from '../../../hooks/useSettings'
+import { useAppVersion } from '../../../hooks/useAppVersion'
 import { useWorkspaces } from '../../../hooks/useWorkspaces'
 import { useProjectsContext } from '../../../hooks/projectsContext'
+import { useCategoriesContext } from '../../../hooks/categoriesContext'
+import { LanguageFlag } from '../../new/components/reusables/LanguageFlag'
 import { registerPendingSave, flushPendingSave } from '../../../lib/pendingSave'
 import { DirList } from '../components/ui/DirList'
 import { Dropdown } from '../components/ui/Dropdown'
@@ -265,8 +269,10 @@ export function SettingsView({
 }: SettingsViewProps = {}) {
   const { t, i18n } = useTranslation('settings')
   const { settings, update, resetToDefaults, loaded } = useSettings()
+  const appVersion = useAppVersion()
   const { projects, refresh: refreshProjects } = useProjectsContext()
-  const { activeId } = useWorkspaces()
+  const { refresh: refreshCategories } = useCategoriesContext()
+  const { activeId, refresh: refreshWorkspaces } = useWorkspaces()
   const activeIdRef = useRef(activeId)
   activeIdRef.current = activeId
   const [current, setCurrent] = useState<AppSettings | null>(null)
@@ -280,6 +286,15 @@ export function SettingsView({
   const [confirmingRestart, setConfirmingRestart] = useState(false)
   const [settingsBusy, setSettingsBusy] = useState<'export' | 'import' | null>(null)
   const [settingsMessage, setSettingsMessage] = useState<string | null>(null)
+  const [wsBackupBusy, setWsBackupBusy] = useState<'export' | 'import' | null>(null)
+  const [wsBackupMessage, setWsBackupMessage] = useState<string | null>(null)
+  const [appBackupBusy, setAppBackupBusy] = useState<
+    'export' | 'import' | null
+  >(null)
+  const [appBackupMessage, setAppBackupMessage] = useState<string | null>(null)
+  const [syncBusy, setSyncBusy] = useState<'push' | 'pull' | null>(null)
+  const [syncMessage, setSyncMessage] = useState<string | null>(null)
+  const [syncUrl, setSyncUrl] = useState<string | null>(null)
   const [tab, setTab] = useState<SettingsTab>('storage')
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
   const [settingsSearchQuery, setSettingsSearchQuery] = useState('')
@@ -316,6 +331,106 @@ export function SettingsView({
       setSettingsMessage(String(e))
     } finally {
       setSettingsBusy(null)
+    }
+  }
+
+  const handleExportWorkspace = async () => {
+    setWsBackupBusy('export')
+    setWsBackupMessage(null)
+    try {
+      const path = await api.pickSavePath('godothub-workspace-backup.json')
+      if (!path) return
+      await api.exportWorkspaceBackup(path)
+      setWsBackupMessage(t('workspace_backup_exported'))
+    } catch (e) {
+      setWsBackupMessage(String(e))
+    } finally {
+      setWsBackupBusy(null)
+    }
+  }
+
+  const handleImportWorkspace = async () => {
+    setWsBackupBusy('import')
+    setWsBackupMessage(null)
+    try {
+      const path = await api.pickDataFile()
+      if (!path) return
+      const imported = await api.importWorkspaceBackup(path)
+      await update(imported)
+      await refreshProjects()
+      await refreshCategories()
+      window.dispatchEvent(new Event('app:refresh-templates'))
+      setWsBackupMessage(t('workspace_backup_imported'))
+    } catch (e) {
+      setWsBackupMessage(String(e))
+    } finally {
+      setWsBackupBusy(null)
+    }
+  }
+
+  const handleExportApp = async () => {
+    setAppBackupBusy('export')
+    setAppBackupMessage(null)
+    try {
+      const path = await api.pickSavePath('godothub-full-backup.json')
+      if (!path) return
+      await api.exportAppBackup(path)
+      setAppBackupMessage(t('app_backup_exported'))
+    } catch (e) {
+      setAppBackupMessage(String(e))
+    } finally {
+      setAppBackupBusy(null)
+    }
+  }
+
+  const handleImportApp = async () => {
+    setAppBackupBusy('import')
+    setAppBackupMessage(null)
+    try {
+      const path = await api.pickDataFile()
+      if (!path) return
+      const imported = await api.importAppBackup(path)
+      await update(imported)
+      await refreshProjects()
+      await refreshCategories()
+      await refreshWorkspaces()
+      window.dispatchEvent(new Event('app:refresh-templates'))
+      setAppBackupMessage(t('app_backup_imported'))
+    } catch (e) {
+      setAppBackupMessage(String(e))
+    } finally {
+      setAppBackupBusy(null)
+    }
+  }
+
+  const handleSyncPush = async () => {
+    setSyncBusy('push')
+    setSyncMessage(null)
+    try {
+      const res = await api.gistSyncPush()
+      setSyncUrl(res.gist_url)
+      setSyncMessage(t('sync_push_done'))
+    } catch (e) {
+      setSyncMessage(String(e))
+    } finally {
+      setSyncBusy(null)
+    }
+  }
+
+  const handleSyncPull = async () => {
+    setSyncBusy('pull')
+    setSyncMessage(null)
+    try {
+      const imported = await api.gistSyncPull()
+      await update(imported)
+      await refreshProjects()
+      await refreshCategories()
+      window.dispatchEvent(new Event('app:refresh-templates'))
+      setSyncMessage(t('sync_pull_done'))
+    } catch (e) {
+      setSyncMessage(String(e))
+    } finally {
+      setSyncBusy(null)
     }
   }
 
@@ -747,25 +862,32 @@ export function SettingsView({
         )}
       </div>
 
-      <div className="inline-flex self-start rounded-lg border border-line bg-raised p-1 gap-1">
-        {TABS.map(({ id }) => {
-          const label = t(id)
-          return (
-            <motion.button
-              key={id}
-              whileTap={{ scale: 0.96 }}
-              onClick={() => setTab(id)}
-              className={
-                'focus-ring cursor-pointer px-4 py-1.5 rounded-md text-xs font-medium transition-colors ' +
-                (tab === id
-                  ? 'bg-accent text-white shadow-sm'
-                  : 'text-muted hover:text-ink hover:bg-overlay/60')
-              }
-            >
-              {label}
-            </motion.button>
-          )
-        })}
+      <div className="flex flex-col gap-1.5 self-start">
+        <div className="inline-flex self-start rounded-lg border border-line bg-raised p-1 gap-1">
+          {TABS.map(({ id }) => {
+            const label = t(id)
+            return (
+              <motion.button
+                key={id}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => setTab(id)}
+                className={
+                  'focus-ring cursor-pointer px-4 py-1.5 rounded-md text-xs font-medium transition-colors ' +
+                  (tab === id
+                    ? 'bg-accent text-white shadow-sm'
+                    : 'text-muted hover:text-ink hover:bg-overlay/60')
+                }
+              >
+                {label}
+              </motion.button>
+            )
+          })}
+        </div>
+        {appVersion && (
+          <span className="text-[11px] font-mono text-muted/50 pl-1 select-none">
+            {t('app_version_label', { version: appVersion })}
+          </span>
+        )}
       </div>
 
       <AnimatePresence mode="wait">
@@ -1335,7 +1457,7 @@ export function SettingsView({
                   </span>
                 </span>
                 <div className="inline-flex self-start rounded-lg border border-line bg-raised p-1 gap-1">
-                  {LANGUAGES.map(({ value, label }) => {
+                  {LANGUAGES.map(({ value, label, country }) => {
                     const active = i18n.language === value || i18n.language.startsWith(value.split('-')[0])
                     return (
                       <motion.button
@@ -1346,12 +1468,13 @@ export function SettingsView({
                           setField('language', value)
                         }}
                         className={
-                          'focus-ring cursor-pointer px-3.5 py-1.5 rounded-md text-xs font-medium transition-colors ' +
+                          'focus-ring cursor-pointer inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-medium transition-colors ' +
                           (active
                             ? 'bg-accent text-white'
                             : 'text-muted hover:text-ink hover:bg-overlay/60')
                         }
                       >
+                        <LanguageFlag country={country} />
                         {label}
                       </motion.button>
                     )
@@ -2389,6 +2512,51 @@ export function SettingsView({
             </div>
             </div>
 
+            <div data-section-id="advanced-sync">
+            <div className="rounded-xl border border-line bg-surface/60 p-6 flex items-center justify-between gap-6">
+              <div className="min-w-0">
+                <h3 className="font-display font-semibold">{t('sync_title')}</h3>
+                <p className="text-xs text-muted mt-1.5 leading-relaxed">
+                  {t('sync_desc')}
+                </p>
+                {syncMessage && (
+                  <p className="text-xs text-muted block mt-1.5 break-words">
+                    {syncMessage}
+                  </p>
+                )}
+                {syncUrl && (
+                  <button
+                    type="button"
+                    onClick={() => openUrl(syncUrl)}
+                    className="focus-ring cursor-pointer mt-1.5 inline-flex items-center gap-1.5 text-xs text-accent-bright hover:underline"
+                  >
+                    {t('sync_open_gist')}
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <motion.button
+                  whileHover={{ y: -1 }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={handleSyncPush}
+                  disabled={syncBusy !== null}
+                  className="focus-ring cursor-pointer shrink-0 px-4 py-2.5 rounded-lg border border-line text-muted hover:text-ink hover:bg-raised text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {syncBusy === 'push' ? t('saving') : t('sync_push_btn')}
+                </motion.button>
+                <motion.button
+                  whileHover={{ y: -1 }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={handleSyncPull}
+                  disabled={syncBusy !== null}
+                  className="focus-ring cursor-pointer shrink-0 px-4 py-2.5 rounded-lg bg-accent hover:bg-accent-bright text-sm font-medium text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {syncBusy === 'pull' ? t('saving') : t('sync_pull_btn')}
+                </motion.button>
+              </div>
+            </div>
+            </div>
+
             <div data-section-id="advanced-backup">
             <div className="rounded-xl border border-line bg-surface/60 p-6 flex items-center justify-between gap-6">
               <div className="min-w-0">
@@ -2424,6 +2592,86 @@ export function SettingsView({
                   {settingsBusy === 'import'
                     ? t('saving')
                     : t('import_settings_btn')}
+                </motion.button>
+              </div>
+            </div>
+            </div>
+
+            <div data-section-id="advanced-workspace-backup">
+            <div className="rounded-xl border border-line bg-surface/60 p-6 flex items-center justify-between gap-6">
+              <div className="min-w-0">
+                <h3 className="font-display font-semibold">{t('workspace_backup_title')}</h3>
+                <p className="text-xs text-muted mt-1.5 leading-relaxed">
+                  {t('workspace_backup_desc')}
+                </p>
+                {wsBackupMessage && (
+                  <span className="text-xs text-muted block mt-1.5">
+                    {wsBackupMessage}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <motion.button
+                  whileHover={{ y: -1 }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={handleExportWorkspace}
+                  disabled={wsBackupBusy !== null}
+                  className="focus-ring cursor-pointer shrink-0 px-4 py-2.5 rounded-lg border border-line text-muted hover:text-ink hover:bg-raised text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {wsBackupBusy === 'export'
+                    ? t('saving')
+                    : t('workspace_backup_export_btn')}
+                </motion.button>
+                <motion.button
+                  whileHover={{ y: -1 }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={handleImportWorkspace}
+                  disabled={wsBackupBusy !== null}
+                  className="focus-ring cursor-pointer shrink-0 px-4 py-2.5 rounded-lg border border-line text-muted hover:text-ink hover:bg-raised text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {wsBackupBusy === 'import'
+                    ? t('saving')
+                    : t('workspace_backup_restore_btn')}
+                </motion.button>
+              </div>
+            </div>
+            </div>
+
+            <div data-section-id="advanced-app-backup">
+            <div className="rounded-xl border border-line bg-surface/60 p-6 flex items-center justify-between gap-6">
+              <div className="min-w-0">
+                <h3 className="font-display font-semibold">{t('app_backup_title')}</h3>
+                <p className="text-xs text-muted mt-1.5 leading-relaxed">
+                  {t('app_backup_desc')}
+                </p>
+                {appBackupMessage && (
+                  <span className="text-xs text-muted block mt-1.5">
+                    {appBackupMessage}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <motion.button
+                  whileHover={{ y: -1 }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={handleExportApp}
+                  disabled={appBackupBusy !== null}
+                  className="focus-ring cursor-pointer shrink-0 px-4 py-2.5 rounded-lg border border-line text-muted hover:text-ink hover:bg-raised text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {appBackupBusy === 'export'
+                    ? t('saving')
+                    : t('app_backup_export_btn')}
+                </motion.button>
+                <motion.button
+                  whileHover={{ y: -1 }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={handleImportApp}
+                  disabled={appBackupBusy !== null}
+                  className="focus-ring cursor-pointer shrink-0 px-4 py-2.5 rounded-lg border border-line text-muted hover:text-ink hover:bg-raised text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {appBackupBusy === 'import'
+                    ? t('saving')
+                    : t('app_backup_restore_btn')}
                 </motion.button>
               </div>
             </div>

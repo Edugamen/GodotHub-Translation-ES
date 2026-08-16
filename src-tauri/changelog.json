@@ -749,5 +749,13 @@
     ],
     "known_issues": [],
     "created_at": 1786723045
+  },
+  {
+    "id": "7107d2e7-01bd-49d1-a52a-6abf840019f6",
+    "version": "v1.4.0",
+    "date": "2026-08-16",
+    "notes": [],
+    "known_issues": [],
+    "created_at": 1786899835
   }
 ]

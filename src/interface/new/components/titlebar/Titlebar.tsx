@@ -130,7 +130,7 @@ export function Titlebar({ minimal = false }: { minimal?: boolean }) {
                 window.dispatchEvent(new Event('app:report-bug'))
               }
               aria-label={t('report_a_bug')}
-              className="focus-ring cursor-pointer w-8 h-8 flex items-center justify-center rounded-item text-muted hover:text-danger hover:bg-danger/10 transition-colors"
+              className="focus-ring cursor-pointer w-6 h-6 flex items-center justify-center rounded-item text-muted hover:text-danger hover:bg-danger/10 transition-colors"
             >
               <IconBug className="w-3.5 h-3.5" />
             </motion.button>
