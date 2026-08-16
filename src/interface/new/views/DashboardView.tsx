@@ -456,7 +456,7 @@ function StatCard({
       </span>
       <span
         aria-hidden="true"
-        className={`relative z-10 mt-2.5 block h-1 w-8 rounded-full bg-gradient-to-r ${grad} transition-all duration-300 group-hover:w-12`}
+        className={`relative z-10 mt-2.5 block h-1 w-8 rounded-full bg-linear-to-r ${grad} transition-all duration-300 group-hover:w-12`}
       />
 
       <span className="relative z-10 mt-auto pt-3 inline-flex items-center gap-1 text-[10px] font-medium text-muted/40 transition-colors duration-200 group-hover:text-muted">

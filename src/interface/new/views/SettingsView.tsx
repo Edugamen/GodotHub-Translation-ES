@@ -65,6 +65,7 @@ import {
   IconGitBranch,
   IconPlus,
   IconTrash,
+  IconX,
 } from '../lib/icons'
 import type { IconProps } from '../lib/icons'
 import type { AppSettings, GitAuthState } from '../../../types'
@@ -214,7 +215,7 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
   const { t } = useTranslation('nav')
   const { t: ts, i18n } = useTranslation('settings')
   const { settings, update, resetToDefaults } = useSettings()
-  const { refresh: refreshProjects } = useProjectsContext()
+  const { projects, refresh: refreshProjects } = useProjectsContext()
   const [cat, setCat] = useState<SettingsCat>('appearance')
   const [presetModal, setPresetModal] = useState<'light' | 'dark' | null>(null)
   const [confirmingUiSwitch, setConfirmingUiSwitch] = useState<boolean | null>(null)
@@ -1859,6 +1860,256 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
               </p>
             </div>
           )}
+        </div>
+      </Subsection>
+
+      <Subsection
+        id="integrations-discord"
+        title={ts('discord_rpc_label')}
+        description={ts('discord_rpc_desc')}
+        searchText={`${ts('discord_rpc_label')} ${ts('discord_rpc_desc')} ${ts('discord_app_id_label')} ${ts('discord_app_id_desc')} ${ts('discord_developer_portal')} ${ts('discord_show_projects_label')} ${ts('discord_show_projects_desc')} ${ts('discord_excluded_label')} ${ts('discord_excluded_desc')} ${ts('discord_custom_label')} ${ts('discord_custom_desc')}`}
+        query={searchQuery}
+        onMatch={reportMatch}
+      >
+        <div className="flex flex-col gap-5">
+          <SettingRow label={ts('discord_rpc_label')}>
+            <Toggle
+              checked={settings.discord_rpc_enabled}
+              onChange={(checked) =>
+                update({ ...settings, discord_rpc_enabled: checked })
+              }
+              label={ts('discord_rpc_label')}
+            />
+          </SettingRow>
+
+          <div className="flex flex-col gap-2.5">
+            <span className="text-xs font-medium text-muted">
+              {ts('discord_app_id_label')}
+            </span>
+            <input
+              type="text"
+              value={settings.discord_app_id ?? ''}
+              onChange={(e) =>
+                update({ ...settings, discord_app_id: e.target.value || null })
+              }
+              placeholder={ts('discord_app_id_placeholder')}
+              className="focus-ring w-full bg-base border border-outline/50 rounded-btn px-3.5 py-2.5 text-sm font-mono focus:border-accent-dim transition-colors"
+            />
+            {!settings.discord_app_id?.trim() && (
+              <span className="text-[11px] text-mint font-medium">
+                {ts('discord_builtin_hint')}
+              </span>
+            )}
+            <p className="text-[11px] text-muted leading-relaxed">
+              {ts('discord_app_id_desc')}{' '}
+              <a
+                href="https://discord.com/developers/applications"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent hover:text-accent-bright underline underline-offset-2"
+              >
+                {ts('discord_developer_portal')}
+              </a>
+              .
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2.5 pt-5 border-t border-line">
+            <SettingRow label={ts('discord_show_projects_label')}>
+              <Toggle
+                checked={settings.discord_rpc_show_projects}
+                onChange={(checked) =>
+                  update({ ...settings, discord_rpc_show_projects: checked })
+                }
+                label={ts('discord_show_projects_label')}
+              />
+            </SettingRow>
+            <p className="text-[11px] text-muted leading-relaxed">
+              {ts('discord_show_projects_desc')}
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2.5 pt-5 border-t border-line">
+            <span className="text-xs font-medium text-muted">
+              {ts('discord_excluded_label')}
+            </span>
+            <p className="text-[11px] text-muted leading-relaxed">
+              {ts('discord_excluded_desc')}
+            </p>
+            <Dropdown
+              trigger={({ toggle }) => (
+                <button
+                  type="button"
+                  onClick={toggle}
+                  className="focus-ring cursor-pointer self-start inline-flex items-center gap-1.5 h-8 px-4 rounded-item border border-outline/50 text-muted hover:text-ink hover:border-accent-dim hover:bg-raised text-xs font-medium transition-colors"
+                >
+                  <IconPlus className="w-3.5 h-3.5" />
+                  {ts('discord_exclude_project')}
+                </button>
+              )}
+              items={projects
+                .filter(
+                  (p) =>
+                    !settings.discord_rpc_excluded_projects.includes(p.id),
+                )
+                .map((p) => ({
+                  key: p.id,
+                  label: p.name,
+                  onClick: () =>
+                    update({
+                      ...settings,
+                      discord_rpc_excluded_projects: [
+                        ...settings.discord_rpc_excluded_projects,
+                        p.id,
+                      ],
+                    }),
+                }))}
+            />
+            {settings.discord_rpc_excluded_projects.length > 0 ? (
+              <div className="flex flex-col gap-1.5">
+                {settings.discord_rpc_excluded_projects.map((id) => {
+                  const proj = projects.find((p) => p.id === id)
+                  return (
+                    <div
+                      key={id}
+                      className="flex items-center justify-between gap-3 rounded-item bg-raised border border-line px-3 py-2"
+                    >
+                      <span className="text-xs text-ink truncate">
+                        {proj?.name ?? id}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          update({
+                            ...settings,
+                            discord_rpc_excluded_projects:
+                              settings.discord_rpc_excluded_projects.filter(
+                                (x) => x !== id,
+                              ),
+                          })
+                        }
+                        aria-label={ts('discord_excluded_remove')}
+                        className="focus-ring cursor-pointer shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-muted hover:text-danger hover:bg-danger/10 transition-colors"
+                      >
+                        <IconX className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="text-[11px] text-muted/70">
+                {ts('discord_excluded_empty')}
+              </p>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-2.5 pt-5 border-t border-line">
+            <span className="text-xs font-medium text-muted">
+              {ts('discord_custom_label')}
+            </span>
+            <p className="text-[11px] text-muted leading-relaxed">
+              {ts('discord_custom_desc')}
+            </p>
+            <Dropdown
+              trigger={({ toggle }) => (
+                <button
+                  type="button"
+                  onClick={toggle}
+                  className="focus-ring cursor-pointer self-start inline-flex items-center gap-1.5 h-8 px-4 rounded-item border border-outline/50 text-muted hover:text-ink hover:border-accent-dim hover:bg-raised text-xs font-medium transition-colors"
+                >
+                  <IconPlus className="w-3.5 h-3.5" />
+                  {ts('discord_custom_add')}
+                </button>
+              )}
+              items={projects
+                .filter(
+                  (p) =>
+                    !settings.discord_rpc_project_presences.some(
+                      (pr) => pr.id === p.id,
+                    ) &&
+                    !settings.discord_rpc_excluded_projects.includes(p.id),
+                )
+                .map((p) => ({
+                  key: p.id,
+                  label: p.name,
+                  onClick: () =>
+                    update({
+                      ...settings,
+                      discord_rpc_project_presences: [
+                        ...settings.discord_rpc_project_presences,
+                        { id: p.id, details: null, state: null },
+                      ],
+                    }),
+                }))}
+            />
+            {settings.discord_rpc_project_presences.length > 0 && (
+              <div className="flex flex-col gap-2">
+                {settings.discord_rpc_project_presences.map((pr) => {
+                  const proj = projects.find((p) => p.id === pr.id)
+                  const setPresence = (
+                    field: 'details' | 'state',
+                    value: string,
+                  ) =>
+                    update({
+                      ...settings,
+                      discord_rpc_project_presences:
+                        settings.discord_rpc_project_presences.map((x) =>
+                          x.id === pr.id
+                            ? { ...x, [field]: value || null }
+                            : x,
+                        ),
+                    })
+                  return (
+                    <div
+                      key={pr.id}
+                      className="rounded-item bg-raised border border-line p-3 flex flex-col gap-2"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-xs font-medium text-ink truncate">
+                          {proj?.name ?? pr.id}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            update({
+                              ...settings,
+                              discord_rpc_project_presences:
+                                settings.discord_rpc_project_presences.filter(
+                                  (x) => x.id !== pr.id,
+                                ),
+                            })
+                          }
+                          aria-label={ts('discord_custom_remove')}
+                          className="focus-ring cursor-pointer shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-muted hover:text-danger hover:bg-danger/10 transition-colors"
+                        >
+                          <IconX className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <input
+                          type="text"
+                          value={pr.details ?? ''}
+                          onChange={(e) =>
+                            setPresence('details', e.target.value)
+                          }
+                          placeholder={ts('discord_custom_details_placeholder')}
+                          className="focus-ring w-full bg-base border border-outline/50 rounded-btn px-3 py-2 text-xs focus:border-accent-dim transition-colors"
+                        />
+                        <input
+                          type="text"
+                          value={pr.state ?? ''}
+                          onChange={(e) => setPresence('state', e.target.value)}
+                          placeholder={ts('discord_custom_state_placeholder')}
+                          className="focus-ring w-full bg-base border border-outline/50 rounded-btn px-3 py-2 text-xs focus:border-accent-dim transition-colors"
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </Subsection>
     </div>

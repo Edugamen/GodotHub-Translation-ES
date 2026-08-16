@@ -76,6 +76,10 @@ export function App() {
   const landingTabRef = useRef<string | null>(null)
 
   useEffect(() => {
+    window.dispatchEvent(new CustomEvent('app:view-changed', { detail: tab }))
+  }, [tab])
+
+  useEffect(() => {
     if (!settingsLoaded || uiSwitchIntent) return
     if (landingTabRef.current !== null) return
     landingTabRef.current = settings.default_landing_tab
