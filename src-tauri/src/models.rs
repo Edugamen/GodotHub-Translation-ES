@@ -157,6 +157,8 @@ pub struct AppSettings {
     pub version_scan_dirs: Vec<String>,
     #[serde(default = "default_scan_depth")]
     pub scan_depth: u32,
+    #[serde(default = "default_icon_scan_depth")]
+    pub icon_scan_depth: u32,
     #[serde(default = "default_download_concurrency")]
     pub download_concurrency: u32,
     #[serde(default = "default_accent")]
@@ -225,6 +227,8 @@ pub struct AppSettings {
     pub show_scrollbars: bool,
     #[serde(default = "default_true")]
     pub animated_numbers: bool,
+    #[serde(default = "default_true")]
+    pub screen_reader_announcements: bool,
     #[serde(default = "default_project_icon_opacity")]
     pub project_icon_opacity: u32,
     #[serde(default = "default_animation_threshold")]
@@ -326,6 +330,9 @@ pub(crate) fn default_accent() -> String {
 }
 fn default_scan_depth() -> u32 {
     2
+}
+fn default_icon_scan_depth() -> u32 {
+    4
 }
 fn default_download_concurrency() -> u32 {
     3
@@ -472,6 +479,7 @@ impl Default for AppSettings {
             project_scan_dirs: vec![],
             version_scan_dirs: vec![],
             scan_depth: default_scan_depth(),
+            icon_scan_depth: default_icon_scan_depth(),
             download_concurrency: default_download_concurrency(),
             accent_color: default_accent(),
             background_color: default_background(),
@@ -506,6 +514,7 @@ tooltip_delay: default_tooltip_delay(),
             show_star_button: true,
             show_scrollbars: true,
             animated_numbers: true,
+            screen_reader_announcements: true,
             project_icon_opacity: 14,
             animation_threshold: default_animation_threshold(),
             language: default_language(),

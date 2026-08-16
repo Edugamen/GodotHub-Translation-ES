@@ -406,6 +406,9 @@ export function ProjectsView({
             }}
           />
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {cloneRepoOpen && (
           <CloneRepoModal
             defaultLocation={settings.default_project_location}

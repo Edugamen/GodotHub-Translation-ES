@@ -837,6 +837,9 @@ export function ProjectCard({
             onCancel={() => setConfirmAction(null)}
           />
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {confirmAction === 'delete' && (
           <ConfirmDialog
             title={t('project_delete_title')}
@@ -850,6 +853,9 @@ export function ProjectCard({
             onCancel={() => setConfirmAction(null)}
           />
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {tagManagerOpen && (
           <TagManagerModal
             project={project}

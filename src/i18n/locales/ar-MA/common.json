@@ -242,7 +242,7 @@
   "create_project_error": "أعط المشروع إسما و مجلد ليوضع فيه.",
 
   "create_workspace_title": "بيئة عمل جديدة",
-  "create_workspace_desc": "A separate profile with its own settings, projects, and categories. Installed Godot versions are shared across every workspace.",
+  "create_workspace_desc": "Create a new Workspace that holds it's own Projects, Settings, and Categories.",
   "create_workspace_btn": "Create Workspace",
   "workspace_name_label": "Name",
   "workspace_name_placeholder": "Work, Personal, Game Jam…",

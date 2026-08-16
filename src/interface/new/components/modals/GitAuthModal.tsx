@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
-import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { api } from '../../../../lib/api'
+import { ModalShell } from './ModalShell'
 import type { DeviceFlowStart } from '../../../../types'
 import {
   IconCheck,
@@ -131,46 +130,32 @@ export function GitAuthModal({
     if (url) openUrl(url).catch(() => {})
   }
 
-  return createPortal(
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={onClose}
+  return (
+    <ModalShell
+      icon={<IconGitBranch className="w-5 h-5 text-accent-bright" />}
+      title={ts('git_auth_title', { provider: providerLabel })}
+      description={
+        provider === 'gitlab' && baseUrl
+          ? baseUrl.replace(/^https?:\/\//, '')
+          : providerLabel
+      }
+      maxWidth="max-w-md"
+      onClose={onClose}
+      showClose={false}
+      footer={
+        status === 'waiting' ? (
+          <div className="w-full">
+            <button
+              type="button"
+              onClick={onClose}
+              className="focus-ring cursor-pointer w-full px-4 py-2.5 rounded-item border border-outline/50 text-muted hover:text-ink hover:bg-raised text-sm font-medium transition-colors"
+            >
+              {tc('cancel')}
+            </button>
+          </div>
+        ) : undefined
+      }
     >
-      <motion.div
-        initial={{ opacity: 0, y: 12, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-        className="bg-surface border border-line rounded-card w-full max-w-md flex flex-col shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-4 p-6 pb-4 border-b border-line">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-tile bg-accent/10 border border-accent-dim/30 flex items-center justify-center shrink-0">
-              <IconGitBranch className="w-4 h-4 text-accent-bright" />
-            </div>
-          <div className="min-w-0">
-            <h3 className="font-display font-semibold text-lg text-ink truncate">
-              {ts('git_auth_title', { provider: providerLabel })}
-            </h3>
-            <span className="text-xs text-muted truncate">
-              {provider === 'gitlab' && baseUrl
-                ? baseUrl.replace(/^https?:\/\//, '')
-                : providerLabel}
-            </span>
-          </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="focus-ring cursor-pointer p-1.5 rounded-btn text-muted hover:text-ink hover:bg-raised transition-colors shrink-0"
-            aria-label={tc('close')}
-          >
-            <IconX className="w-4 h-4" />
-          </button>
-        </div>
-
         <div className="p-6 flex flex-col gap-4">
           {status === 'starting' && (
             <div className="flex items-center gap-2 py-6 justify-center">
@@ -259,20 +244,6 @@ export function GitAuthModal({
             </div>
           )}
         </div>
-
-        {status === 'waiting' && (
-          <div className="px-6 pb-6">
-            <button
-              type="button"
-              onClick={onClose}
-              className="focus-ring cursor-pointer w-full px-4 py-2.5 rounded-item border border-outline/50 text-muted hover:text-ink hover:bg-raised text-sm font-medium transition-colors"
-            >
-              {tc('cancel')}
-            </button>
-          </div>
-        )}
-      </motion.div>
-    </motion.div>,
-    document.body,
+    </ModalShell>
   )
 }

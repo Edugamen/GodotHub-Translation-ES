@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
+import { announce } from '../../../../lib/screenReader'
 import { IconCheck, IconX } from '../../lib/Icons'
 
 interface SuccessNotificationData {
@@ -16,6 +18,16 @@ interface SuccessToastProps {
 
 export function SuccessToast({ notification, onDismiss }: SuccessToastProps) {
   const { t } = useTranslation('common')
+
+  useEffect(() => {
+    if (notification) {
+      announce(
+        notification.count === 1
+          ? `${t('imported_successfully')}: ${notification.firstProjectName}`
+          : t('imported_count', { count: notification.count }),
+      )
+    }
+  }, [notification, t])
 
   return (
     <AnimatePresence>
@@ -64,6 +76,10 @@ interface ErrorToastProps {
 
 export function ErrorToast({ message, onDismiss }: ErrorToastProps) {
   const { t } = useTranslation('common')
+
+  useEffect(() => {
+    if (message) announce(message)
+  }, [message])
 
   return (
     <AnimatePresence>

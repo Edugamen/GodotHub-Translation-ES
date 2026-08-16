@@ -44,6 +44,7 @@ import {
   IconTrash,
   IconChevronLeft,
   IconChevronRight,
+  IconHouse,
 } from '../lib/icons'
 import type { AppSettings } from '../../../types'
 import '../style.css'
@@ -270,9 +271,6 @@ export function OnboardingView({
         <aside className="shrink-0 w-60 flex flex-col rounded-card bg-raised overflow-hidden">
           <div className="p-5 pb-4 border-b border-line">
             <div className="flex items-center gap-2.5">
-              <span className="w-9 h-9 rounded-tile bg-accent/15 border border-accent-dim/40 flex items-center justify-center font-black italic text-base text-accent-bright shrink-0">
-                GH
-              </span>
               <span className="font-display font-black text-xl tracking-tight text-ink">
                 GodotHub
               </span>
@@ -366,7 +364,7 @@ export function OnboardingView({
                   >
                     {step.id === 'welcome' && (
                       <StepShell
-                        icon={<span className="font-black italic text-lg">GH</span>}
+                        icon={<IconHouse className="w-5 h-5" />}
                         title={t('welcome_title')}
                         description={t('welcome_desc')}
                       >

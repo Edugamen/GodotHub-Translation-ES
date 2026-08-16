@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { check } from '@tauri-apps/plugin-updater'
 import { getVersion } from '@tauri-apps/api/app'
+import { ModalShell } from './ModalShell'
 import { IconRefresh, IconDownload, IconCheck, IconX } from '../../lib/icons'
 import { useSettings } from '../../../../hooks/useSettings'
 
@@ -18,7 +18,43 @@ type UpdateState =
 interface Props {
   onClose: () => void
   onOpenTokenSettings?: () => void
+  mode?: 'manual' | 'preview'
 }
+
+/* ---------- Preview (dev-only) fixtures ---------- */
+
+const PREVIEW_VERSION = '1.4.0'
+
+const PREVIEW_NOTES = `## What's new in v1.4.0 - The Preview Update
+
+## 🚀 New
+
+- Revamped the Check for Updates modal with structured release notes
+- Added screen reader announcements with an Accessibility settings tab
+
+## 🐛 Fixes
+
+- Fixed a crash when switching workspaces with pinned projects
+- Fixed update checks failing silently when GitHub rate limits are hit
+
+## ✨ Improvements
+
+- Faster startup times across all platforms
+- Reworked workspace modals with compact style pickers
+
+## ⚠️ Known Issues
+
+- Linux OS: AppImage won't work on some distros, use the .rpm or .deb package instead
+- Windows: the taskbar may briefly show a duplicate icon until the app restarts`
+
+const PREVIEW_STATES = [
+  'checking',
+  'available',
+  'downloading',
+  'done',
+  'uptodate',
+  'error',
+] as const
 
 type TokenHint = 'rate-limited' | 'token-rejected'
 
@@ -48,17 +84,67 @@ function downloadsFromGithubApi(rawJson: Record<string, unknown> | undefined) {
   })
 }
 
-export function CheckForUpdatesModal({ onClose, onOpenTokenSettings }: Props) {
+export function CheckForUpdatesModal({
+  onClose,
+  onOpenTokenSettings,
+  mode = 'manual',
+}: Props) {
   const { t } = useTranslation('common')
   const { settings } = useSettings()
-  const [state, setState] = useState<UpdateState>({ type: 'checking' })
+  const isPreview = mode === 'preview'
+  const simulateRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [state, setState] = useState<UpdateState>(() =>
+    isPreview
+      ? {
+          type: 'available',
+          version: PREVIEW_VERSION,
+          notes: PREVIEW_NOTES,
+          downloadAndInstall: () => Promise.resolve(),
+        }
+      : { type: 'checking' },
+  )
   const [currentVersion, setCurrentVersion] = useState<string | null>(null)
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
 
   const githubToken = settings.github_token?.trim() || null
 
+  const clearSimulation = () => {
+    if (simulateRef.current) {
+      clearInterval(simulateRef.current)
+      simulateRef.current = null
+    }
+  }
+
+  const simulateDownload = useCallback(() => {
+    clearSimulation()
+    return new Promise<void>((resolve) => {
+      setState({ type: 'downloading', progress: 0 })
+      let progress = 0
+      simulateRef.current = setInterval(() => {
+        progress = Math.min(progress + 0.045 + Math.random() * 0.06, 1)
+        setState({ type: 'downloading', progress })
+        if (progress >= 1) {
+          clearSimulation()
+          setTimeout(() => {
+            setState({ type: 'done' })
+            resolve()
+          }, 350)
+        }
+      }, 200)
+    })
+  }, [])
+
   const doCheck = useCallback(async () => {
+    if (mode === 'preview') {
+      setState({
+        type: 'available',
+        version: PREVIEW_VERSION,
+        notes: PREVIEW_NOTES,
+        downloadAndInstall: simulateDownload,
+      })
+      return
+    }
     setState({ type: 'checking' })
     try {
       const update = await check()
@@ -107,7 +193,7 @@ export function CheckForUpdatesModal({ onClose, onOpenTokenSettings }: Props) {
     } catch (e) {
       setState({ type: 'error', message: String(e) })
     }
-  }, [githubToken])
+  }, [mode, githubToken, simulateDownload])
 
   useEffect(() => {
     getVersion().then(setCurrentVersion).catch(() => setCurrentVersion(null))
@@ -116,6 +202,47 @@ export function CheckForUpdatesModal({ onClose, onOpenTokenSettings }: Props) {
   useEffect(() => {
     doCheck()
   }, [doCheck])
+
+  useEffect(() => () => clearSimulation(), [])
+
+  const switchPreviewState = (to: (typeof PREVIEW_STATES)[number]) => {
+    clearSimulation()
+    switch (to) {
+      case 'checking':
+        setState({ type: 'checking' })
+        break
+      case 'available':
+        setState({
+          type: 'available',
+          version: PREVIEW_VERSION,
+          notes: PREVIEW_NOTES,
+          downloadAndInstall: simulateDownload,
+        })
+        break
+      case 'downloading':
+        setState({ type: 'downloading', progress: 0 })
+        let progress = 0
+        simulateRef.current = setInterval(() => {
+          progress = Math.min(progress + 0.05 + Math.random() * 0.07, 1)
+          setState({ type: 'downloading', progress })
+          if (progress >= 1) clearSimulation()
+        }, 160)
+        break
+      case 'done':
+        setState({ type: 'done' })
+        break
+      case 'uptodate':
+        setState({ type: 'uptodate' })
+        break
+      case 'error':
+        setState({
+          type: 'error',
+          message:
+            'Preview error: GitHub API rate limit reached (HTTP 403). Add a token in Settings to keep checking.',
+        })
+        break
+    }
+  }
 
   const handleInstall = async () => {
     if (state.type === 'available') {
@@ -128,36 +255,52 @@ export function CheckForUpdatesModal({ onClose, onOpenTokenSettings }: Props) {
     onOpenTokenSettings?.()
   }
 
-  return createPortal(
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ opacity: 0, y: 12, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-        className="bg-surface border border-line rounded-2xl w-full max-w-md flex flex-col shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-6 pt-6 pb-4 shrink-0">
-          <h3 className="font-display font-semibold text-lg text-ink">
-            {t('check_updates_title_modal')}
-          </h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="focus-ring cursor-pointer p-1.5 rounded-lg text-muted hover:text-ink hover:bg-raised transition-colors"
-            aria-label={t('check_updates_close_aria')}
-          >
-            <IconX className="w-4 h-4" />
-          </button>
+  return (
+    <ModalShell
+      icon={<IconDownload className="w-5 h-5 text-accent-bright" />}
+      title={t('check_updates_title_modal')}
+      maxWidth="max-w-md"
+      onClose={onClose}
+      showClose={false}
+      footer={
+        <div className="w-full flex items-center gap-3">
+          {isPreview && (
+            <div className="flex items-center gap-1.5">
+              {PREVIEW_STATES.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => switchPreviewState(s)}
+                  className={`focus-ring cursor-pointer px-2.5 py-1 rounded-item text-[10px] font-medium border transition-colors ${
+                    state.type === s
+                      ? 'bg-accent/15 border-accent-dim/40 text-ink'
+                      : 'bg-raised border-line text-muted hover:text-ink hover:border-accent-dim'
+                  }`}
+                >
+                  {t(`preview_state_${s}`)}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="ml-auto">
+            <motion.button
+              whileTap={{ scale: 0.96 }}
+              onClick={onClose}
+              className="focus-ring cursor-pointer px-4 py-2 rounded-item text-xs font-medium text-muted hover:text-ink hover:bg-raised transition-colors"
+            >
+              {t('check_updates_close_btn')}
+            </motion.button>
+          </div>
         </div>
+      }
+    >
+        <div className="flex flex-col items-center gap-5 p-6">
+          {isPreview && (
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-tag bg-amber/15 text-amber text-[10px] font-semibold uppercase tracking-wider">
+              {t('check_updates_preview_badge')}
+            </span>
+          )}
 
-        <div className="flex flex-col items-center gap-5 px-6 py-8">
           {state.type === 'checking' && (
             <div className="flex flex-col items-center gap-4">
               <div className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center">
@@ -305,18 +448,6 @@ export function CheckForUpdatesModal({ onClose, onOpenTokenSettings }: Props) {
               )
             })()}
         </div>
-
-        <div className="flex justify-end px-6 pb-6 pt-3 border-t border-line shrink-0">
-          <motion.button
-            whileTap={{ scale: 0.96 }}
-            onClick={onClose}
-            className="focus-ring cursor-pointer px-4 py-2 rounded-item text-xs font-medium text-muted hover:text-ink hover:bg-raised transition-colors"
-          >
-            {t('check_updates_close_btn')}
-          </motion.button>
-        </div>
-      </motion.div>
-    </motion.div>,
-    document.body,
+    </ModalShell>
   )
 }

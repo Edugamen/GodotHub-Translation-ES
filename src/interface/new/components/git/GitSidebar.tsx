@@ -10,6 +10,7 @@ import type {
   Project,
 } from '../../../../types'
 import { api } from '../../../../lib/api'
+import { announce } from '../../../../lib/screenReader'
 import { DiffViewer } from './DiffViewer'
 import { GitResultDialog, parseGitError } from './GitResultDialog'
 import { MergeConflictDialog } from './MergeConflictDialog'
@@ -120,7 +121,9 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
 
   const addToast = useCallback((type: Toast['type'], message: string) => {
     const id = ++toastId
-    setToasts((prev) => [...prev, { id, type, message: truncateMessage(message) }])
+    const text = truncateMessage(message)
+    setToasts((prev) => [...prev, { id, type, message: text }])
+    announce(text)
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id))
     }, 5000)

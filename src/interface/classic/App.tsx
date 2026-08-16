@@ -33,10 +33,12 @@ const AssetStoreView = lazy(() =>
 )
 const AppNew = lazy(() => import('../new').then((m) => ({ default: m.App })))
 import { useSettings } from '../../hooks/useSettings'
+import { ScreenReaderAnnouncer } from '../../lib/screenReader'
 import { useWorkspaces } from '../../hooks/useWorkspaces'
 import { useProjectsContext } from '../../hooks/projectsContext'
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts'
 import { check } from '@tauri-apps/plugin-updater'
+import { relaunch } from '@tauri-apps/plugin-process'
 import { BugReportModal } from './components/modals/BugReportModal'
 import { CheckForUpdatesModal } from './components/modals/CheckForUpdatesModal'
 import { CommandPalette } from './components/modals/CommandPalette'
@@ -124,9 +126,6 @@ function AppContent() {
       return false
     }
   })
-  const [splashPhase, setSplashPhase] = useState<SplashPhase | 'done'>(() =>
-    shouldShowSplash() ? 'enter' : 'done',
-  )
   const scannedWorkspaceRef = useRef<string | null>(null)
   const [errorNotification, setErrorNotification] = useState<string | null>(null)
   const [successNotification, setSuccessNotification] = useState<{
@@ -183,24 +182,6 @@ function AppContent() {
       api.scanForVersions(settings.version_scan_dirs, depth).catch(() => {})
     }
   }, [settingsReady, activeId, settings])
-
-  useEffect(() => {
-    if (splashPhase === 'enter') {
-      const t = setTimeout(() => setSplashPhase('fly'), 1000)
-      return () => clearTimeout(t)
-    }
-    if (splashPhase === 'fly') {
-      const t = setTimeout(() => setSplashPhase('fade'), 500)
-      return () => clearTimeout(t)
-    }
-    if (splashPhase === 'fade') {
-      const t = setTimeout(() => {
-        markSplashConsumed()
-        setSplashPhase('done')
-      }, 400)
-      return () => clearTimeout(t)
-    }
-  }, [splashPhase])
 
   useEffect(() => {
     if (uiSwitchIntent) clearUiSwitchToSettings()
@@ -441,6 +422,9 @@ function AppContent() {
         if (tabs[i]) setTab(tabs[i])
       },
       onCommandPalette: () => setCommandPaletteOpen((o) => !o),
+      onRestart: () => {
+        void relaunch()
+      },
       onEscape: () => {
         setGitSidebarProject(null)
         setCommandPaletteOpen(false)
@@ -529,6 +513,7 @@ function AppContent() {
 
   return (
     <div className="h-screen w-screen flex flex-col bg-base text-ink font-body">
+      <ScreenReaderAnnouncer enabled={settings.screen_reader_announcements} />
       <div className="shrink-0">
         <TitleBar />
       </div>
@@ -589,10 +574,8 @@ function AppContent() {
         </AnimatePresence>
       </div>
 
-      {splashPhase !== 'done' && <SplashScreen phase={splashPhase} />}
-
       <AnimatePresence>
-        {splashPhase === 'done' && showTips && (
+        {showTips && (
           <OnboardingTips
             onDismiss={() => {
               setShowTips(false)
@@ -670,6 +653,27 @@ export default function App() {
   const { t } = useTranslation('common')
   const { settings, update, loaded } = useSettings()
   const { loaded: workspacesLoaded } = useWorkspaces()
+  const [splashPhase, setSplashPhase] = useState<SplashPhase | 'done'>(() =>
+    shouldShowSplash() ? 'enter' : 'done',
+  )
+
+  useEffect(() => {
+    if (splashPhase === 'enter') {
+      const t = setTimeout(() => setSplashPhase('fly'), 1200)
+      return () => clearTimeout(t)
+    }
+    if (splashPhase === 'fly') {
+      const t = setTimeout(() => setSplashPhase('fade'), 600)
+      return () => clearTimeout(t)
+    }
+    if (splashPhase === 'fade') {
+      const t = setTimeout(() => {
+        markSplashConsumed()
+        setSplashPhase('done')
+      }, 450)
+      return () => clearTimeout(t)
+    }
+  }, [splashPhase])
 
   if (!loaded || !workspacesLoaded) {
     return (
@@ -699,6 +703,7 @@ export default function App() {
         ) : (
           <AppContent />
         )}
+        {splashPhase !== 'done' && <SplashScreen phase={splashPhase} />}
       </TaskTrayProvider>
     </GodotVersionsProvider>
   )

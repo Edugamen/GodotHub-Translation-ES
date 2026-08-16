@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { version } from '../../../../../package.json'
+import { ModalShell } from './ModalShell'
 import {
   IconBug,
   IconCopy,
@@ -174,49 +174,15 @@ export function BugReportModal({ onClose }: Props) {
     }
   }
 
-  return createPortal(
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ opacity: 0, y: 12, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 12, scale: 0.96 }}
-        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-        className="bg-surface border border-line rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center gap-3 px-7 pt-7 pb-4 shrink-0">
-          <div className="w-10 h-10 rounded-xl bg-danger/10 flex items-center justify-center shrink-0">
-            <IconBug className="w-5 h-5 text-danger" />
-          </div>
-          <div>
-            <h3 className="font-display font-semibold text-lg">
-              {t('bug_report_title', { ns: 'common' })}
-            </h3>
-            <p className="text-xs text-muted mt-0.5">
-              {t('bug_report_desc', { ns: 'common', version })}
-            </p>
-          </div>
-        </div>
-
-        <div className="px-7 overflow-y-auto min-h-0 flex-1">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <IconRefresh className="w-5 h-5 animate-spin text-muted" />
-            </div>
-          ) : (
-            <div className="rounded-xl bg-base border border-line p-4 font-mono text-[11px] text-muted whitespace-pre-wrap break-all leading-relaxed max-h-[320px] overflow-y-auto select-all">
-              {report}
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between gap-3 px-7 pt-4 pb-7 shrink-0">
+  return (
+    <ModalShell
+      icon={<IconBug className="w-5 h-5 text-danger" />}
+      title={t('bug_report_title')}
+      description={t('bug_report_desc', { version })}
+      maxWidth="max-w-lg"
+      onClose={onClose}
+      footer={
+        <>
           <button
             type="button"
             onClick={handleCopy}
@@ -226,7 +192,7 @@ export function BugReportModal({ onClose }: Props) {
             <IconCopy className="w-4 h-4" />
             {t('bug_report_copy_log')}
           </button>
-          <div className="flex items-center gap-2.5">
+          <div className="ml-auto flex items-center gap-2.5">
             <motion.button
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.96 }}
@@ -250,9 +216,20 @@ export function BugReportModal({ onClose }: Props) {
               {t('bug_report_open_github')}
             </motion.button>
           </div>
-        </div>
-      </motion.div>
-    </motion.div>,
-    document.body,
+        </>
+      }
+    >
+      <div className="p-6">
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <IconRefresh className="w-5 h-5 animate-spin text-muted" />
+          </div>
+        ) : (
+          <div className="rounded-xl bg-base border border-line p-4 font-mono text-[11px] text-muted whitespace-pre-wrap break-all leading-relaxed max-h-[320px] overflow-y-auto select-all">
+            {report}
+          </div>
+        )}
+      </div>
+    </ModalShell>
   )
 }

@@ -15,6 +15,7 @@ import { OverlayScrollArea } from './components/reusables/OverlayScrollArea'
 import { ConfirmDialog } from './components/modals/ConfirmDialog'
 import { CreateProjectModal } from './components/modals/CreateProjectModal'
 import { BugReportModal } from './components/modals/BugReportModal'
+import { CheckForUpdatesModal } from './components/modals/CheckForUpdatesModal'
 import { CommandPalette } from './components/modals/CommandPalette'
 import { GitSidebar } from './components/git/GitSidebar'
 import { ProjectsView } from './views/ProjectsView'
@@ -28,6 +29,8 @@ import { AssetStoreView } from './views/AssetStoreView'
 import { DashboardView } from './views/DashboardView'
 import { useSettings } from '../../hooks/useSettings'
 import { useTauriEvent } from '../../lib/useTauriEvent'
+import { ScreenReaderAnnouncer } from '../../lib/screenReader'
+import { relaunch } from '@tauri-apps/plugin-process'
 import {
   clearUiSwitchToSettings,
   markSplashConsumed,
@@ -90,6 +93,10 @@ export function App() {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
   const [bugReportOpen, setBugReportOpen] = useState(false)
   const [createProjectOpen, setCreateProjectOpen] = useState(false)
+  const [updatesModalOpen, setUpdatesModalOpen] = useState(false)
+  const [updatesModalMode, setUpdatesModalMode] = useState<
+    'manual' | 'preview'
+  >('manual')
   const { installed } = useGodotVersionsContext()
   const { categories } = useCategoriesContext()
   const settingsRef = useRef(settings)
@@ -178,16 +185,22 @@ export function App() {
       }
     }
     const handleReportBug = () => setBugReportOpen(true)
+    const handlePreviewUpdate = () => {
+      setUpdatesModalMode('preview')
+      setUpdatesModalOpen(true)
+    }
 
     window.addEventListener('app:new-project-request', handleNewProject)
     window.addEventListener('app:import-project-request', handleImportProject)
     window.addEventListener('app:scan-projects', handleScanProjects)
     window.addEventListener('app:report-bug', handleReportBug)
+    window.addEventListener('app:preview-update-modal', handlePreviewUpdate)
     return () => {
       window.removeEventListener('app:new-project-request', handleNewProject)
       window.removeEventListener('app:import-project-request', handleImportProject)
       window.removeEventListener('app:scan-projects', handleScanProjects)
       window.removeEventListener('app:report-bug', handleReportBug)
+      window.removeEventListener('app:preview-update-modal', handlePreviewUpdate)
     }
   }, [refreshProjects])
 
@@ -200,6 +213,9 @@ export function App() {
         if (tabs[i]) setTab(tabs[i])
       },
       onCommandPalette: () => setCommandPaletteOpen((o) => !o),
+      onRestart: () => {
+        void relaunch()
+      },
       onEscape: () => {
         setGitSidebarProject(null)
         setCommandPaletteOpen(false)
@@ -279,6 +295,7 @@ export function App() {
 
   return (
     <div className="new-ui h-screen w-screen flex flex-col bg-base text-ink font-body">
+      <ScreenReaderAnnouncer enabled={settings.screen_reader_announcements} />
       <Titlebar />
 
       <div
@@ -413,7 +430,19 @@ export function App() {
             }}
           />
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {bugReportOpen && <BugReportModal onClose={() => setBugReportOpen(false)} />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {updatesModalOpen && (
+          <CheckForUpdatesModal
+            mode={updatesModalMode}
+            onClose={() => setUpdatesModalOpen(false)}
+          />
+        )}
       </AnimatePresence>
     </div>
   )

@@ -3,10 +3,13 @@ import { useTranslation } from 'react-i18next'
 import { motion } from 'framer-motion'
 import { isReducedMotion } from '../../../../lib/appearance'
 import { formatLastOpened } from '../../../../lib/lastOpened'
+import { useWorkspaces } from '../../../../hooks/useWorkspaces'
+import { getWorkspaceIcon } from '../../lib/workspaceIcons'
 import type { InstalledGodotVersion, Project } from '../../../../types'
 import {
   IconBell,
   IconBookOpen,
+  IconBriefcase,
   IconBug,
   IconClock,
   IconCloudArrowDown,
@@ -22,6 +25,7 @@ import {
   IconSearch,
   IconStore,
 } from '../../lib/icons'
+import { ModalHeader } from './ModalHeader'
 
 interface CommandItem {
   id: string
@@ -56,7 +60,10 @@ function dispatch(event: string, detail?: unknown) {
   )
 }
 
-function buildCommands(onNavigate: (tab: string) => void): CommandItem[] {
+function buildCommands(
+  onNavigate: (tab: string) => void,
+  onCreateWorkspace: () => void,
+): CommandItem[] {
   return [
     {
       id: 'go-projects',
@@ -180,12 +187,31 @@ function buildCommands(onNavigate: (tab: string) => void): CommandItem[] {
     },
 
     {
+      id: 'create-workspace',
+      labelKey: 'create_workspace',
+      icon: <IconBriefcase className="w-4 h-4" />,
+      sectionKey: 'section_workspaces',
+      action: onCreateWorkspace,
+    },
+
+    {
       id: 'report-bug',
       labelKey: 'report_a_bug',
       icon: <IconBug className="w-4 h-4" />,
       sectionKey: 'section_help',
       action: () => dispatch('app:report-bug'),
     },
+    ...(import.meta.env.DEV
+      ? [
+          {
+            id: 'preview-update-modal',
+            labelKey: 'preview_update_modal',
+            icon: <IconRocket className="w-4 h-4" />,
+            sectionKey: 'section_help',
+            action: () => dispatch('app:preview-update-modal'),
+          },
+        ]
+      : []),
   ]
 }
 
@@ -200,6 +226,7 @@ const SETTINGS_SEARCH_ITEMS: SettingSearchEntry[] = [
   { key: 'default_project_location', tab: 'storage' },
   { key: 'download_dir', tab: 'storage' },
   { key: 'scan_depth', tab: 'storage' },
+  { key: 'icon_scan_depth', tab: 'storage' },
   { key: 'download_concurrency', tab: 'storage' },
   { key: 'close_on_project_open', tab: 'behavior' },
   { key: 'minimize_to_tray', tab: 'behavior' },
@@ -209,7 +236,7 @@ const SETTINGS_SEARCH_ITEMS: SettingSearchEntry[] = [
   { key: 'workspaces_enabled', tab: 'behavior' },
   { key: 'directory_naming_convention', tab: 'behavior' },
   { key: 'git_init_new_projects', tab: 'behavior' },
-  { key: 'tooltip_delay', tab: 'behavior' },
+  { key: 'tooltip_delay', tab: 'accessibility' },
   { key: 'command_palette_keybind', tab: 'behavior' },
   { key: 'tray_recent_projects_count', tab: 'behavior' },
   { key: 'last_opened_time_format', tab: 'display' },
@@ -220,11 +247,11 @@ const SETTINGS_SEARCH_ITEMS: SettingSearchEntry[] = [
   { key: 'corner_radius', tab: 'appearance' },
   { key: 'ui_density', tab: 'appearance' },
   { key: 'font_scale', tab: 'appearance' },
-  { key: 'animation_intensity', tab: 'appearance' },
+  { key: 'animation_intensity', tab: 'accessibility' },
   { key: 'view_entrance', tab: 'appearance' },
   { key: 'custom_css', tab: 'appearance' },
   { key: 'project_icon_opacity', tab: 'appearance' },
-  { key: 'show_scrollbars', tab: 'appearance' },
+  { key: 'show_scrollbars', tab: 'accessibility' },
   { key: 'new_ui', tab: 'appearance' },
   { key: 'setup_wizard', tab: 'advanced' },
   { key: 'reset_settings', tab: 'advanced' },
@@ -252,6 +279,7 @@ export function CommandPalette({
   const { t } = useTranslation('nav')
   const { t: tc } = useTranslation('common')
   const { t: ts } = useTranslation('settings')
+  const { workspaces, activeId, switchWorkspace } = useWorkspaces()
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -262,7 +290,7 @@ export function CommandPalette({
   }, [])
 
   const allCommands = useMemo(
-    () => buildCommands(onNavigate),
+    () => buildCommands(onNavigate, () => dispatch('app:create-workspace-request')),
     [onNavigate],
   )
 
@@ -352,8 +380,36 @@ export function CommandPalette({
       })
     }
 
+    for (const w of workspaces) {
+      const WsIcon = getWorkspaceIcon(w.icon)
+      const active = w.id === activeId
+      items.push({
+        id: `workspace:${w.id}`,
+        label: active
+          ? tc('active_workspace', { name: w.name })
+          : w.name,
+        sublabel: active
+          ? tc('current_workspace')
+          : tc('switch_workspace'),
+        icon: <WsIcon className="w-4 h-4" style={{ color: w.color }} />,
+        section: tc('workspaces_section'),
+        action: () => switchWorkspace(w.id),
+      })
+    }
+
     return items
-  }, [projects, installedVersions, navShortcuts, onNavigate, t, tc, ts])
+  }, [
+    projects,
+    installedVersions,
+    workspaces,
+    activeId,
+    switchWorkspace,
+    navShortcuts,
+    onNavigate,
+    t,
+    tc,
+    ts,
+  ])
 
   const allItems = useMemo(
     () => [...visibleCommands, ...dynamicItems],
@@ -462,10 +518,18 @@ export function CommandPalette({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: -12, scale: 0.96 }}
         transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-        className="relative w-full max-w-lg bg-surface border border-line rounded-card shadow-2xl shadow-black/60 overflow-hidden"
+        className="relative w-full max-w-lg bg-surface rounded-modal shadow-2xl shadow-black/60 overflow-clip"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-line">
+        <ModalHeader
+          icon={<IconSearch className="w-5 h-5 text-accent-bright" />}
+          title={tc('command_palette_title')}
+          description={tc('command_palette_desc')}
+          onClose={onClose}
+          autoFocusBanner={false}
+        />
+
+        <div className="flex items-center gap-3 px-4 py-3 border-y border-line">
           <IconSearch
             fill="none"
             className="w-4 h-4 shrink-0 text-muted/60"

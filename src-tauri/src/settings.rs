@@ -46,6 +46,7 @@ pub fn reset_settings(app: AppHandle) -> Result<AppSettings, String> {
         project_scan_dirs: current.project_scan_dirs,
         version_scan_dirs: current.version_scan_dirs,
         scan_depth: current.scan_depth,
+        icon_scan_depth: current.icon_scan_depth,
         setup_complete: current.setup_complete,
         language: current.language,
         dismissed_project_paths: current.dismissed_project_paths,
