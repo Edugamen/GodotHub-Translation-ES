@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { isReducedMotion } from '../../../../lib/appearance'
 import { formatLastOpened } from '../../../../lib/lastOpened'
 import { useWorkspaces } from '../../../../hooks/useWorkspaces'
+import { useSettings } from '../../../../hooks/useSettings'
 import { getWorkspaceIcon } from '../../lib/workspaceIcons'
 import type { InstalledGodotVersion, Project } from '../../../../types'
 import {
@@ -284,6 +285,7 @@ export function CommandPalette({
   const { t } = useTranslation('nav')
   const { t: tc } = useTranslation('common')
   const { t: ts } = useTranslation('settings')
+  const { settings } = useSettings()
   const { workspaces, activeId, switchWorkspace } = useWorkspaces()
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -295,8 +297,14 @@ export function CommandPalette({
   }, [])
 
   const allCommands = useMemo(
-    () => buildCommands(onNavigate, () => dispatch('app:create-workspace-request')),
-    [onNavigate],
+    () =>
+      buildCommands(
+        onNavigate,
+        () => dispatch('app:create-workspace-request'),
+      ).filter(
+        (cmd) => settings.workspaces_enabled || cmd.id !== 'create-workspace',
+      ),
+    [onNavigate, settings.workspaces_enabled],
   )
 
   const visibleCommands = useMemo(
@@ -385,21 +393,23 @@ export function CommandPalette({
       })
     }
 
-    for (const w of workspaces) {
-      const WsIcon = getWorkspaceIcon(w.icon)
-      const active = w.id === activeId
-      items.push({
-        id: `workspace:${w.id}`,
-        label: active
-          ? tc('active_workspace', { name: w.name })
-          : w.name,
-        sublabel: active
-          ? tc('current_workspace')
-          : tc('switch_workspace'),
-        icon: <WsIcon className="w-4 h-4" style={{ color: w.color }} />,
-        section: tc('workspaces_section'),
-        action: () => switchWorkspace(w.id),
-      })
+    if (settings.workspaces_enabled) {
+      for (const w of workspaces) {
+        const WsIcon = getWorkspaceIcon(w.icon)
+        const active = w.id === activeId
+        items.push({
+          id: `workspace:${w.id}`,
+          label: active
+            ? tc('active_workspace', { name: w.name })
+            : w.name,
+          sublabel: active
+            ? tc('current_workspace')
+            : tc('switch_workspace'),
+          icon: <WsIcon className="w-4 h-4" style={{ color: w.color }} />,
+          section: tc('workspaces_section'),
+          action: () => switchWorkspace(w.id),
+        })
+      }
     }
 
     return items
@@ -414,6 +424,7 @@ export function CommandPalette({
     t,
     tc,
     ts,
+    settings.workspaces_enabled,
   ])
 
   const allItems = useMemo(

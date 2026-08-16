@@ -12,7 +12,7 @@ import { RunningProjectsChip } from '../titlebar/RunningProjectsChip'
 import { TaskTray } from '../titlebar/TaskTray'
 import { LanguageMenu } from '../titlebar/LanguageMenu'
 import { Tooltip } from '../reusables/Tooltip'
-import { IconHeart, IconStar } from '../../lib/icons'
+import { IconHeart, IconStar, IconBug } from '../../lib/icons'
 
 export function Titlebar({ minimal = false }: { minimal?: boolean }) {
   const { t } = useTranslation('common')
@@ -114,6 +114,25 @@ export function Titlebar({ minimal = false }: { minimal?: boolean }) {
               className="focus-ring cursor-pointer w-8 h-8 flex items-center justify-center rounded-item text-muted hover:text-amber hover:bg-amber/10 transition-colors"
             >
               <IconStar className="w-3.5 h-3.5" />
+            </motion.button>
+          </Tooltip>
+        )}
+
+        {!minimal && (
+          <Tooltip content={t('report_a_bug')} side="bottom">
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.9 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+              onMouseDown={noDrag}
+              onClick={() =>
+                window.dispatchEvent(new Event('app:report-bug'))
+              }
+              aria-label={t('report_a_bug')}
+              className="focus-ring cursor-pointer w-8 h-8 flex items-center justify-center rounded-item text-muted hover:text-danger hover:bg-danger/10 transition-colors"
+            >
+              <IconBug className="w-3.5 h-3.5" />
             </motion.button>
           </Tooltip>
         )}

@@ -6,6 +6,10 @@ export const settingsApi = {
   update: (settings: AppSettings) =>
     invoke<AppSettings>('update_settings', { settings }),
   reset: () => invoke<AppSettings>('reset_settings'),
+  exportSettings: (path: string) =>
+    invoke<void>('export_settings', { path }),
+  importSettings: (path: string) =>
+    invoke<AppSettings>('import_settings', { path }),
   resetData: () => invoke<void>('reset_app_data'),
   scanForProjects: (dirs: string[], depth: number) =>
     invoke<Project[]>('scan_for_projects', { dirs, depth }),

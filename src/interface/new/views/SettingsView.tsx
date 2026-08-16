@@ -221,6 +221,8 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
   const [confirmingUiSwitch, setConfirmingUiSwitch] = useState<boolean | null>(null)
   const [statsBusy, setStatsBusy] = useState<'export' | 'import' | null>(null)
   const [statsMessage, setStatsMessage] = useState<string | null>(null)
+  const [settingsBusy, setSettingsBusy] = useState<'export' | 'import' | null>(null)
+  const [settingsMessage, setSettingsMessage] = useState<string | null>(null)
   const [cssDraft, setCssDraft] = useState(settings.custom_css)
   const [cssStatus, setCssStatus] = useState<'idle' | 'applied'>('idle')
   const [scanMessage, setScanMessage] = useState<string | null>(null)
@@ -298,6 +300,38 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
       setStatsMessage(String(e))
     } finally {
       setStatsBusy(null)
+    }
+  }
+
+  const handleExportSettings = async () => {
+    setSettingsBusy('export')
+    setSettingsMessage(null)
+    try {
+      const path = await api.pickSavePath('godothub-settings.json')
+      if (!path) return
+      await api.exportSettings(path)
+      setSettingsMessage(ts('settings_exported'))
+    } catch (e) {
+      setSettingsMessage(String(e))
+    } finally {
+      setSettingsBusy(null)
+    }
+  }
+
+  const handleImportSettings = async () => {
+    setSettingsBusy('import')
+    setSettingsMessage(null)
+    try {
+      const path = await api.pickDataFile()
+      if (!path) return
+      const imported = await api.importSettings(path)
+      await update(imported)
+      await refreshProjects()
+      setSettingsMessage(ts('settings_imported'))
+    } catch (e) {
+      setSettingsMessage(String(e))
+    } finally {
+      setSettingsBusy(null)
     }
   }
 
@@ -2350,6 +2384,44 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
             <IconBug className="w-4 h-4" />
             {ts('report_bug')}
           </button>
+        </div>
+
+        <div className="rounded-item bg-overlay px-4 py-4 flex items-center justify-between gap-6">
+          <div className="min-w-0">
+            <h3 className="text-sm font-medium text-ink">
+              {ts('settings_backup_title')}
+            </h3>
+            <p className="text-xs text-muted mt-1.5 leading-relaxed">
+              {ts('settings_backup_desc')}
+            </p>
+            {settingsMessage && (
+              <span className="text-xs text-muted block mt-1.5">
+                {settingsMessage}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleExportSettings}
+              disabled={settingsBusy !== null}
+              className="focus-ring cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-item border border-outline/50 hover:border-accent-dim hover:bg-raised text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {settingsBusy === 'export'
+                ? ts('saving')
+                : ts('export_settings_btn')}
+            </button>
+            <button
+              type="button"
+              onClick={handleImportSettings}
+              disabled={settingsBusy !== null}
+              className="focus-ring cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-item border border-outline/50 hover:border-accent-dim hover:bg-raised text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {settingsBusy === 'import'
+                ? ts('saving')
+                : ts('import_settings_btn')}
+            </button>
+          </div>
         </div>
 
         <div className="rounded-item bg-overlay px-4 py-4 flex items-center justify-between gap-6">

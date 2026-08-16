@@ -14,6 +14,7 @@ import { DiffViewer } from './DiffViewer'
 import { GitResultDialog, parseGitError } from './GitResultDialog'
 import { MergeConflictDialog } from './MergeConflictDialog'
 import { Tooltip } from '../reusables/Tooltip'
+import { useProjectResolutionEpoch } from '../../../../hooks/useProjectResolutionEpoch'
 import {
   IconX,
   IconGitBranch,
@@ -107,6 +108,7 @@ function Checkbox({
 
 export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
   const { t } = useTranslation('git')
+  const resolutionEpoch = useProjectResolutionEpoch()
   const [displayName, setDisplayName] = useState<string | null>(null)
   const [remoteUrl, setRemoteUrl] = useState<string | null>(null)
   const [logEntries, setLogEntries] = useState<GitLogEntry[]>([])
@@ -243,7 +245,7 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
     let cancelled = false
     api.getProjectName(project.path).then((name) => { if (!cancelled) setDisplayName(name) })
     return () => { cancelled = true }
-  }, [project.path])
+  }, [project.path, resolutionEpoch])
 
   useEffect(() => {
     let cancelled = false

@@ -23,6 +23,7 @@ import { getWorkspaceIcon } from '../../lib/workspaceIcons'
 import { formatLastOpened } from '../../../../lib/lastOpened'
 import { isMac } from '../../../../lib/platform'
 import { isReducedMotion } from '../../../../lib/appearance'
+import { useSettings } from '../../../../hooks/useSettings'
 import type { Project, InstalledGodotVersion, Workspace } from '../../../../types'
 
 const IS_DEV = import.meta.env.DEV
@@ -299,6 +300,7 @@ export function CommandPalette({
   paletteKey = 'k',
 }: Props) {
   const { t } = useTranslation(['common', 'settings'])
+  const { settings } = useSettings()
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -314,9 +316,11 @@ export function CommandPalette({
   const visibleCommands = useMemo(
     () =>
       allCommands.filter(
-        (cmd) => !cmd.context || cmd.context === currentTab,
+        (cmd) =>
+          (settings.workspaces_enabled || cmd.id !== 'create-workspace') &&
+          (!cmd.context || cmd.context === currentTab),
       ),
-    [allCommands, currentTab],
+    [allCommands, currentTab, settings.workspaces_enabled],
   )
 
   const navShortcuts: Record<string, string> = useMemo(
@@ -403,30 +407,38 @@ export function CommandPalette({
       })
     }
 
-    for (const w of workspaces) {
-      const WsIcon = getWorkspaceIcon(w.icon)
-      const active = w.id === activeWorkspaceId
-      items.push({
-        id: `workspace:${w.id}`,
-        label: active ? t('active_workspace', { name: w.name }) : w.name,
-        sublabel: active ? t('current_workspace') : t('switch_workspace'),
-        icon: (
-          <WsIcon
-            className="w-4 h-4"
-            style={{ color: w.color }}
-          />
-        ),
-        section: t('workspaces_section'),
-        action: () => {
-          window.dispatchEvent(
-            new CustomEvent('app:switch-workspace', { detail: w.id }),
-          )
-        },
-      })
+    if (settings.workspaces_enabled) {
+      for (const w of workspaces) {
+        const WsIcon = getWorkspaceIcon(w.icon)
+        const active = w.id === activeWorkspaceId
+        items.push({
+          id: `workspace:${w.id}`,
+          label: active ? t('active_workspace', { name: w.name }) : w.name,
+          sublabel: active ? t('current_workspace') : t('switch_workspace'),
+          icon: (
+            <WsIcon
+              className="w-4 h-4"
+              style={{ color: w.color }}
+            />
+          ),
+          section: t('workspaces_section'),
+          action: () => {
+            window.dispatchEvent(
+              new CustomEvent('app:switch-workspace', { detail: w.id }),
+            )
+          },
+        })
+      }
     }
 
     return items
-  }, [projects, installedVersions, workspaces, activeWorkspaceId])
+  }, [
+    projects,
+    installedVersions,
+    workspaces,
+    activeWorkspaceId,
+    settings.workspaces_enabled,
+  ])
 
   const allItems = useMemo(
     () => [...visibleCommands, ...dynamicItems],

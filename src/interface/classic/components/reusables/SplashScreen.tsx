@@ -1,5 +1,4 @@
 import { motion } from 'framer-motion'
-import { IconRocket } from '../../lib/Icons'
 export type SplashPhase = 'enter' | 'fly' | 'fade'
 
 interface SplashScreenProps {
@@ -27,33 +26,6 @@ export function SplashScreen({ phase }: SplashScreenProps) {
         transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
         className="flex flex-col items-center gap-6 select-none"
       >
-        {/* Logo mark */}
-        <motion.div
-          initial={{ scale: 0.4, rotate: -30, opacity: 0 }}
-          animate={{ scale: 1, rotate: 0, opacity: 1 }}
-          transition={{
-            type: 'spring',
-            stiffness: 260,
-            damping: 18,
-            delay: 0.15,
-          }}
-          className="relative"
-        >
-          <div className="absolute inset-0 rounded-tile bg-accent/25 blur-xl scale-125" />
-          <div className="relative w-20 h-20 rounded-tile bg-accent/15 border border-accent-dim/40 flex items-center justify-center">
-            <motion.span
-              animate={{ y: [0, -4, 0] }}
-              transition={{
-                duration: 1.6,
-                repeat: Infinity,
-                ease: 'easeInOut',
-              }}
-            >
-              <IconRocket className="w-9 h-9 text-accent-bright" />
-            </motion.span>
-          </div>
-        </motion.div>
-
         {/* Wordmark */}
         <div className="flex flex-col items-center gap-3">
           <motion.h1
@@ -80,7 +52,7 @@ export function SplashScreen({ phase }: SplashScreenProps) {
                 ease: 'easeInOut',
                 delay: 0.5,
               }}
-              className="absolute inset-y-0 w-1/2 rounded-full bg-gradient-to-r from-transparent via-accent to-transparent"
+              className="absolute inset-y-0 w-1/2 rounded-full bg-linear-to-r from-transparent via-accent to-transparent"
             />
           </motion.div>
         </div>

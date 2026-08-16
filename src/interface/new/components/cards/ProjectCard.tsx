@@ -9,6 +9,7 @@ import { effectiveTotalMs } from '../../../../lib/projectSort'
 import { tagColor } from '../../../../lib/colors'
 import { isReducedMotion } from '../../../../lib/appearance'
 import { useSettings } from '../../../../hooks/useSettings'
+import { useProjectResolutionEpoch } from '../../../../hooks/useProjectResolutionEpoch'
 import { ConfirmDialog } from '../modals/ConfirmDialog'
 import { TagManagerModal } from '../modals/TagManagerModal'
 import { Dropdown } from '../ui/Dropdown'
@@ -96,6 +97,7 @@ export function ProjectCard({
 }: ProjectCardProps) {
   const { t } = useTranslation('common')
   const { settings } = useSettings()
+  const resolutionEpoch = useProjectResolutionEpoch()
   const [icon, setIcon] = useState<string | null>(() =>
     getCachedProjectIcon(project.path),
   )
@@ -140,7 +142,7 @@ export function ProjectCard({
     return () => {
       cancelled = true
     }
-  }, [project.path])
+  }, [project.path, resolutionEpoch])
 
   useEffect(() => {
     let cancelled = false
@@ -150,7 +152,7 @@ export function ProjectCard({
     return () => {
       cancelled = true
     }
-  }, [project.path])
+  }, [project.path, resolutionEpoch])
 
   useEffect(() => {
     if (tagError) editInputRef.current?.focus()

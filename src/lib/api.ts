@@ -38,8 +38,8 @@ export const api = {
   getOsUsername: settingsApi.getOsUsername,
   exportProjectStats: projectsApi.exportProjectStats,
   importProjectStats: projectsApi.importProjectStats,
-  getWeeklyActivity: () =>
-    invoke<[string, number][]>('get_weekly_activity'),
+  getActivity: (range: 'daily' | 'weekly' | 'monthly' | 'yearly') =>
+    invoke<[string, number][]>('get_activity', { range }),
   readImageFile: projectsApi.readImageFile,
   getProjectIcon: projectsApi.getIcon,
   getProjectName: projectsApi.getName,
@@ -114,6 +114,8 @@ export const api = {
   getSettings: settingsApi.get,
   updateSettings: settingsApi.update,
   resetSettings: settingsApi.reset,
+  exportSettings: settingsApi.exportSettings,
+  importSettings: settingsApi.importSettings,
   resetAppData: settingsApi.resetData,
   scanForProjects: settingsApi.scanForProjects,
   scanForProjectsWithInfo: settingsApi.scanForProjectsWithInfo,

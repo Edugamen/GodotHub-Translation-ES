@@ -9,6 +9,7 @@ import { Tooltip } from '../components/reusables/Tooltip'
 import { ViewHeader } from '../components/reusables/ViewHeader'
 import { useSettings } from '../../../hooks/useSettings'
 import { useUpdates } from '../../../hooks/useUpdates'
+import { useUpdatesBadge } from '../../../hooks/useUpdatesBadge'
 import type { UpdateEntry, UpdateKind } from '../../../types'
 import {
   IconAlertTriangle,
@@ -278,6 +279,11 @@ export function UpdatesView({ connected = false }: { connected?: boolean }) {
   const { t: tc } = useTranslation('common')
   const { settings } = useSettings()
   const { entries, loading, fromCache, fetchedAt, refresh } = useUpdates()
+  const { markSeen } = useUpdatesBadge()
+
+  useEffect(() => {
+    if (!loading && entries.length > 0) markSeen()
+  }, [loading, entries, markSeen])
 
   const featured = entries.filter((e) => e.featured)
   const regular = entries.filter((e) => !e.featured)

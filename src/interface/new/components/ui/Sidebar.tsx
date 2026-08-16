@@ -6,6 +6,8 @@ import { IconChevronsLeft, IconHouse, IconSearch, IconX } from '../../lib/icons'
 import type { IconProps } from '../../lib/icons'
 import { Tooltip } from '../reusables/Tooltip'
 import { WorkspaceSwitcher } from './WorkspaceSwitcher'
+import { useSettings } from '../../../../hooks/useSettings'
+import { useUpdatesBadge } from '../../../../hooks/useUpdatesBadge'
 
 export interface SidebarTab {
   id: string
@@ -38,6 +40,8 @@ export function Sidebar({
 }) {
   const { t } = useTranslation('nav')
   const { t: tc } = useTranslation('common')
+  const { settings } = useSettings()
+  const { hasUnseen } = useUpdatesBadge()
   const [width, setWidth] = useState(() => {
     try {
       return Math.min(
@@ -169,6 +173,12 @@ export function Sidebar({
         {!hideLabel && (
           <span className={`relative transition-colors duration-200 ${active ? 'text-ink' : ''}`}>{tab.label}</span>
         )}
+        {hasUnseen && tab.id === 'updates' && !active && (
+          <span className="absolute top-1.5 right-1.5 flex w-2 h-2" aria-hidden="true">
+            <span className="absolute inline-flex h-full w-full rounded-full bg-accent-bright opacity-75 animate-ping" />
+            <span className="relative inline-flex rounded-full w-2 h-2 bg-accent-bright shadow-[0_0_6px_2px] shadow-accent/50" />
+          </span>
+        )}
       </button>
     )
     return collapsedView ? (
@@ -256,9 +266,11 @@ export function Sidebar({
         )}
       </div>
 
-      <div className={`shrink-0 ${collapsed ? 'flex justify-center px-0 py-2' : 'px-3 pb-1'}`}>
-        <WorkspaceSwitcher collapsed={collapsed} />
-      </div>
+      {settings.workspaces_enabled && (
+        <div className={`shrink-0 ${collapsed ? 'flex justify-center px-0 py-2' : 'px-3 pb-1'}`}>
+          <WorkspaceSwitcher collapsed={collapsed} />
+        </div>
+      )}
 
       <nav className={`flex-1 p-3 pt-2 flex flex-col gap-1 ${collapsed ? 'items-center' : ''}`}>
         {mainTabs.map((tab) =>
