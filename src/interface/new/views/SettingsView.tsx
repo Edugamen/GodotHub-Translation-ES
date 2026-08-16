@@ -61,6 +61,7 @@ import {
   IconFlask,
   IconBomb,
   IconPlug,
+  IconUniversalAccess,
   IconGitBranch,
   IconPlus,
   IconTrash,
@@ -75,6 +76,7 @@ type SettingsCat =
   | 'storage'
   | 'behavior'
   | 'integrations'
+  | 'accessibility'
   | 'advanced'
 
 interface CatDef {
@@ -88,6 +90,7 @@ const CATEGORIES: CatDef[] = [
   { id: 'storage', icon: IconHardDrive },
   { id: 'behavior', icon: IconGear },
   { id: 'integrations', icon: IconPlug },
+  { id: 'accessibility', icon: IconUniversalAccess },
   { id: 'advanced', icon: IconFlask },
 ]
 
@@ -102,20 +105,6 @@ const LANDING_TABS: { id: string; label: string }[] = [
   { id: 'versions', label: 'Versions' },
   { id: 'news', label: 'Godot News' },
 ]
-
-const DASHBOARD_SECTIONS = [
-  { id: 'quick_actions' },
-  { id: 'stats' },
-  { id: 'weekly' },
-  { id: 'top_time' },
-  { id: 'git' },
-  { id: 'storage' },
-  { id: 'categories' },
-  { id: 'recent' },
-  { id: 'pinned' },
-  { id: 'engines' },
-  { id: 'running' },
-] as const
 
 function Subsection({
   id,
@@ -242,6 +231,7 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
   const [confirmingReset, setConfirmingReset] = useState(false)
   const [confirmingWipe, setConfirmingWipe] = useState(false)
   const [confirmingOsDec, setConfirmingOsDec] = useState<boolean | null>(null)
+  const [confirmingRestart, setConfirmingRestart] = useState(false)
   const [showUpdates, setShowUpdates] = useState(false)
   const [showBugReport, setShowBugReport] = useState(false)
   const [gitAuth, setGitAuth] = useState<GitAuthState | null>(null)
@@ -426,6 +416,12 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
     setConfirmingOsDec(null)
     if (value === null) return
     await update({ ...settings, use_os_decorations: value })
+    await flushPendingSave()
+    await relaunch()
+  }
+
+  const handleRestart = async () => {
+    setConfirmingRestart(false)
     await flushPendingSave()
     await relaunch()
   }
@@ -715,84 +711,15 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
       </Subsection>
 
       <Subsection
-        id="appearance-density"
-        title={ts('ui_density_label')}
-        description={ts('density_desc')}
-        searchText={`${ts('ui_density_label')} ${ts('density_desc')}`}
-        query={searchQuery}
-        onMatch={reportMatch}
-      >
-        <div className="flex flex-col gap-2">
-          <Slider
-            label={ts('ui_density_label')}
-            display={
-              <span className="text-xs font-mono text-ink tabular-nums">
-                {Math.round(settings.ui_density * 100)}%
-              </span>
-            }
-            value={settings.ui_density}
-            min={0.75}
-            max={1.25}
-            step={0.05}
-            defaultValue={DEFAULT_DENSITY}
-            onChange={(v) => update({ ...settings, ui_density: v })}
-          />
-        </div>
-      </Subsection>
-
-      <Subsection
-        id="appearance-text-size"
-        title={ts('text_size_label')}
-        description={ts('text_size_desc')}
-        searchText={`${ts('text_size_label')} ${ts('text_size_desc')}`}
-        query={searchQuery}
-        onMatch={reportMatch}
-      >
-        <div className="flex flex-col gap-2">
-          <Slider
-            label={ts('text_size_label')}
-            display={
-              <span className="text-xs font-mono text-ink tabular-nums">
-                {Math.round(settings.font_scale * 100)}%
-              </span>
-            }
-            value={settings.font_scale}
-            min={0.85}
-            max={1.3}
-            step={0.05}
-            defaultValue={DEFAULT_FONT_SCALE}
-            onChange={(v) => update({ ...settings, font_scale: v })}
-          />
-        </div>
-      </Subsection>
-
-      <Subsection
-        id="appearance-motion"
-        title={ts('animation_intensity_label')}
-        description={ts('animation_intensity_desc')}
-        searchText={`${ts('animation_intensity_label')} ${ts('animation_intensity_desc')} ${ts('animation_full')} ${ts('animation_subtle')} ${ts('animation_none')} ${ts('view_entrance_label')} ${ts('view_entrance_desc')} ${ts('entrance_fade')} ${ts('entrance_slide')} ${ts('entrance_scale')} ${ts('entrance_none')}`}
+        id="appearance-view-entrance"
+        title={ts('view_entrance_label')}
+        description={ts('view_entrance_desc')}
+        searchText={`${ts('view_entrance_label')} ${ts('view_entrance_desc')} ${ts('entrance_fade')} ${ts('entrance_slide')} ${ts('entrance_scale')} ${ts('entrance_none')}`}
         query={searchQuery}
         onMatch={reportMatch}
       >
         <div className="flex flex-col gap-3">
-          <SettingRow label={ts('animation_intensity_label')}>
-            <Segmented
-              value={settings.animation_intensity}
-              onChange={(v) =>
-                update({
-                  ...settings,
-                  animation_intensity: v as AppSettings['animation_intensity'],
-                })
-              }
-              options={[
-                { value: 'full', label: ts('animation_full') },
-                { value: 'subtle', label: ts('animation_subtle') },
-                { value: 'none', label: ts('animation_none') },
-              ]}
-            />
-          </SettingRow>
-
-          <SettingRow label={ts('view_entrance_label')} divider>
+          <SettingRow label={ts('view_entrance_label')}>
             <Segmented
               value={settings.view_entrance}
               onChange={(v) =>
@@ -841,25 +768,6 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
             }
           />
         </div>
-      </Subsection>
-
-      <Subsection
-        id="appearance-scrollbars"
-        title={ts('show_scrollbar_label')}
-        description={ts('scrollbar_desc')}
-        searchText={`${ts('show_scrollbar_label')} ${ts('scrollbar_desc')}`}
-        query={searchQuery}
-        onMatch={reportMatch}
-      >
-        <SettingRow label={ts('show_scrollbar_label')}>
-          <Toggle
-            checked={settings.show_scrollbars}
-            onChange={(checked) =>
-              update({ ...settings, show_scrollbars: checked })
-            }
-            label={ts('show_scrollbar_label')}
-          />
-        </SettingRow>
       </Subsection>
 
       <Subsection
@@ -957,37 +865,6 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
             )}
           </div>
         </div>
-      </Subsection>
-
-      <Subsection
-        id="appearance-dashboard-sections"
-        title={ts('dashboard_sections_label')}
-        description={ts('dashboard_sections_desc')}
-        searchText={`${ts('dashboard_sections_label')} ${ts('dashboard_sections_desc')}`}
-        query={searchQuery}
-        onMatch={reportMatch}
-      >
-        {DASHBOARD_SECTIONS.map((s) => {
-          const enabled =
-            settings.dashboard_sections.length === 0 ||
-            settings.dashboard_sections.includes(s.id)
-          return (
-            <SettingRow key={s.id} label={ts(`dashboard_section_${s.id}`)}>
-              <Toggle
-                checked={enabled}
-                onChange={(checked) => {
-                  const next = checked
-                    ? Array.from(
-                        new Set([...settings.dashboard_sections, s.id]),
-                      )
-                    : settings.dashboard_sections.filter((x) => x !== s.id)
-                  update({ ...settings, dashboard_sections: next })
-                }}
-                label={ts(`dashboard_section_${s.id}`)}
-              />
-            </SettingRow>
-          )
-        })}
       </Subsection>
 
       <button
@@ -1274,6 +1151,31 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
       </Subsection>
 
       <Subsection
+        id="storage-icon-scan-depth"
+        title={ts('icon_scan_depth_label')}
+        description={ts('icon_scan_depth_desc')}
+        searchText={`${ts('icon_scan_depth_label')} ${ts('icon_scan_depth_desc')}`}
+        query={searchQuery}
+        onMatch={reportMatch}
+      >
+        <div className="flex flex-col gap-2">
+          <Slider
+            label={ts('icon_scan_depth_label')}
+            display={
+              <span className="text-xs font-medium text-ink tabular-nums">
+                {ts('folders_deep', { count: settings.icon_scan_depth })}
+              </span>
+            }
+            value={settings.icon_scan_depth}
+            min={1}
+            max={20}
+            defaultValue={4}
+            onChange={(value) => update({ ...settings, icon_scan_depth: value })}
+          />
+        </div>
+      </Subsection>
+
+      <Subsection
         id="storage-concurrency"
         title={ts('download_concurrency_label')}
         description={ts('download_concurrency_desc')}
@@ -1474,7 +1376,7 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
         id="behavior-projects"
         title={ts('behavior_projects_title')}
         description={ts('behavior_projects_desc')}
-        searchText={`${ts('behavior_projects_title')} ${ts('behavior_projects_desc')} ${ts('auto_scan_label')} ${ts('use_categories_label')} ${ts('use_workspaces_label')} ${ts('git_init_new_projects_label')} ${ts('naming_convention_label')} ${ts('tooltip_delay_label')}`}
+        searchText={`${ts('behavior_projects_title')} ${ts('behavior_projects_desc')} ${ts('auto_scan_label')} ${ts('use_categories_label')} ${ts('use_workspaces_label')} ${ts('git_init_new_projects_label')} ${ts('naming_convention_label')}`}
         query={searchQuery}
         onMatch={reportMatch}
       >
@@ -1584,27 +1486,6 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
             </p>
           </div>
 
-          <div className="flex flex-col gap-2.5 pt-5 border-t border-line">
-            <Slider
-              label={ts('tooltip_delay_label')}
-              display={
-                <span className="text-xs text-ink tabular-nums">
-                  {settings.tooltip_delay}ms
-                </span>
-              }
-              value={settings.tooltip_delay}
-              min={100}
-              max={1000}
-              step={50}
-              defaultValue={350}
-              onChange={(value) =>
-                update({ ...settings, tooltip_delay: value })
-              }
-            />
-            <p className="text-[11px] text-muted leading-relaxed">
-              {ts('tooltip_delay_desc')}
-            </p>
-          </div>
         </div>
       </Subsection>
 
@@ -1983,6 +1864,164 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
     </div>
   )
 
+  const renderAccessibility = () => (
+    <div className="flex flex-col gap-3">
+      <Subsection
+        id="accessibility-density"
+        title={ts('ui_density_label')}
+        description={ts('density_desc')}
+        searchText={`${ts('ui_density_label')} ${ts('density_desc')}`}
+        query={searchQuery}
+        onMatch={reportMatch}
+      >
+        <div className="flex flex-col gap-2">
+          <Slider
+            label={ts('ui_density_label')}
+            display={
+              <span className="text-xs font-mono text-ink tabular-nums">
+                {Math.round(settings.ui_density * 100)}%
+              </span>
+            }
+            value={settings.ui_density}
+            min={0.75}
+            max={1.25}
+            step={0.05}
+            defaultValue={DEFAULT_DENSITY}
+            onChange={(v) => update({ ...settings, ui_density: v })}
+          />
+        </div>
+      </Subsection>
+
+      <Subsection
+        id="accessibility-text-size"
+        title={ts('text_size_label')}
+        description={ts('text_size_desc')}
+        searchText={`${ts('text_size_label')} ${ts('text_size_desc')}`}
+        query={searchQuery}
+        onMatch={reportMatch}
+      >
+        <div className="flex flex-col gap-2">
+          <Slider
+            label={ts('text_size_label')}
+            display={
+              <span className="text-xs font-mono text-ink tabular-nums">
+                {Math.round(settings.font_scale * 100)}%
+              </span>
+            }
+            value={settings.font_scale}
+            min={0.85}
+            max={1.3}
+            step={0.05}
+            defaultValue={DEFAULT_FONT_SCALE}
+            onChange={(v) => update({ ...settings, font_scale: v })}
+          />
+        </div>
+      </Subsection>
+
+      <Subsection
+        id="accessibility-screen-reader"
+        title={
+          <span className="inline-flex items-center gap-2">
+            {ts('screen_reader_label')}
+            <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-tag bg-amber/15 text-amber border border-amber/30">
+              {ts('git_beta_badge', { ns: 'common' })}
+            </span>
+          </span>
+        }
+        description={ts('screen_reader_desc')}
+        searchText={`${ts('screen_reader_label')} ${ts('screen_reader_desc')} ${ts('screen_reader_beta_desc')} ${ts('accessibility')} ${ts('accessibility_desc')}`}
+        query={searchQuery}
+        onMatch={reportMatch}
+      >
+        <SettingRow label={ts('screen_reader_label')}>
+          <Toggle
+            checked={settings.screen_reader_announcements}
+            onChange={(checked) =>
+              update({ ...settings, screen_reader_announcements: checked })
+            }
+            label={ts('screen_reader_label')}
+          />
+        </SettingRow>
+        <p className="text-[11px] text-amber/90 leading-relaxed mt-1">
+          {ts('screen_reader_beta_desc')}
+        </p>
+      </Subsection>
+
+      <Subsection
+        id="accessibility-motion"
+        title={ts('animation_intensity_label')}
+        description={ts('animation_intensity_desc')}
+        searchText={`${ts('animation_intensity_label')} ${ts('animation_intensity_desc')} ${ts('animation_full')} ${ts('animation_subtle')} ${ts('animation_none')}`}
+        query={searchQuery}
+        onMatch={reportMatch}
+      >
+        <SettingRow label={ts('animation_intensity_label')}>
+          <Segmented
+            value={settings.animation_intensity}
+            onChange={(v) =>
+              update({
+                ...settings,
+                animation_intensity: v as AppSettings['animation_intensity'],
+              })
+            }
+            options={[
+              { value: 'full', label: ts('animation_full') },
+              { value: 'subtle', label: ts('animation_subtle') },
+              { value: 'none', label: ts('animation_none') },
+            ]}
+          />
+        </SettingRow>
+      </Subsection>
+
+      <Subsection
+        id="accessibility-scrollbars"
+        title={ts('show_scrollbar_label')}
+        description={ts('scrollbar_desc')}
+        searchText={`${ts('show_scrollbar_label')} ${ts('scrollbar_desc')}`}
+        query={searchQuery}
+        onMatch={reportMatch}
+      >
+        <SettingRow label={ts('show_scrollbar_label')}>
+          <Toggle
+            checked={settings.show_scrollbars}
+            onChange={(checked) =>
+              update({ ...settings, show_scrollbars: checked })
+            }
+            label={ts('show_scrollbar_label')}
+          />
+        </SettingRow>
+      </Subsection>
+
+      <Subsection
+        id="accessibility-tooltip-delay"
+        title={ts('tooltip_delay_label')}
+        description={ts('tooltip_delay_desc')}
+        searchText={`${ts('tooltip_delay_label')} ${ts('tooltip_delay_desc')}`}
+        query={searchQuery}
+        onMatch={reportMatch}
+      >
+        <div className="flex flex-col gap-2">
+          <Slider
+            label={ts('tooltip_delay_label')}
+            display={
+              <span className="text-xs text-ink tabular-nums">
+                {settings.tooltip_delay}ms
+              </span>
+            }
+            value={settings.tooltip_delay}
+            min={100}
+            max={1000}
+            step={50}
+            defaultValue={350}
+            onChange={(value) =>
+              update({ ...settings, tooltip_delay: value })
+            }
+          />
+        </div>
+      </Subsection>
+    </div>
+  )
+
   const renderAdvanced = () => (
     <div className="flex flex-col gap-3">
       <Subsection
@@ -2021,6 +2060,25 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
           >
             <IconRefresh className="w-4 h-4" />
             {ts('check_updates')}
+          </button>
+        </div>
+
+        <div className="rounded-item bg-overlay px-4 py-4 flex items-center justify-between gap-6">
+          <div className="min-w-0">
+            <h3 className="text-sm font-medium text-ink">
+              {ts('restart_app')}
+            </h3>
+            <p className="text-xs text-muted mt-1.5 leading-relaxed">
+              {ts('restart_app_desc')}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setConfirmingRestart(true)}
+            className="focus-ring cursor-pointer shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-item border border-outline/50 hover:border-accent-dim hover:bg-raised text-sm font-medium transition-colors"
+          >
+            <IconRefresh className="w-4 h-4" />
+            {ts('restart_app')}
           </button>
         </div>
 
@@ -2095,6 +2153,8 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
         return renderBehavior()
       case 'integrations':
         return renderIntegrations()
+      case 'accessibility':
+        return renderAccessibility()
       case 'advanced':
         return renderAdvanced()
     }
@@ -2185,6 +2245,7 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
             className="flex-1 min-w-0"
             hideThumb={!settings.show_scrollbars}
             hideTopButton
+            scrollToTopOn={cat}
           >
             <div className="min-h-full px-5 pb-4">
               <div className="sticky top-0 z-10 -mx-5 px-5 pt-4 pb-3 bg-raised border-b border-line/60 mb-3 flex items-center gap-3">
@@ -2251,6 +2312,9 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
             onCancel={() => setConfirmingUiSwitch(null)}
           />
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {presetModal && (
           <ThemePresetsModal
             mode={presetModal}
@@ -2259,6 +2323,9 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
             onClose={() => setPresetModal(null)}
           />
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {confirmingReset && (
           <ConfirmDialog
             title={ts('reset_all_title')}
@@ -2269,6 +2336,9 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
             onCancel={() => setConfirmingReset(false)}
           />
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {confirmingWipe && (
           <ConfirmDialog
             title={ts('delete_all_title')}
@@ -2279,6 +2349,9 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
             onCancel={() => setConfirmingWipe(false)}
           />
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {confirmingOsDec !== null && (
           <ConfirmDialog
             title={ts('restart_required_title', { ns: 'common' })}
@@ -2289,6 +2362,22 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
             onCancel={() => setConfirmingOsDec(null)}
           />
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {confirmingRestart && (
+          <ConfirmDialog
+            title={ts('restart_app_confirm_title')}
+            description={ts('restart_app_confirm_desc')}
+            confirmLabel={ts('restart_app')}
+            variant="default"
+            onConfirm={handleRestart}
+            onCancel={() => setConfirmingRestart(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {showUpdates && (
           <CheckForUpdatesModal
             onClose={() => setShowUpdates(false)}
@@ -2298,9 +2387,15 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
             }}
           />
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {showBugReport && (
           <BugReportModal onClose={() => setShowBugReport(false)} />
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {gitAuthFlow && (
           <GitAuthModal
             provider={gitAuthFlow}

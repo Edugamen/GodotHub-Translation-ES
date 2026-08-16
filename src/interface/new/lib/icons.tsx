@@ -71,6 +71,7 @@ import {
   faStopwatch,
   faFont,
   faDesktop,
+  faUniversalAccess,
   faMinus,
   faSquare,
   faClone,
@@ -129,6 +130,7 @@ export const IconWifiOff = solid(faWifi)
 export const IconBriefcase = solid(faBriefcase)
 export const IconHouse = solid(faHouse)
 export const IconUser = solid(faUser)
+export const IconUniversalAccess = solid(faUniversalAccess)
 export const IconCode = solid(faCode)
 export const IconGitBranch = solid(faCodeBranch)
 export const IconTerminal = solid(faTerminal)

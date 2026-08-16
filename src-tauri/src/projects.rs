@@ -51,6 +51,7 @@ const DEFAULT_ICON_SVG: &[u8] = include_bytes!("../icon.svg");
 
 struct CachedIcon {
     project_godot_mtime: Option<SystemTime>,
+    icon_scan_depth: u32,
     data: Option<String>,
 }
 
@@ -1134,9 +1135,10 @@ fn find_resource_by_uid(
     dir: &Path,
     target_uid: &str,
     depth: usize,
+    max_depth: usize,
     budget: &mut usize,
 ) -> Option<PathBuf> {
-    if depth > 14 || *budget == 0 {
+    if depth > max_depth || *budget == 0 {
         return None;
     }
     let entries = match fs::read_dir(dir) {
@@ -1170,14 +1172,19 @@ fn find_resource_by_uid(
     }
 
     for sub in subdirs {
-        if let Some(found) = find_resource_by_uid(&sub, target_uid, depth + 1, budget) {
+        if let Some(found) =
+            find_resource_by_uid(&sub, target_uid, depth + 1, max_depth, budget)
+        {
             return Some(found);
         }
     }
     None
 }
 
-fn resolve_project_icon(project_path: &str) -> Option<(Vec<u8>, &'static str)> {
+fn resolve_project_icon(
+    project_path: &str,
+    icon_scan_depth: u32,
+) -> Option<(Vec<u8>, &'static str)> {
     let dir = PathBuf::from(project_path);
     let godot_file = dir.join("project.godot");
     let mut icon_rel: Option<String> = None;
@@ -1204,7 +1211,13 @@ fn resolve_project_icon(project_path: &str) -> Option<(Vec<u8>, &'static str)> {
     }
     if let Some(uid) = icon_uid {
         let mut budget = 8000usize;
-        if let Some(found) = find_resource_by_uid(&dir, &uid, 0, &mut budget) {
+        if let Some(found) = find_resource_by_uid(
+            &dir,
+            &uid,
+            0,
+            icon_scan_depth.max(1) as usize,
+            &mut budget,
+        ) {
             if let Ok(rel) = found.strip_prefix(&dir) {
                 if let Some(rel_str) = rel.to_str() {
                     candidates.push(rel_str.to_string());
@@ -1426,36 +1439,40 @@ pub fn get_project_name(path: String) -> Option<String> {
 }
 
 #[tauri::command]
-pub async fn validate_godot_folder(path: String) -> Option<GodotFolderPreview> {
+pub async fn validate_godot_folder(path: String, app: AppHandle) -> Option<GodotFolderPreview> {
     let godot_path = std::path::PathBuf::from(&path).join("project.godot");
     if !godot_path.exists() {
         return None;
     }
     let name = resolve_project_name(&path)?;
-    let icon = get_project_icon(path).await;
+    let icon = get_project_icon(path, app).await;
     Some(GodotFolderPreview { name, icon })
 }
 
 #[tauri::command]
-pub async fn get_project_icon(path: String) -> Option<String> {
+pub async fn get_project_icon(path: String, app: AppHandle) -> Option<String> {
+    let icon_scan_depth = crate::settings::read_settings(&app).icon_scan_depth;
     tokio::task::spawn_blocking(move || {
         let mtime = fs::metadata(PathBuf::from(&path).join("project.godot"))
             .and_then(|m| m.modified())
             .ok();
 
         if let Some(cached) = icon_cache().lock().unwrap().get(&path) {
-            if cached.project_godot_mtime == mtime {
+            if cached.project_godot_mtime == mtime
+                && cached.icon_scan_depth == icon_scan_depth
+            {
                 return cached.data.clone();
             }
         }
 
-        let (bytes, mime) = match resolve_project_icon(&path) {
+        let (bytes, mime) = match resolve_project_icon(&path, icon_scan_depth) {
             Some(v) => v,
             None => {
                 icon_cache().lock().unwrap().insert(
                     path.clone(),
                     CachedIcon {
                         project_godot_mtime: mtime,
+                        icon_scan_depth,
                         data: None,
                     },
                 );
@@ -1470,6 +1487,7 @@ pub async fn get_project_icon(path: String) -> Option<String> {
             path.clone(),
             CachedIcon {
                 project_godot_mtime: mtime,
+                icon_scan_depth,
                 data: Some(data_url.clone()),
             },
         );

@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { IconRocket } from '../../lib/Icons'
 export type SplashPhase = 'enter' | 'fly' | 'fade'
 
 interface SplashScreenProps {
@@ -6,27 +7,84 @@ interface SplashScreenProps {
 }
 
 export function SplashScreen({ phase }: SplashScreenProps) {
-  const splashOpacity = phase === 'enter' ? 1 : 0
+  const exiting = phase !== 'enter'
 
   return (
     <motion.div
       className="fixed inset-0 z-50 flex items-center justify-center bg-base"
-      animate={{ opacity: splashOpacity }}
+      animate={{ opacity: exiting ? 0 : 1 }}
       transition={{ duration: 0.5, ease: 'easeInOut' }}
-      style={{ pointerEvents: splashOpacity === 0 ? 'none' : 'auto' }}
+      style={{ pointerEvents: exiting ? 'none' : 'auto' }}
     >
-      {phase === 'enter' && (
-        <motion.h1
-          layoutId="brand-title"
-          layout
-          initial={{ opacity: 0, scale: 0.6 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          className="font-black italic tracking-tight leading-none text-ink text-[64px] select-none"
+      <motion.div
+        layoutId="brand-splash"
+        layout
+        initial={{ y: 0, scale: 1 }}
+        animate={{
+          y: phase === 'fly' ? -40 : 0,
+          scale: phase === 'fly' ? 1.06 : 1,
+        }}
+        transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+        className="flex flex-col items-center gap-6 select-none"
+      >
+        {/* Logo mark */}
+        <motion.div
+          initial={{ scale: 0.4, rotate: -30, opacity: 0 }}
+          animate={{ scale: 1, rotate: 0, opacity: 1 }}
+          transition={{
+            type: 'spring',
+            stiffness: 260,
+            damping: 18,
+            delay: 0.15,
+          }}
+          className="relative"
         >
-          GodotHub
-        </motion.h1>
-      )}
+          <div className="absolute inset-0 rounded-tile bg-accent/25 blur-xl scale-125" />
+          <div className="relative w-20 h-20 rounded-tile bg-accent/15 border border-accent-dim/40 flex items-center justify-center">
+            <motion.span
+              animate={{ y: [0, -4, 0] }}
+              transition={{
+                duration: 1.6,
+                repeat: Infinity,
+                ease: 'easeInOut',
+              }}
+            >
+              <IconRocket className="w-9 h-9 text-accent-bright" />
+            </motion.span>
+          </div>
+        </motion.div>
+
+        {/* Wordmark */}
+        <div className="flex flex-col items-center gap-3">
+          <motion.h1
+            initial={{ opacity: 0, y: 18, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
+            className="font-black italic tracking-tight leading-none text-ink text-[56px]"
+          >
+            GodotHub
+          </motion.h1>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.55 }}
+            className="relative h-[3px] w-40 rounded-full bg-raised overflow-hidden"
+          >
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: '100%' }}
+              transition={{
+                duration: 1.1,
+                repeat: Infinity,
+                ease: 'easeInOut',
+                delay: 0.5,
+              }}
+              className="absolute inset-y-0 w-1/2 rounded-full bg-gradient-to-r from-transparent via-accent to-transparent"
+            />
+          </motion.div>
+        </div>
+      </motion.div>
     </motion.div>
   )
 }

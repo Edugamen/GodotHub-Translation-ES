@@ -96,17 +96,17 @@
 
 ---
 
-<p align="center">
+<div style="display: flex; justify-content: center; gap: 20px; align-items: center;">
   <a href="https://discord.com/invite/nA7dus32Yv/" target="_blank" rel="noopener noreferrer">
     <img src="/assets/discord-banner.png" alt="Discord">
   </a>
-</p>
-
-<p align="center">
   <a href="https://patreon.com/TheRyko" target="_blank" rel="noopener noreferrer">
     <img src="/assets/patreon-banner.png" alt="Patreon">
   </a>
-</p>
+  <a href="https://x.com/theRyko11" target="_blank" rel="noopener noreferrer">
+    <img src="/assets/twitter-banner.png" alt="Twitter">
+  </a>
+</div>
 
 ---
 

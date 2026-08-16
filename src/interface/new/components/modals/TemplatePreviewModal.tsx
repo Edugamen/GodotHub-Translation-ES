@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
-import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../../../lib/api'
+import { ModalShell } from './ModalShell'
 import type { ProjectTemplate, TemplateFileEntry } from '../../../../types'
 import {
   IconCopy,
   IconInfo,
-  IconX,
   IconChevronDown,
   IconChevronRight,
 } from '../../lib/icons'
@@ -157,53 +155,29 @@ export function TemplatePreviewModal({ template, onClose }: Props) {
   const dirCount = entries.filter((e) => e.is_dir).length
   const totalSize = entries.reduce((acc, e) => acc + e.size, 0)
 
-  return createPortal(
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={onClose}
+  return (
+    <ModalShell
+      icon={<IconCopy className="w-5 h-5 text-accent-bright" />}
+      title={template.name}
+      description={
+        <>
+          {template.description && (
+            <span className="block leading-relaxed">
+              {template.description}
+            </span>
+          )}
+          <span className="flex items-center gap-2 mt-1 text-[10px] text-muted/50 font-mono">
+            <IconInfo className="w-3 h-3" />
+            {t('file_count', { count: fileCount })}
+            {dirCount > 0 && ` · ${t('folder_count', { count: dirCount })}`}
+            {totalSize > 0 && ` · ${formatSize(totalSize)}`}
+          </span>
+        </>
+      }
+      maxWidth="max-w-lg"
+      onClose={onClose}
     >
-      <motion.div
-        initial={{ opacity: 0, y: 12, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-        className="bg-surface border border-line rounded-card w-full max-w-lg max-h-[80vh] flex flex-col shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-4 p-6 pb-4 border-b border-line">
-          <div className="flex items-start gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-tile bg-accent/10 border border-accent-dim/30 flex items-center justify-center shrink-0">
-              <IconCopy className="w-4 h-4 text-accent-bright" />
-            </div>
-            <div className="min-w-0">
-              <h3 className="font-display font-semibold text-lg text-ink truncate">
-                {template.name}
-              </h3>
-              {template.description && (
-                <p className="text-xs text-muted mt-0.5 leading-relaxed">
-                  {template.description}
-                </p>
-              )}
-              <div className="flex items-center gap-2 mt-1.5 text-[10px] text-muted/50 font-mono">
-                <IconInfo className="w-3 h-3" />
-                {t('file_count', { count: fileCount })}
-                {dirCount > 0 && ` · ${t('folder_count', { count: dirCount })}`}
-                {totalSize > 0 && ` · ${formatSize(totalSize)}`}
-              </div>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="focus-ring cursor-pointer p-1.5 rounded-btn text-muted hover:text-ink hover:bg-raised transition-colors shrink-0"
-            aria-label={t('close')}
-          >
-            <IconX className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="p-6">
           {loading ? (
             <div className="flex items-center justify-center py-12 text-sm text-muted">
               {t('loading')}
@@ -220,8 +194,6 @@ export function TemplatePreviewModal({ template, onClose }: Props) {
             <FileTree entries={entries} t={t} />
           )}
         </div>
-      </motion.div>
-    </motion.div>,
-    document.body,
+    </ModalShell>
   )
 }

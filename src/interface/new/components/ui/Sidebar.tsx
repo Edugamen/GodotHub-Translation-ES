@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { IconChevronsLeft, IconHouse, IconSearch, IconX } from '../../lib/icons'
 import type { IconProps } from '../../lib/icons'
 import { Tooltip } from '../reusables/Tooltip'
+import { WorkspaceSwitcher } from './WorkspaceSwitcher'
 
 export interface SidebarTab {
   id: string
@@ -255,7 +256,11 @@ export function Sidebar({
         )}
       </div>
 
-      <nav className={`flex-1 p-3 flex flex-col gap-1 ${collapsed ? 'items-center' : ''}`}>
+      <div className={`shrink-0 ${collapsed ? 'flex justify-center px-0 py-2' : 'px-3 pb-1'}`}>
+        <WorkspaceSwitcher collapsed={collapsed} />
+      </div>
+
+      <nav className={`flex-1 p-3 pt-2 flex flex-col gap-1 ${collapsed ? 'items-center' : ''}`}>
         {mainTabs.map((tab) =>
           renderTabButton(
             tab,

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { createPortal } from 'react-dom'
-import { useTranslation } from 'react-i18next'
 import { motion } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 import { api } from '../../../../lib/api'
 import { useProjectsContext } from '../../../../hooks/projectsContext'
+import { ModalShell } from './ModalShell'
 import type { AssetLibraryAsset, ProjectTemplate } from '../../../../types'
 import {
   IconAlertTriangle,
@@ -13,7 +13,6 @@ import {
   IconSearch,
   IconSpinner,
   IconStore,
-  IconX,
 } from '../../lib/icons'
 
 export interface AssetInstallOutcome {
@@ -153,65 +152,66 @@ export function InstallAssetModal({ asset, onClose, onInstalled }: Props) {
     </button>
   )
 
-  return createPortal(
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={() => !installing && onClose()}
-    >
-      <motion.div
-        initial={{ opacity: 0, y: 12, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 12, scale: 0.96 }}
-        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-        onClick={(e) => e.stopPropagation()}
-        className="bg-surface border border-line rounded-card w-full max-w-md flex flex-col overflow-hidden shadow-2xl"
-      >
-        <div className="flex items-start gap-3 p-5 pb-4">
-          <div className="w-11 h-11 rounded-tile bg-overlay border border-outline/50 flex items-center justify-center overflow-hidden shrink-0">
-            {asset.icon_url ? (
-              <img
-                src={asset.icon_url}
-                alt=""
-                loading="lazy"
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none'
-                  e.currentTarget.parentElement?.classList.remove('overflow-hidden')
-                }}
-              />
-            ) : (
-              <IconStore className="w-5 h-5 text-muted" />
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <h4 className="font-display font-semibold text-sm leading-snug line-clamp-2">
-              {t('asset_install_modal_title', { title: asset.title })}
-            </h4>
-            <p className="text-[11px] text-muted/70 mt-0.5">
-              {t('asset_install_modal_desc')}
-            </p>
-          </div>
+  return (
+    <ModalShell
+      icon={
+        asset.icon_url ? (
+          <img
+            src={asset.icon_url}
+            alt=""
+            loading="lazy"
+            className="w-full h-full object-cover rounded-tile"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none'
+            }}
+          />
+        ) : (
+          <IconStore className="w-5 h-5 text-muted" />
+        )
+      }
+      title={t('asset_install_modal_title', { title: asset.title })}
+      description={t('asset_install_modal_desc')}
+      maxWidth="max-w-md"
+      onClose={() => !installing && onClose()}
+      showClose={false}
+      footer={
+        <>
           <button
             onClick={onClose}
             disabled={installing}
-            className="focus-ring cursor-pointer p-1.5 rounded-btn text-muted/50 hover:text-ink hover:bg-raised transition-colors disabled:opacity-40"
-            aria-label={t('close')}
+            className="focus-ring cursor-pointer px-4 py-2 rounded-item text-sm text-muted hover:text-ink hover:bg-raised transition-colors disabled:opacity-40"
           >
-            <IconX className="w-4 h-4" />
+            {t('cancel')}
           </button>
-        </div>
-
-        <div className="px-5 pb-3">
+          <motion.button
+            whileHover={!selectedId || installing ? undefined : { y: -1 }}
+            whileTap={!selectedId || installing ? undefined : { scale: 0.96 }}
+            onClick={() => selectedId && install(selectedId, selectedName ?? '')}
+            disabled={!selectedId || installing}
+            className="focus-ring cursor-pointer flex items-center gap-2 px-4 py-2 rounded-item bg-accent hover:bg-accent-bright text-white text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {installing ? (
+              <>
+                <IconSpinner className="w-3.5 h-3.5 animate-spin" />
+                {t('asset_installing')}
+              </>
+            ) : selectedName ? (
+              <>
+                <IconDownload className="w-3.5 h-3.5" />
+                {t('asset_install_into', { name: selectedName })}
+              </>
+            ) : (
+              <>{t('asset_install_btn')}</>
+            )}
+          </motion.button>
+        </>
+      }
+    >
+        <div className="px-5 pb-4 flex flex-col gap-3">
           <div className="flex items-center gap-1 p-1 rounded-item border border-outline/50 bg-overlay">
             {tabBtn('project', IconFolderPlus, t('asset_install_tab_project'))}
             {tabBtn('template', IconCopy, t('asset_install_tab_template'))}
           </div>
-        </div>
-
-        <div className="px-5 flex flex-col gap-3 min-h-0 flex-1">
           {canCreateTemplate && tab === 'template' && (
             <button
               type="button"
@@ -306,47 +306,14 @@ export function InstallAssetModal({ asset, onClose, onInstalled }: Props) {
               })
             )}
           </div>
-        </div>
 
-        {error && (
-          <div className="mx-5 mt-3 flex items-start gap-2 p-2.5 rounded-item bg-danger/10 border border-danger/20 text-xs text-danger leading-snug">
-            <IconAlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-            <span className="min-w-0 break-words">{error}</span>
-          </div>
-        )}
-
-        <div className="flex items-center justify-end gap-2.5 p-5 pt-4 border-t border-line mt-3">
-          <button
-            onClick={onClose}
-            disabled={installing}
-            className="focus-ring cursor-pointer px-4 py-2 rounded-item text-sm text-muted hover:text-ink hover:bg-raised transition-colors disabled:opacity-40"
-          >
-            {t('cancel')}
-          </button>
-          <motion.button
-            whileHover={!selectedId || installing ? undefined : { y: -1 }}
-            whileTap={!selectedId || installing ? undefined : { scale: 0.96 }}
-            onClick={() => selectedId && install(selectedId, selectedName ?? '')}
-            disabled={!selectedId || installing}
-            className="focus-ring cursor-pointer flex items-center gap-2 px-4 py-2 rounded-item bg-accent hover:bg-accent-bright text-white text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {installing ? (
-              <>
-                <IconSpinner className="w-3.5 h-3.5 animate-spin" />
-                {t('asset_installing')}
-              </>
-            ) : selectedName ? (
-              <>
-                <IconDownload className="w-3.5 h-3.5" />
-                {t('asset_install_into', { name: selectedName })}
-              </>
-            ) : (
-              <>{t('asset_install_btn')}</>
-            )}
-          </motion.button>
+          {error && (
+            <div className="flex items-start gap-2 p-2.5 rounded-item bg-danger/10 border border-danger/20 text-xs text-danger leading-snug">
+              <IconAlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <span className="min-w-0 break-words">{error}</span>
+            </div>
+          )}
         </div>
-      </motion.div>
-    </motion.div>,
-    document.body,
+    </ModalShell>
   )
 }

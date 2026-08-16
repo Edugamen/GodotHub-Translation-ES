@@ -59,13 +59,14 @@ const SAVE_DEBOUNCE_MS = 350
 const DEFAULT_BG_DARK = DEFAULT_BG
 
 type SettingsTab =
-  'storage' | 'behavior' | 'display' | 'appearance' | 'advanced'
+  'storage' | 'behavior' | 'display' | 'appearance' | 'accessibility' | 'advanced'
 
 const TABS: { id: SettingsTab }[] = [
   { id: 'storage' },
   { id: 'behavior' },
   { id: 'display' },
   { id: 'appearance' },
+  { id: 'accessibility' },
   { id: 'advanced' },
 ]
 
@@ -274,11 +275,28 @@ export function SettingsView({
   const [confirmingReset, setConfirmingReset] = useState(false)
   const [confirmingWipe, setConfirmingWipe] = useState(false)
   const [confirmingOsDec, setConfirmingOsDec] = useState<boolean | null>(null)
+  const [confirmingRestart, setConfirmingRestart] = useState(false)
   const [tab, setTab] = useState<SettingsTab>('storage')
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
   const [settingsSearchQuery, setSettingsSearchQuery] = useState('')
   const [cssDraft, setCssDraft] = useState('')
   const [cssStatus, setCssStatus] = useState<'idle' | 'applied'>('idle')
+  const settingsRootRef = useRef<HTMLDivElement>(null)
+
+  // Opening a new settings tab always starts scrolled to the top.
+  useEffect(() => {
+    const el = settingsRootRef.current
+    if (!el) return
+    let node: HTMLElement | null = el.parentElement
+    while (node) {
+      const style = getComputedStyle(node)
+      if (/(auto|scroll|overlay)/.test(style.overflowY)) {
+        node.scrollTop = 0
+        break
+      }
+      node = node.parentElement
+    }
+  }, [tab])
 
   const [sidebarExpandedWidth, setSidebarExpandedWidth] = useState(() => {
     try {
@@ -324,6 +342,7 @@ export function SettingsView({
       default_project_location: { tab: 'storage', section: 'storage-folders' },
       download_dir: { tab: 'storage', section: 'storage-folders' },
       scan_depth: { tab: 'storage', section: 'storage-folders' },
+      icon_scan_depth: { tab: 'storage', section: 'storage-folders' },
       download_concurrency: { tab: 'storage', section: 'storage-folders' },
       launch_with_console: { tab: 'behavior', section: 'behavior' },
       close_on_project_open: { tab: 'behavior', section: 'behavior' },
@@ -338,7 +357,7 @@ export function SettingsView({
       git_init_new_projects: { tab: 'behavior', section: 'behavior-projects' },
       check_updates: { tab: 'advanced', section: 'advanced-updates' },
       github_token: { tab: 'advanced', section: 'advanced-github-token' },
-      tooltip_delay: { tab: 'behavior', section: 'behavior-projects' },
+      tooltip_delay: { tab: 'accessibility', section: 'accessibility' },
       tray_recent_projects_count: { tab: 'behavior', section: 'behavior' },
       command_palette_keybind: { tab: 'behavior', section: 'behavior' },
       last_opened_time_format: { tab: 'display', section: 'display' },
@@ -348,12 +367,12 @@ export function SettingsView({
       accent_color: { tab: 'appearance', section: 'appearance' },
       background_color: { tab: 'appearance', section: 'appearance' },
       corner_radius: { tab: 'appearance', section: 'appearance' },
-      ui_density: { tab: 'appearance', section: 'appearance' },
-      font_scale: { tab: 'appearance', section: 'appearance' },
-      animation_intensity: { tab: 'appearance', section: 'appearance' },
+      ui_density: { tab: 'accessibility', section: 'accessibility' },
+      font_scale: { tab: 'accessibility', section: 'accessibility' },
+      animation_intensity: { tab: 'accessibility', section: 'accessibility' },
       view_entrance: { tab: 'appearance', section: 'appearance' },
       custom_css: { tab: 'appearance', section: 'appearance' },
-      show_scrollbars: { tab: 'appearance', section: 'appearance' },
+      show_scrollbars: { tab: 'accessibility', section: 'accessibility' },
       project_icon_opacity: { tab: 'appearance', section: 'appearance' },
       new_ui: { tab: 'appearance', section: 'appearance' },
       sidebar_width: { tab: 'appearance', section: 'appearance' },
@@ -362,6 +381,7 @@ export function SettingsView({
       delete_app_data: { tab: 'advanced', section: 'advanced-delete' },
       show_support_button: { tab: 'advanced', section: 'advanced-support' },
       show_star_button: { tab: 'advanced', section: 'advanced-support' },
+      screen_reader_announcements: { tab: 'accessibility', section: 'accessibility' },
     }
 
     const info = sectionMap[highlightSetting]
@@ -598,7 +618,7 @@ export function SettingsView({
   }
 
   return (
-    <div className="p-10 pt-15 max-w-8xl mx-auto gap-6 flex flex-col">        <div className="flex items-start justify-between">
+    <div ref={settingsRootRef} className="p-10 pt-15 max-w-8xl mx-auto gap-6 flex flex-col">        <div className="flex items-start justify-between">
         <div>
           <h2 className="font-body font-semibold text-3xl tracking-tight">
             {t('settings_title')}
@@ -817,6 +837,28 @@ export function SettingsView({
                   />
                   <p className="text-[11px] text-muted leading-relaxed">
                     {t('scan_depth_desc')}
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-2.5 pt-5 border-t border-line">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-xs font-medium text-muted">
+                      {t('icon_scan_depth_label')}
+                    </span>
+                    <span className="text-xs text-ink tabular-nums">
+                      {t('folders_deep', { count: current.icon_scan_depth })}
+                    </span>
+                  </div>
+                  <Slider
+                    value={current.icon_scan_depth}
+                    min={1}
+                    max={20}
+                    defaultValue={4}
+                    onChange={(value) => setField('icon_scan_depth', value)}
+                    label={t('icon_scan_depth_label')}
+                  />
+                  <p className="text-[11px] text-muted leading-relaxed">
+                    {t('icon_scan_depth_desc')}
                   </p>
                 </div>
 
@@ -1097,31 +1139,6 @@ export function SettingsView({
                   </p>
                 </label>
 
-                <label className="flex flex-col gap-2.5 pt-5 border-t border-line">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-muted">
-                      {t('tooltip_delay_label')}
-                    </span>
-                    <span className="text-xs text-ink tabular-nums">
-                      {current.tooltip_delay}ms
-                    </span>
-                  </div>
-                  <Slider
-                    value={current.tooltip_delay}
-                    min={100}
-                    max={1000}
-                    step={50}
-                    defaultValue={350}
-                    onChange={(value) =>
-                      setField('tooltip_delay', value)
-                    }
-                    label={t('tooltip_delay_label')}
-                  />
-                  <p className="text-[11px] text-muted leading-relaxed">
-                    {t('tooltip_delay_desc')}
-                  </p>
-                </label>
-
               </div>
             </SectionCard>
             </div>
@@ -1320,6 +1337,165 @@ export function SettingsView({
               )}
             </SectionCard>
             </div>
+          </motion.div>
+        )}
+
+        {tab === 'accessibility' && (
+          <motion.div key="accessibility" {...tabEntrance} className="flex flex-col gap-6">
+            <SectionCard
+              title={t('ui_density_label')}
+              description={t('density_desc')}
+            >
+              <Slider
+                min={0.75}
+                max={1.25}
+                step={0.05}
+                value={current.ui_density}
+                defaultValue={DEFAULT_DENSITY}
+                label={t('ui_density_label')}
+                onChange={(v) => {
+                  setField('ui_density', v)
+                  applyDensity(v)
+                }}
+              />
+            </SectionCard>
+
+            <SectionCard
+              title={t('text_size_label')}
+              description={t('text_size_desc')}
+            >
+              <Slider
+                min={0.85}
+                max={1.3}
+                step={0.05}
+                value={current.font_scale}
+                defaultValue={DEFAULT_FONT_SCALE}
+                label={t('text_size_label')}
+                onChange={(v) => {
+                  setField('font_scale', v)
+                  applyFontScale(v)
+                }}
+              />
+            </SectionCard>
+
+            <div data-section-id="accessibility">
+            <SectionCard
+              title={t('accessibility')}
+              description={t('accessibility_desc')}
+            >
+              <label className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <span className="text-xs font-medium text-muted flex items-center gap-2">
+                    {t('screen_reader_label')}
+                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber/15 text-amber border border-amber/30">
+                      {t('git_beta_badge', { ns: 'common' })}
+                    </span>
+                  </span>
+                  <p className="text-[11px] text-muted mt-1 leading-relaxed">
+                    {t('screen_reader_desc')}
+                  </p>
+                  <p className="text-[11px] text-amber/90 mt-1.5 leading-relaxed">
+                    {t('screen_reader_beta_desc')}
+                  </p>
+                </div>
+                <Toggle
+                  checked={current.screen_reader_announcements}
+                  onChange={(checked) =>
+                    setField('screen_reader_announcements', checked)
+                  }
+                  label={t('screen_reader_label')}
+                />
+              </label>
+            </SectionCard>
+            </div>
+
+            <SectionCard
+              title={t('animation_intensity_label')}
+              description={t('animation_intensity_desc')}
+            >
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-xs font-medium text-muted">
+                    {t('animation_intensity_label')}
+                  </span>
+                  <div className="inline-flex self-start rounded-lg border border-line bg-raised p-1 gap-1">
+                    {(
+                      [
+                        { value: 'full' as const, label: t('animation_full') },
+                        { value: 'subtle' as const, label: t('animation_subtle') },
+                        { value: 'none' as const, label: t('animation_none') },
+                      ] as const
+                    ).map(({ value, label }) => {
+                      const active = current.animation_intensity === value
+                      return (
+                        <motion.button
+                          key={value}
+                          whileTap={{ scale: 0.96 }}
+                          onClick={() =>
+                            setField('animation_intensity', value)
+                          }
+                          className={
+                            'focus-ring cursor-pointer px-3 py-1.5 rounded-md text-xs font-medium transition-colors ' +
+                            (active
+                              ? 'bg-accent text-white'
+                              : 'text-muted hover:text-ink hover:bg-overlay/60')
+                          }
+                        >
+                          {label}
+                        </motion.button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            </SectionCard>
+
+            <SectionCard
+              title={t('show_scrollbar_label')}
+              description={t('scrollbar_desc')}
+            >
+              <label className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <span className="text-xs font-medium text-muted block">
+                    {t('show_scrollbar_label')}
+                  </span>
+                </div>
+                <Toggle
+                  checked={current.show_scrollbars}
+                  onChange={(checked) => {
+                    setField('show_scrollbars', checked)
+                  }}
+                  label={t('show_scrollbar_label')}
+                />
+              </label>
+            </SectionCard>
+
+            <SectionCard
+              title={t('tooltip_delay_label')}
+              description={t('tooltip_delay_desc')}
+            >
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted">
+                    {t('tooltip_delay_label')}
+                  </span>
+                  <span className="text-xs text-ink tabular-nums">
+                    {current.tooltip_delay}ms
+                  </span>
+                </div>
+                <Slider
+                  value={current.tooltip_delay}
+                  min={100}
+                  max={1000}
+                  step={50}
+                  defaultValue={350}
+                  onChange={(value) =>
+                    setField('tooltip_delay', value)
+                  }
+                  label={t('tooltip_delay_label')}
+                />
+              </div>
+            </SectionCard>
           </motion.div>
         )}
 
@@ -1621,97 +1797,8 @@ export function SettingsView({
                   </p>
                 </label>
 
-                <label className="flex flex-col gap-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-muted">
-                      {t('ui_density_label')}
-                    </span>
-                    <span className="text-xs font-mono text-ink bg-raised px-2 py-0.5 rounded-md">
-                      {Math.round(current.ui_density * 100)}%
-                    </span>
-                  </div>
-                  <Slider
-                    min={0.75}
-                    max={1.25}
-                    step={0.05}
-                    value={current.ui_density}
-                    defaultValue={DEFAULT_DENSITY}
-                    label={t('ui_density_label')}
-                    onChange={(v) => {
-                      setField('ui_density', v)
-                      applyDensity(v)
-                    }}
-                  />
-                  <p className="text-[11px] text-muted leading-relaxed">
-                    {t('density_desc')}
-                  </p>
-                </label>
-
-                <label className="flex flex-col gap-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-muted">
-                      {t('text_size_label')}
-                    </span>
-                    <span className="text-xs font-mono text-ink bg-raised px-2 py-0.5 rounded-md">
-                      {Math.round(current.font_scale * 100)}%
-                    </span>
-                  </div>
-                  <Slider
-                    min={0.85}
-                    max={1.3}
-                    step={0.05}
-                    value={current.font_scale}
-                    defaultValue={DEFAULT_FONT_SCALE}
-                    label={t('text_size_label')}
-                    onChange={(v) => {
-                      setField('font_scale', v)
-                      applyFontScale(v)
-                    }}
-                  />
-                  <p className="text-[11px] text-muted leading-relaxed">
-                    {t('text_size_desc')}
-                  </p>
-                </label>
-
                 <div className="flex flex-col gap-2.5 pt-5 border-t border-line">
                   <div className="flex items-center justify-between gap-4">
-                    <span className="text-xs font-medium text-muted">
-                      {t('animation_intensity_label')}
-                    </span>
-                    <div className="inline-flex self-start rounded-lg border border-line bg-raised p-1 gap-1">
-                      {(
-                        [
-                          { value: 'full' as const, label: t('animation_full') },
-                          { value: 'subtle' as const, label: t('animation_subtle') },
-                          { value: 'none' as const, label: t('animation_none') },
-                        ] as const
-                      ).map(({ value, label }) => {
-                        const active = current.animation_intensity === value
-                        return (
-                          <motion.button
-                            key={value}
-                            whileTap={{ scale: 0.96 }}
-                            onClick={() =>
-                              setField('animation_intensity', value)
-                            }
-                            className={
-                              'focus-ring cursor-pointer px-3 py-1.5 rounded-md text-xs font-medium transition-colors ' +
-                              (active
-                                ? 'bg-accent text-white'
-                                : 'text-muted hover:text-ink hover:bg-overlay/60')
-                            }
-                          >
-                            {label}
-                          </motion.button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-muted leading-relaxed">
-                    {t('animation_intensity_desc')}
-                  </p>
-
-                  <div className="flex items-center justify-between gap-4 pt-5 border-t border-line">
                     <span className="text-xs font-medium text-muted">
                       {t('view_entrance_label')}
                     </span>
@@ -1795,24 +1882,6 @@ export function SettingsView({
                   <p className="text-[11px] text-muted leading-relaxed">
                     {t('custom_css_desc')}
                   </p>
-                </label>
-
-                <label className="flex items-center justify-between gap-4">
-                  <div>
-                    <span className="text-xs font-medium text-muted block">
-                      {t('show_scrollbar_label')}
-                    </span>
-                    <p className="text-[11px] text-muted mt-1 leading-relaxed">
-                      {t('scrollbar_desc')}
-                    </p>
-                  </div>
-                  <Toggle
-                    checked={current.show_scrollbars}
-                    onChange={(checked) => {
-                      setField('show_scrollbars', checked)
-                    }}
-                    label={t('show_scrollbar_label')}
-                  />
                 </label>
 
                 <label className="flex flex-col gap-2.5">
@@ -2096,6 +2165,24 @@ export function SettingsView({
               </motion.button>
             </div>
 
+            <div data-section-id="advanced-restart" className="rounded-xl border border-line bg-surface/60 p-6 flex items-center justify-between gap-6">
+              <div className="min-w-0">
+                <h3 className="font-display font-semibold">{t('restart_app')}</h3>
+                <p className="text-xs text-muted mt-1.5 leading-relaxed">
+                  {t('restart_app_desc')}
+                </p>
+              </div>
+              <motion.button
+                whileHover={{ y: -1 }}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => setConfirmingRestart(true)}
+                className="focus-ring cursor-pointer shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-lg border border-line hover:border-accent-dim hover:bg-raised text-sm font-medium transition-colors"
+              >
+                <IconRefresh className="w-4 h-4" />
+                {t('restart_app')}
+              </motion.button>
+            </div>
+
 
             <div className="rounded-xl border border-line bg-surface/60 p-6 flex items-center justify-between gap-6">
               <div className="min-w-0">
@@ -2154,6 +2241,19 @@ export function SettingsView({
               await relaunch()
             }}
             onCancel={() => setConfirmingOsDec(null)}
+          />
+        )}
+        {confirmingRestart && (
+          <ConfirmDialog
+            title={t('restart_app_confirm_title')}
+            description={t('restart_app_confirm_desc')}
+            confirmLabel={t('restart_app')}
+            variant="default"
+            onConfirm={async () => {
+              setConfirmingRestart(false)
+              await relaunch()
+            }}
+            onCancel={() => setConfirmingRestart(false)}
           />
         )}
       </AnimatePresence>

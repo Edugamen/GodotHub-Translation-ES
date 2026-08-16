@@ -299,6 +299,7 @@ export interface AppSettings {
   project_scan_dirs: string[]
   version_scan_dirs: string[]
   scan_depth: number
+  icon_scan_depth: number
   download_concurrency: number
   accent_color: string
   background_color: string
@@ -333,6 +334,7 @@ export interface AppSettings {
   show_star_button: boolean
   show_scrollbars: boolean
   animated_numbers: boolean
+  screen_reader_announcements: boolean
   project_icon_opacity: number
   animation_threshold: number
   language: string
