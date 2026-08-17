@@ -62,7 +62,7 @@ const esMXResources = {
   git: esMXGit,
   changelog: esMXChangelog,
   onboarding: esMXOnboarding,
-  versions: esMXSettings
+  versions: esMXVersions
 }
 
 const zhCNResources = {
