@@ -473,3 +473,19 @@ export interface CreateRepoResult {
   slug: string
 }
 
+export interface UserRepoInfo {
+  name: string
+  full_name: string
+  description: string | null
+  clone_url: string
+  html_url: string
+  private: boolean
+  language: string | null
+  default_branch: string | null
+}
+
+export interface UserRepoPage {
+  repos: UserRepoInfo[]
+  has_more: boolean
+}
+

@@ -215,6 +215,7 @@
   "folder_count_plural": "{{count}} папок",
   "template_empty": "Этот шаблон пустой.",
 
+  "categories": "Категории",
   "manage_categories_title": "Настроить категории",
   "manage_categories_desc": "Создавайте свои категории, перетайскивайте их в списке чтобы изменить порядок, перетайскивайте папки из Проекты в это окно.",
   "new_category_placeholder": "Новая категория…",
@@ -619,6 +620,19 @@
   "clone_repo_error_url": "Пожалуйста, укажите URL репозитория.",
   "clone_repo_error_location": "Пожалуйста, выберите место для клонирования репозитория.",
   "clone_repo_cancel": "Отмена",
+  "clone_repo_browse_repos": "Просмотреть ваши репозитории",
+  "clone_repo_url_manual": "Вставить URL вручную",
+  "clone_repo_search_repos": "Поиск по вашим репозиториям...",
+  "clone_repo_no_repos_found": "Репозитории не найдены.",
+  "clone_repo_loading_repos": "Загрузка репозиториев...",
+  "clone_repo_load_error": "Не удалось загрузить репозитории.",
+  "clone_repo_connected_as": "Подключено как {{username}}",
+  "clone_repo_private": "Приватный",
+  "clone_repo_public": "Публичный",
+  "clone_repo_select": "Выбрать",
+  "clone_repo_no_account": "Аккаунт GitHub или GitLab не подключен. Используйте URL для клонирования.",
+  "clone_repo_repos_loaded": "репозиториев загружено",
+  "load_more": "Загрузить ещё",
 
   
   "git_beta_tooltip": "Эта функция находится в бета-версии; некоторые операции могут работать не так, как ожидается. Нажмите, чтобы посмотреть список изменений.",

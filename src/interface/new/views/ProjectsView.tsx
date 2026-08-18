@@ -10,19 +10,14 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { AnimatedNumber } from '../components/reusables/AnimatedNumber'
 import { useProjectsContext } from '../../../hooks/projectsContext'
-import { useCategoriesContext } from '../../../hooks/categoriesContext'
 import { useGodotVersionsContext } from '../../../hooks/godotVersionsContext'
 import {
   IconArrowUpDown,
   IconCheck,
-  IconCheckCircle,
-  IconFilter,
-  IconFolder,
   IconGitBranch,
   IconPin,
   IconPlay,
   IconPlus,
-  IconTags,
   IconTrash,
   IconX,
 } from '../lib/icons'
@@ -49,8 +44,6 @@ import { CreateProjectModal } from '../components/modals/CreateProjectModal'
 import { CloneRepoModal } from '../components/modals/CloneRepoModal'
 import { ConfirmDialog } from '../components/modals/ConfirmDialog'
 
-const UNCATEGORIZED = '__uncategorized__'
-
 export function ProjectsView({
   onOpenSettings,
   connected = false,
@@ -67,9 +60,7 @@ export function ProjectsView({
     updateVersion,
     setPinned,
     updateTags,
-    setCategory,
   } = useProjectsContext()
-  const { categories } = useCategoriesContext()
   const { installed } = useGodotVersionsContext()
   const { settings } = useSettings()
   const [createProjectOpen, setCreateProjectOpen] = useState(false)
@@ -80,9 +71,28 @@ export function ProjectsView({
     const id = setTimeout(() => setDebouncedQuery(query), 150)
     return () => clearTimeout(id)
   }, [query])
-  const [filterBy, setFilterBy] = useState<string>('all')
-  const [selecting, setSelecting] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [selecting, setSelecting] = useState(false)
+
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === 'Control' || e.key === 'Meta' || e.key === 'Shift') {
+        setSelecting(true)
+      }
+    }
+    const up = (e: KeyboardEvent) => {
+      if (e.key === 'Control' || e.key === 'Meta' || e.key === 'Shift') {
+        setSelecting(false)
+      }
+    }
+    window.addEventListener('keydown', down)
+    window.addEventListener('keyup', up)
+    return () => {
+      window.removeEventListener('keydown', down)
+      window.removeEventListener('keyup', up)
+    }
+  }, [])
+
   const [confirmBatchAction, setConfirmBatchAction] = useState<
     'remove' | 'delete' | null
   >(null)
@@ -93,12 +103,16 @@ export function ProjectsView({
     } catch {}
     return null
   })
+
+  const sortOptions = SORT_OPTIONS.filter(
+    (opt) => opt.value !== 'categories',
+  )
   const [sortBy, setSortBy] = useState<ProjectSortOption>(() => {
     try {
       const raw = localStorage.getItem('godothub_projects_sort_by')
-      if (raw) return raw as ProjectSortOption
+      if (raw && raw !== 'categories') return raw as ProjectSortOption
     } catch {}
-    return 'categories'
+    return 'name_asc'
   })
   const [sortNow, setSortNow] = useState(() => Date.now())
   useEffect(() => {
@@ -150,14 +164,6 @@ export function ProjectsView({
     }
   }, [fetchGitStatuses, projectPathsKey])
 
-  const sortOptions = SORT_OPTIONS.filter(
-    (opt) => settings.categories_enabled || opt.value !== 'categories',
-  )
-  const filterOptions = [
-    { key: 'all', label: tc('filter_all') },
-    ...categories.map((c) => ({ key: c.name, label: c.name })),
-    { key: UNCATEGORIZED, label: tc('uncategorized') },
-  ]
   useEffect(() => {
     try {
       localStorage.setItem('godothub_projects_sort_by', sortBy)
@@ -184,13 +190,7 @@ export function ProjectsView({
     if (!sortOptions.some((opt) => opt.value === sortBy)) {
       setSortBy(sortOptions[0]?.value ?? 'name_asc')
     }
-  }, [sortOptions, sortBy])
-
-  useEffect(() => {
-    if (!filterOptions.some((opt) => opt.key === filterBy)) {
-      setFilterBy('all')
-    }
-  }, [filterOptions, filterBy])
+  }, [sortBy]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (tagFilter && !projects.some((p) => p.tags.includes(tagFilter))) {
@@ -208,11 +208,6 @@ export function ProjectsView({
           p.path.toLowerCase().includes(q),
       )
     }
-    if (filterBy !== 'all') {
-      list = list.filter((p) =>
-        filterBy === UNCATEGORIZED ? !p.category : p.category === filterBy,
-      )
-    }
     if (tagFilter) {
       list = list.filter((p) => p.tags.includes(tagFilter))
     }
@@ -220,28 +215,54 @@ export function ProjectsView({
     return [...list].sort((a, b) => {
       if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
       if (a.pinned) return a.name.localeCompare(b.name)
-      return cmp ? cmp(a, b) : 0
+      return cmp ? cmp(a, b) : a.sort_order - b.sort_order
     })
-  }, [projects, debouncedQuery, sortBy, filterBy, tagFilter, sortNow])
+  }, [projects, debouncedQuery, sortBy, tagFilter, sortNow])
 
   const hasActiveFilters =
-    query.trim() !== '' || filterBy !== 'all' || tagFilter !== null
+    query.trim() !== '' || tagFilter !== null
 
-  const toggleSelect = useCallback((id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) {
-        next.delete(id)
-      } else {
-        next.add(id)
-      }
-      return next
-    })
-  }, [])
+  const lastClickedIndexRef = useRef<number | null>(null)
+
+  const toggleSelect = useCallback((id: string, e?: React.MouseEvent) => {
+    const clickedIndex = filtered.findIndex((p) => p.id === id)
+
+    if (e?.shiftKey && lastClickedIndexRef.current !== null) {
+      const start = Math.min(lastClickedIndexRef.current, clickedIndex)
+      const end = Math.max(lastClickedIndexRef.current, clickedIndex)
+      const rangeIds = filtered.slice(start, end + 1).map((p) => p.id)
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        for (const rid of rangeIds) next.add(rid)
+        return next
+      })
+    } else if (e?.ctrlKey || e?.metaKey) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        if (next.has(id)) {
+          next.delete(id)
+        } else {
+          next.add(id)
+        }
+        return next
+      })
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        if (next.has(id)) {
+          next.delete(id)
+        } else {
+          next.add(id)
+        }
+        return next
+      })
+    }
+    lastClickedIndexRef.current = clickedIndex
+  }, [filtered])
 
   const clearSelection = useCallback(() => {
     setSelectedIds(new Set())
-    setSelecting(false)
+    lastClickedIndexRef.current = null
   }, [])
 
   const allVisibleSelected =
@@ -278,14 +299,6 @@ export function ProjectsView({
     for (const id of ids) setPinned(id, !allPinned)
     clearSelection()
   }, [selectedIds, projects, setPinned, clearSelection])
-
-  const batchSetCategory = useCallback(
-    (category: string) => {
-      for (const id of selectedIds) setCategory(id, category)
-      clearSelection()
-    },
-    [selectedIds, setCategory, clearSelection],
-  )
 
   const executeBatchRemove = useCallback(async () => {
     setConfirmBatchAction(null)
@@ -375,37 +388,6 @@ export function ProjectsView({
       </ViewHeader>
 
       <div className="shrink-0 flex items-center gap-2 mb-3">
-        {settings.categories_enabled && (
-        <Dropdown
-          align="left"
-          trigger={({ open, toggle }) => (
-            <motion.button
-              type="button"
-              aria-expanded={open}
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.94 }}
-              onClick={toggle}
-              className="focus-ring cursor-pointer flex items-center justify-center gap-1 h-8 px-4 rounded-item bg-overlay text-muted hover:text-ink hover:bg-raised transition-colors"
-            >
-              <IconFilter className="w-3 h-3 text-muted" />
-              <span className="text-[16px] font-medium">
-                {tc('filter')}
-              </span>
-            </motion.button>
-          )}
-          items={filterOptions.map((opt) => ({
-            key: opt.key,
-            label: opt.label,
-            dotColor:
-              opt.key === 'all' || opt.key === UNCATEGORIZED
-                ? undefined
-                : categories.find((c) => c.name === opt.key)?.color,
-            active: filterBy === opt.key,
-            onClick: () => setFilterBy(opt.key),
-          }))}
-        />
-        )}
-
         <Dropdown
           align="left"
           trigger={({ open, toggle }) => (
@@ -431,35 +413,6 @@ export function ProjectsView({
           }))}
         />
 
-        <Tooltip
-          content={selecting ? tc('exit_selection') : tc('select_projects')}
-          side="top"
-        >
-          <motion.button
-            type="button"
-            aria-pressed={selecting}
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.94 }}
-            onClick={() => {
-              setSelecting((v) => !v)
-              setSelectedIds(new Set())
-            }}
-            className={`focus-ring cursor-pointer flex items-center justify-center gap-1 h-8 px-4 rounded-item transition-colors ${
-              selecting
-                ? 'bg-accent/15 text-accent-bright ring-1 ring-accent-dim/70'
-                : 'bg-overlay text-muted hover:text-ink hover:bg-raised'
-            }`}
-          >
-            <IconCheckCircle
-              className="w-3 h-3 text-muted"
-              fill={selecting ? 'currentColor' : 'none'}
-            />
-            <span className="text-[16px] font-medium">
-              {tc('select_projects')}
-            </span>
-          </motion.button>
-        </Tooltip>
-
         {tagFilter && (
           <Tooltip content={tc('clear_tag_filter')} side="top">
             <button
@@ -480,7 +433,7 @@ export function ProjectsView({
       </div>
 
       <AnimatePresence>
-        {selecting && selectedIds.size > 0 && (
+        {selectedIds.size > 0 && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
@@ -523,36 +476,6 @@ export function ProjectsView({
                   {tc('bulk_pin')}
                 </span>
               </button>
-              <Dropdown
-                align="left"
-                trigger={({ open, toggle }) => (
-                  <button
-                    type="button"
-                    aria-expanded={open}
-                    onClick={toggle}
-                    className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-8 px-3 rounded-btn bg-raised text-muted hover:text-ink hover:bg-overlay transition-colors"
-                  >
-                    <IconTags className="w-3 h-3" />
-                    <span className="text-xs font-medium">
-                      {tc('bulk_move_to_category')}
-                    </span>
-                  </button>
-                )}
-                items={[
-                  ...categories.map((c) => ({
-                    key: c.name,
-                    label: c.name,
-                    dotColor: c.color,
-                    onClick: () => batchSetCategory(c.name),
-                  })),
-                  {
-                    key: UNCATEGORIZED,
-                    label: tc('uncategorized'),
-                    icon: IconFolder,
-                    onClick: () => batchSetCategory(''),
-                  },
-                ]}
-              />
               <button
                 type="button"
                 onClick={() => setConfirmBatchAction('remove')}
@@ -596,47 +519,45 @@ export function ProjectsView({
         <div
           className={`h-full ${connected ? 'pl-5' : ''} pr-5 pb-4 flex flex-col gap-2`}
         >
-      <ProjectCardList
-        projects={filtered}
-        totalCount={projects.length}
-        animationThreshold={settings.animation_threshold}
-        hasActiveFilters={hasActiveFilters}
-        renderCard={(p) => (
-          <ProjectCard
-            project={p}
-            installedVersions={installed}
-            categories={categories}
-            gitStatus={gitStatusMap[p.path] ?? null}
-            launchWithConsole={settings.launch_with_console}
-            onTogglePin={() => setPinned(p.id, !p.pinned)}
-            onVersionChange={(tag) => updateVersion(p.id, tag)}
-            onRemove={() => remove(p.id, false)}
-            onDelete={() => remove(p.id, true)}
-            onTagsSaved={(updated) => updateTags(updated.id, updated.tags)}
-            onTagClick={(tag) => setTagFilter((cur) => (cur === tag ? null : tag))}
-            onShowGitSidebar={() =>
-              window.dispatchEvent(
-                new CustomEvent('app:show-git-sidebar', {
-                  detail: {
-                    project: p,
-                    gitStatus: gitStatusMap[p.path] ?? null,
-                  },
-                }),
-              )
-            }
-            activeTag={tagFilter}
-            selected={selectedIds.has(p.id)}
-            onToggleSelect={selecting ? () => toggleSelect(p.id) : undefined}
-          />
-        )}
-      />
+        <ProjectCardList
+          projects={filtered}
+          totalCount={projects.length}
+          animationThreshold={settings.animation_threshold}
+          hasActiveFilters={hasActiveFilters}
+          renderCard={(p) => (
+            <ProjectCard
+              project={p}
+              installedVersions={installed}
+              gitStatus={gitStatusMap[p.path] ?? null}
+              launchWithConsole={settings.launch_with_console}
+              onTogglePin={() => setPinned(p.id, !p.pinned)}
+              onVersionChange={(tag) => updateVersion(p.id, tag)}
+              onRemove={() => remove(p.id, false)}
+              onDelete={() => remove(p.id, true)}
+              onTagsSaved={(updated) => updateTags(updated.id, updated.tags)}
+              onTagClick={(tag) => setTagFilter((cur) => (cur === tag ? null : tag))}
+              onShowGitSidebar={() =>
+                window.dispatchEvent(
+                  new CustomEvent('app:show-git-sidebar', {
+                    detail: {
+                      project: p,
+                      gitStatus: gitStatusMap[p.path] ?? null,
+                    },
+                  }),
+                )
+              }
+              activeTag={tagFilter}
+              selected={selectedIds.has(p.id)}
+              onToggleSelect={(selecting || selectedIds.size > 0) ? (e) => toggleSelect(p.id, e) : undefined}
+            />
+          )}
+        />
 
       <AnimatePresence>
         {createProjectOpen && (
           <CreateProjectModal
             installedVersions={installed}
             defaultLocation={settings.default_project_location}
-            categories={categories}
             onClose={() => setCreateProjectOpen(false)}
             onCreated={() => {
               setCreateProjectOpen(false)
@@ -650,7 +571,6 @@ export function ProjectsView({
         {cloneRepoOpen && (
           <CloneRepoModal
             defaultLocation={settings.default_project_location}
-            categories={categories}
             onClose={() => setCloneRepoOpen(false)}
             onCloned={() => {
               setCloneRepoOpen(false)

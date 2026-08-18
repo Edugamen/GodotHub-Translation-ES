@@ -207,6 +207,7 @@ pub fn run() {
             git_auth::save_git_pat,
             git_auth::remove_git_pat,
             git_auth::create_remote_repo,
+            git_auth::list_user_repos,
             godot_versions::import_version_zip,
             projects::list_projects,
             projects::create_project,

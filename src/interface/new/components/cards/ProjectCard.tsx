@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, type Transition } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import type { Category, GitStatus, InstalledGodotVersion, Project } from '../../../../types'
+import type { GitStatus, InstalledGodotVersion, Project } from '../../../../types'
 import { api, getCachedProjectIcon, getCachedProjectName } from '../../../../lib/api'
 import {
   formatDate,
@@ -41,7 +41,6 @@ import {
 interface ProjectCardProps {
   project: Project
   installedVersions: InstalledGodotVersion[]
-  categories: Category[]
   gitStatus?: GitStatus | null
   launchWithConsole?: boolean
   onTogglePin: () => void
@@ -53,7 +52,7 @@ interface ProjectCardProps {
   onShowGitSidebar?: () => void
   activeTag?: string | null
   selected?: boolean
-  onToggleSelect?: () => void
+  onToggleSelect?: (e: React.MouseEvent) => void
 }
 
 function getInitials(name: string): string {
@@ -255,7 +254,7 @@ export function ProjectCard({
             type="button"
             onClick={(e) => {
               e.stopPropagation()
-              onToggleSelect()
+              onToggleSelect(e)
             }}
             aria-label={
               selected ? t('project_deselect_aria') : t('project_select_aria')

@@ -3,7 +3,6 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { useProjectsContext } from '../../hooks/projectsContext'
 import { useGodotVersionsContext } from '../../hooks/godotVersionsContext'
-import { useCategoriesContext } from '../../hooks/categoriesContext'
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts'
 import { api } from '../../lib/api'
 import { viewTransition } from '../../lib/motion'
@@ -103,7 +102,6 @@ export function App() {
     'manual' | 'preview'
   >('manual')
   const { installed } = useGodotVersionsContext()
-  const { categories } = useCategoriesContext()
   const settingsRef = useRef(settings)
   settingsRef.current = settings
   const paletteKey = settings.command_palette_keybind || 'p'
@@ -419,7 +417,6 @@ export function App() {
           <CreateProjectModal
             installedVersions={installed}
             defaultLocation={settings.default_project_location}
-            categories={categories}
             onClose={() => setCreateProjectOpen(false)}
             onCreated={() => {
               setCreateProjectOpen(false)

@@ -127,6 +127,7 @@ export function useOnboarding({ settings, onComplete }: UseOnboardingOptions) {
       ),
     [workspaceSuggestions, activeId],
   )
+
   const pendingTemplateSuggestions = templateSuggestions.filter(
     (s) => s.path !== draft.template_scan_dir,
   )

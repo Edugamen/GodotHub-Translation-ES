@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import type {
-  Category,
   GitAuthState,
   InstalledGodotVersion,
   ProjectTemplate,
@@ -25,7 +24,6 @@ import {
 interface Props {
   installedVersions: InstalledGodotVersion[]
   defaultLocation?: string | null
-  categories?: Category[]
   initialTemplateId?: string | null
   onClose: () => void
   onCreated: () => void
@@ -53,7 +51,6 @@ export function CreateProjectModal({
   initialTemplateId = null,
   onClose,
   onCreated,
-  categories = [],
 }: Props) {
   const { t } = useTranslation('common')
   const { settings } = useSettings()
@@ -64,7 +61,6 @@ export function CreateProjectModal({
   const [iconPreview, setIconPreview] = useState<string | null>(null)
   const [templateId, setTemplateId] = useState<string | null>(initialTemplateId)
   const [previewTemplate, setPreviewTemplate] = useState<ProjectTemplate | null>(null)
-  const [category, setCategory] = useState('')
   const [templates, setTemplates] = useState<ProjectTemplate[]>([])
   const [error, setError] = useState<string | null>(null)
   const [initGit, setInitGit] = useState(settings.git_init_new_projects)
@@ -217,7 +213,7 @@ export function CreateProjectModal({
         version,
         iconPath,
         templateId,
-        category || null,
+        null,
       )
       if (initGit) {
         setInitializingGit(true)
@@ -453,54 +449,6 @@ export function CreateProjectModal({
                 )}
               </div>
 
-              {categories.length > 0 && (
-                <div className="flex flex-col gap-2">
-                  <label className="text-xs font-medium text-muted">
-                    {t('category_optional')}
-                  </label>
-                  <div className="flex flex-wrap gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setCategory('')}
-                      className={`${chipClass(category === '')} ${
-                        category === ''
-                          ? 'border-accent bg-accent/10 text-accent-bright'
-                          : ''
-                      }`}
-                    >
-                      {category === '' && <IconCheck className="w-3 h-3 inline -mt-0.5" />}
-                      {t('no_category_label')}
-                    </button>
-                    {categories.map((c) => {
-                      const active = category === c.name
-                      return (
-                        <button
-                          key={c.name}
-                          type="button"
-                          onClick={() => setCategory(c.name)}
-                          className={chipClass(active)}
-                          style={
-                            active
-                              ? {
-                                  borderColor: c.color,
-                                  backgroundColor: `${c.color}18`,
-                                  color: c.color,
-                                }
-                              : undefined
-                          }
-                        >
-                          {active && <IconCheck className="w-3 h-3 inline -mt-0.5" />}
-                          <span
-                            className="w-1.5 h-1.5 rounded-full ring-1 ring-black/10 shrink-0"
-                            style={{ backgroundColor: c.color }}
-                          />
-                          {c.name}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
             </div>
 
             <div className="flex items-center gap-3.5">

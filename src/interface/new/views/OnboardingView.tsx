@@ -15,7 +15,6 @@ import { LANGUAGES } from '../../../i18n/languages'
 import { defaultCornerRadius } from '../../../lib/platform'
 import {
   useOnboarding,
-  STARTER_CATEGORIES,
 } from '../../../hooks/useOnboarding'
 import { api } from '../../../lib/api'
 import { Titlebar } from '../components/titlebar/Titlebar'
@@ -41,8 +40,6 @@ import {
   IconRefresh,
   IconRocket,
   IconSun,
-  IconTags,
-  IconTrash,
   IconChevronLeft,
   IconChevronRight,
   IconHouse,
@@ -254,14 +251,6 @@ export function OnboardingView({
     versionSuggestions,
     pendingTemplateSuggestions,
     scanProgress,
-    categories,
-    removeCategory,
-    categoryDraft,
-    setCategoryDraft,
-    categoryBusy,
-    addStarterCategory,
-    addCustomCategory,
-    categoryLabels,
   } = useOnboarding({ settings, onComplete })
 
   return (
@@ -654,117 +643,6 @@ export function OnboardingView({
                       </StepShell>
                     )}
 
-                    {step.id === 'categories' && (
-                      <StepShell
-                        icon={<IconTags className="w-5 h-5" />}
-                        title={t('onboarding_categories_title', { ns: 'common' })}
-                        description={t('onboarding_categories_desc_full', { ns: 'common' })}
-                      >
-                        <div className="flex flex-col gap-4 w-full">
-                          <div className="flex flex-wrap gap-2">
-                            {STARTER_CATEGORIES.map((name) => {
-                              const added = categories.some(
-                                (c) =>
-                                  c.name.toLowerCase() === name.toLowerCase(),
-                              )
-                              return (
-                                <button
-                                  key={name}
-                                  type="button"
-                                  disabled={added || categoryBusy}
-                                  onClick={() => addStarterCategory(name)}
-                                  className={`focus-ring cursor-pointer flex items-center gap-1.5 px-3.5 py-2 rounded-item border text-xs font-medium transition-colors disabled:cursor-default ${
-                                    added
-                                      ? 'border-accent-dim/50 bg-accent/10 text-accent-bright'
-                                      : 'border-dashed border-outline/60 text-muted hover:text-accent-bright hover:border-accent-dim'
-                                  }`}
-                                >
-                                  {added ? (
-                                    <IconCheck className="w-3 h-3" />
-                                  ) : (
-                                    <IconPlus className="w-3 h-3" />
-                                  )}
-                                  {categoryLabels[name] || name}
-                                </button>
-                              )
-                            })}
-                          </div>
-
-                          <div className="flex gap-2.5">
-                            <input
-                              value={categoryDraft}
-                              onChange={(e) =>
-                                setCategoryDraft(e.target.value)
-                              }
-                              onKeyDown={(e) =>
-                                e.key === 'Enter' && addCustomCategory()
-                              }
-                              placeholder={t(
-                                'onboarding_custom_category_placeholder',
-                                { ns: 'common' },
-                              )}
-                              className="focus-ring flex-1 bg-base border border-outline/50 rounded-btn px-3.5 py-2.5 text-sm text-ink placeholder:text-muted/50 focus:border-accent-dim transition-colors"
-                            />
-                            <button
-                              type="button"
-                              onClick={addCustomCategory}
-                              disabled={categoryBusy || !categoryDraft.trim()}
-                              className="focus-ring cursor-pointer shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-btn bg-accent hover:bg-accent-bright disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium text-white transition-colors"
-                            >
-                              <IconPlus className="w-3.5 h-3.5" />
-                              {tc('add')}
-                            </button>
-                          </div>
-
-                          {categories.length > 0 && (
-                            <div className="flex flex-col gap-2">
-                              <span className="text-[11px] font-medium text-muted uppercase tracking-wide">
-                                {t('onboarding_your_categories', { ns: 'common' })}
-                              </span>
-                              <div className="flex flex-col max-h-40">
-                                <OverlayScrollArea
-                                  className="flex-1 min-h-0"
-                                  hideThumb={!settings.show_scrollbars}
-                                  hideTopButton
-                                >
-                                <div className="flex flex-col gap-1.5">
-                                {categories.map((c) => (
-                                  <div
-                                    key={c.id}
-                                    className="group flex items-center justify-between gap-2 px-3.5 py-2 rounded-item bg-overlay border border-outline/50"
-                                  >
-                                    <span className="text-xs text-ink">
-                                      {c.name}
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={() => removeCategory(c.id)}
-                                      aria-label={t(
-                                        'remove_category_aria',
-                                        {
-                                          ns: 'common',
-                                          name: c.name,
-                                        },
-                                      )}
-                                      className="icon-wiggle cursor-pointer text-muted opacity-0 group-hover:opacity-100 hover:text-danger transition-colors"
-                                    >
-                                      <IconTrash className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                ))}
-                                </div>
-                                </OverlayScrollArea>
-                              </div>
-                            </div>
-                          )}
-
-                          <p className="text-[11px] text-muted leading-relaxed">
-                            {t('onboard_categories_desc')}
-                          </p>
-                        </div>
-                      </StepShell>
-                    )}
-
                     {step.id === 'customize' && (
                       <StepShell
                         icon={<IconPalette className="w-5 h-5" />}
@@ -968,16 +846,7 @@ export function OnboardingView({
                                 running
                               />
                             )}
-                            {settings.categories_enabled && (
-                              <div className="flex items-center justify-between px-4 py-3 rounded-item bg-overlay border border-outline/50 opacity-70">
-                                <span className="text-xs text-muted">
-                                  {t('categories')}
-                                </span>
-                                <span className="font-mono text-xs text-muted">
-                                  {categories.length || tc('none')}
-                                </span>
-                              </div>
-                            )}
+
                           </div>
                         ) : (
                           <div className="flex flex-col gap-4 w-full">
@@ -1055,16 +924,7 @@ export function OnboardingView({
                               />
                             </SummarySection>
 
-                            {settings.categories_enabled && (
-                              <SummarySection title={t('categories')}>
-                                <SummaryRow
-                                  label={t('categories')}
-                                  value={
-                                    categories.length || tc('none')
-                                  }
-                                />
-                              </SummarySection>
-                            )}
+
                           </div>
                         )}
                       </StepShell>
