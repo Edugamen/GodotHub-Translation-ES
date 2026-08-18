@@ -27,6 +27,7 @@ pub struct GitLogEntry {
 pub struct GitBranchInfo {
     pub name: String,
     pub is_current: bool,
+    pub has_upstream: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -39,6 +40,35 @@ pub struct GitStashEntry {
 pub struct GitChangedFile {
     pub path: String,
     pub status: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitRemoteInfo {
+    pub name: String,
+    pub web_url: String,
+    pub repo_name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitAheadBehind {
+    pub ahead: usize,
+    pub behind: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitCommitFile {
+    pub path: String,
+    pub status: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitCommitDetails {
+    pub hash: String,
+    pub message: String,
+    pub author: String,
+    pub date: String,
+    pub files: Vec<GitCommitFile>,
+    pub diff: GitDiffResult,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -446,6 +476,150 @@ pub async fn git_log_entries(path: String) -> Result<Vec<GitLogEntry>, String> {
     .map_err(|e| e.to_string())?
 }
 
+fn to_web_url(url: &str) -> String {
+    let url = url.trim_end_matches(".git").trim_end_matches('/');
+    if let Some(rest) = url.strip_prefix("git@") {
+        if let Some((host, path)) = rest.split_once(':') {
+            return format!("https://{}/{}", host, path.trim_start_matches('/'));
+        }
+    }
+    if url.starts_with("https://") || url.starts_with("http://") {
+        return url.to_string();
+    }
+    if let Some(rest) = url.strip_prefix("git://") {
+        return format!("https://{}", rest);
+    }
+    url.to_string()
+}
+
+fn repo_label(url: &str) -> String {
+    let web = to_web_url(url);
+    let path = web.split("://").nth(1).unwrap_or(&web);
+    let segments: Vec<&str> = path
+        .split('/')
+        .skip(1)
+        .filter(|s| !s.is_empty())
+        .collect();
+    match segments.last() {
+        Some(last) => last.to_string(),
+        None => repo_base_name(url),
+    }
+}
+
+#[tauri::command]
+pub async fn git_ahead_behind(path: String) -> Result<Option<GitAheadBehind>, String> {
+    tokio::task::spawn_blocking(move || {
+        if !check_is_repo(&path) {
+            return Err("Not a git repository".into());
+        }
+        let upstream = git_helpers::git_cmd(
+            &path,
+            ["rev-parse", "--abbrev-ref", "@{upstream}"],
+        )
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty() && s != "@{upstream}");
+        let Some(upstream) = upstream else {
+            return Ok(None);
+        };
+        let out = git_helpers::git_cmd(
+            &path,
+            ["rev-list", "--left-right", "--count", &upstream, "...", "HEAD"],
+        )
+        .map_err(|e| e.to_string())?;
+        let parts: Vec<&str> = out.split_whitespace().collect();
+        if parts.len() < 2 {
+            return Ok(None);
+        }
+        Ok(Some(GitAheadBehind {
+            behind: parts[0].parse().unwrap_or(0),
+            ahead: parts[1].parse().unwrap_or(0),
+        }))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn git_show_commit(path: String, hash: String) -> Result<GitCommitDetails, String> {
+    tokio::task::spawn_blocking(move || {
+        if !check_is_repo(&path) {
+            return Err("Not a git repository".into());
+        }
+        let meta = git_helpers::git_cmd(
+            &path,
+            ["show", "-s", "--format=%H|||%an|||%ar|||%s", &hash],
+        )
+        .map_err(|e| e.to_string())?;
+        let mut parts = meta.splitn(4, "|||");
+        let hash = parts.next().unwrap_or(&hash).to_string();
+        let author = parts.next().unwrap_or("").to_string();
+        let date = parts.next().unwrap_or("").to_string();
+        let message = parts.next().unwrap_or("").to_string();
+
+        let files_out = git_helpers::git_cmd(
+            &path,
+            ["show", "--name-status", "--format=", &hash],
+        )
+        .map_err(|e| e.to_string())?;
+        let files: Vec<GitCommitFile> = files_out
+            .lines()
+            .filter(|l| !l.trim().is_empty())
+            .filter_map(|l| {
+                let mut it = l.split('\t');
+                let status = it.next()?.to_string();
+                let path = it.next_back()?.to_string();
+                Some(GitCommitFile { path, status })
+            })
+            .collect();
+
+        let out = git_helpers::git_raw(&path, ["show", "--no-color", &hash])
+            .map_err(|e| e.to_string())?;
+        let stdout = git_helpers::output_stdout(&out);
+
+        Ok(GitCommitDetails {
+            hash,
+            message,
+            author,
+            date,
+            files,
+            diff: parse_diff_text(&stdout),
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn git_list_remotes(path: String) -> Result<Vec<GitRemoteInfo>, String> {
+    tokio::task::spawn_blocking(move || {
+        if !check_is_repo(&path) {
+            return Err("Not a git repository".into());
+        }
+        let stdout = git_helpers::git_cmd(&path, ["remote", "-v"]).map_err(|e| e.to_string())?;
+        let mut seen = HashSet::new();
+        let mut remotes = Vec::new();
+        for line in stdout.lines() {
+            let mut parts = line.split_whitespace();
+            let (Some(name), Some(url)) = (parts.next(), parts.next()) else {
+                continue;
+            };
+            if !seen.insert(name.to_string()) {
+                continue;
+            }
+            let url = url.to_string();
+            remotes.push(GitRemoteInfo {
+                web_url: to_web_url(&url),
+                repo_name: repo_label(&url),
+                name: name.to_string(),
+            });
+        }
+        Ok(remotes)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 pub async fn git_remote_url(path: String) -> Result<String, String> {
     tokio::task::spawn_blocking(move || {
@@ -458,22 +632,6 @@ pub async fn git_remote_url(path: String) -> Result<String, String> {
 
         if raw.is_empty() {
             return Err("No remote 'origin' configured".into());
-        }
-
-        fn to_web_url(url: &str) -> String {
-            let url = url.trim_end_matches(".git").trim_end_matches('/');
-            if let Some(rest) = url.strip_prefix("git@") {
-                if let Some((host, path)) = rest.split_once(':') {
-                    return format!("https://{}/{}", host, path.trim_start_matches('/'));
-                }
-            }
-            if url.starts_with("https://") || url.starts_with("http://") {
-                return url.to_string();
-            }
-            if let Some(rest) = url.strip_prefix("git://") {
-                return format!("https://{}", rest);
-            }
-            url.to_string()
         }
 
         Ok(to_web_url(&raw))
@@ -500,23 +658,41 @@ pub async fn git_list_branches(path: String) -> Result<Vec<GitBranchInfo>, Strin
         if !check_is_repo(&path) {
             return Err("Not a git repository".into());
         }
-        let stdout = git_helpers::git_cmd(&path, ["branch", "--format=%(refname:short)|||%(HEAD)"])
-            .map_err(|e| e.to_string())?;
+        let stdout = git_helpers::git_cmd(
+            &path,
+            ["branch", "--format=%(refname:short)|||%(HEAD)|||%(upstream:short)"],
+        )
+        .map_err(|e| e.to_string())?;
 
         let branches: Vec<GitBranchInfo> = stdout
             .lines()
             .filter(|l| !l.trim().is_empty())
             .filter_map(|line| {
-                let parts: Vec<&str> = line.splitn(2, "|||").collect();
-                if parts.len() < 2 { return None; }
+                let parts: Vec<&str> = line.splitn(3, "|||").collect();
+                if parts.len() < 3 { return None; }
                 Some(GitBranchInfo {
                     name: parts[0].to_string(),
                     is_current: parts[1].trim() == "*",
+                    has_upstream: !parts[2].trim().is_empty(),
                 })
             })
             .collect();
 
         Ok(branches)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn git_branch_publish(path: String, name: String) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || {
+        if !check_is_repo(&path) {
+            return Err("Not a git repository".into());
+        }
+        git_helpers::git_cmd(&path, ["push", "-u", "origin", &name])
+            .map_err(|e| e.to_string())?;
+        Ok(())
     })
     .await
     .map_err(|e| e.to_string())?
@@ -618,6 +794,41 @@ pub async fn git_stash_apply(path: String, index: usize) -> Result<(), String> {
             return Err("Not a git repository".into());
         }
         git_helpers::git_cmd(&path, ["stash", "apply", &format!("stash@{{{}}}", index)])
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn git_stash_show(path: String, index: usize) -> Result<GitDiffResult, String> {
+    tokio::task::spawn_blocking(move || {
+        if !check_is_repo(&path) {
+            return Err("Not a git repository".into());
+        }
+        let output = git_helpers::git_raw(
+            &path,
+            ["stash", "show", "-p", &format!("stash@{{{}}}", index)],
+        )
+        .map_err(|e| e.to_string())?;
+        let stdout = git_helpers::output_stdout(&output);
+        if stdout.trim().is_empty() {
+            return Err(format!("No diff available for stash@{{{}}}", index));
+        }
+        Ok(parse_diff_text(&stdout))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn git_stash_pop(path: String, index: usize) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || {
+        if !check_is_repo(&path) {
+            return Err("Not a git repository".into());
+        }
+        git_helpers::git_cmd(&path, ["stash", "pop", &format!("stash@{{{}}}", index)])
             .map_err(|e| e.to_string())?;
         Ok(())
     })
@@ -746,6 +957,20 @@ pub async fn git_discard_changes(path: String) -> Result<(), String> {
         }
         git_helpers::git_cmd(&path, ["restore", "."]).map_err(|e| e.to_string())?;
         let _ = git_helpers::git_cmd(&path, ["clean", "-fd"]);
+        Ok(())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn git_discard_file(path: String, file_path: String) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || {
+        if !check_is_repo(&path) {
+            return Err("Not a git repository".into());
+        }
+        git_helpers::git_cmd(&path, ["restore", "--staged", "--worktree", &file_path])
+            .map_err(|e| e.to_string())?;
         Ok(())
     })
     .await

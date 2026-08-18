@@ -26,7 +26,6 @@ export function SplashScreen({ phase }: SplashScreenProps) {
         transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
         className="flex flex-col items-center gap-6 select-none"
       >
-        {/* Wordmark */}
         <div className="flex flex-col items-center gap-3">
           <motion.h1
             initial={{ opacity: 0, y: 18, scale: 0.9 }}

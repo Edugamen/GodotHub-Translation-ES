@@ -4,8 +4,6 @@ import type { Project, ProjectSizeInfo, ProjectUpdate } from '../types'
 const iconCache = new Map<string, string | null>()
 const nameCache = new Map<string, string | null>()
 
-// Bumped whenever the caches are cleared (e.g. the scan/icon scan depth
-// changed), so mounted components can re-resolve project icons and names.
 let resolutionEpoch = 0
 const epochListeners = new Set<() => void>()
 

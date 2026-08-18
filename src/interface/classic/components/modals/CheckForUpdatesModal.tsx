@@ -101,8 +101,6 @@ function isKnownIssueSection(s: ReleaseSection): boolean {
   return /known issue/i.test(s.title)
 }
 
-/* ---------- Preview (dev-only) fixtures ---------- */
-
 const PREVIEW_VERSION = '1.4.0'
 
 const PREVIEW_NOTES = [
@@ -382,7 +380,6 @@ export function CheckForUpdatesModal({ onClose, mode = 'manual' }: Props) {
         className="relative w-full max-w-2xl max-h-[min(88vh,680px)] bg-surface border border-line rounded-2xl shadow-2xl shadow-black/40 overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-start justify-between gap-4 px-6 pt-6 pb-4 shrink-0">
           <div className="min-w-0">
             <h3 className="font-display font-semibold text-lg text-ink leading-tight">
@@ -411,7 +408,6 @@ export function CheckForUpdatesModal({ onClose, mode = 'manual' }: Props) {
           </button>
         </div>
 
-        {/* Body */}
         <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
@@ -465,7 +461,6 @@ export function CheckForUpdatesModal({ onClose, mode = 'manual' }: Props) {
               {state.type === 'available' && (
                 <>
                 <div className="w-full grid grid-cols-1 sm:grid-cols-[minmax(0,16rem)_minmax(0,1fr)] gap-6 items-start">
-                  {/* Left column: version info, known issues, actions */}
                   <div className="flex flex-col gap-5 min-w-0">
                     <div className="flex items-center gap-3.5">
                       <div className="relative w-12 h-12 shrink-0">
@@ -544,7 +539,6 @@ export function CheckForUpdatesModal({ onClose, mode = 'manual' }: Props) {
 
                   </div>
 
-                  {/* Right column: release notes */}
                   <div className="min-w-0">
                     {notes && hasReleaseNotesContent && (
                       <div className="w-full bg-raised/50 rounded-xl border border-line overflow-hidden">
@@ -776,7 +770,6 @@ export function CheckForUpdatesModal({ onClose, mode = 'manual' }: Props) {
           </AnimatePresence>
         </div>
 
-        {/* Dev-only preview state switcher */}
         {isPreview && (
           <div className="px-6 pb-4 shrink-0">
             <div className="rounded-xl border border-dashed border-line bg-raised/40 p-3">
@@ -799,7 +792,6 @@ export function CheckForUpdatesModal({ onClose, mode = 'manual' }: Props) {
           </div>
         )}
 
-        {/* Footer */}
         <div className="flex justify-end pt-3 pb-5 px-6 border-t border-line shrink-0">
           <motion.button
             whileTap={{ scale: 0.96 }}

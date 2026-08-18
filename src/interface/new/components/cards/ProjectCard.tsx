@@ -3,7 +3,11 @@ import { AnimatePresence, motion, type Transition } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import type { Category, GitStatus, InstalledGodotVersion, Project } from '../../../../types'
 import { api, getCachedProjectIcon, getCachedProjectName } from '../../../../lib/api'
-import { formatLastOpened } from '../../../../lib/lastOpened'
+import {
+  formatDate,
+  formatLastOpened,
+  formatTime,
+} from '../../../../lib/lastOpened'
 import { formatDuration } from '../../lib/duration'
 import { effectiveTotalMs } from '../../../../lib/projectSort'
 import { tagColor } from '../../../../lib/colors'
@@ -14,20 +18,20 @@ import { ConfirmDialog } from '../modals/ConfirmDialog'
 import { TagManagerModal } from '../modals/TagManagerModal'
 import { Dropdown } from '../ui/Dropdown'
 import { Tooltip } from '../reusables/Tooltip'
+import { TimeTrackerModal } from '../modals/TimeTrackerModal'
+import { SaveAsTemplateModal } from '../modals/SaveAsTemplateModal'
 import { OpenButton } from '../reusables/OpenButton'
 import {
   IconCheckCircle,
   IconChevronDown,
-  IconChevronRight,
   IconClock,
   IconCode,
+  IconCopy,
   IconExternalLink,
   IconGitBranch,
-  IconHistory,
   IconNode,
   IconPencil,
   IconPin,
-  IconPlus,
   IconStopwatch,
   IconTags,
   IconTrash,
@@ -50,28 +54,6 @@ interface ProjectCardProps {
   activeTag?: string | null
   selected?: boolean
   onToggleSelect?: () => void
-}
-
-function isSameLocalDay(aMs: number, bMs: number): boolean {
-  const a = new Date(aMs)
-  const b = new Date(bMs)
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  )
-}
-
-function startOfLocalWeek(ms: number): number {
-  const d = new Date(ms)
-  const day = (d.getDay() + 6) % 7
-  d.setHours(0, 0, 0, 0)
-  d.setDate(d.getDate() - day)
-  return d.getTime()
-}
-
-function isSameLocalWeek(aMs: number, bMs: number): boolean {
-  return startOfLocalWeek(aMs) === startOfLocalWeek(bMs)
 }
 
 function getInitials(name: string): string {
@@ -114,6 +96,8 @@ export function ProjectCard({
   )
   const [tagsExpanded, setTagsExpanded] = useState(false)
   const [tagManagerOpen, setTagManagerOpen] = useState(false)
+  const [timeTrackerOpen, setTimeTrackerOpen] = useState(false)
+  const [templateSaveOpen, setTemplateSaveOpen] = useState(false)
   const [editingTagIndex, setEditingTagIndex] = useState<number | null>(null)
   const [editTagValue, setEditTagValue] = useState('')
   const [addingTag, setAddingTag] = useState(false)
@@ -122,9 +106,6 @@ export function ProjectCard({
   const [tagError, setTagError] = useState<string | null>(null)
   const [cardHovered, setCardHovered] = useState(false)
   const [pinFocused, setPinFocused] = useState(false)
-  const [addFocused, setAddFocused] = useState(false)
-  const [showLessFocused, setShowLessFocused] = useState(false)
-  const [tagsRowHovered, setTagsRowHovered] = useState(false)
   const editInputRef = useRef<HTMLInputElement>(null)
   const addInputRef = useRef<HTMLInputElement>(null)
 
@@ -168,6 +149,14 @@ export function ProjectCard({
     settings.last_opened_time_format,
     settings.last_opened_date_format,
   )
+  const lastOpenedFull =
+    lastOpenedLabel && project.last_opened
+      ? (() => {
+          const d = new Date(project.last_opened)
+          if (isNaN(d.getTime())) return null
+          return `${formatDate(d, settings.last_opened_date_format)} · ${formatTime(d, settings.last_opened_time_format)}`
+        })()
+      : null
 
   const sessionStart = project.session_started_at_ms
   const [now, setNow] = useState(() => Date.now())
@@ -177,18 +166,7 @@ export function ProjectCard({
     const id = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(id)
   }, [sessionStart])
-  const liveElapsed = sessionStart ? Math.max(0, now - sessionStart) : 0
   const allMs = effectiveTotalMs(project, now)
-  const todayMs =
-    (project.time_today_seconds ?? 0) * 1000 +
-    (sessionStart && isSameLocalDay(sessionStart, Date.now())
-      ? liveElapsed
-      : 0)
-  const weekMs =
-    (project.time_week_seconds ?? 0) * 1000 +
-    (sessionStart && isSameLocalWeek(sessionStart, Date.now())
-      ? liveElapsed
-      : 0)
 
   const openFolder = () =>
     api.openProjectFolder(project.path).catch((e) => alert(e))
@@ -222,7 +200,6 @@ export function ProjectCard({
     setAddingTag(false)
     setNewTagValue('')
     setTagError(null)
-    setAddFocused(false)
     saveTags(newTags)
   }
 
@@ -359,14 +336,144 @@ export function ProjectCard({
               </button>
             </Tooltip>
           )}
-          {project.tags.length > 0 && (
-            <div
-              onMouseEnter={() => setTagsRowHovered(true)}
-              onMouseLeave={() => setTagsRowHovered(false)}
-              className="flex items-center gap-1 flex-wrap min-w-0"
+          {lastOpenedLabel && (
+            <Tooltip
+              content={t('project_last_opened_tooltip', {
+                label: lastOpenedFull ?? lastOpenedLabel,
+              })}
+              side="top"
             >
+              <span className="inline-flex items-center gap-1 pl-1.5 pr-1 py-0.5 rounded-tag font-mono text-[10px] font-medium tracking-tight shrink-0 text-muted">
+                <IconClock className="w-2.5 h-2.5 text-muted/60 shrink-0" />
+                {lastOpenedLabel}
+              </span>
+            </Tooltip>
+          )}
+          {addingTag ? (
+            <span
+              className={`inline-flex items-center px-1.5 py-0.5 rounded-tag font-mono text-[10px] font-medium tracking-tight shrink-0 border ${
+                tagError
+                  ? 'bg-danger/10 border-danger/50'
+                  : 'bg-accent/10 border-accent/30'
+              }`}
+            >
+              {tagError ? (
+                <Tooltip content={tagError} side="top" className="w-16">
+                  <input
+                    ref={addInputRef}
+                    type="text"
+                    value={newTagValue}
+                    onChange={(e) => {
+                      setNewTagValue(e.target.value)
+                      if (tagError) setTagError(null)
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        handleAddTag()
+                      }
+                      if (e.key === 'Escape') {
+                        setAddingTag(false)
+                        setNewTagValue('')
+                        setTagError(null)
+                      }
+                    }}
+                    onBlur={() => {
+                      if (newTagValue.trim()) {
+                        handleAddTag()
+                      } else {
+                        setAddingTag(false)
+                        setTagError(null)
+                      }
+                    }}
+                    className={`w-16 bg-transparent outline-none text-[10px] font-mono font-medium ${
+                      tagError
+                        ? 'text-danger placeholder:text-danger/40'
+                        : 'text-accent-bright placeholder:text-accent/40'
+                    }`}
+                    placeholder={t('tag_input_placeholder')}
+                    aria-invalid={tagError ? true : undefined}
+                    autoFocus
+                  />
+                </Tooltip>
+              ) : (
+                <input
+                  ref={addInputRef}
+                  type="text"
+                  value={newTagValue}
+                  onChange={(e) => {
+                    setNewTagValue(e.target.value)
+                    if (tagError) setTagError(null)
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      handleAddTag()
+                    }
+                    if (e.key === 'Escape') {
+                      setAddingTag(false)
+                      setNewTagValue('')
+                      setTagError(null)
+                    }
+                  }}
+                  onBlur={() => {
+                    if (newTagValue.trim()) {
+                      handleAddTag()
+                    } else {
+                      setAddingTag(false)
+                      setTagError(null)
+                    }
+                  }}
+                  className={`w-16 bg-transparent outline-none text-[10px] font-mono font-medium ${
+                    tagError
+                      ? 'text-danger placeholder:text-danger/40'
+                      : 'text-accent-bright placeholder:text-accent/40'
+                  }`}
+                  placeholder={t('tag_input_placeholder')}
+                  aria-invalid={tagError ? true : undefined}
+                  autoFocus
+                />
+              )}
+            </span>
+          ) : (
+            <motion.span
+              initial={false}
+              animate={{
+                width: cardHovered ? 'auto' : 0,
+                marginRight: cardHovered ? 6 : 0,
+                opacity: cardHovered ? 1 : 0,
+              }}
+              transition={springTransition}
+              className="overflow-hidden inline-flex items-center shrink-0"
+            >
+              <Tooltip content={t('add_tag_aria')} side="top">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAddingTag(true)
+                    setNewTagValue('')
+                    setTagError(null)
+                  }}
+                  aria-label={t('add_tag_aria')}
+                  className="focus-ring cursor-pointer inline-flex items-center px-2 py-0.5 rounded-tag text-[10px] font-mono font-medium tracking-tight whitespace-nowrap text-muted hover:text-accent-bright hover:bg-raised transition-colors shrink-0 border border-dashed border-outline/50"
+                >
+                  {t('add_tag_aria')}
+                </button>
+              </Tooltip>
+            </motion.span>
+          )}
+          {savingTags && (
+            <span
+              aria-label={t('saving_tags')}
+              className="w-3 h-3 rounded-full border-2 border-accent-dim/30 border-t-accent-bright animate-spin shrink-0"
+            />
+          )}
+        </div>
+
+        {project.tags.length > 0 && (
+          <div className="flex items-center gap-1 flex-wrap min-w-0">
               {project.tags
-                .slice(0, tagsExpanded ? project.tags.length : 3)
+                .slice(0, tagsExpanded ? project.tags.length : 2)
                 .map((tag, index) => {
                   const color = tagColor(tag)
                   const isActive = activeTag === tag
@@ -484,7 +591,7 @@ export function ProjectCard({
                     </span>
                   )
                 })}
-              {!tagsExpanded && project.tags.length > 3 && (
+              {!tagsExpanded && project.tags.length > 2 && (
                 <Tooltip content={t('show_more_tags')} side="top">
                   <button
                     type="button"
@@ -492,163 +599,24 @@ export function ProjectCard({
                     aria-label={t('show_more_tags')}
                     className="focus-ring cursor-pointer inline-flex items-center px-2 py-0.5 rounded-tag text-[10px] font-mono font-medium tracking-tight text-muted hover:text-ink hover:bg-raised transition-colors shrink-0 border border-dashed border-outline/50"
                   >
-                    +{project.tags.length - 3}
+                    +{project.tags.length - 2}
                   </button>
                 </Tooltip>
               )}
-              {tagsExpanded && project.tags.length > 3 && (
-                <motion.span
-                  initial={false}
-                  animate={{
-                    width: tagsRowHovered || showLessFocused ? 20 : 0,
-                    marginRight: tagsRowHovered || showLessFocused ? 6 : 0,
-                    opacity: tagsRowHovered || showLessFocused ? 1 : 0,
-                  }}
-                  transition={springTransition}
-                  className="overflow-hidden inline-flex items-center shrink-0"
-                >
-                  <Tooltip content={t('show_fewer_tags')} side="top">
-                    <button
-                      type="button"
-                      onClick={() => setTagsExpanded(false)}
-                      onFocus={() => setShowLessFocused(true)}
-                      onBlur={() => setShowLessFocused(false)}
-                      aria-label={t('show_fewer_tags')}
-                      className="focus-ring cursor-pointer inline-flex items-center justify-center w-5 h-5 rounded-full text-muted hover:text-ink hover:bg-raised transition-colors"
-                    >
-                      <IconChevronRight className="w-2 h-2 rotate-180" />
-                    </button>
-                  </Tooltip>
-                </motion.span>
+              {tagsExpanded && project.tags.length > 2 && (
+                <Tooltip content={t('show_fewer_tags')} side="top">
+                  <button
+                    type="button"
+                    onClick={() => setTagsExpanded(false)}
+                    aria-label={t('show_fewer_tags')}
+                    className="focus-ring cursor-pointer inline-flex items-center px-2 py-0.5 rounded-tag text-[10px] font-mono font-medium tracking-tight text-muted hover:text-ink hover:bg-raised transition-colors shrink-0 border border-dashed border-outline/50"
+                  >
+                    -{project.tags.length - 2}
+                  </button>
+                </Tooltip>
               )}
             </div>
           )}
-          {addingTag ? (
-            <span
-              className={`inline-flex items-center px-1.5 py-0.5 rounded-tag font-mono text-[10px] font-medium tracking-tight shrink-0 border ${
-                tagError
-                  ? 'bg-danger/10 border-danger/50'
-                  : 'bg-accent/10 border-accent/30'
-              }`}
-            >
-              {tagError ? (
-                <Tooltip content={tagError} side="top" className="w-16">
-                  <input
-                    ref={addInputRef}
-                    type="text"
-                    value={newTagValue}
-                    onChange={(e) => {
-                      setNewTagValue(e.target.value)
-                      if (tagError) setTagError(null)
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        handleAddTag()
-                      }
-                      if (e.key === 'Escape') {
-                        setAddingTag(false)
-                        setNewTagValue('')
-                        setTagError(null)
-                        setAddFocused(false)
-                      }
-                    }}
-                    onBlur={() => {
-                      if (newTagValue.trim()) {
-                        handleAddTag()
-                      } else {
-                        setAddingTag(false)
-                        setTagError(null)
-                        setAddFocused(false)
-                      }
-                    }}
-                    className={`w-16 bg-transparent outline-none text-[10px] font-mono font-medium ${
-                      tagError
-                        ? 'text-danger placeholder:text-danger/40'
-                        : 'text-accent-bright placeholder:text-accent/40'
-                    }`}
-                    placeholder={t('tag_input_placeholder')}
-                    aria-invalid={tagError ? true : undefined}
-                    autoFocus
-                  />
-                </Tooltip>
-              ) : (
-                <input
-                  ref={addInputRef}
-                  type="text"
-                  value={newTagValue}
-                  onChange={(e) => {
-                    setNewTagValue(e.target.value)
-                    if (tagError) setTagError(null)
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      handleAddTag()
-                    }
-                    if (e.key === 'Escape') {
-                      setAddingTag(false)
-                      setNewTagValue('')
-                      setTagError(null)
-                      setAddFocused(false)
-                    }
-                  }}
-                  onBlur={() => {
-                    if (newTagValue.trim()) {
-                      handleAddTag()
-                    } else {
-                      setAddingTag(false)
-                      setTagError(null)
-                      setAddFocused(false)
-                    }
-                  }}
-                  className={`w-16 bg-transparent outline-none text-[10px] font-mono font-medium ${
-                    tagError
-                      ? 'text-danger placeholder:text-danger/40'
-                      : 'text-accent-bright placeholder:text-accent/40'
-                  }`}
-                  placeholder={t('tag_input_placeholder')}
-                  aria-invalid={tagError ? true : undefined}
-                  autoFocus
-                />
-              )}
-            </span>
-          ) : (
-            <motion.span
-              initial={false}
-              animate={{
-                width: cardHovered || addFocused ? 20 : 0,
-                marginRight: cardHovered || addFocused ? 6 : 0,
-                opacity: cardHovered || addFocused ? 1 : 0,
-              }}
-              transition={springTransition}
-              className="overflow-hidden inline-flex items-center shrink-0"
-            >
-              <Tooltip content={t('add_tag_aria')} side="top">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAddingTag(true)
-                    setNewTagValue('')
-                    setTagError(null)
-                  }}
-                  onFocus={() => setAddFocused(true)}
-                  onBlur={() => setAddFocused(false)}
-                  aria-label={t('add_tag_aria')}
-                  className="focus-ring cursor-pointer inline-flex items-center justify-center w-5 h-5 rounded-full text-muted hover:text-accent-bright hover:bg-raised transition-colors"
-                >
-                  <IconPlus className="w-3 h-3" />
-                </button>
-              </Tooltip>
-            </motion.span>
-          )}
-          {savingTags && (
-            <span
-              aria-label={t('saving_tags')}
-              className="w-3 h-3 rounded-full border-2 border-accent-dim/30 border-t-accent-bright animate-spin shrink-0"
-            />
-          )}
-        </div>
 
         <Tooltip content={project.path} side="top" className="w-fit max-w-full">
           <button
@@ -740,58 +708,23 @@ export function ProjectCard({
               </button>
             </Tooltip>
           </motion.span>
-          {lastOpenedLabel && (
+          {allMs > 0 && (
             <Tooltip
-              content={t('project_last_opened_tooltip', {
-                label: lastOpenedLabel,
+              content={t('project_total_time_tooltip', {
+                label: formatDuration(allMs),
               })}
               side="top"
             >
-              <span className="inline-flex items-center gap-1.5 rounded-btn px-3 py-3 bg-black/10 font-mono text-[10px] text-muted shrink-0">
-                <IconClock className="w-3 h-3 text-muted/60 shrink-0" />
-                {lastOpenedLabel}
-              </span>
+              <button
+                type="button"
+                onClick={() => setTimeTrackerOpen(true)}
+                aria-label={t('time_tracked_title')}
+                className="focus-ring border border-outline/50 cursor-pointer inline-flex items-center gap-1.5 rounded-btn px-3 py-3 bg-black/10 font-mono text-[10px] text-muted hover:text-ink hover:bg-raised transition-colors shrink-0"
+              >
+                <IconStopwatch className="w-3 h-3 text-muted/60 shrink-0" />
+                {formatDuration(allMs)}
+              </button>
             </Tooltip>
-          )}
-          {allMs > 0 && (
-            <Dropdown
-              align="left"
-              trigger={({ open, toggle }) => (
-                <Tooltip
-                  content={t('project_total_time_tooltip', {
-                    label: formatDuration(allMs),
-                  })}
-                  side="top"
-                >
-                  <button
-                    type="button"
-                    onClick={toggle}
-                    aria-expanded={open}
-                    className="focus-ring cursor-pointer inline-flex items-center gap-1.5 rounded-btn px-3 py-3 bg-black/10 font-mono text-[10px] text-muted hover:text-ink hover:bg-raised transition-colors shrink-0"
-                  >
-                    <IconStopwatch className="w-3 h-3 text-muted/60 shrink-0" />
-                    {formatDuration(allMs)}
-                  </button>
-                </Tooltip>
-              )}
-              items={[
-                {
-                  key: 'today',
-                  label: `${t('time_today')} · ${formatDuration(todayMs)}`,
-                  icon: IconClock,
-                },
-                {
-                  key: 'week',
-                  label: `${t('time_this_week')} · ${formatDuration(weekMs)}`,
-                  icon: IconHistory,
-                },
-                {
-                  key: 'all',
-                  label: `${t('time_all_time')} · ${formatDuration(allMs)}`,
-                  icon: IconStopwatch,
-                },
-              ]}
-            />
           )}
         </div>
       </div>
@@ -822,6 +755,13 @@ export function ProjectCard({
             label: t('manage_tags'),
             icon: IconTags,
             onClick: () => setTagManagerOpen(true),
+          },
+          {
+            key: 'save-as-template',
+            label: t('save_as_template'),
+            icon: IconCopy,
+            onClick: () => setTemplateSaveOpen(true),
+            dividerAfter: true,
           },
           {
             key: 'pin',
@@ -896,6 +836,24 @@ export function ProjectCard({
             project={project}
             onClose={() => setTagManagerOpen(false)}
             onSaved={(updated) => onTagsSaved?.(updated)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {timeTrackerOpen && (
+          <TimeTrackerModal
+            project={project}
+            onClose={() => setTimeTrackerOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {templateSaveOpen && (
+          <SaveAsTemplateModal
+            project={project}
+            onClose={() => setTemplateSaveOpen(false)}
           />
         )}
       </AnimatePresence>

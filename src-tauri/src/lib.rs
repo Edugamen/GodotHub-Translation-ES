@@ -110,6 +110,7 @@ pub fn run() {
                 asset_library::AssetResponseCache::default(),
             ));
             app.manage(watcher::ActiveWatchers(std::sync::Mutex::new(Vec::new())));
+            app.manage(watcher::GitWatcher(std::sync::Mutex::new(None)));
 
             godot_versions::migrate_registry_to_global(app.handle());
 
@@ -228,6 +229,7 @@ pub fn run() {
             projects::export_project_stats,
             projects::import_project_stats,
             time_stats::get_activity,
+            time_stats::get_project_activity,
             time_stats::get_time_insights,
             categories::list_categories,
             categories::create_category,
@@ -290,17 +292,24 @@ pub fn run() {
             git::git_push,
             git::git_log,
             git::git_log_entries,
+            git::git_list_remotes,
+            git::git_ahead_behind,
+            git::git_show_commit,
             git::git_remote_url,
             git::git_list_branches,
+            git::git_branch_publish,
             git::git_switch_branch,
             git::git_create_branch,
             git::git_delete_branch,
             git::git_stash_push,
             git::git_stash_list,
             git::git_stash_apply,
+            git::git_stash_show,
+            git::git_stash_pop,
             git::git_stash_drop,
             git::git_changed_files,
             git::git_discard_changes,
+            git::git_discard_file,
             git::git_init,
             git::git_init_project,
             git::git_is_available,
@@ -323,6 +332,8 @@ pub fn run() {
             pick_save_path,
             pick_data_file,
             watcher::restart_watchers,
+            watcher::start_git_fs_watcher,
+            watcher::stop_git_fs_watcher,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

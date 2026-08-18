@@ -142,6 +142,7 @@ export interface GitLogEntry {
 export interface GitBranchInfo {
   name: string
   is_current: boolean
+  has_upstream: boolean
 }
 
 export interface GitStashEntry {
@@ -152,6 +153,31 @@ export interface GitStashEntry {
 export interface GitChangedFile {
   path: string
   status: string
+}
+
+export interface GitRemoteInfo {
+  name: string
+  web_url: string
+  repo_name: string
+}
+
+export interface GitAheadBehind {
+  ahead: number
+  behind: number
+}
+
+export interface GitCommitFile {
+  path: string
+  status: string
+}
+
+export interface GitCommitDetails {
+  hash: string
+  message: string
+  author: string
+  date: string
+  files: GitCommitFile[]
+  diff: GitDiffResult
 }
 
 export interface GitInitOutcome {

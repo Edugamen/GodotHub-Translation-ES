@@ -455,7 +455,6 @@ function StatCard({
       style={{ rotateX, rotateY, transformPerspective: 700 }}
       className={`group relative overflow-hidden text-left cursor-pointer focus-ring rounded-card bg-overlay border border-outline/50 px-5 py-4 flex flex-col transition-colors duration-200 hover:border-outline ${hoverBorder}`}
     >
-      {/* Ghost icon watermark */}
       <Icon
         aria-hidden="true"
         className="pointer-events-none absolute -bottom-8 -right-8 w-32 h-32 rotate-12 text-ink/5 transition-transform duration-500 group-hover:rotate-6 group-hover:scale-110"
@@ -505,7 +504,6 @@ function activityLabel(
   timeFormat: LastOpenedTimeFormat,
 ): string {
   if (range === 'daily') {
-    // key is `YYYY-MM-DD:HH`
     const hour = Number(key.slice(11, 13))
     if (timeFormat === '24h') {
       return `${String(hour).padStart(2, '0')}h`
@@ -515,12 +513,10 @@ function activityLabel(
     return `${h12} ${suffix}`
   }
   if (range === 'yearly') {
-    // key is `YYYY-MM`
     return new Date(`${key}-01T00:00:00`).toLocaleDateString(undefined, {
       month: 'short',
     })
   }
-  // weekly / monthly: key is `YYYY-MM-DD`
   const d = new Date(`${key}T00:00:00`)
   return range === 'weekly'
     ? d.toLocaleDateString(undefined, { weekday: 'short' })
@@ -607,7 +603,6 @@ function ActivityChart({
 }
 
 function weekdayName(weekday: number): string {
-  // weekday: 0 = Monday .. 6 = Sunday. Jan 5, 2026 is a Monday.
   return new Date(2026, 0, 5 + weekday).toLocaleDateString(undefined, {
     weekday: 'long',
   })
@@ -1603,7 +1598,6 @@ export function DashboardView({
 
   return (
     <div className="flex-1 min-w-0 h-full flex flex-col">
-      {/* Greeting header */}
       <section
         className={`shrink-0 px-6 py-7 flex flex-col gap-2 ${
           connected ? 'rounded-none' : 'rounded-card'

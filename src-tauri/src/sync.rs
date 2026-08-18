@@ -117,7 +117,6 @@ async fn update_gist(
     Ok(g.html_url)
 }
 
-/// Pushes the current workspace backup to a private GitHub gist.
 #[tauri::command]
 pub async fn gist_sync_push(app: AppHandle) -> Result<GistSyncResult, String> {
     let token = github_token(&app)
@@ -149,7 +148,6 @@ pub async fn gist_sync_push(app: AppHandle) -> Result<GistSyncResult, String> {
     })
 }
 
-/// Pulls the workspace backup from the synced gist and restores it.
 #[tauri::command]
 pub async fn gist_sync_pull(app: AppHandle) -> Result<crate::models::AppSettings, String> {
     let token = github_token(&app)

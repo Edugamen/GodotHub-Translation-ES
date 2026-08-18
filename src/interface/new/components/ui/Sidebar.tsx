@@ -45,7 +45,7 @@ export function Sidebar({
   const [width, setWidth] = useState(() => {
     try {
       return Math.min(
-        420,
+        350,
         Math.max(180, Number(localStorage.getItem('new_ui_sidebar_width')) || 256),
       )
     } catch {
@@ -117,7 +117,7 @@ export function Sidebar({
         return
       }
       const next = startWidthRef.current + (e.clientX - startXRef.current)
-      setWidth(Math.min(420, Math.max(180, Math.round(next))))
+      setWidth(Math.min(350, Math.max(180, Math.round(next))))
       return
     }
     const rect = e.currentTarget.getBoundingClientRect()

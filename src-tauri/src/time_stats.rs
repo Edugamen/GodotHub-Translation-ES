@@ -78,11 +78,6 @@ fn days_in_month(year: i32, month: u32) -> u32 {
     }
 }
 
-/// Aggregates time tracked into buckets for the given range:
-/// `daily`   -> current calendar day from 12 AM to 12 AM, one bucket per hour (key `YYYY-MM-DD:HH`)
-/// `weekly`  -> last 7 days, one bucket per day (key `YYYY-MM-DD`)
-/// `monthly` -> current calendar month from the 1st to the last day (key `YYYY-MM-DD`)
-/// `yearly`  -> current calendar year from January to December, one bucket per month (key `YYYY-MM`)
 #[tauri::command]
 pub fn get_activity(app: AppHandle, range: String) -> Vec<(String, u64)> {
     let store = read_stats(&app);
@@ -145,7 +140,6 @@ pub fn get_activity(app: AppHandle, range: String) -> Vec<(String, u64)> {
             out
         }
         _ => {
-            // weekly
             let mut out: Vec<(String, u64)> = Vec::new();
             for offset in (0..7).rev() {
                 let day = now - Duration::days(offset);
@@ -161,24 +155,40 @@ pub fn get_activity(app: AppHandle, range: String) -> Vec<(String, u64)> {
     }
 }
 
+#[tauri::command]
+pub fn get_project_activity(app: AppHandle, project_id: String) -> Vec<(String, u64)> {
+    let store = read_stats(&app);
+    let now = chrono::Local::now();
+    let mut out: Vec<(String, u64)> = Vec::new();
+    for offset in (0..7).rev() {
+        let day = now - Duration::days(offset);
+        let date = day.format("%Y-%m-%d").to_string();
+        let total = store
+            .daily
+            .get(&project_id)
+            .and_then(|m| m.get(&date))
+            .copied()
+            .unwrap_or(0);
+        out.push((date, total));
+    }
+    out
+}
+
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct TimeInsights {
     pub total_seconds: u64,
     pub longest_streak_days: u32,
     pub current_streak_days: u32,
-    /// Weekday with the most tracked time, 0 = Monday .. 6 = Sunday.
     pub most_productive_weekday: Option<u32>,
     pub this_month_seconds: u64,
     pub last_month_seconds: u64,
 }
 
-/// Aggregates the tracked-time store into streak / productivity insights.
 #[tauri::command]
 pub fn get_time_insights(app: AppHandle) -> TimeInsights {
     let store = read_stats(&app);
     let now = chrono::Local::now();
 
-    // Aggregate every project's daily buckets into one date -> seconds map.
     let mut by_date: std::collections::BTreeMap<chrono::NaiveDate, u64> =
         std::collections::BTreeMap::new();
     for by_project in store.daily.values() {
@@ -218,7 +228,6 @@ pub fn get_time_insights(app: AppHandle) -> TimeInsights {
         }
     }
 
-    // Longest run of consecutive days (with tracked time).
     let mut longest_streak_days = 0u32;
     let mut run = 0u32;
     let mut prev: Option<chrono::NaiveDate> = None;
@@ -236,7 +245,6 @@ pub fn get_time_insights(app: AppHandle) -> TimeInsights {
         }
     }
 
-    // Current streak: consecutive days with time, ending today or yesterday.
     let today = now.date_naive();
     let mut current_streak_days = 0u32;
     let mut cursor = if by_date.get(&today).copied().unwrap_or(0) > 0 {

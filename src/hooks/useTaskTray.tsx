@@ -170,8 +170,6 @@ export function TaskTrayProvider({ children }: { children: ReactNode }) {
   })
 
   useTauriEvent<string[]>('godot-download-queue', (keys) => {
-    // Reflect the backend queue order: download tasks first (in queue order),
-    // then any other tasks.
     setTasks((prev) => {
       const ordered = keys.map((k) => `download-${k}`)
       const ids = new Set(ordered)

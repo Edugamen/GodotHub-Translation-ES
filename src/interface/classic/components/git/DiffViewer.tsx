@@ -215,7 +215,6 @@ export function DiffViewer({ projectPath, filePath, onClose }: Props) {
           transition={{ duration: 0.16, ease: 'easeOut' }}
           className="relative w-[860px] max-w-[calc(100vw-48px)] max-h-[85vh] bg-surface border border-line rounded-xl shadow-2xl shadow-black/40 flex flex-col overflow-hidden"
         >
-          {/* Header */}
           <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-line shrink-0">
             <div className="flex items-center gap-2.5 min-w-0">
               <span className="w-7 h-7 shrink-0 rounded-lg bg-raised border border-line flex items-center justify-center">
@@ -268,7 +267,6 @@ export function DiffViewer({ projectPath, filePath, onClose }: Props) {
             </div>
           </div>
 
-          {/* Proportional add/delete bar */}
           {adds + dels > 0 && (
             <div className="flex h-[3px] shrink-0 bg-line/40" title={`+${adds} −${dels}`}>
               {adds > 0 && <div className="bg-mint/80" style={{ flexGrow: adds }} />}
@@ -276,7 +274,6 @@ export function DiffViewer({ projectPath, filePath, onClose }: Props) {
             </div>
           )}
 
-          {/* Body */}
           <div className={`flex-1 font-mono text-xs leading-normal ${wrap ? 'overflow-y-auto' : 'overflow-auto'}`}>
             {loading ? (
               <div className="flex flex-col items-center justify-center gap-3 py-20 text-muted">

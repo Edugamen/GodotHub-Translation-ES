@@ -149,8 +149,6 @@ pub fn delete_changelog_entry(_id: String) -> Result<(), String> {
     }
 }
 
-/* ---------- Release notes generator (dev-only tooling) ---------- */
-
 #[derive(Serialize, Clone)]
 pub struct ChangelogDraftNote {
     pub category: String,
@@ -235,7 +233,6 @@ fn bump_patch(version: &str) -> String {
     }
 }
 
-/// Returns (category, description). Category is `add` | `fix` | `improve`.
 #[cfg(debug_assertions)]
 fn classify_subject(subject: &str) -> (Option<&'static str>, &str) {
     let trimmed = subject.trim();
@@ -247,7 +244,6 @@ fn classify_subject(subject: &str) -> (Option<&'static str>, &str) {
         return (None, trimmed);
     }
 
-    // Conventional form: `type(scope): description`
     if let Some(colon) = trimmed.find(':') {
         let prefix = &trimmed[..colon];
         let desc = trimmed[colon + 1..].trim();
@@ -286,7 +282,6 @@ fn classify_subject(subject: &str) -> (Option<&'static str>, &str) {
         }
     }
 
-    // Free-text heuristics for repos that don't use conventional commits.
     if lower.starts_with("fix")
         || lower.starts_with("bugfix")
         || lower.starts_with("hotfix")

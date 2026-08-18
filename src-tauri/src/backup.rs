@@ -59,12 +59,9 @@ fn collect_files(dir: &Path, base: &Path, out: &mut BTreeMap<String, String>) {
     }
 }
 
-/// Writes one template dir from the backup. Returns false if a path was
-/// rejected (path traversal or a write failure is silently skipped).
 fn restore_template(dir: &Path, backup: &TemplateBackup) {
     let _ = fs::create_dir_all(dir);
     for (rel, content) in &backup.files {
-        // Guard against path traversal / absolute paths from a tampered file.
         let is_safe = !rel.is_empty()
             && !Path::new(rel).is_absolute()
             && !rel
@@ -130,21 +127,16 @@ pub(crate) fn build_workspace_backup(app: &AppHandle) -> Result<WorkspaceBackup,
     Ok(build_workspace_backup_in(&dir, ws))
 }
 
-/// Applies a backup's data (settings, projects, categories, templates, time
-/// tracking) into the workspace at `dir`. Workspace meta (name/icon/color) and
-/// watcher restarts are handled by the callers.
 fn apply_workspace_backup_in(
     dir: &Path,
     backup: WorkspaceBackup,
 ) -> Result<AppSettings, String> {
-    // Settings — keep machine-local state as-is, same as the settings import.
     let current_settings = crate::settings::read_settings_from(dir);
     let mut settings = backup.settings;
     settings.dismissed_project_paths = current_settings.dismissed_project_paths;
     settings.setup_complete = current_settings.setup_complete;
     crate::settings::write_settings_to(dir, &settings).map_err(|e| e.to_string())?;
 
-    // Projects — clear in-flight session markers so tracking starts fresh.
     let projects: Vec<Project> = backup
         .projects
         .into_iter()
@@ -157,11 +149,9 @@ fn apply_workspace_backup_in(
         .collect();
     crate::projects::write_projects_to(dir, &projects)?;
 
-    // Categories.
     crate::categories::write_categories_to(dir, &backup.categories)
         .map_err(|e| e.to_string())?;
 
-    // Templates — replace the whole templates directory.
     let root = templates_root_for(dir);
     let _ = fs::remove_dir_all(&root);
     let _ = fs::create_dir_all(&root);
@@ -169,7 +159,6 @@ fn apply_workspace_backup_in(
         restore_template(&root.join(&t.meta.id), t);
     }
 
-    // Time tracking.
     crate::time_stats::write_stats_to(dir, &backup.time_stats);
 
     Ok(settings)
@@ -186,7 +175,6 @@ pub(crate) fn apply_workspace_backup(
     let color = backup.workspace.color.clone();
     let settings = apply_workspace_backup_in(&dir, backup)?;
 
-    // Workspace name / icon / color.
     let _ = crate::workspace::update_workspace(
         app.clone(),
         active_id,
@@ -195,7 +183,6 @@ pub(crate) fn apply_workspace_backup(
         Some(color),
     );
 
-    // Watchers rescan with the restored settings.
     let _ = crate::watcher::restart_watchers(app.clone());
     Ok(settings)
 }
@@ -228,8 +215,6 @@ pub fn import_workspace_backup(app: AppHandle, path: String) -> Result<AppSettin
     let _ = crate::watcher::restart_watchers(app.clone());
     Ok(settings)
 }
-
-/* ---------- Whole-app (all workspaces) backup ---------- */
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct AppBackup {

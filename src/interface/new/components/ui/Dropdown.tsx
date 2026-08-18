@@ -31,6 +31,7 @@ interface NewDropdownProps {
   items: NewDropdownItem[]
   align?: 'left' | 'right'
   menuClassName?: string
+  compact?: boolean
 }
 
 const MENU_FALLBACK_HEIGHT = 220
@@ -44,6 +45,7 @@ export function Dropdown({
   items,
   align = 'right',
   menuClassName = '',
+  compact = false,
 }: NewDropdownProps) {
   const [open, setOpen] = useState(false)
   const [openUp, setOpenUp] = useState(false)
@@ -165,7 +167,7 @@ export function Dropdown({
               role="menu"
               onKeyDown={handleMenuKey}
               style={{ left: pos?.left, top: pos?.top, width: pos?.width }}
-              className={`fixed z-50 rounded-menu border border-outline/50 bg-overlay shadow-md shadow-black/10 p-1.5 min-w-60 ${
+              className={`fixed z-50 rounded-menu border border-outline/50 bg-overlay shadow-md shadow-black/10 min-w-60 ${compact ? 'p-1' : 'p-1.5'} ${
                 openUp ? 'origin-bottom' : 'origin-top'
               } ${menuClassName}`}
             >
@@ -179,7 +181,9 @@ export function Dropdown({
                       setOpen(false)
                       item.onClick?.()
                     }}
-                    className={`w-full flex items-center gap-1 px-2.5 py-2 rounded-item text-xs font-medium transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                    className={`w-full flex items-center gap-1 rounded-item text-xs font-medium transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                      compact ? 'px-2 py-1.5' : 'px-2.5 py-2'
+                    } ${
                       item.danger
                         ? 'text-red-400 hover:bg-red-500/10 hover:text-red-300'
                         : item.active
@@ -189,7 +193,9 @@ export function Dropdown({
                   >
                     {item.icon && (
                       <span
-                        className={`w-7 h-7 rounded-btn flex items-center justify-center shrink-0 ${
+                        className={`${
+                          compact ? 'w-6 h-6' : 'w-7 h-7'
+                        } rounded-btn flex items-center justify-center shrink-0 ${
                           item.danger
                             ? 'bg-red-500/10'
                             : item.active
@@ -198,7 +204,7 @@ export function Dropdown({
                         }`}
                       >
                         <item.icon
-                          className={`w-3.5 h-3.5 ${item.danger ? 'text-red-400' : item.active ? 'text-accent-bright' : 'text-muted'}`}
+                          className={`${compact ? 'w-3 h-3' : 'w-3.5 h-3.5'} ${item.danger ? 'text-red-400' : item.active ? 'text-accent-bright' : 'text-muted'}`}
                         />
                       </span>
                     )}
@@ -225,7 +231,9 @@ export function Dropdown({
                       <span className="text-[10px] text-muted font-mono shrink-0">{item.shortcut}</span>
                     )}
                   </button>
-                  {item.dividerAfter && <div className="h-px bg-white/6 my-1" />}
+                  {item.dividerAfter && (
+                    <div className={`h-px bg-white/6 ${compact ? 'my-0.5' : 'my-1'}`} />
+                  )}
                 </div>
               ))}
             </motion.div>

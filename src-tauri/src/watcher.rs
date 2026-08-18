@@ -9,6 +9,8 @@ use tauri::{AppHandle, Emitter, Manager};
 
 pub struct ActiveWatchers(pub Mutex<Vec<RecommendedWatcher>>);
 
+pub struct GitWatcher(pub Mutex<Option<RecommendedWatcher>>);
+
 fn is_ignored_watcher_event(event: &Event) -> bool {
     !event.paths.is_empty()
         && event.paths.iter().all(|p| {
@@ -174,6 +176,38 @@ fn create_debounced_multi_watcher(
     });
 
     Some(watcher)
+}
+
+#[tauri::command]
+pub fn start_git_fs_watcher(app: AppHandle, path: String) -> Result<(), String> {
+    let dir = PathBuf::from(&path);
+    if !dir.is_dir() {
+        return Err("Path is not a directory".into());
+    }
+    if let Some(state) = app.try_state::<GitWatcher>() {
+        *state.0.lock().unwrap() = None;
+    }
+    let watcher = create_debounced_watcher(
+        app.clone(),
+        dir,
+        Duration::from_millis(800),
+        Duration::from_millis(300),
+        Arc::new(|_a: AppHandle| {}) as Arc<dyn Fn(AppHandle) + Send + Sync + 'static>,
+        "git:project-changed",
+    );
+    if let Some(w) = watcher {
+        if let Some(state) = app.try_state::<GitWatcher>() {
+            *state.0.lock().unwrap() = Some(w);
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn stop_git_fs_watcher(app: AppHandle) {
+    if let Some(state) = app.try_state::<GitWatcher>() {
+        *state.0.lock().unwrap() = None;
+    }
 }
 
 pub fn start_template_watcher(app: AppHandle, scan_dir: PathBuf, debounce_ms: u64) {

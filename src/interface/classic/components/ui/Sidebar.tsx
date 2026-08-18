@@ -52,7 +52,7 @@ function loadExpandedWidth(): number {
   try {
     const raw = localStorage.getItem(SIDEBAR_EXPANDED_WIDTH_KEY)
     const n = Number(raw)
-    if (n >= 150 && n <= 420) return n
+    if (n >= 150 && n <= 350) return n
   } catch {}
   return 230
 }
@@ -133,7 +133,7 @@ export function Sidebar({
         {active && (
           <motion.span
             layoutId="nav-active-pill"
-            transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+            transition={{ type: 'spring', stiffness: 350, damping: 34 }}
             className="absolute inset-0 rounded-lg bg-raised border border-line"
           />
         )}

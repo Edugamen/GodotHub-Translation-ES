@@ -85,7 +85,6 @@ export function useDiscordRpc(settings: AppSettings, projects: Project[]) {
   const [connected, setConnected] = useState(false)
   const [view, setView] = useState<string | null>(null)
 
-  // Both UIs dispatch this whenever the user switches views/tabs.
   const handleViewChanged = useCallback((e: Event) => {
     const detail = (e as CustomEvent).detail
     if (typeof detail === 'string') setView(detail)
@@ -135,8 +134,6 @@ export function useDiscordRpc(settings: AppSettings, projects: Project[]) {
       )[0]
   }, [projects])
 
-  // The stored project name is the folder name; prefer the real project name
-  // from project.godot's config/name when available.
   const [resolvedName, setResolvedName] = useState<string | null>(null)
 
   useEffect(() => {
