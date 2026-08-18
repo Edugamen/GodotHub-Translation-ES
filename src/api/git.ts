@@ -42,6 +42,8 @@ export const gitApi = {
     invoke<GitChangedFile[]>('git_changed_files', { path }),
   discardChanges: (path: string) =>
     invoke<void>('git_discard_changes', { path }),
+  discardFile: (path: string, filePath: string) =>
+    invoke<void>('git_discard_file', { path, filePath }),
   init: (path: string) =>
     invoke<string>('git_init', { path }),
   initProject: (path: string, options?: GitInitOptions) =>
