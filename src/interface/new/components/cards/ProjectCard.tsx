@@ -354,21 +354,6 @@ export function ProjectCard({
               </span>
             </Tooltip>
           )}
-          {categories.length > 0 && (
-            (() => {
-              const cat = categories.find((c) => c.name === project.category)
-              const catColor = cat?.color ?? '#949ba4'
-              return (
-                <span className="inline-flex items-center gap-1 pl-1.5 pr-1 py-0.5 rounded-tag font-mono text-[10px] font-medium tracking-tight shrink-0 text-muted">
-                  <span
-                    className="w-1.5 h-1.5 rounded-full shrink-0 ring-1 ring-black/20"
-                    style={{ backgroundColor: catColor }}
-                  />
-                  {project.category ?? t('uncategorized')}
-                </span>
-              )
-            })()
-          )}
           {addingTag ? (
             <span
               className={`inline-flex items-center px-1.5 py-0.5 rounded-tag font-mono text-[10px] font-medium tracking-tight shrink-0 border ${
@@ -649,7 +634,6 @@ export function ProjectCard({
         </Tooltip>
 
         <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
-
           <Dropdown
             align="left"
             trigger={({ open, toggle }) => (
@@ -745,6 +729,50 @@ export function ProjectCard({
                 {formatDuration(allMs)}
               </button>
             </Tooltip>
+          )}
+          {categories.length > 0 && onCategoryChange && (
+            <Dropdown
+              align="right"
+              trigger={({ open, toggle }) => {
+                const cat = categories.find((c) => c.name === project.category)
+                const catColor = cat?.color ?? '#949ba4'
+                return (
+                  <button
+                    type="button"
+                    aria-expanded={open}
+                    onClick={toggle}
+                    className="focus-ring cursor-pointer inline-flex items-center gap-1.5 px-3 py-3 rounded-btn bg-raised border border-outline/50 font-mono text-[10px] text-muted hover:text-ink hover:border-accent-dim transition-colors shrink-0"
+                  >
+                    <span
+                      className="w-1.5 h-1.5 rounded-full shrink-0 ring-1 ring-black/20"
+                      style={{ backgroundColor: catColor }}
+                    />
+                    {project.category ?? t('uncategorized')}
+                    <IconChevronDown
+                      className={`w-2.5 h-2.5 transition-transform duration-200 ${
+                        open ? 'rotate-180 text-ink' : ''
+                      }`}
+                    />
+                  </button>
+                )
+              }}
+              items={[
+                {
+                  key: 'category-uncategorized',
+                  label: t('uncategorized'),
+                  dotColor: '#949ba4',
+                  active: !project.category,
+                  onClick: () => onCategoryChange(''),
+                },
+                ...categories.map((c) => ({
+                  key: `category-${c.id}`,
+                  label: c.name,
+                  dotColor: c.color,
+                  active: project.category === c.name,
+                  onClick: () => onCategoryChange(c.name),
+                })),
+              ]}
+            />
           )}
         </div>
       </div>

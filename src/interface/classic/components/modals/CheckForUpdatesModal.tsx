@@ -101,10 +101,10 @@ function isKnownIssueSection(s: ReleaseSection): boolean {
   return /known issue/i.test(s.title)
 }
 
-const PREVIEW_VERSION = '1.4.0'
+const PREVIEW_VERSION = '1.3.6'
 
 const PREVIEW_NOTES = [
-  `## What's new in v1.4.0 - The Preview Update`,
+  `## What's new in v1.3.6 - The Preview Update`,
   '',
   '## 🚀 New',
   '',

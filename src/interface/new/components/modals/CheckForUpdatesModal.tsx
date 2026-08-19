@@ -27,9 +27,9 @@ interface Props {
   mode?: 'manual' | 'preview'
 }
 
-const PREVIEW_VERSION = '1.4.0'
+const PREVIEW_VERSION = '1.3.6'
 
-const PREVIEW_NOTES = `## What's new in v1.4.0 - The Preview Update
+const PREVIEW_NOTES = `## What's new in v1.3.6 - The Preview Update
 
 ## 🚀 New
 
@@ -427,7 +427,7 @@ export function CheckForUpdatesModal({
                             className="text-xs text-muted leading-relaxed flex gap-2"
                           >
                             <span className="shrink-0 text-amber">•</span>
-                            <span className="whitespace-pre-wrap break-words">
+                            <span className="whitespace-pre-wrap wrap-break-word">
                               {issue}
                             </span>
                           </li>
@@ -470,7 +470,7 @@ export function CheckForUpdatesModal({
                                     <span className="shrink-0 text-muted">
                                       •
                                     </span>
-                                    <span className="whitespace-pre-wrap break-words">
+                                    <span className="whitespace-pre-wrap wrap-break-word">
                                       {item}
                                     </span>
                                   </li>
