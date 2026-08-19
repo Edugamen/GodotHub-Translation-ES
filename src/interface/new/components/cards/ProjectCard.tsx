@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, type Transition } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import type { GitStatus, InstalledGodotVersion, Project } from '../../../../types'
+import type { Category, GitStatus, InstalledGodotVersion, Project } from '../../../../types'
 import { api, getCachedProjectIcon, getCachedProjectName } from '../../../../lib/api'
 import {
   formatDate,
@@ -41,12 +41,14 @@ import {
 interface ProjectCardProps {
   project: Project
   installedVersions: InstalledGodotVersion[]
+  categories?: Category[]
   gitStatus?: GitStatus | null
   launchWithConsole?: boolean
   onTogglePin: () => void
   onVersionChange: (tag: string) => void
   onRemove: () => void
   onDelete: () => void
+  onCategoryChange?: (category: string) => void
   onTagsSaved?: (project: Project) => void
   onTagClick?: (tag: string) => void
   onShowGitSidebar?: () => void
@@ -68,12 +70,15 @@ function getInitials(name: string): string {
 export function ProjectCard({
   project,
   installedVersions,
+
+  categories = [],
   gitStatus,
   launchWithConsole = false,
   onTogglePin,
   onVersionChange,
   onRemove,
   onDelete,
+  onCategoryChange,
   onTagsSaved,
   onTagClick,
   onShowGitSidebar,
@@ -166,6 +171,7 @@ export function ProjectCard({
     return () => clearInterval(id)
   }, [sessionStart])
   const allMs = effectiveTotalMs(project, now)
+  const sessionMs = sessionStart ? Math.max(0, now - sessionStart) : 0
 
   const openFolder = () =>
     api.openProjectFolder(project.path).catch((e) => alert(e))
@@ -348,6 +354,19 @@ export function ProjectCard({
               </span>
             </Tooltip>
           )}
+          {categories.length > 0 && (() => {
+            const cat = categories.find((c) => c.name === project.category)
+            const catColor = cat?.color ?? '#949ba4'
+            return (
+              <span className="inline-flex items-center gap-1.5 pl-1.5 pr-2 py-0.5 rounded-tag font-mono text-[10px] font-medium tracking-tight shrink-0 bg-raised border border-outline/50">
+                <span
+                  className="w-1.5 h-1.5 rounded-full shrink-0 ring-1 ring-black/10"
+                  style={{ backgroundColor: catColor }}
+                />
+                {project.category ?? t('uncategorized')}
+              </span>
+            )
+          })()}
           {addingTag ? (
             <span
               className={`inline-flex items-center px-1.5 py-0.5 rounded-tag font-mono text-[10px] font-medium tracking-tight shrink-0 border ${
@@ -728,15 +747,31 @@ export function ProjectCard({
         </div>
       </div>
 
-      <OpenButton
-        label={versionInstalled ? t('open_project') : t('no_version_selected')}
-        disabled={!versionInstalled}
-        onOpen={launchProject}
-        consoleSupported={supportsConsole}
-        consoleInitiallyOn={launchWithConsole && supportsConsole}
-        moreAriaLabel={t('project_more_aria')}
-        className="px-10"
-        items={[
+      <div className="flex items-stretch shrink-0 relative overflow-hidden -mr-2">
+        {/* Session timer — slides from behind the open button to the left */}
+        {sessionMs > 0 && (
+          <motion.div
+            initial={{ x: 80, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 80, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+            className="flex items-center shrink-0 -mr-2"
+          >
+            <div className="flex items-center gap-2 px-4 h-10 bg-base/50 border-r-0 rounded-l-dropdown-btn font-mono text-xs text-accent-bright whitespace-nowrap">
+              <span className="w-1.5 h-1.5 rounded-full bg-accent-bright animate-pulse shrink-0" />
+              {formatDuration(sessionMs)}
+            </div>
+          </motion.div>
+        )}
+        <OpenButton
+          label={versionInstalled ? t('open_project') : t('no_version_selected')}
+          disabled={!versionInstalled}
+          onOpen={launchProject}
+          consoleSupported={supportsConsole}
+          consoleInitiallyOn={launchWithConsole && supportsConsole}
+          moreAriaLabel={t('project_more_aria')}
+          className="px-10"
+          items={[
           {
             key: 'open-folder',
             label: t('open_folder'),
@@ -754,7 +789,17 @@ export function ProjectCard({
             label: t('manage_tags'),
             icon: IconTags,
             onClick: () => setTagManagerOpen(true),
+            dividerAfter: categories.length > 0,
           },
+          ...(categories.length > 0 && onCategoryChange
+            ? [
+                {
+                  key: 'set-category',
+                  label: t('set_category'),
+                  icon: IconTags,
+                },
+              ]
+            : []),
           {
             key: 'save-as-template',
             label: t('save_as_template'),
@@ -797,6 +842,7 @@ export function ProjectCard({
           },
         ]}
       />
+      </div>
 
       <AnimatePresence>
         {confirmAction === 'remove' && (
