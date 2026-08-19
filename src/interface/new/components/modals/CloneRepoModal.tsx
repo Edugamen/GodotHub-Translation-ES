@@ -84,7 +84,7 @@ export function CloneRepoModal({
     } else if (!connectedProvider) {
       setActiveTab('url')
     }
-  }, [connectedProvider]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [connectedProvider])
 
   useEffect(() => {
     if (activeTab === 'url') {
