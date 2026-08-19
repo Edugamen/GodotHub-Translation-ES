@@ -11,13 +11,16 @@ import { useTranslation } from 'react-i18next'
 import { AnimatedNumber } from '../components/reusables/AnimatedNumber'
 import { useProjectsContext } from '../../../hooks/projectsContext'
 import { useGodotVersionsContext } from '../../../hooks/godotVersionsContext'
+import { useCategoriesContext } from '../../../hooks/categoriesContext'
 import {
   IconArrowUpDown,
   IconCheck,
+  IconFilter,
   IconGitBranch,
   IconPin,
   IconPlay,
   IconPlus,
+  IconTags,
   IconTrash,
   IconX,
 } from '../lib/icons'
@@ -28,10 +31,11 @@ import { OverlayScrollArea } from '../components/reusables/OverlayScrollArea'
 import { Tooltip } from '../components/reusables/Tooltip'
 import { ProjectCard } from '../components/cards/ProjectCard'
 import { ProjectCardList } from '../components/cards/ProjectCardList'
+import { CategoryGroup } from '../components/cards/CategoryGroup'
 import { useSettings } from '../../../hooks/useSettings'
 import { useScrollCompensation } from '../hooks/useScrollCompensation'
 import { api } from '../../../lib/api'
-import type { GitStatus } from '../../../types'
+import type { GitStatus, Project } from '../../../types'
 import {
   comparatorFor,
   SORT_OPTIONS,
@@ -43,6 +47,7 @@ import { ViewHeader } from '../components/reusables/ViewHeader'
 import { CreateProjectModal } from '../components/modals/CreateProjectModal'
 import { CloneRepoModal } from '../components/modals/CloneRepoModal'
 import { ConfirmDialog } from '../components/modals/ConfirmDialog'
+import { ManageCategoriesModal } from '../components/modals/ManageCategoriesModal'
 
 export function ProjectsView({
   onOpenSettings,
@@ -60,11 +65,14 @@ export function ProjectsView({
     updateVersion,
     setPinned,
     updateTags,
+    setCategory,
   } = useProjectsContext()
   const { installed } = useGodotVersionsContext()
+  const { categories } = useCategoriesContext()
   const { settings } = useSettings()
   const [createProjectOpen, setCreateProjectOpen] = useState(false)
   const [cloneRepoOpen, setCloneRepoOpen] = useState(false)
+  const [categoriesOpen, setCategoriesOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
   useEffect(() => {
@@ -73,6 +81,9 @@ export function ProjectsView({
   }, [query])
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [selecting, setSelecting] = useState(false)
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(
+    () => new Set(),
+  )
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -103,6 +114,9 @@ export function ProjectsView({
     } catch {}
     return null
   })
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
+
+  const categoriesEnabled = settings.categories_enabled && categories.length > 0
 
   const sortOptions = SORT_OPTIONS.filter(
     (opt) => opt.value !== 'categories',
@@ -131,7 +145,7 @@ export function ProjectsView({
   )
   useLayoutEffect(() => {
     restoreScroll()
-  }, [pinnedSignature, tagFilter, restoreScroll])
+  }, [pinnedSignature, tagFilter, categoryFilter, restoreScroll])
   const projectsRef = useRef(projects)
   projectsRef.current = projects
   const projectPathsKey = useMemo(
@@ -198,6 +212,16 @@ export function ProjectsView({
     }
   }, [projects, tagFilter])
 
+  useEffect(() => {
+    if (
+      categoryFilter &&
+      categoryFilter !== '__none' &&
+      !categories.some((c) => c.name === categoryFilter)
+    ) {
+      setCategoryFilter(null)
+    }
+  }, [categories, categoryFilter])
+
   const filtered = useMemo(() => {
     const q = debouncedQuery.trim().toLowerCase()
     let list = projects
@@ -211,16 +235,23 @@ export function ProjectsView({
     if (tagFilter) {
       list = list.filter((p) => p.tags.includes(tagFilter))
     }
+    if (categoryFilter) {
+      if (categoryFilter === '__none') {
+        list = list.filter((p) => !p.category)
+      } else {
+        list = list.filter((p) => p.category === categoryFilter)
+      }
+    }
     const cmp = comparatorFor(sortBy, sortNow)
     return [...list].sort((a, b) => {
       if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
       if (a.pinned) return a.name.localeCompare(b.name)
       return cmp ? cmp(a, b) : a.sort_order - b.sort_order
     })
-  }, [projects, debouncedQuery, sortBy, tagFilter, sortNow])
+  }, [projects, debouncedQuery, sortBy, tagFilter, categoryFilter, sortNow])
 
   const hasActiveFilters =
-    query.trim() !== '' || tagFilter !== null
+    query.trim() !== '' || tagFilter !== null || categoryFilter !== null
 
   const lastClickedIndexRef = useRef<number | null>(null)
 
@@ -312,6 +343,16 @@ export function ProjectsView({
     clearSelection()
   }, [selectedIds, remove, clearSelection])
 
+  const batchSetCategory = useCallback(
+    async (category: string) => {
+      for (const id of selectedIds) {
+        await setCategory(id, category)
+      }
+      clearSelection()
+    },
+    [selectedIds, setCategory, clearSelection],
+  )
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && selectedIds.size > 0) clearSelection()
@@ -319,6 +360,139 @@ export function ProjectsView({
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [selectedIds.size, clearSelection])
+
+  const toggleCategoryCollapse = useCallback((catName: string) => {
+    setCollapsedCategories((prev) => {
+      const next = new Set(prev)
+      if (next.has(catName)) {
+        next.delete(catName)
+      } else {
+        next.add(catName)
+      }
+      return next
+    })
+  }, [])
+
+  // Group projects by category for the category view
+  const groupedProjects = useMemo(() => {
+    if (!categoriesEnabled) return null
+
+    const pinned = filtered.filter((p) => p.pinned)
+    const unpinned = filtered.filter((p) => !p.pinned)
+
+    // Build ordered category groups
+    const categoryOrder = categories.map((c) => c.name)
+    const groups: { category: string | null; color: string; projects: Project[] }[] = []
+
+    // Pinned first
+    if (pinned.length > 0) {
+      groups.push({ category: '__pinned', color: '', projects: pinned })
+    }
+
+    // Each category in order — always show categories so empty ones get a drop target
+    const hasActiveFilters = debouncedQuery.trim() !== '' || tagFilter !== null || categoryFilter !== null
+    for (const catName of categoryOrder) {
+      const catProjects = unpinned.filter((p) => p.category === catName)
+      const cat = categories.find((c) => c.name === catName)
+      // Hide empty categories when search/filter is active (no point showing them)
+      if (catProjects.length === 0 && hasActiveFilters) continue
+      groups.push({
+        category: catName,
+        color: cat?.color ?? '#949ba4',
+        projects: catProjects,
+      })
+    }
+
+    // Uncategorized last
+    const uncategorized = unpinned.filter((p) => !p.category || !categoryOrder.includes(p.category))
+    if (uncategorized.length > 0 || !hasActiveFilters) {
+      groups.push({ category: null, color: '#949ba4', projects: uncategorized })
+    }
+
+    return groups
+  }, [categoriesEnabled, filtered, categories, debouncedQuery, tagFilter, categoryFilter])
+
+  const renderCard = (p: Project) => (
+    <motion.div
+      key={p.id}
+      layout
+      layoutId={`project-${p.id}`}
+      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+    >
+    <ProjectCard
+      project={p}
+      installedVersions={installed}
+      categories={categories}
+      gitStatus={gitStatusMap[p.path] ?? null}
+      launchWithConsole={settings.launch_with_console}
+      onTogglePin={() => setPinned(p.id, !p.pinned)}
+      onVersionChange={(tag) => updateVersion(p.id, tag)}
+      onRemove={() => remove(p.id, false)}
+      onDelete={() => remove(p.id, true)}
+      onCategoryChange={(cat) => setCategory(p.id, cat)}
+      onTagsSaved={(updated) => updateTags(updated.id, updated.tags)}
+      onTagClick={(tag) => setTagFilter((cur) => (cur === tag ? null : tag))}
+      onShowGitSidebar={() =>
+        window.dispatchEvent(
+          new CustomEvent('app:show-git-sidebar', {
+            detail: {
+              project: p,
+              gitStatus: gitStatusMap[p.path] ?? null,
+            },
+          }),
+        )
+      }
+      activeTag={tagFilter}
+      selected={selectedIds.has(p.id)}
+      onToggleSelect={
+        selecting || selectedIds.size > 0
+          ? (e) => toggleSelect(p.id, e)
+          : undefined
+      }
+    />
+    </motion.div>
+  )
+
+  const renderCategoryGroup = (
+    group: { category: string | null; color: string; projects: Project[] },
+    idx: number,
+  ) => {
+    const isPinned = group.category === '__pinned'
+    const isUncategorized = group.category === null
+    const label = isPinned
+      ? tc('pinned_section')
+      : isUncategorized
+        ? tc('uncategorized')
+        : group.category!
+    const collapsed = collapsedCategories.has(label)
+
+    const emptyState = !isPinned ? (
+      <div className="flex items-center gap-2 px-3 py-4 rounded-item border border-dashed border-outline/40">
+        <span
+          className="w-2 h-2 rounded-full shrink-0 ring-1 ring-black/10"
+          style={{ backgroundColor: group.color }}
+        />
+        <p className="text-xs text-muted/70">
+          {tc('no_projects_in_category')}
+        </p>
+      </div>
+    ) : undefined
+
+    return (
+      <CategoryGroup
+        key={`cat-${label}-${idx}`}
+        label={label}
+        color={group.color}
+        projectCount={group.projects.length}
+        collapsed={collapsed}
+        isPinned={isPinned}
+        onToggleCollapse={() => toggleCategoryCollapse(label)}
+        emptyState={emptyState}
+      >
+        {group.projects.map((p) => renderCard(p))}
+      </CategoryGroup>
+    )
+  }
 
   return (
     <div className="flex-1 min-w-0 h-full flex flex-col">
@@ -381,13 +555,26 @@ export function ProjectsView({
                   .then(() => refresh().catch(() => {}))
               }
             />
+            {categoriesEnabled && (
+              <Tooltip content={tc('manage_categories_title')} side="bottom">
+                <motion.button
+                  type="button"
+                  whileHover={{ scale: 1.04 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setCategoriesOpen(true)}
+                  className="focus-ring cursor-pointer flex items-center justify-center h-9 w-9 rounded-item bg-overlay border border-outline/50 text-muted hover:text-ink hover:bg-raised transition-colors"
+                >
+                  <IconTags className="w-4 h-4" />
+                </motion.button>
+              </Tooltip>
+            )}
           </>
         }
       >
         <SearchBar value={query} onChange={setQuery} />
       </ViewHeader>
 
-      <div className="shrink-0 flex items-center gap-2 mb-3">
+      <div className="shrink-0 flex items-center gap-2 mb-3 flex-wrap">
         <Dropdown
           align="left"
           trigger={({ open, toggle }) => (
@@ -413,6 +600,56 @@ export function ProjectsView({
           }))}
         />
 
+        {/* Category filter dropdown */}
+        {categoriesEnabled && (
+          <Dropdown
+            align="left"
+            trigger={({ open, toggle }) => (
+              <motion.button
+                type="button"
+                aria-expanded={open}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.94 }}
+                onClick={toggle}
+                className={`focus-ring cursor-pointer flex items-center justify-center gap-1.5 h-8 px-4 rounded-item transition-colors ${
+                  categoryFilter
+                    ? 'bg-accent/15 text-accent-bright ring-1 ring-accent-dim/70'
+                    : 'bg-overlay text-muted hover:text-ink hover:bg-raised'
+                }`}
+              >
+                <IconFilter className="w-3 h-3" />
+                <span className="text-[16px] font-medium">
+                  {categoryFilter === '__none'
+                    ? tc('uncategorized')
+                    : categoryFilter || tc('filter')}
+                </span>
+              </motion.button>
+            )}
+            items={[
+              {
+                key: 'all',
+                label: tc('all_categories'),
+                active: !categoryFilter,
+                onClick: () => setCategoryFilter(null),
+              },
+              {
+                key: 'none',
+                label: tc('uncategorized'),
+                dotColor: '#949ba4',
+                active: categoryFilter === '__none',
+                onClick: () => setCategoryFilter(categoryFilter === '__none' ? null : '__none'),
+              },
+              ...categories.map((cat) => ({
+                key: cat.id,
+                label: cat.name,
+                dotColor: cat.color,
+                active: categoryFilter === cat.name,
+                onClick: () => setCategoryFilter(categoryFilter === cat.name ? null : cat.name),
+              })),
+            ]}
+          />
+        )}
+
         {tagFilter && (
           <Tooltip content={tc('clear_tag_filter')} side="top">
             <button
@@ -429,7 +666,6 @@ export function ProjectsView({
             </button>
           </Tooltip>
         )}
-
       </div>
 
       <AnimatePresence>
@@ -476,6 +712,38 @@ export function ProjectsView({
                   {tc('bulk_pin')}
                 </span>
               </button>
+              {categoriesEnabled && (
+                <Dropdown
+                  align="right"
+                  trigger={({ open, toggle }) => (
+                    <button
+                      type="button"
+                      onClick={toggle}
+                      aria-expanded={open}
+                      className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-8 px-3 rounded-btn bg-raised text-muted hover:text-ink hover:bg-overlay transition-colors"
+                    >
+                      <IconTags className="w-3 h-3" />
+                      <span className="text-xs font-medium">
+                        {tc('set_category')}
+                      </span>
+                    </button>
+                  )}
+                  items={[
+                    {
+                      key: 'none',
+                      label: tc('no_category_label'),
+                      dotColor: '#949ba4',
+                      onClick: () => batchSetCategory(''),
+                    },
+                    ...categories.map((cat) => ({
+                      key: cat.id,
+                      label: cat.name,
+                      dotColor: cat.color,
+                      onClick: () => batchSetCategory(cat.name),
+                    })),
+                  ]}
+                />
+              )}
               <button
                 type="button"
                 onClick={() => setConfirmBatchAction('remove')}
@@ -519,39 +787,37 @@ export function ProjectsView({
         <div
           className={`h-full ${connected ? 'pl-5' : ''} pr-5 pb-4 flex flex-col gap-2`}
         >
-        <ProjectCardList
-          projects={filtered}
-          totalCount={projects.length}
-          animationThreshold={settings.animation_threshold}
-          hasActiveFilters={hasActiveFilters}
-          renderCard={(p) => (
-            <ProjectCard
-              project={p}
-              installedVersions={installed}
-              gitStatus={gitStatusMap[p.path] ?? null}
-              launchWithConsole={settings.launch_with_console}
-              onTogglePin={() => setPinned(p.id, !p.pinned)}
-              onVersionChange={(tag) => updateVersion(p.id, tag)}
-              onRemove={() => remove(p.id, false)}
-              onDelete={() => remove(p.id, true)}
-              onTagsSaved={(updated) => updateTags(updated.id, updated.tags)}
-              onTagClick={(tag) => setTagFilter((cur) => (cur === tag ? null : tag))}
-              onShowGitSidebar={() =>
-                window.dispatchEvent(
-                  new CustomEvent('app:show-git-sidebar', {
-                    detail: {
-                      project: p,
-                      gitStatus: gitStatusMap[p.path] ?? null,
-                    },
-                  }),
-                )
-              }
-              activeTag={tagFilter}
-              selected={selectedIds.has(p.id)}
-              onToggleSelect={(selecting || selectedIds.size > 0) ? (e) => toggleSelect(p.id, e) : undefined}
-            />
-          )}
-        />
+        {/* Category group view or flat list */}
+        {categoriesEnabled && groupedProjects && groupedProjects.length > 0 ? (
+          <>
+            {groupedProjects.map((group, idx) =>
+              renderCategoryGroup(group, idx),
+            )}
+          </>
+        ) : categoriesEnabled && groupedProjects && groupedProjects.length === 0 && !hasActiveFilters ? (
+          <div className="h-full flex flex-col items-center justify-center gap-2 text-center">
+            <IconTags className="w-5 h-5 text-muted/50" />
+            <p className="text-sm text-muted">
+              {tc('no_projects_yet')}
+            </p>
+            <button
+              type="button"
+              onClick={() => setCategoriesOpen(true)}
+              className="focus-ring cursor-pointer inline-flex items-center gap-1.5 px-3 py-2 rounded-btn bg-overlay border border-outline/50 text-xs text-muted hover:text-ink hover:bg-raised transition-colors"
+            >
+              <IconTags className="w-3 h-3" />
+              {tc('manage_categories_title')}
+            </button>
+          </div>
+        ) : (
+          <ProjectCardList
+            projects={filtered}
+            totalCount={projects.length}
+            animationThreshold={settings.animation_threshold}
+            hasActiveFilters={hasActiveFilters}
+            renderCard={renderCard}
+          />
+        )}
 
       <AnimatePresence>
         {createProjectOpen && (
@@ -576,6 +842,14 @@ export function ProjectsView({
               setCloneRepoOpen(false)
               refresh()
             }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {categoriesOpen && (
+          <ManageCategoriesModal
+            onClose={() => setCategoriesOpen(false)}
           />
         )}
       </AnimatePresence>

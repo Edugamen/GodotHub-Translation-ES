@@ -44,11 +44,13 @@ export function ProjectCardList({
   const cardFor = (p: Project) => {
     const card = renderCard(p)
     if (!animateList) {
-      return <div key={p.id} className="min-w-0">{card}</div>
+      return <motion.div key={p.id} layout layoutId={`project-${p.id}`} className="min-w-0">{card}</motion.div>
     }
     return (
       <motion.div
         key={p.id}
+        layout
+        layoutId={`project-${p.id}`}
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, transition: { duration: 0.12 } }}

@@ -1564,6 +1564,20 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
           </SettingRow>
 
           <SettingRow
+            label={ts('setting_categories_enabled')}
+            description={ts('categories_off_desc')}
+            divider
+          >
+            <Toggle
+              checked={settings.categories_enabled}
+              onChange={(checked) =>
+                update({ ...settings, categories_enabled: checked })
+              }
+              label={ts('setting_categories_enabled')}
+            />
+          </SettingRow>
+
+          <SettingRow
             label={ts('git_init_new_projects_label')}
             description={ts('git_init_new_projects_desc')}
             divider

@@ -231,6 +231,9 @@
   "delete_category": "Delete {{name}}",
   "delete_category_title": "Delete category?",
   "delete_category_desc": "\"{{name}}\" will be removed. Projects filed under it move to Uncategorized, nothing on disk is touched.",
+  "category_already_exists": "A category with this name already exists.",
+  "set_category_for_project": "Set category",
+  "no_category_assigned": "No category",
 
   "create_project_title": "New Project",
   "create_project_desc": "Creates a fresh project.godot in the folder you choose.",
@@ -328,6 +331,7 @@
   "args_gpu_index_desc": "Use GPU index 1 (dedicated GPU)",
 
   "sort_categories": "Categories",
+  "sort_custom": "Custom order",
   "sort_recent": "Recently opened",
   "sort_name_asc": "Name (A–Z)",
   "sort_name_desc": "Name (Z–A)",
@@ -335,6 +339,7 @@
   "sort_created_asc": "Date added (oldest)",
   "sort_time_desc": "Total time",
   "filter": "Filter",
+  "all_categories": "All categories",
   "filter_all": "All projects",
   "no_templates_yet": "No templates yet. Right-click a project or open its \"More\" menu and select <1>Save as Template</1> to create one or download them from the Asset Library.",
   "godot": "Godot",
@@ -632,6 +637,7 @@
   "show_more_tags": "Show more tags",
   "show_fewer_tags": "Show fewer tags",
   "filter_by_tag": "Filter by tag",
+  "filter_by_category": "Filter by {{name}}",
   "clear_tag_filter": "Clear tag filter",
   "add_tag_aria": "Add tag",
   "saving_tags": "Saving tags…",
