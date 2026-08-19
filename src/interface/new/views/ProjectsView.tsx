@@ -17,6 +17,7 @@ import {
   IconCheck,
   IconChevronDown,
   IconFilter,
+  IconGrip,
   IconGitBranch,
   IconPin,
   IconPlay,
@@ -541,6 +542,20 @@ export function ProjectsView({
               ]}
             />
           )}
+
+        {categoriesEnabled && sortBy === 'categories' && (
+          <Tooltip content={tc('manage_categories')} side="top">
+            <button
+              type="button"
+              aria-label={tc('manage_categories')}
+              onClick={() => setCategoryManagerOpen(true)}
+              className="focus-ring cursor-pointer flex items-center justify-center gap-1 h-8 px-4 rounded-item bg-overlay text-muted hover:text-ink hover:bg-raised transition-colors"
+            >
+              <IconGrip className="w-3 h-3" />
+              <span className="text-[16px] font-medium">{tc('reorder')}</span>
+            </button>
+          </Tooltip>
+        )}
 
         {tagFilter && (
           <Tooltip content={tc('clear_tag_filter')} side="top">

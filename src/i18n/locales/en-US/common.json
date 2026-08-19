@@ -336,6 +336,7 @@
   "sort_created_asc": "Date added (oldest)",
   "sort_time_desc": "Total time",
   "filter": "Filter",
+  "reorder": "Reorder",
   "filter_all": "All projects",
   "no_templates_yet": "No templates yet. Right-click a project or open its \"More\" menu and select <1>Save as Template</1> to create one or download them from the Asset Library.",
   "godot": "Godot",
