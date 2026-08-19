@@ -20,6 +20,7 @@ interface OverlayScrollAreaProps {
   hideTopButton?: boolean
   scrollToTopOn?: unknown
   scrollRef?: RefObject<HTMLDivElement | null>
+  topButtonBottom?: string
 }
 
 interface Metrics {
@@ -37,6 +38,7 @@ export function OverlayScrollArea({
   hideTopButton = false,
   scrollToTopOn,
   scrollRef,
+  topButtonBottom = 'bottom-4',
 }: OverlayScrollAreaProps) {
   const { t } = useTranslation('common')
   const viewportRef = useRef<HTMLDivElement>(null)
@@ -237,7 +239,7 @@ export function OverlayScrollArea({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.85 }}
             transition={{ type: 'spring', stiffness: 420, damping: 28 }}
-            className="focus-ring cursor-pointer absolute bottom-4 left-1/2 -translate-x-1/2 z-30 inline-flex items-center gap-1.5 h-9 px-4 rounded-full bg-raised border border-outline/50 text-muted shadow-lg shadow-black/40 transition-colors duration-150 hover:text-ink hover:border-accent-dim/70 hover:bg-overlay"
+            className={`focus-ring cursor-pointer absolute left-1/2 -translate-x-1/2 z-30 inline-flex items-center gap-1.5 h-9 px-4 rounded-full bg-raised border border-outline/50 text-muted shadow-lg shadow-black/40 transition-colors duration-150 hover:text-ink hover:border-accent-dim/70 hover:bg-overlay ${topButtonBottom}`}
           >
             <IconChevronUp className="w-3.5 h-3.5" />
             <span className="text-xs font-medium">{t('scroll_to_top')}</span>

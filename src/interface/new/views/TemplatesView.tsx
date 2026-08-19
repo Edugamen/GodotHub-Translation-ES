@@ -300,6 +300,7 @@ export function TemplatesView({
       <OverlayScrollArea
         className={`flex-1 min-w-0 ${connected ? '' : '-mr-4 -mb-4'}`}
         hideThumb={!settings.show_scrollbars}
+        topButtonBottom="bottom-17"
       >
         <div
           className={`h-full ${connected ? 'pl-5' : ''} pr-5 pb-4 flex flex-col gap-2`}
