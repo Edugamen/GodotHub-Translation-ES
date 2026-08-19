@@ -854,6 +854,10 @@
       {
         "category": "improve",
         "text": "New UI: Add Settings, Changelog and Updates from Dev view"
+      },
+      {
+        "category": "improve",
+        "text": "Add Project Icon Scan Depth setting"
       }
     ],
     "known_issues": [],
