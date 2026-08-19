@@ -31,6 +31,7 @@ import { ImportButton } from '../components/reusables/ImportButton'
 import { OverlayScrollArea } from '../components/reusables/OverlayScrollArea'
 import { Tooltip } from '../components/reusables/Tooltip'
 import { ProjectCard } from '../components/cards/ProjectCard'
+import { ProjectCardList } from '../components/cards/ProjectCardList'
 import { useSettings } from '../../../hooks/useSettings'
 import { useScrollCompensation } from '../hooks/useScrollCompensation'
 import { api } from '../../../lib/api'
@@ -127,7 +128,7 @@ export function ProjectsView({
       const raw = localStorage.getItem('godothub_projects_sort_by')
       if (raw) return raw as ProjectSortOption
     } catch {}
-    return 'name_asc'
+    return 'categories'
   })
   const [categoryFilter, setCategoryFilter] = useState<string | null>(() => {
     try {
@@ -277,6 +278,9 @@ export function ProjectsView({
       return cmp ? cmp(a, b) : a.sort_order - b.sort_order
     })
   }, [baseFiltered, sortBy, categoryFilter, sortNow])
+
+  const hasActiveFilters =
+    query.trim() !== '' || tagFilter !== null || categoryFilter !== null
 
   const lastClickedIndexRef = useRef<number | null>(null)
 
@@ -643,6 +647,7 @@ export function ProjectsView({
         <div
           className={`h-full ${connected ? 'pl-5' : ''} pr-5 pb-4 flex flex-col gap-2`}
         >
+        {sortBy === 'categories' ? (
         <CategorySections
           filtered={filtered}
           categories={categories}
@@ -669,6 +674,43 @@ export function ProjectsView({
           selecting={selecting}
           onToggleSelect={(id, e) => toggleSelect(id, e)}
         />
+        ) : (
+        <ProjectCardList
+          projects={filtered}
+          totalCount={projects.length}
+          animationThreshold={settings.animation_threshold}
+          hasActiveFilters={hasActiveFilters}
+          renderCard={(p) => (
+            <ProjectCard
+              project={p}
+              installedVersions={installed}
+              categories={categoriesEnabled ? categories : []}
+              gitStatus={gitStatusMap[p.path] ?? null}
+              launchWithConsole={settings.launch_with_console}
+              onTogglePin={() => setPinned(p.id, !p.pinned)}
+              onVersionChange={(tag) => updateVersion(p.id, tag)}
+              onRemove={() => remove(p.id, false)}
+              onDelete={() => remove(p.id, true)}
+              onCategoryChange={(category) => setCategory(p.id, category)}
+              onTagsSaved={(updated) => updateTags(updated.id, updated.tags)}
+              onTagClick={(tag) => setTagFilter((cur) => (cur === tag ? null : tag))}
+              onShowGitSidebar={() =>
+                window.dispatchEvent(
+                  new CustomEvent('app:show-git-sidebar', {
+                    detail: {
+                      project: p,
+                      gitStatus: gitStatusMap[p.path] ?? null,
+                    },
+                  }),
+                )
+              }
+              activeTag={tagFilter}
+              selected={selectedIds.has(p.id)}
+              onToggleSelect={(selecting || selectedIds.size > 0) ? (e) => toggleSelect(p.id, e) : undefined}
+            />
+          )}
+        />
+        )}
 
       <AnimatePresence>
         {createProjectOpen && (
