@@ -778,7 +778,7 @@ export function ProjectCard({
       </div>
 
       <div className="flex items-stretch shrink-0 relative overflow-hidden -mr-2">
-        {/* Session timer — slides from behind the open button to the left */}
+        {/* Session timer */}
         {sessionMs > 0 && (
           <motion.div
             initial={{ x: 80, opacity: 0 }}

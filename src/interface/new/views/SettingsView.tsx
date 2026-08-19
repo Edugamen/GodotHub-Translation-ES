@@ -2273,7 +2273,7 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
                 {ts('sync_desc')}
               </p>
               {syncMessage && (
-                <p className="text-xs text-muted mt-1.5 break-words">
+                <p className="text-xs text-muted mt-1.5 wrap-break-word">
                   {syncMessage}
                 </p>
               )}

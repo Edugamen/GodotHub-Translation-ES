@@ -2519,7 +2519,7 @@ export function SettingsView({
                   {t('sync_desc')}
                 </p>
                 {syncMessage && (
-                  <p className="text-xs text-muted block mt-1.5 break-words">
+                  <p className="text-xs text-muted block mt-1.5 wrap-break-word">
                     {syncMessage}
                   </p>
                 )}

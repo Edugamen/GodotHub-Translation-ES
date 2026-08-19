@@ -294,7 +294,7 @@ export function CreateProjectModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4 p-5 pb-2">
-          <div className="flex items-start gap-1 min-w-0 bg-black/15 px-3 py-4 rounded-btn shrink-0">
+          <div className="flex items-start gap-1 w-full bg-black/15 px-3 py-4 rounded-btn shrink-0">
             <div className="w-10 h-10 rounded-tile flex items-center justify-center shrink-0">
               <IconFolderPlus className="w-5 h-5 text-accent-bright" />
             </div>
@@ -328,7 +328,7 @@ export function CreateProjectModal({
                 className={`${inputClass(nameInvalid)} w-full`}
                 placeholder={projectNamePlaceholder}
               />
-              <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted/60">
+              <div className="flex items-center ml-2 mt-1 gap-1.5 text-[10px] font-mono text-muted/60">
                 <IconFolderPlus className="w-3 h-3 text-accent-bright/70 shrink-0" />
                 <span className="truncate">
                   {name.trim()
@@ -704,7 +704,7 @@ export function CreateProjectModal({
                   <p className="text-xs font-semibold text-amber">
                     {t('git_init_warning_title')}
                   </p>
-                  <p className="text-xs text-muted leading-relaxed mt-1 whitespace-pre-wrap break-words">
+                  <p className="text-xs text-muted leading-relaxed mt-1 whitespace-pre-wrap wrap-break-word">
                     {gitWarning}
                   </p>
                 </div>
@@ -728,7 +728,7 @@ export function CreateProjectModal({
                   <p className="text-xs font-semibold text-mint">
                     {t('remote_repo_created_title')}
                   </p>
-                  <p className="text-xs text-muted leading-relaxed mt-1 whitespace-pre-wrap break-words">
+                  <p className="text-xs text-muted leading-relaxed mt-1 whitespace-pre-wrap wrap-break-word">
                     {remoteSuccess}
                   </p>
                 </div>
@@ -782,7 +782,7 @@ export function CreateProjectModal({
 
       <AnimatePresence>
         {previewTemplate && (
-          <div onClick={(e) => e.stopPropagation()} className="fixed inset-0 z-[60]">
+          <div onClick={(e) => e.stopPropagation()} className="fixed inset-0 z-60">
             <TemplatePreviewModal
               template={previewTemplate}
               onClose={() => setPreviewTemplate(null)}

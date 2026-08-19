@@ -642,7 +642,7 @@
   "project_unpin_from_library": "Unpin from Library",
   
   "bug_report_title": "Report a Bug",
-  "bug_report_desc": "Something broke? Tell me what happened — your system info is attached automatically.",
+  "bug_report_desc": "Something broke? Tell me what happened? your system info is attached automatically.",
   "bug_report_describe_label": "What happened?",
   "bug_report_describe_placeholder": "What were you doing when the bug appeared? Add steps to reproduce and what you expected vs. what actually happened.",
   "bug_report_diagnostics_label": "Diagnostic info",
@@ -748,7 +748,7 @@
   "task_error_status": "Error",
   
   "command_palette_title": "Command Palette",
-  "command_palette_desc": "Jump to anything — commands, projects, engines, settings",
+  "command_palette_desc": "Jump to anything; commands, projects, engines, settings",
   "command_palette_placeholder": "Search commands, projects, engines, settings…",
   "command_palette_no_results": "No results match",
   "command_palette_navigate": "Navigate",

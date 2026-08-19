@@ -625,7 +625,7 @@ export function CreateProjectModal({
                   <p className="text-xs font-semibold text-amber">
                     {t('git_init_warning_title')}
                   </p>
-                  <p className="text-xs text-muted leading-relaxed mt-1 whitespace-pre-wrap break-words">
+                  <p className="text-xs text-muted leading-relaxed mt-1 whitespace-pre-wrap wrap-break-word">
                     {gitWarning}
                   </p>
                 </div>
@@ -678,7 +678,7 @@ export function CreateProjectModal({
 
       <AnimatePresence>
         {previewTemplate && (
-          <div onClick={(e) => e.stopPropagation()} className="fixed inset-0 z-[60">
+          <div onClick={(e) => e.stopPropagation()} className="fixed inset-0 z-60">
             <TemplatePreviewModal
               template={previewTemplate}
               onClose={() => setPreviewTemplate(null)}

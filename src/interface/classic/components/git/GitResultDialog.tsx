@@ -88,7 +88,7 @@ export function GitResultDialog({
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-display font-semibold text-ink break-words">
+            <h3 className="font-display font-semibold text-ink wrap-break-word">
               {title}
             </h3>
             {instructions && (
