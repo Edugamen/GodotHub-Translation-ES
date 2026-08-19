@@ -354,19 +354,6 @@ export function ProjectCard({
               </span>
             </Tooltip>
           )}
-          {categories.length > 0 && (() => {
-            const cat = categories.find((c) => c.name === project.category)
-            const catColor = cat?.color ?? '#949ba4'
-            return (
-              <span className="inline-flex items-center gap-1.5 pl-1.5 pr-2 py-0.5 rounded-tag font-mono text-[10px] font-medium tracking-tight shrink-0 bg-raised border border-outline/50">
-                <span
-                  className="w-1.5 h-1.5 rounded-full shrink-0 ring-1 ring-black/10"
-                  style={{ backgroundColor: catColor }}
-                />
-                {project.category ?? t('uncategorized')}
-              </span>
-            )
-          })()}
           {addingTag ? (
             <span
               className={`inline-flex items-center px-1.5 py-0.5 rounded-tag font-mono text-[10px] font-medium tracking-tight shrink-0 border ${
@@ -789,14 +776,31 @@ export function ProjectCard({
             label: t('manage_tags'),
             icon: IconTags,
             onClick: () => setTagManagerOpen(true),
-            dividerAfter: categories.length > 0,
+            dividerAfter: !!onCategoryChange,
           },
-          ...(categories.length > 0 && onCategoryChange
+          ...(onCategoryChange
             ? [
                 {
                   key: 'set-category',
                   label: t('set_category'),
                   icon: IconTags,
+                  children: [
+                    {
+                      key: 'category-uncategorized',
+                      label: t('uncategorized'),
+                      dotColor: '#949ba4',
+                      active: !project.category,
+                      onClick: () => onCategoryChange(''),
+                    },
+                    ...categories.map((c) => ({
+                      key: `category-${c.id}`,
+                      label: c.name,
+                      dotColor: c.color,
+                      active: project.category === c.name,
+                      onClick: () => onCategoryChange(c.name),
+                    })),
+                  ],
+                  dividerAfter: true,
                 },
               ]
             : []),
