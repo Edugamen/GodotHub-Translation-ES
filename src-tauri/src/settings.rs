@@ -85,12 +85,10 @@ pub fn import_settings(app: AppHandle, path: String) -> Result<AppSettings, Stri
     };
     let current = read_settings(&app);
     let mut merged = data.settings;
-    // Workspace-local fields stay as they are on this machine.
     merged.dismissed_project_paths = current.dismissed_project_paths;
     merged.setup_complete = current.setup_complete;
     write_settings(&app, &merged).map_err(|e| e.to_string())?;
 
-    // Restore time tracking data bundled with the backup.
     if let Some(store) = data.time_stats {
         crate::time_stats::write_stats(&app, &store);
     }

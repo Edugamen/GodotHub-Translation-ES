@@ -56,7 +56,7 @@ export function Slider({
                       initial={{ opacity: 0, scale: 0.75, y: 1 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.75, y: 1 }}
-                      transition={{ type: 'spring', stiffness: 420, damping: 26, mass: 0.9 }}
+                      transition={{ type: 'spring', stiffness: 350, damping: 26, mass: 0.9 }}
                       onClick={() => {
                         beginScaleSmoothing()
                         onChange(defaultValue)

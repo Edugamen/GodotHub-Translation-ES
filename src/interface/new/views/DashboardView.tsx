@@ -9,7 +9,6 @@ import { useTranslation } from 'react-i18next'
 import Masonry from 'react-masonry-css'
 import { useProjectsContext } from '../../../hooks/projectsContext'
 import { useGodotVersionsContext } from '../../../hooks/godotVersionsContext'
-import { useCategoriesContext } from '../../../hooks/categoriesContext'
 import { useSettings } from '../../../hooks/useSettings'
 import { useTauriEvent } from '../../../lib/useTauriEvent'
 import { api } from '../../../lib/api'
@@ -45,7 +44,6 @@ import {
   IconPlus,
   IconRefresh,
   IconRocket,
-  IconTags,
   IconTerminal,
   IconX,
 } from '../lib/icons'
@@ -455,7 +453,6 @@ function StatCard({
       style={{ rotateX, rotateY, transformPerspective: 700 }}
       className={`group relative overflow-hidden text-left cursor-pointer focus-ring rounded-card bg-overlay border border-outline/50 px-5 py-4 flex flex-col transition-colors duration-200 hover:border-outline ${hoverBorder}`}
     >
-      {/* Ghost icon watermark */}
       <Icon
         aria-hidden="true"
         className="pointer-events-none absolute -bottom-8 -right-8 w-32 h-32 rotate-12 text-ink/5 transition-transform duration-500 group-hover:rotate-6 group-hover:scale-110"
@@ -505,7 +502,6 @@ function activityLabel(
   timeFormat: LastOpenedTimeFormat,
 ): string {
   if (range === 'daily') {
-    // key is `YYYY-MM-DD:HH`
     const hour = Number(key.slice(11, 13))
     if (timeFormat === '24h') {
       return `${String(hour).padStart(2, '0')}h`
@@ -515,12 +511,10 @@ function activityLabel(
     return `${h12} ${suffix}`
   }
   if (range === 'yearly') {
-    // key is `YYYY-MM`
     return new Date(`${key}-01T00:00:00`).toLocaleDateString(undefined, {
       month: 'short',
     })
   }
-  // weekly / monthly: key is `YYYY-MM-DD`
   const d = new Date(`${key}T00:00:00`)
   return range === 'weekly'
     ? d.toLocaleDateString(undefined, { weekday: 'short' })
@@ -607,7 +601,6 @@ function ActivityChart({
 }
 
 function weekdayName(weekday: number): string {
-  // weekday: 0 = Monday .. 6 = Sunday. Jan 5, 2026 is a Monday.
   return new Date(2026, 0, 5 + weekday).toLocaleDateString(undefined, {
     weekday: 'long',
   })
@@ -985,78 +978,6 @@ function StorageUsage({ tall = false, active = true }: { tall?: boolean; active?
   )
 }
 
-function CategoryBreakdown({ tall = false }: { tall?: boolean }) {
-  const { t: tc } = useTranslation('common')
-  const { projects } = useProjectsContext()
-  const { categories } = useCategoriesContext()
-
-  const counts = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const p of projects) {
-      const key = p.category || '__uncat__'
-      map.set(key, (map.get(key) ?? 0) + 1)
-    }
-    return map
-  }, [projects])
-
-  const rows = useMemo(() => {
-    const list = categories.map((c) => ({
-      id: c.id,
-      name: c.name,
-      color: c.color,
-      count: counts.get(c.id) ?? 0,
-    }))
-    if (counts.has('__uncat__')) {
-      list.push({
-        id: '__uncat__',
-        name: tc('dashboard_categories_uncategorized'),
-        color: 'var(--color-muted, #8a8f98)',
-        count: counts.get('__uncat__')!,
-      })
-    }
-    return list
-      .filter((r) => r.count > 0)
-      .sort((a, b) => b.count - a.count)
-  }, [categories, counts, tc])
-
-  const max = Math.max(...rows.map((r) => r.count), 1)
-
-  if (rows.length === 0) {
-    return <EmptyCard text={tc('dashboard_categories_empty')} />
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      {rows.slice(0, tall ? 12 : 6).map((r) => (
-        <div key={r.id} className="flex items-center gap-3">
-          <span
-            className="w-2.5 h-2.5 rounded-full shrink-0"
-            style={{ backgroundColor: r.color }}
-          />
-          <span className="min-w-0 flex-1">
-            <span className="flex items-center justify-between gap-2">
-              <span className="block text-sm font-medium text-ink truncate">
-                {r.name}
-              </span>
-              <span className="shrink-0 text-[11px] text-muted/70 tabular-nums">
-                {r.count}
-              </span>
-            </span>
-            <span className="block h-1.5 rounded-full bg-raised mt-1.5 overflow-hidden">
-              <span
-                className="block h-full rounded-full"
-                style={{
-                  width: `${Math.max((r.count / max) * 100, 2)}%`,
-                  backgroundColor: r.color,
-                }}
-              />
-            </span>
-          </span>
-        </div>
-      ))}
-    </div>
-  )
-}
 
 interface RunningProject {
   id: string
@@ -1301,7 +1222,6 @@ export function DashboardView({
     insights: tc('dashboard_insights'),
     git: tc('dashboard_git'),
     storage: tc('dashboard_storage'),
-    categories: tc('dashboard_categories'),
     recent: tc('dashboard_recent'),
     pinned: tc('dashboard_pinned'),
     engines: tc('dashboard_engines'),
@@ -1508,16 +1428,6 @@ export function DashboardView({
             <StorageUsage tall={tall} active={active} />
           </Section>
         )
-      case 'categories':
-        return (
-          <Section
-            title={tc('dashboard_categories')}
-            icon={<IconTags className="w-3.5 h-3.5" />}
-            action={controls}
-          >
-            <CategoryBreakdown tall={tall} />
-          </Section>
-        )
       case 'recent':
         return (
           <Section
@@ -1603,7 +1513,6 @@ export function DashboardView({
 
   return (
     <div className="flex-1 min-w-0 h-full flex flex-col">
-      {/* Greeting header */}
       <section
         className={`shrink-0 px-6 py-7 flex flex-col gap-2 ${
           connected ? 'rounded-none' : 'rounded-card'

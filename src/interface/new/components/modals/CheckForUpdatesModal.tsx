@@ -27,11 +27,9 @@ interface Props {
   mode?: 'manual' | 'preview'
 }
 
-/* ---------- Preview (dev-only) fixtures ---------- */
+const PREVIEW_VERSION = '1.3.6'
 
-const PREVIEW_VERSION = '1.4.0'
-
-const PREVIEW_NOTES = `## What's new in v1.4.0 - The Preview Update
+const PREVIEW_NOTES = `## What's new in v1.3.6 - The Preview Update
 
 ## 🚀 New
 
@@ -383,7 +381,6 @@ export function CheckForUpdatesModal({
           {state.type === 'available' && (
             <div className="flex flex-col items-center gap-5 w-full">
               <div className="w-full grid grid-cols-1 sm:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] gap-6 items-start">
-                {/* Left column: version info + known issues column */}
                 <div className="flex flex-col gap-5 min-w-0 w-full">
                   <div className="flex items-center gap-3.5">
                     <div className="w-12 h-12 shrink-0 rounded-tile bg-accent/10 flex items-center justify-center">
@@ -430,7 +427,7 @@ export function CheckForUpdatesModal({
                             className="text-xs text-muted leading-relaxed flex gap-2"
                           >
                             <span className="shrink-0 text-amber">•</span>
-                            <span className="whitespace-pre-wrap break-words">
+                            <span className="whitespace-pre-wrap wrap-break-word">
                               {issue}
                             </span>
                           </li>
@@ -440,7 +437,6 @@ export function CheckForUpdatesModal({
                   )}
                 </div>
 
-                {/* Right column: release notes */}
                 <div className="min-w-0 w-full">
                   {notes && hasReleaseNotesContent && (
                     <div className="w-full bg-raised rounded-item border border-line overflow-hidden">
@@ -474,7 +470,7 @@ export function CheckForUpdatesModal({
                                     <span className="shrink-0 text-muted">
                                       •
                                     </span>
-                                    <span className="whitespace-pre-wrap break-words">
+                                    <span className="whitespace-pre-wrap wrap-break-word">
                                       {item}
                                     </span>
                                   </li>

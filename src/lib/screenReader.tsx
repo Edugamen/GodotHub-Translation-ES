@@ -2,20 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 
 const ANNOUNCE_EVENT = 'app:announce'
 
-/**
- * Announce a message to screen readers via the app's aria-live region.
- * No-op when the user has disabled screen reader announcements.
- */
 export function announce(message: string) {
   window.dispatchEvent(
     new CustomEvent(ANNOUNCE_EVENT, { detail: { message } }),
   )
 }
 
-/**
- * Renders a visually-hidden aria-live region that speaks messages
- * dispatched via `announce()`. Mount once near the app root.
- */
 export function ScreenReaderAnnouncer({
   enabled,
 }: {
@@ -28,8 +20,6 @@ export function ScreenReaderAnnouncer({
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<{ message?: string }>).detail
       if (!detail?.message) return
-      // Clear the region shortly after so repeated announcements of the
-      // same text still get re-announced by assistive tech.
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
       setMessage('')
       requestAnimationFrame(() => {

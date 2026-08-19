@@ -13,8 +13,8 @@
     "windows": [
       {
         "title": "GodotHub",
-        "width": 1280,
-        "height": 720,
+        "width": 1400,
+        "height": 800,
         "resizable": true,
         "fullscreen": false,
         "maximized": false,
@@ -22,8 +22,8 @@
         "transparent": false,
         "alwaysOnTop": false,
         "dragDropEnabled": true,
-        "minWidth": 1180,
-        "minHeight": 680,
+        "minWidth": 1400,
+        "minHeight": 800,
         "center": true,
         "visible": false
       }

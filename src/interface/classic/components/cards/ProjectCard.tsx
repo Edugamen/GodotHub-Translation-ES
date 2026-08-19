@@ -348,7 +348,7 @@ export const ProjectCard = memo(function ProjectCard({
           </button>
         </Tooltip>
       )}
-      {(project.pinned || isGrid) && categoriesEnabled && (() => {
+      {categoriesEnabled && (() => {
         const cat = categories.find((c) => c.name === project.category)
         const catColor = cat?.color ?? '#949ba4'
         return (

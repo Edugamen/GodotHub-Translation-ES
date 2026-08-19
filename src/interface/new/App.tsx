@@ -3,13 +3,13 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { useProjectsContext } from '../../hooks/projectsContext'
 import { useGodotVersionsContext } from '../../hooks/godotVersionsContext'
-import { useCategoriesContext } from '../../hooks/categoriesContext'
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts'
 import { api } from '../../lib/api'
 import { viewTransition } from '../../lib/motion'
 import type { GitStatus, Project } from '../../types'
 
 import { Sidebar } from './components/ui/Sidebar'
+import { GitSidebar } from './components/git/GitSidebar'
 import { Titlebar } from './components/titlebar/Titlebar'
 import { OverlayScrollArea } from './components/reusables/OverlayScrollArea'
 import { ConfirmDialog } from './components/modals/ConfirmDialog'
@@ -17,7 +17,7 @@ import { CreateProjectModal } from './components/modals/CreateProjectModal'
 import { BugReportModal } from './components/modals/BugReportModal'
 import { CheckForUpdatesModal } from './components/modals/CheckForUpdatesModal'
 import { CommandPalette } from './components/modals/CommandPalette'
-import { GitSidebar } from './components/git/GitSidebar'
+import { ToastContainer } from './components/reusables/ToastContainer'
 import { ProjectsView } from './views/ProjectsView'
 import { VersionsView } from './views/VersionsView'
 import { TemplatesView } from './views/TemplatesView'
@@ -29,6 +29,7 @@ import { AssetStoreView } from './views/AssetStoreView'
 import { DashboardView } from './views/DashboardView'
 import { useSettings } from '../../hooks/useSettings'
 import { useTauriEvent } from '../../lib/useTauriEvent'
+import { ChangelogBadgeProvider } from '../../hooks/useChangelogBadge'
 import { ScreenReaderAnnouncer } from '../../lib/screenReader'
 import { relaunch } from '@tauri-apps/plugin-process'
 import {
@@ -102,7 +103,6 @@ export function App() {
     'manual' | 'preview'
   >('manual')
   const { installed } = useGodotVersionsContext()
-  const { categories } = useCategoriesContext()
   const settingsRef = useRef(settings)
   settingsRef.current = settings
   const paletteKey = settings.command_palette_keybind || 'p'
@@ -235,21 +235,14 @@ export function App() {
         project: Project
         gitStatus: GitStatus | null
       }
-      setGitSidebarProject(detail)
+      setGitSidebarProject((current) =>
+        current && current.project.id === detail.project.id ? null : detail,
+      )
     }
     window.addEventListener('app:show-git-sidebar', handleShowGitSidebar)
     return () =>
       window.removeEventListener('app:show-git-sidebar', handleShowGitSidebar)
   }, [])
-
-  useEffect(() => {
-    if (!gitSidebarProject) return
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setGitSidebarProject(null)
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [gitSidebarProject])
 
   const tabs = TABS.filter((tab) => !('hidden' in tab) || !tab.hidden).map((tab) => ({
     id: tab.id,
@@ -298,8 +291,10 @@ export function App() {
   }
 
   return (
+    <ChangelogBadgeProvider>
     <div className="new-ui h-screen w-screen flex flex-col bg-base text-ink font-body">
       <ScreenReaderAnnouncer enabled={settings.screen_reader_announcements} />
+      <ToastContainer />
       <Titlebar />
 
       <div
@@ -359,34 +354,32 @@ export function App() {
 
         <AnimatePresence>
           {gitSidebarProject && (
-            <>
-              <motion.div
-                key="git-backdrop"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-                onClick={() => setGitSidebarProject(null)}
-                className="absolute inset-0 z-30 bg-black/50 backdrop-blur-sm"
+            <motion.aside
+              key="git-panel"
+              initial={{ width: 0, opacity: 0 }}
+              animate={{
+                width: 320,
+                opacity: 1,
+                transition: { type: 'spring', stiffness: 350, damping: 32 },
+              }}
+              exit={{
+                width: 0,
+                opacity: 0,
+                transition: { duration: 0.12, ease: 'easeOut' },
+              }}
+              className="shrink-0 h-full overflow-hidden"
+            >
+              <GitSidebar
+                project={gitSidebarProject.project}
+                gitStatus={gitSidebarProject.gitStatus}
+                onClose={() => setGitSidebarProject(null)}
+                onRefresh={() => refreshProjects()}
+                connected={!cardLayout}
               />
-              <motion.aside
-                key="git-panel"
-                initial={{ x: 420, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                exit={{ x: 420, opacity: 0 }}
-                transition={{ type: 'spring', stiffness: 350, damping: 32 }}
-                className="absolute right-3 top-3 bottom-3 z-40"
-              >
-                <GitSidebar
-                  project={gitSidebarProject.project}
-                  gitStatus={gitSidebarProject.gitStatus}
-                  onClose={() => setGitSidebarProject(null)}
-                  onRefresh={() => refreshProjects()}
-                />
-              </motion.aside>
-            </>
+            </motion.aside>
           )}
         </AnimatePresence>
+
       </div>
 
       <AnimatePresence>
@@ -426,7 +419,6 @@ export function App() {
           <CreateProjectModal
             installedVersions={installed}
             defaultLocation={settings.default_project_location}
-            categories={categories}
             onClose={() => setCreateProjectOpen(false)}
             onCreated={() => {
               setCreateProjectOpen(false)
@@ -449,5 +441,6 @@ export function App() {
         )}
       </AnimatePresence>
     </div>
+    </ChangelogBadgeProvider>
   )
 }

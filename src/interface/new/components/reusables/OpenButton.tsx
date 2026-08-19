@@ -79,6 +79,7 @@ export function OpenButton({
 
       <Dropdown
         align="right"
+        compact
         trigger={({ open, toggle }) => (
           <motion.button
             whileHover={{ scale: 1.04 }}

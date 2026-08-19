@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { useTranslation } from 'react-i18next'
-import { IconExternalLink } from '../../lib/Icons'
 import {
   LANE_W,
   ROW_H,
@@ -12,6 +11,13 @@ import {
   type GraphRow,
 } from '../../../../lib/gitGraph'
 import type { GitLogEntry } from '../../../../types'
+import { Tooltip } from '../reusables/Tooltip'
+
+interface Props {
+  commits: GitLogEntry[]
+  remoteUrl?: string | null
+  onOpenDetails?: (hash: string) => void
+}
 
 function RowGraph({ row }: { row: GraphRow }) {
   const cols = Math.max(1, row.cells.length)
@@ -70,19 +76,16 @@ function RowGraph({ row }: { row: GraphRow }) {
   )
 }
 
-interface Props {
-  commits: GitLogEntry[]
-  remoteUrl?: string | null
-}
-
-export function CommitGraph({ commits, remoteUrl }: Props) {
+export function CommitGraph({ commits, remoteUrl, onOpenDetails }: Props) {
   const { t } = useTranslation('git')
   const rows = useMemo(() => buildGraphRows(commits), [commits])
 
   if (commits.length === 0) {
     return (
-      <div className="border border-dashed border-line rounded-xl py-6 text-center">
-        <p className="text-xs text-muted">{t('no_commits_found')}</p>
+      <div className="px-3 py-2.5">
+        <span className="text-[11px] text-muted/50">
+          {t('no_commits_found')}
+        </span>
       </div>
     )
   }
@@ -90,37 +93,49 @@ export function CommitGraph({ commits, remoteUrl }: Props) {
   const baseUrl = remoteUrl ? remoteUrl.replace(/\/+$/, '') : null
 
   return (
-    <div className="git-graph w-full overflow-x-auto">
-      <div className="flex flex-col">
+    <div className="w-full overflow-x-auto new-ui-scroll-viewport">
+      <div className="flex flex-col min-w-max">
         {rows.map((row) => {
           const c = row.commit
           const url = baseUrl ? `${baseUrl}/commit/${c.hash}` : null
           return (
             <div key={c.hash} className="flex items-center gap-1.5">
               <RowGraph row={row} />
-              <div
-                title={c.message}
-                onClick={() => {
-                  if (url) openUrl(url)
-                }}
-                className={`flex items-center gap-2 pr-2 rounded-md transition-colors ${
-                  url ? 'cursor-pointer hover:bg-raised' : 'cursor-default'
-                }`}
-                style={{ height: ROW_H }}
+              <Tooltip
+                content={onOpenDetails ? t('open_commit_details') : t('open_commit_on_github')}
+                side="top"
+                className={onOpenDetails || url ? 'cursor-pointer' : ''}
               >
-                <span className="font-mono text-[10px] font-semibold text-accent-bright shrink-0">
-                  {shortHash(c.hash)}
-                </span>
-                <div className="min-w-0 flex-1 max-w-[240px]">
-                  <p className="text-xs text-ink truncate leading-snug">{c.message}</p>
-                  {(c.author || c.date) && (
-                    <p className="text-[10px] text-muted truncate mt-0.5">
-                      {[c.author, c.date].filter(Boolean).join(' · ')}
+                <div
+                  onClick={() => {
+                    if (onOpenDetails) {
+                      onOpenDetails(c.hash)
+                    } else if (url) {
+                      void openUrl(url).catch(() => {})
+                    }
+                  }}
+                  className={`flex items-center gap-2 pr-2 rounded-md transition-colors ${
+                    onOpenDetails || url
+                      ? 'cursor-pointer hover:bg-raised/60'
+                      : 'cursor-default'
+                  }`}
+                  style={{ height: ROW_H }}
+                >
+                  <span className="font-mono text-[10px] font-semibold text-accent-bright shrink-0">
+                    {shortHash(c.hash)}
+                  </span>
+                  <div className="min-w-0 flex-1 max-w-[180px]">
+                    <p className="text-xs text-ink truncate leading-snug">
+                      {c.message}
                     </p>
-                  )}
+                    {(c.author || c.date) && (
+                      <p className="text-[10px] text-muted truncate mt-0.5">
+                        {[c.author, c.date].filter(Boolean).join(' · ')}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                {url && <IconExternalLink className="w-2.5 h-2.5 text-muted/40 shrink-0" />}
-              </div>
+              </Tooltip>
             </div>
           )
         })}

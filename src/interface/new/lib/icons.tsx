@@ -38,6 +38,7 @@ import {
   faAnglesLeft,
   faAnglesRight,
   faArrowDown,
+  faArrowUp,
   faArrowUpRightFromSquare,
   faArrowRotateRight,
   faWifi,
@@ -124,6 +125,7 @@ export const IconNews = solid(faNewspaper)
 export const IconChevronsLeft = solid(faAnglesLeft)
 export const IconChevronsRight = solid(faAnglesRight)
 export const IconArrowDown = solid(faArrowDown)
+export const IconArrowUp = solid(faArrowUp)
 export const IconExternalLink = solid(faArrowUpRightFromSquare)
 export const IconRefresh = solid(faArrowRotateRight)
 export const IconWifiOff = solid(faWifi)

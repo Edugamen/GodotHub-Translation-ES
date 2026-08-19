@@ -19,6 +19,7 @@ export function useChangelog() {
     ) => {
       await api.addChangelogEntry(version, date, notes, knownIssues)
       await refresh()
+      window.dispatchEvent(new CustomEvent('app:changelog-entry-added'))
     },
     [refresh],
   )
@@ -33,6 +34,7 @@ export function useChangelog() {
     ) => {
       await api.updateChangelogEntry(id, version, date, notes, knownIssues)
       await refresh()
+      window.dispatchEvent(new CustomEvent('app:changelog-entry-added'))
     },
     [refresh],
   )

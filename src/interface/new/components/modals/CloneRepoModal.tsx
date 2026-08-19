@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
-import type { Category } from '../../../../types'
+import type { GitAuthState, UserRepoInfo } from '../../../../types'
 import { api } from '../../../../lib/api'
 import { useSettings } from '../../../../hooks/useSettings'
 import { useTaskTray } from '../../../../hooks/useTaskTray'
@@ -12,6 +12,8 @@ import {
   IconAlertTriangle,
   IconSpinner,
   IconCheck,
+  IconSearch,
+  IconPlug,
 } from '../../lib/icons'
 
 function repoBaseName(url: string): string {
@@ -23,9 +25,10 @@ function repoBaseName(url: string): string {
   return parts[parts.length - 1] || 'repo'
 }
 
+type Tab = 'browse' | 'url'
+
 interface Props {
   defaultLocation?: string | null
-  categories?: Category[]
   onClose: () => void
   onCloned: (projectPath: string) => void
 }
@@ -34,20 +37,33 @@ export function CloneRepoModal({
   defaultLocation,
   onClose,
   onCloned,
-  categories = [],
 }: Props) {
   const { t } = useTranslation('common')
   const { settings, update: updateSettings } = useSettings()
   const { registerTask, updateTask, unregisterTask } = useTaskTray()
   const [url, setUrl] = useState('')
   const [location, setLocation] = useState(defaultLocation ?? '')
-  const [category, setCategory] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [attempted, setAttempted] = useState(false)
   const [openAfterImport, setOpenAfterImport] = useState(
     settings.open_after_import,
   )
+
+  // Repo browser state
+  const [gitAuth, setGitAuth] = useState<GitAuthState | null>(null)
+  const [activeTab, setActiveTab] = useState<Tab>('browse')
+  const [repos, setRepos] = useState<UserRepoInfo[]>([])
+  const [reposLoading, setReposLoading] = useState(false)
+  const [reposLoadingMore, setReposLoadingMore] = useState(false)
+  const [reposError, setReposError] = useState<string | null>(null)
+  const [hasMoreRepos, setHasMoreRepos] = useState(false)
+  const [repoPage, setRepoPage] = useState(1)
+  const [repoSearch, setRepoSearch] = useState('')
+  const [selectedRepo, setSelectedRepo] = useState<UserRepoInfo | null>(null)
+
+  const connectedProvider = gitAuth?.github ? 'github' : gitAuth?.gitlab ? 'gitlab' : null
+  const connectedUsername = gitAuth?.github?.username ?? gitAuth?.gitlab?.username ?? null
 
   const handleOpenAfterImportChange = (checked: boolean) => {
     setOpenAfterImport(checked)
@@ -56,12 +72,64 @@ export function CloneRepoModal({
     )
   }
   const urlInputRef = useRef<HTMLInputElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const repoListRef = useRef<HTMLDivElement>(null)
 
   const repoName = useMemo(() => repoBaseName(url), [url])
 
+  // Determine initial tab based on connected accounts
   useEffect(() => {
-    urlInputRef.current?.focus()
+    if (connectedProvider && activeTab === 'browse') {
+      // Already on browse, keep it
+    } else if (!connectedProvider) {
+      setActiveTab('url')
+    }
+  }, [connectedProvider]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (activeTab === 'url') {
+      urlInputRef.current?.focus()
+    } else if (activeTab === 'browse') {
+      searchInputRef.current?.focus()
+    }
+  }, [activeTab])
+
+  // Fetch git auth state
+  useEffect(() => {
+    api.gitAuthGetState().then(setGitAuth).catch(() => {})
   }, [])
+
+  // Fetch repos when browse tab is selected and provider is connected
+  const fetchRepos = useCallback(async (pageNum: number, append: boolean) => {
+    if (!connectedProvider) return
+    if (append) {
+      setReposLoadingMore(true)
+    } else {
+      setReposLoading(true)
+    }
+    setReposError(null)
+    try {
+      const result = await api.gitAuthListUserRepos(connectedProvider, pageNum)
+      setRepos((prev) => append ? [...prev, ...result.repos] : result.repos)
+      setHasMoreRepos(result.has_more)
+      setRepoPage(pageNum)
+    } catch (e) {
+      setReposError(String(e))
+    } finally {
+      setReposLoading(false)
+      setReposLoadingMore(false)
+    }
+  }, [connectedProvider])
+
+  useEffect(() => {
+    if (activeTab === 'browse' && connectedProvider && repos.length === 0 && !reposLoading) {
+      fetchRepos(1, false)
+    }
+  }, [activeTab, connectedProvider, repos.length, reposLoading, fetchRepos])
+
+  const loadMoreRepos = useCallback(() => {
+    fetchRepos(repoPage + 1, true)
+  }, [fetchRepos, repoPage])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -85,6 +153,24 @@ export function CloneRepoModal({
       setError(null)
     }
   }
+
+  const selectRepo = (repo: UserRepoInfo) => {
+    setSelectedRepo(repo)
+    setUrl(repo.clone_url)
+    setError(null)
+  }
+
+  const filteredRepos = useMemo(() => {
+    if (!repoSearch.trim()) return repos
+    const q = repoSearch.toLowerCase()
+    return repos.filter(
+      (r) =>
+        r.name.toLowerCase().includes(q) ||
+        r.full_name.toLowerCase().includes(q) ||
+        (r.description ?? '').toLowerCase().includes(q) ||
+        (r.language ?? '').toLowerCase().includes(q),
+    )
+  }, [repos, repoSearch])
 
   const urlInvalid = attempted && !url.trim()
   const locationInvalid = attempted && !location
@@ -121,7 +207,7 @@ export function CloneRepoModal({
         description: t('importing_project'),
         status: 'running',
       })
-      const project = await api.importProject(clonedPath, '', category || null)
+      const project = await api.importProject(clonedPath, '', null)
       updateTask(taskId, { status: 'completed', description: 'Done' })
       setTimeout(() => unregisterTask(taskId), 3000)
       onCloned(project.id)
@@ -145,10 +231,12 @@ export function CloneRepoModal({
       invalid ? 'border-danger/70 focus:border-danger' : 'border-outline/50 focus:border-accent-dim'
     }`
 
-  const chipClass = (active: boolean) =>
-    active
-      ? 'focus-ring cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-btn border text-xs font-medium transition-colors'
-      : 'focus-ring cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-btn border border-outline/50 text-muted hover:border-accent-dim hover:text-ink hover:bg-raised text-xs font-medium transition-colors'
+  const tabClass = (active: boolean) =>
+    `px-3 py-1.5 rounded-btn text-xs font-medium transition-colors ${
+      active
+        ? 'bg-accent/15 text-accent-bright border border-accent/30'
+        : 'text-muted hover:text-ink hover:bg-raised border border-transparent'
+    }`
 
   return createPortal(
     <motion.div
@@ -181,26 +269,201 @@ export function CloneRepoModal({
           </div>
         </div>
 
+        {/* Tab bar for connected accounts */}
+        {connectedProvider && (
+          <div className="flex items-center gap-2 px-6 pt-1">
+            <button
+              type="button"
+              onClick={() => setActiveTab('browse')}
+              className={tabClass(activeTab === 'browse')}
+            >
+              {t('clone_repo_browse_repos')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('url')}
+              className={tabClass(activeTab === 'url')}
+            >
+              {t('clone_repo_url_manual')}
+            </button>
+          </div>
+        )}
+
         <div className="gap-6 p-6 flex-1 overflow-y-auto">
           <div className="md:col-span-3 flex flex-col gap-4">
-            <div className="flex flex-col gap-0.5">
-              <label className="pl-3 text-xs font-medium text-muted">
-                {t('clone_repo_url_label')}
-              </label>
-              <input
-                ref={urlInputRef}
-                value={url}
-                onChange={(e) => {
-                  setUrl(e.target.value)
-                  if (error) setError(null)
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') submit()
-                }}
-                placeholder={t('clone_repo_url_placeholder')}
-                className={`${inputClass(urlInvalid)} w-full`}
-              />
-            </div>
+            {/* Browse repos tab */}
+            {activeTab === 'browse' && connectedProvider && (
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2 px-1">
+                  <span className="text-xs text-muted">
+                    {t('clone_repo_connected_as', { username: connectedUsername })}
+                  </span>
+                  <span className="text-xs text-muted opacity-50">•</span>
+                  <span className="text-xs font-medium text-accent-bright capitalize">
+                    {connectedProvider}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRepos([])
+                      setSelectedRepo(null)
+                      fetchRepos(1, false)
+                    }}
+                    disabled={reposLoading}
+                    className="ml-auto text-xs text-muted hover:text-accent-bright transition-colors"
+                  >
+                    {t('refresh')}
+                  </button>
+                </div>
+
+                <div className="relative">
+                  <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
+                  <input
+                    ref={searchInputRef}
+                    value={repoSearch}
+                    onChange={(e) => setRepoSearch(e.target.value)}
+                    placeholder={t('clone_repo_search_repos')}
+                    className={`${inputClass(false)} w-full pl-9`}
+                  />
+                </div>
+
+                <div
+                  ref={repoListRef}
+                  className="max-h-[300px] overflow-y-auto rounded-item border border-outline/30 divide-y divide-line"
+                >
+                  {reposLoading && repos.length === 0 ? (
+                    <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted">
+                      <IconSpinner className="w-4 h-4 animate-spin" />
+                      {t('clone_repo_loading_repos')}
+                    </div>
+                  ) : reposError ? (
+                    <div className="flex items-center gap-2 py-8 px-4 text-sm text-danger">
+                      <IconAlertTriangle className="w-4 h-4 shrink-0" />
+                      <div className="flex flex-col gap-1">
+                        <span>{t('clone_repo_load_error')}</span>
+                        <span className="text-xs text-danger/70 font-mono">{reposError}</span>
+                      </div>
+                    </div>
+                  ) : filteredRepos.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center gap-1 py-8 text-sm text-muted">
+                      <IconSearch className="w-5 h-5 opacity-40" />
+                      <span>{t('clone_repo_no_repos_found')}</span>
+                    </div>
+                  ) : (
+                    filteredRepos.map((repo) => {
+                      const isSelected = selectedRepo?.clone_url === repo.clone_url
+                      return (
+                        <motion.button
+                          key={repo.clone_url}
+                          type="button"
+                          whileHover={{ backgroundColor: 'var(--color-raised)' }}
+                          onClick={() => selectRepo(repo)}
+                          className={`w-full text-left px-4 py-3 flex items-start gap-3 transition-colors cursor-pointer ${
+                            isSelected ? 'bg-accent/10' : ''
+                          }`}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-ink truncate">
+                                {repo.full_name}
+                              </span>
+                              <span
+                                className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                                  repo.private
+                                    ? 'bg-warning/15 text-warning'
+                                    : 'bg-success/15 text-success'
+                                }`}
+                              >
+                                {repo.private
+                                  ? t('clone_repo_private')
+                                  : t('clone_repo_public')}
+                              </span>
+                              {repo.language && (
+                                <span className="text-[10px] text-muted bg-overlay px-1.5 py-0.5 rounded">
+                                  {repo.language}
+                                </span>
+                              )}
+                            </div>
+                            {repo.description && (
+                              <p className="text-xs text-muted mt-0.5 line-clamp-1">
+                                {repo.description}
+                              </p>
+                            )}
+                          </div>
+                          {isSelected ? (
+                            <IconCheck className="w-4 h-4 text-accent-bright shrink-0 mt-0.5" />
+                          ) : (
+                            <span className="text-xs text-accent opacity-0 group-hover:opacity-100 shrink-0 mt-0.5 transition-opacity">
+                              {t('clone_repo_select')}
+                            </span>
+                          )}
+                        </motion.button>
+                      )
+                    })
+                  )}
+
+                  {/* Load more button */}
+                  {!reposLoading && repos.length > 0 && filteredRepos.length > 0 && (
+                    <div className="border-t border-line">
+                      {reposLoadingMore ? (
+                        <div className="flex items-center justify-center gap-2 py-3 text-xs text-muted">
+                          <IconSpinner className="w-3 h-3 animate-spin" />
+                          {t('loading')}
+                        </div>
+                      ) : hasMoreRepos ? (
+                        <button
+                          type="button"
+                          onClick={loadMoreRepos}
+                          className="w-full py-3 text-xs font-medium text-accent-bright hover:bg-raised transition-colors cursor-pointer"
+                        >
+                          {t('load_more')}
+                        </button>
+                      ) : (
+                        <div className="py-3 text-center text-xs text-muted">
+                          {repos.length} {t('clone_repo_repos_loaded')}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* URL tab (or fallback when no account) */}
+            {(activeTab === 'url' || !connectedProvider) && (
+              <>
+                {!connectedProvider && (
+                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-item bg-overlay border border-outline/30 text-xs text-muted">
+                    <IconPlug className="w-3.5 h-3.5 shrink-0 opacity-60" />
+                    <span>{t('clone_repo_no_account')}</span>
+                  </div>
+                )}
+                <div className="flex flex-col gap-0.5">
+                  <label className="pl-3 text-xs font-medium text-muted">
+                    {t('clone_repo_url_label')}
+                  </label>
+                  <input
+                    ref={urlInputRef}
+                    value={url}
+                    onChange={(e) => {
+                      setUrl(e.target.value)
+                      setSelectedRepo(null)
+                      if (error) setError(null)
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') submit()
+                    }}
+                    placeholder={t('clone_repo_url_placeholder')}
+                    className={`${inputClass(urlInvalid)} w-full`}
+                  />
+                  {selectedRepo && (
+                    <span className="pl-3 text-xs text-accent-bright mt-0.5">
+                      {selectedRepo.full_name}
+                    </span>
+                  )}
+                </div>
+              </>
+            )}
 
             <div className="flex flex-col gap-0.5">
               <label className="pl-3 text-xs font-medium text-muted">
@@ -224,55 +487,6 @@ export function CloneRepoModal({
                 </motion.button>
               </div>
             </div>
-
-            {categories.length > 0 && (
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-medium text-muted">
-                  {t('category_optional')}
-                </label>
-                <div className="flex flex-wrap gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setCategory('')}
-                    className={`${chipClass(category === '')} ${
-                      category === ''
-                        ? 'border-accent bg-accent/10 text-accent-bright'
-                        : ''
-                    }`}
-                  >
-                    {category === '' && <IconCheck className="w-3 h-3 inline -mt-0.5" />}
-                    {t('no_category_label')}
-                  </button>
-                  {categories.map((c) => {
-                    const active = category === c.name
-                    return (
-                      <button
-                        key={c.name}
-                        type="button"
-                        onClick={() => setCategory(c.name)}
-                        className={chipClass(active)}
-                        style={
-                          active
-                            ? {
-                                borderColor: c.color,
-                                backgroundColor: `${c.color}18`,
-                                color: c.color,
-                              }
-                            : undefined
-                        }
-                      >
-                        {active && <IconCheck className="w-3 h-3 inline -mt-0.5" />}
-                        <span
-                          className="w-1.5 h-1.5 rounded-full ring-1 ring-black/10 shrink-0"
-                          style={{ backgroundColor: c.color }}
-                        />
-                        {c.name}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
 
             <label className="flex items-center gap-2.5 cursor-pointer select-none">
               <Checkbox

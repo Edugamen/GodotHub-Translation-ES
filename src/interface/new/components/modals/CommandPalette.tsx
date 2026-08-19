@@ -233,7 +233,6 @@ const SETTINGS_SEARCH_ITEMS: SettingSearchEntry[] = [
   { key: 'minimize_to_tray', tab: 'behavior' },
   { key: 'reopen_after_godot_closes', tab: 'behavior' },
   { key: 'auto_scan_on_startup', tab: 'behavior' },
-  { key: 'categories_enabled', tab: 'behavior' },
   { key: 'workspaces_enabled', tab: 'behavior' },
   { key: 'directory_naming_convention', tab: 'behavior' },
   { key: 'git_init_new_projects', tab: 'behavior' },

@@ -4,7 +4,6 @@ export const DASHBOARD_TILE_IDS = [
   'insights',
   'git',
   'storage',
-  'categories',
   'recent',
   'pinned',
   'engines',
@@ -59,7 +58,7 @@ export const TILE_LAYOUT_OPTIONS: Partial<Record<DashboardTileId, { span?: boole
   insights: { span: true },
   git: { span: true, tall: true },
   storage: { span: true, tall: true },
-  categories: { span: true, tall: true },
+
 }
 
 export function tileCanSpan(id: DashboardTileId): boolean {
@@ -130,9 +129,9 @@ export const DASHBOARD_PRESETS: DashboardPreset[] = [
       'storage',
       'categories',
     ],
-    order: ['weekly', 'top_time', 'storage', 'categories'],
+    order: ['weekly', 'top_time', 'storage'],
     spans: ['weekly', 'storage'],
-    tall: ['weekly', 'top_time', 'storage', 'categories'],
+    tall: ['weekly', 'top_time', 'storage'],
   },
   {
     id: 'development',

@@ -142,6 +142,7 @@ export interface GitLogEntry {
 export interface GitBranchInfo {
   name: string
   is_current: boolean
+  has_upstream: boolean
 }
 
 export interface GitStashEntry {
@@ -152,6 +153,31 @@ export interface GitStashEntry {
 export interface GitChangedFile {
   path: string
   status: string
+}
+
+export interface GitRemoteInfo {
+  name: string
+  web_url: string
+  repo_name: string
+}
+
+export interface GitAheadBehind {
+  ahead: number
+  behind: number
+}
+
+export interface GitCommitFile {
+  path: string
+  status: string
+}
+
+export interface GitCommitDetails {
+  hash: string
+  message: string
+  author: string
+  date: string
+  files: GitCommitFile[]
+  diff: GitDiffResult
 }
 
 export interface GitInitOutcome {
@@ -445,5 +471,21 @@ export type DeviceFlowPoll =
 export interface CreateRepoResult {
   url: string
   slug: string
+}
+
+export interface UserRepoInfo {
+  name: string
+  full_name: string
+  description: string | null
+  clone_url: string
+  html_url: string
+  private: boolean
+  language: string | null
+  default_branch: string | null
+}
+
+export interface UserRepoPage {
+  repos: UserRepoInfo[]
+  has_more: boolean
 }
 

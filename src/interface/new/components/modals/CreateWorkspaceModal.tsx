@@ -73,7 +73,6 @@ export function CreateWorkspaceModal({ onClose, onCreate }: Props) {
       }
     >
         <div className="flex flex-col gap-5 p-6">
-          {/* Live preview */}
           <div className="relative overflow-hidden rounded-btn border border-outline/50 bg-overlay p-4 flex items-center gap-3">
             <div
               className="absolute -top-10 -right-10 w-32 h-32 rounded-full blur-2xl opacity-40 transition-colors duration-300"

@@ -640,7 +640,6 @@ pub fn download_godot_version(
     Ok(())
 }
 
-/// Moves a queued download one step earlier (-1) or later (+1) in the queue.
 #[tauri::command]
 pub fn reorder_download_queue(
     app: AppHandle,
@@ -831,7 +830,6 @@ async fn run_download(app: AppHandle, key: String) {
     }
 }
 
-/// Extracts a Godot editor archive and registers the version.
 fn install_version_archive(
     app: &AppHandle,
     job: &DownloadJob,

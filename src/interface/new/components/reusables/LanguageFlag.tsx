@@ -13,7 +13,6 @@ export function LanguageFlag({
   className = 'w-4 h-4',
   title,
 }: {
-  /** ISO 3166-1 alpha-2 country code (upper-case). */
   country: string
   className?: string
   title?: string

@@ -576,6 +576,119 @@ pub struct CreateRepoResult {
     pub slug: String,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct UserRepoInfo {
+    pub name: String,
+    pub full_name: String,
+    pub description: Option<String>,
+    pub clone_url: String,
+    pub html_url: String,
+    pub private: bool,
+    pub language: Option<String>,
+    pub default_branch: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct UserRepoPage {
+    pub repos: Vec<UserRepoInfo>,
+    pub has_more: bool,
+}
+
+const REPOS_PER_PAGE: u32 = 30;
+
+#[tauri::command]
+pub async fn list_user_repos(
+    app: AppHandle,
+    provider: String,
+    page: u32,
+) -> Result<UserRepoPage, String> {
+    let client = reqwest::Client::builder()
+        .user_agent("godot-hub/1.0")
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    match provider.as_str() {
+        "github" => {
+            let token = github_oauth_token(&app)
+                .ok_or("Sign in with GitHub first (Integrations > Git)")?;
+            let url = format!(
+                "https://api.github.com/user/repos?per_page={}&sort=updated&page={}&type=all",
+                REPOS_PER_PAGE, page
+            );
+            let resp = client
+                .get(&url)
+                .header("Accept", "application/vnd.github+json")
+                .header("Authorization", format!("Bearer {}", token))
+                .send()
+                .await
+                .map_err(|e| e.to_string())?;
+            if !resp.status().is_success() {
+                return Err(format!(
+                    "GitHub API error ({}).",
+                    resp.status()
+                ));
+            }
+            let repos: Vec<serde_json::Value> =
+                resp.json().await.map_err(|e| e.to_string())?;
+            let has_more = repos.len() >= REPOS_PER_PAGE as usize;
+            let items: Vec<UserRepoInfo> = repos.iter().map(|r| UserRepoInfo {
+                name: r["name"].as_str().unwrap_or("").to_string(),
+                full_name: r["full_name"].as_str().unwrap_or("").to_string(),
+                description: r["description"].as_str().map(|s| s.to_string()),
+                clone_url: r["clone_url"].as_str().unwrap_or("").to_string(),
+                html_url: r["html_url"].as_str().unwrap_or("").to_string(),
+                private: r["private"].as_bool().unwrap_or(false),
+                language: r["language"].as_str().map(|s| s.to_string()),
+                default_branch: r["default_branch"].as_str().map(|s| s.to_string()),
+            }).collect();
+            Ok(UserRepoPage { repos: items, has_more })
+        }
+        "gitlab" => {
+            let (token, base) = gitlab_oauth_info(&app)
+                .ok_or("Sign in with GitLab first (Integrations > Git)")?;
+            let api_base = base.trim_end_matches('/');
+            let url = format!(
+                "{}/api/v4/projects?membership=true&order_by=updated_at&sort=desc&per_page={}&page={}",
+                api_base, REPOS_PER_PAGE, page
+            );
+            let resp = client
+                .get(&url)
+                .header("Authorization", format!("Bearer {}", token))
+                .send()
+                .await
+                .map_err(|e| e.to_string())?;
+            if !resp.status().is_success() {
+                return Err(format!(
+                    "GitLab API error ({}).",
+                    resp.status()
+                ));
+            }
+            let repos: Vec<serde_json::Value> =
+                resp.json().await.map_err(|e| e.to_string())?;
+            let has_more = repos.len() >= REPOS_PER_PAGE as usize;
+            let items: Vec<UserRepoInfo> = repos.iter().map(|r| {
+                let path = r["path_with_namespace"].as_str().unwrap_or("");
+                let clone_url = r["http_url_to_repo"].as_str().unwrap_or("").to_string();
+                let web_url = r["web_url"].as_str().unwrap_or("").to_string();
+                let is_private = r["visibility"].as_str() == Some("private")
+                    || r["visibility"].as_str() == Some("internal");
+                UserRepoInfo {
+                    name: r["name"].as_str().unwrap_or("").to_string(),
+                    full_name: path.to_string(),
+                    description: r["description"].as_str().filter(|s| !s.is_empty()).map(|s| s.to_string()),
+                    clone_url,
+                    html_url: web_url,
+                    private: is_private,
+                    language: r["language"].as_str().map(|s| s.to_string()),
+                    default_branch: r["default_branch"].as_str().map(|s| s.to_string()),
+                }
+            }).collect();
+            Ok(UserRepoPage { repos: items, has_more })
+        }
+        _ => Err(format!("Unknown provider: {}", provider)),
+    }
+}
+
 #[tauri::command]
 pub async fn create_remote_repo(
     app: AppHandle,

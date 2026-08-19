@@ -180,10 +180,6 @@ export function BugReportModal({ onClose }: Props) {
     if (!system) return
     const firstLine = description.trim().split('\n')[0] || ''
     const title = (firstLine || t('bug_report_title')).slice(0, 72)
-    // Prefill the repo's issue-form template (bug_report.yaml):
-    // the bug goes into "Describe the bug" (id: description), the system
-    // specs into "Environment Details" (id: environment), and any captured
-    // errors into "Actual Behavior" (id: actual-behavior).
     const params = new URLSearchParams({
       template: 'bug_report.yaml',
       title,
@@ -226,7 +222,6 @@ export function BugReportModal({ onClose }: Props) {
         </div>
 
         <div className="px-7 overflow-y-auto min-h-0 flex-1 flex flex-col gap-4 py-2">
-          {/* What happened */}
           <div className="flex flex-col gap-1.5">
             <label
               htmlFor="bug-report-description"
@@ -245,7 +240,6 @@ export function BugReportModal({ onClose }: Props) {
             />
           </div>
 
-          {/* Auto-collected diagnostics */}
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between gap-3">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">

@@ -4,6 +4,7 @@ import type {
   DeviceFlowPoll,
   DeviceFlowStart,
   GitAuthState,
+  UserRepoPage,
 } from '../types'
 
 export const gitAuthApi = {
@@ -44,6 +45,8 @@ export const gitAuthApi = {
     }),
   disconnect: (provider: 'github' | 'gitlab') =>
     invoke<void>('disconnect_git_auth', { provider }),
+  listUserRepos: (provider: 'github' | 'gitlab', page: number) =>
+    invoke<UserRepoPage>('list_user_repos', { provider, page }),
   savePat: (host: string, username: string, token: string) =>
     invoke<void>('save_git_pat', { host, username, token }),
   removePat: (host: string) => invoke<void>('remove_git_pat', { host }),

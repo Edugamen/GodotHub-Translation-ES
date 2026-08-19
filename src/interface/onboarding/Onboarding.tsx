@@ -8,14 +8,6 @@ interface Props {
   onComplete: (settings: AppSettings) => Promise<AppSettings> | void
 }
 
-/**
- * Entry point for the first-run setup wizard.
- *
- * The interface isn't chosen yet when setup runs, so we render the wizard in
- * the style of the interface the user will land in after setup:
- * - new_ui on  -> the new interface onboarding (can hand off to classic)
- * - new_ui off -> the classic interface onboarding
- */
 export function Onboarding({ settings, onComplete }: Props) {
   const [ui, setUi] = useState<'classic' | 'new'>(() =>
     settings.new_ui ? 'new' : 'classic',

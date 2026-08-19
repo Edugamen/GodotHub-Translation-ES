@@ -1531,7 +1531,7 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
         id="behavior-projects"
         title={ts('behavior_projects_title')}
         description={ts('behavior_projects_desc')}
-        searchText={`${ts('behavior_projects_title')} ${ts('behavior_projects_desc')} ${ts('auto_scan_label')} ${ts('use_categories_label')} ${ts('use_workspaces_label')} ${ts('git_init_new_projects_label')} ${ts('naming_convention_label')}`}
+        searchText={`${ts('behavior_projects_title')} ${ts('behavior_projects_desc')} ${ts('auto_scan_label')} ${ts('use_workspaces_label')} ${ts('git_init_new_projects_label')} ${ts('naming_convention_label')}`}
         query={searchQuery}
         onMatch={reportMatch}
       >
@@ -1546,20 +1546,6 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
                 update({ ...settings, auto_scan_on_startup: checked })
               }
               label={ts('auto_scan_label')}
-            />
-          </SettingRow>
-
-          <SettingRow
-            label={ts('use_categories_label')}
-            description={ts('categories_off_desc')}
-            divider
-          >
-            <Toggle
-              checked={settings.categories_enabled}
-              onChange={(checked) =>
-                update({ ...settings, categories_enabled: checked })
-              }
-              label={ts('use_categories_label')}
             />
           </SettingRow>
 

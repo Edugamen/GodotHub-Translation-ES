@@ -434,7 +434,6 @@ export function SettingsView({
     }
   }
 
-  // Opening a new settings tab always starts scrolled to the top.
   useEffect(() => {
     const el = settingsRootRef.current
     if (!el) return

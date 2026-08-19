@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { motion } from 'framer-motion'
 import { WorkspaceSwitcher } from '../../WorkspaceSwitcher'
 import { useUpdatesBadge } from '../../../../hooks/useUpdatesBadge'
+import { useChangelogBadge } from '../../../../hooks/useChangelogBadge'
 import { Tooltip } from '../reusables/Tooltip'
 import {
   IconBell,
@@ -52,7 +53,7 @@ function loadExpandedWidth(): number {
   try {
     const raw = localStorage.getItem(SIDEBAR_EXPANDED_WIDTH_KEY)
     const n = Number(raw)
-    if (n >= 150 && n <= 420) return n
+    if (n >= 150 && n <= 350) return n
   } catch {}
   return 230
 }
@@ -75,6 +76,7 @@ export function Sidebar({
   const { t: tNav } = useTranslation('nav')
   const { t } = useTranslation('common')
   const { hasUnseen } = useUpdatesBadge()
+  const { hasNewEntry: hasNewChangelogEntry, markSeen: markChangelogSeen } = useChangelogBadge()
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1'
@@ -118,7 +120,10 @@ export function Sidebar({
     const btn = (
       <button
         key={tabId}
-        onClick={() => onTabChange(tabId)}
+        onClick={() => {
+          if (tabId === 'changelog') markChangelogSeen()
+          onTabChange(tabId)
+        }}
         aria-label={label}
         className={`focus-ring cursor-pointer icon-wiggle relative flex items-center gap-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
           collapsed
@@ -128,12 +133,16 @@ export function Sidebar({
           active
             ? 'text-ink'
             : 'text-muted hover:text-ink hover:bg-raised/60'
+        } ${
+          hasNewChangelogEntry && tabId === 'changelog' && !active
+            ? 'changelog-shine'
+            : ''
         }`}
       >
         {active && (
           <motion.span
             layoutId="nav-active-pill"
-            transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+            transition={{ type: 'spring', stiffness: 350, damping: 34 }}
             className="absolute inset-0 rounded-lg bg-raised border border-line"
           />
         )}

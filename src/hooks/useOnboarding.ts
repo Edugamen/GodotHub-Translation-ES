@@ -60,11 +60,6 @@ const dedupePaths = (
   })
 }
 
-/**
- * Shared state and actions for the first-run setup wizard, used by both the
- * classic and new interface onboarding views. Keeps the two UIs in sync so a
- * step behaves identically no matter which interface it is rendered in.
- */
 export function useOnboarding({ settings, onComplete }: UseOnboardingOptions) {
   const { t } = useTranslation('onboarding')
   const { t: tc } = useTranslation('common')
@@ -132,6 +127,7 @@ export function useOnboarding({ settings, onComplete }: UseOnboardingOptions) {
       ),
     [workspaceSuggestions, activeId],
   )
+
   const pendingTemplateSuggestions = templateSuggestions.filter(
     (s) => s.path !== draft.template_scan_dir,
   )

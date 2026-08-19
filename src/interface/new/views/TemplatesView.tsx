@@ -13,7 +13,6 @@ import { useSettings } from '../../../hooks/useSettings'
 import { useWorkspaces } from '../../../hooks/useWorkspaces'
 import type { ProjectTemplate, TemplateSyncResult } from '../../../types'
 import { useGodotVersionsContext } from '../../../hooks/godotVersionsContext'
-import { useCategoriesContext } from '../../../hooks/categoriesContext'
 import { useProjectsContext } from '../../../hooks/projectsContext'
 import { useTaskTray } from '../../../hooks/useTaskTray'
 import { ViewHeader } from '../components/reusables/ViewHeader'
@@ -83,7 +82,6 @@ export function TemplatesView({
   const { settings } = useSettings()
   const { activeId } = useWorkspaces()
   const { installed } = useGodotVersionsContext()
-  const { categories } = useCategoriesContext()
   const { refresh: refreshProjects } = useProjectsContext()
   const { registerTask, updateTask, unregisterTask } = useTaskTray()
 
@@ -433,7 +431,6 @@ export function TemplatesView({
             installedVersions={installed}
             defaultLocation={settings.default_project_location}
             initialTemplateId={createTemplate.id}
-            categories={categories}
             onClose={() => setCreateTemplate(null)}
             onCreated={() => {
               setCreateTemplate(null)

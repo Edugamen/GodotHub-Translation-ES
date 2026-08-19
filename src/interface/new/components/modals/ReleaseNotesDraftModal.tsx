@@ -180,7 +180,6 @@ export function ReleaseNotesDraftModal({ onClose, onUseDraft }: Props) {
       }
     >
       <div className="flex flex-col gap-2.5 p-6">
-        {/* Ref pickers */}
         <div className="flex items-end gap-3">
           <div className="flex flex-col gap-1.5 flex-1">
             <span className="text-[11px] font-medium text-muted">

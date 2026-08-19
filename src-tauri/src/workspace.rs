@@ -123,8 +123,6 @@ pub fn list_workspace_scan_dirs(app: AppHandle) -> Vec<WorkspaceScanDirs> {
 }
 
 #[tauri::command]
-/// Creates a workspace without switching to it or restarting watchers.
-/// Used by the whole-app backup restore, which creates many workspaces at once.
 pub fn create_workspace_silent(
     app: &AppHandle,
     name: String,
