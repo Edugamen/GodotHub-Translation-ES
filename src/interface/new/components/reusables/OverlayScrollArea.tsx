@@ -11,7 +11,6 @@ import {
 import { AnimatePresence, motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { IconChevronUp } from '../../lib/icons'
-import { Tooltip } from './Tooltip'
 import { isReducedMotion } from '../../../../lib/appearance'
 
 interface OverlayScrollAreaProps {
@@ -31,9 +30,6 @@ interface Metrics {
 
 const SHOW_AFTER = 200
 
-const RING_RADIUS = 28
-const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS
-
 export function OverlayScrollArea({
   children,
   className = '',
@@ -52,7 +48,6 @@ export function OverlayScrollArea({
     visible: false,
   })
   const [showTopBtn, setShowTopBtn] = useState(false)
-  const [progress, setProgress] = useState(0)
   const [overlayOpen, setOverlayOpen] = useState(false)
   const overlayCountRef = useRef(0)
   const [dragging, setDragging] = useState(false)
@@ -79,7 +74,6 @@ export function OverlayScrollArea({
     if (!el) return
     const { scrollTop, clientHeight, scrollHeight } = el
     const maxScroll = scrollHeight - clientHeight
-    setProgress(maxScroll > 0 ? Math.min(1, scrollTop / maxScroll) : 0)
     setShowTopBtn(scrollTop > SHOW_AFTER)
     if (maxScroll <= 0) {
       setMetrics((m) =>
@@ -234,53 +228,20 @@ export function OverlayScrollArea({
 
       <AnimatePresence>
         {!hideTopButton && showTopBtn && !overlayOpen && (
-          <motion.div
+          <motion.button
             key="scroll-to-top"
+            type="button"
+            aria-label={t('scroll_to_top')}
+            onClick={scrollToTop}
             initial={{ opacity: 0, y: 12, scale: 0.85 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.85 }}
             transition={{ type: 'spring', stiffness: 420, damping: 28 }}
-            className="absolute bottom-4 right-4 z-30"
+            className="focus-ring cursor-pointer absolute bottom-4 left-1/2 -translate-x-1/2 z-30 inline-flex items-center gap-1.5 h-9 px-4 rounded-full bg-raised border border-outline/50 text-muted shadow-lg shadow-black/40 transition-colors duration-150 hover:text-ink hover:border-accent-dim/70 hover:bg-overlay"
           >
-            <Tooltip content={t('scroll_to_top')} side="left" delay={250}>
-              <div className="relative">
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 60 60"
-                  className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 w-[60px] h-[60px] pointer-events-none"
-                >
-                  <circle
-                    cx="30"
-                    cy="30"
-                    r={RING_RADIUS}
-                    fill="none"
-                    stroke="var(--color-line)"
-                    strokeWidth="2.5"
-                    opacity="0.6"
-                  />
-                  <circle
-                    cx="30"
-                    cy="30"
-                    r={RING_RADIUS}
-                    fill="none"
-                    stroke="var(--color-accent-bright)"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeDasharray={RING_CIRCUMFERENCE}
-                    strokeDashoffset={RING_CIRCUMFERENCE * (1 - progress)}
-                  />
-                </svg>
-                <button
-                  type="button"
-                  aria-label={t('scroll_to_top')}
-                  onClick={scrollToTop}
-                  className="focus-ring cursor-pointer w-10 h-10 rounded-full bg-raised border border-outline/50 text-muted shadow-lg shadow-black/40 flex items-center justify-center transition-colors duration-150 hover:text-ink hover:border-accent-dim/70 hover:bg-overlay"
-                >
-                  <IconChevronUp className="w-4 h-4" />
-                </button>
-              </div>
-            </Tooltip>
-          </motion.div>
+            <IconChevronUp className="w-3.5 h-3.5" />
+            <span className="text-xs font-medium">{t('scroll_to_top')}</span>
+          </motion.button>
         )}
       </AnimatePresence>
     </div>
