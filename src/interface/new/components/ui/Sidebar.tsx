@@ -8,6 +8,7 @@ import { Tooltip } from '../reusables/Tooltip'
 import { WorkspaceSwitcher } from './WorkspaceSwitcher'
 import { useSettings } from '../../../../hooks/useSettings'
 import { useUpdatesBadge } from '../../../../hooks/useUpdatesBadge'
+import { useChangelogBadge } from '../../../../hooks/useChangelogBadge'
 
 export interface SidebarTab {
   id: string
@@ -42,6 +43,7 @@ export function Sidebar({
   const { t: tc } = useTranslation('common')
   const { settings } = useSettings()
   const { hasUnseen } = useUpdatesBadge()
+  const { hasNewEntry: hasNewChangelogEntry, markSeen: markChangelogSeen } = useChangelogBadge()
   const [width, setWidth] = useState(() => {
     try {
       return Math.min(
@@ -152,12 +154,19 @@ export function Sidebar({
       <button
         key={tab.id}
         type="button"
-        onClick={() => onTabChange(tab.id)}
+        onClick={() => {
+          if (tab.id === 'changelog') markChangelogSeen()
+          onTabChange(tab.id)
+        }}
         aria-label={hideLabel ? tab.label : undefined}
         className={`focus-ring cursor-pointer relative flex items-center rounded-item text-sm font-medium transition-colors ${layoutClass} ${
           active
             ? 'text-ink border border-transparent'
             : 'text-muted border border-transparent hover:text-ink hover:bg-raised/60'
+        } ${
+          hasNewChangelogEntry && tab.id === 'changelog' && !active
+            ? 'changelog-shine'
+            : ''
         }`}
       >
         {active && (

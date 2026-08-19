@@ -66,11 +66,10 @@ import { SuccessToast, ErrorToast } from './components/reusables/ToastNotificati
 import { useTauriEvent } from '../../lib/useTauriEvent'
 
 import '../../index.css'
-import {
-  GodotVersionsProvider,
-  useGodotVersionsContext,
+import { GodotVersionsProvider, useGodotVersionsContext,
 } from '../../hooks/godotVersionsContext'
 import { TaskTrayProvider } from '../../hooks/useTaskTray'
+import { ChangelogBadgeProvider } from '../../hooks/useChangelogBadge'
 import type { GitStatus, Project } from '../../types'
 
 function ViewLoading() {
@@ -712,7 +711,9 @@ export default function App() {
             <AppNew />
           </Suspense>
         ) : (
-          <AppContent />
+          <ChangelogBadgeProvider>
+            <AppContent />
+          </ChangelogBadgeProvider>
         )}
         {splashPhase !== 'done' && <SplashScreen phase={splashPhase} />}
       </TaskTrayProvider>

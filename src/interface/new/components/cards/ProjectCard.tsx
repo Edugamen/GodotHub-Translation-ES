@@ -354,6 +354,21 @@ export function ProjectCard({
               </span>
             </Tooltip>
           )}
+          {categories.length > 0 && (
+            (() => {
+              const cat = categories.find((c) => c.name === project.category)
+              const catColor = cat?.color ?? '#949ba4'
+              return (
+                <span className="inline-flex items-center gap-1 pl-1.5 pr-1 py-0.5 rounded-tag font-mono text-[10px] font-medium tracking-tight shrink-0 text-muted">
+                  <span
+                    className="w-1.5 h-1.5 rounded-full shrink-0 ring-1 ring-black/20"
+                    style={{ backgroundColor: catColor }}
+                  />
+                  {project.category ?? t('uncategorized')}
+                </span>
+              )
+            })()
+          )}
           {addingTag ? (
             <span
               className={`inline-flex items-center px-1.5 py-0.5 rounded-tag font-mono text-[10px] font-medium tracking-tight shrink-0 border ${

@@ -29,6 +29,7 @@ import { AssetStoreView } from './views/AssetStoreView'
 import { DashboardView } from './views/DashboardView'
 import { useSettings } from '../../hooks/useSettings'
 import { useTauriEvent } from '../../lib/useTauriEvent'
+import { ChangelogBadgeProvider } from '../../hooks/useChangelogBadge'
 import { ScreenReaderAnnouncer } from '../../lib/screenReader'
 import { relaunch } from '@tauri-apps/plugin-process'
 import {
@@ -290,6 +291,7 @@ export function App() {
   }
 
   return (
+    <ChangelogBadgeProvider>
     <div className="new-ui h-screen w-screen flex flex-col bg-base text-ink font-body">
       <ScreenReaderAnnouncer enabled={settings.screen_reader_announcements} />
       <ToastContainer />
@@ -439,5 +441,6 @@ export function App() {
         )}
       </AnimatePresence>
     </div>
+    </ChangelogBadgeProvider>
   )
 }

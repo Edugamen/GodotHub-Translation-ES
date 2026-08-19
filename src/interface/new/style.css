@@ -22,3 +22,31 @@
   margin-bottom: 1.5rem;
 }
 
+@keyframes changelog-shine {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.changelog-shine {
+  position: relative;
+}
+
+.changelog-shine::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    110deg,
+    transparent 25%,
+    rgba(var(--color-accent-rgb, 99 102 241), 0.25) 50%,
+    transparent 75%
+  );
+  background-size: 200% 100%;
+  animation: changelog-shine 2s ease-in-out infinite;
+}

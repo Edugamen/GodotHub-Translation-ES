@@ -12,7 +12,6 @@ import {
   rectIntersection,
   useSensor,
   useSensors,
-  useDroppable,
   type CollisionDetection,
   type DragStartEvent,
   type DragOverEvent,
@@ -68,7 +67,6 @@ import type { GitStatus, Project } from '../../../types'
 import { useGodotVersionsContext } from '../../../hooks/godotVersionsContext'
 
 const UNCATEGORIZED = '__uncategorized__'
-const COLLAPSED_CATS_KEY = 'godothub_collapsed_categories'
 const SORT_BY_KEY = 'godothub_projects_sort_by'
 const VIEW_MODE_KEY = 'godothub_projects_view_mode'
 const UI_REWRITE_NOTICE_DISMISSED_KEY = 'ui_rewrite_notice_dismissed'
@@ -122,73 +120,6 @@ function SortableProjectCard({
   )
 }
 
-function ZoneDropArea({
-  zoneKey,
-  variant = 'list',
-  gridCols = 3,
-}: {
-  zoneKey: string
-  variant?: 'list' | 'grid'
-  gridCols?: number
-}) {
-  const { t } = useTranslation('common')
-  const { setNodeRef, isOver } = useDroppable({
-    id: zoneKey,
-    data: { type: 'zone', zoneKey },
-  })
-
-  const hint = (
-    <div className="flex flex-col items-center gap-1 text-center px-3">
-      <span
-        className={`text-xs transition-all duration-150 ${
-          isOver ? 'text-accent font-semibold' : 'text-muted/40'
-        }`}
-      >
-        {isOver ? t('drop_here') : t('no_projects')}
-      </span>
-      <span
-        className={`text-[10px] transition-all duration-150 ${
-          isOver ? 'text-accent/70' : 'text-muted/30'
-        }`}
-      >
-        {isOver ? t('release_to_move') : t('drag_to_add')}
-      </span>
-    </div>
-  )
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, height: 0, scale: 0.96 }}
-      animate={{ opacity: 1, height: 'auto', scale: 1 }}
-      exit={{ opacity: 0, height: 0, scale: 0.96 }}
-      transition={{ duration: 0.2, ease: 'easeOut' }}
-    >
-      {variant === 'grid' ? (
-        <div ref={setNodeRef} className="flex gap-[1rem]">
-          {Array.from({ length: gridCols }).map((_, i) => (
-            <div
-              key={i}
-              className={`flex-1 min-h-40 rounded-xl border-2 border-dashed transition-all duration-150 flex items-center justify-center ${
-                isOver ? 'border-accent bg-accent/5' : 'border-line/20'
-              }`}
-            >
-              {i === 0 ? hint : null}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div
-          ref={setNodeRef}
-          className={`min-h-[56px] rounded-xl border-2 border-dashed transition-all duration-150 flex items-center justify-center ${
-            isOver ? 'border-accent bg-accent/5' : 'border-line/20'
-          }`}
-        >
-          {hint}
-        </div>
-      )}
-    </motion.div>
-  )
-}
 
 export function ProjectsView({
   onShowGitSidebar,
@@ -243,9 +174,9 @@ export function ProjectsView({
     () => {
       try {
         const raw = localStorage.getItem(SORT_BY_KEY)
-        if (raw) return raw as ProjectSortOption
+        if (raw && raw !== 'categories') return raw as ProjectSortOption
       } catch {}
-      return 'categories'
+      return 'recent'
     },
   )
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
@@ -286,15 +217,7 @@ export function ProjectsView({
   const [importing, setImporting] = useState(false)
   const [gitStatusMap, setGitStatusMap] = useState<Record<string, GitStatus>>({})
   const fetchingGitRef = useRef(false)
-  const [collapsedCats, setCollapsedCats] = useState<Record<string, boolean>>(
-    () => {
-      try {
-        const raw = localStorage.getItem(COLLAPSED_CATS_KEY)
-        if (raw) return JSON.parse(raw)
-      } catch {}
-      return {}
-    },
-  )
+
   const [propertiesProject, setPropertiesProject] = useState<Project | null>(null)
   const [tagManagerProject, setTagManagerProject] = useState<Project | null>(null)
 
@@ -489,8 +412,7 @@ export function ProjectsView({
   }, [activeId, handleClearSelection])
 
   const isSearching = query.trim().length > 0
-  const isSortingCategories = sortBy === 'categories'
-  const dragDisabled = isSearching || !isSortingCategories
+  const dragDisabled = isSearching
 
   const availableCategories = useMemo(
     () => [...categories.map((c) => c.name), UNCATEGORIZED],
@@ -521,32 +443,10 @@ export function ProjectsView({
     return sortProjects(filteredProjects.filter((p) => p.pinned))
   }, [filteredProjects, sortProjects])
 
-  const showCategories = sortBy === 'categories'
 
-  const categorySections = useMemo(() => {
-    if (!showCategories) return []
-    const groups = new Map<string, Project[]>()
-    for (const key of availableCategories) groups.set(key, [])
-    for (const p of filteredProjects) {
-      if (p.pinned) continue
-      const key = p.category ?? UNCATEGORIZED
-      if (!groups.has(key)) groups.set(key, [])
-      groups.get(key)!.push(p)
-    }
-    for (const [key, list] of groups) {
-      groups.set(key, sortProjects(list))
-    }
-    const keys = [...groups.keys()].filter((k) => k !== UNCATEGORIZED)
-    keys.push(UNCATEGORIZED)
-    return keys.map((key) => ({
-      key,
-      label: key === UNCATEGORIZED ? t('uncategorized') : key,
-      items: groups.get(key)!,
-    }))
-  }, [filteredProjects, availableCategories, showCategories, sortProjects])
 
   const flatList = useMemo(() => {
-    return sortProjects(filteredProjects.filter((p) => !p.pinned))
+    return sortProjects(filteredProjects)
   }, [filteredProjects, sortProjects])
 
   const projectsById = useMemo(
@@ -555,16 +455,11 @@ export function ProjectsView({
   )
 
   const sourceContainers = useMemo(() => {
-    const map: Record<string, string[]> = {
+    return {
       __pinned__: pinned.map((p) => p.id),
+      __flat__: flatList.map((p) => p.id),
     }
-    if (showCategories && categoriesEnabled) {
-      for (const s of categorySections) map[s.key] = s.items.map((p) => p.id)
-    } else {
-      map.__flat__ = flatList.map((p) => p.id)
-    }
-    return map
-  }, [pinned, categorySections, flatList, categoriesEnabled, showCategories])
+  }, [pinned, flatList])
 
   const [containers, setContainers] = useState<Record<string, string[]>>(
     () => sourceContainers,
@@ -581,11 +476,7 @@ export function ProjectsView({
     allVisibleIdsRef.current = ids
   }, [containers])
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(COLLAPSED_CATS_KEY, JSON.stringify(collapsedCats))
-    } catch {}
-  }, [collapsedCats])
+
 
   useEffect(() => {
     try {
@@ -1193,11 +1084,9 @@ export function ProjectsView({
             <Dropdown
               className="w-44"
               value={sortBy}
-              onChange={(v) => setSortBy((v || 'categories') as ProjectSortOption)}
+              onChange={(v) => setSortBy((v || 'recent') as ProjectSortOption)}
               emptyLabel={t('sort')}
-              options={SORT_OPTIONS.filter(
-                (opt) => categoriesEnabled || opt.value !== 'categories',
-              ).map((opt) => ({ ...opt, label: t(opt.labelKey) }))}
+              options={SORT_OPTIONS.map((opt) => ({ ...opt, label: t(opt.labelKey) }))}
             />
           </div>
         </div>
@@ -1335,81 +1224,11 @@ export function ProjectsView({
               )
             })()}
 
-            {showCategories && categoriesEnabled ? (
-              (activeId ? categorySections : categorySections.filter(({ items }) => items.length > 0))
-                .map(({ key, label }) => {
-                const ids = containers[key] ?? []
-                const collapsed = collapsedCats[key]
-                const isOver = overContainer === key
-                const catColor =
-                  label === t('uncategorized')
-                    ? undefined
-                    : categories.find((c) => c.name === label)?.color
-                const isEmpty = ids.length === 0
-                return (
-                  <section key={key} className={activeId && !isOver && !isEmpty ? 'opacity-60' : ''}>
-                    <div className="flex items-center gap-1.5 text-xs font-semibold text-muted uppercase tracking-wide mb-4">
-                      <button
-                        onClick={() =>
-                          setCollapsedCats((prev) => ({
-                            ...prev,
-                            [key]: !prev[key],
-                          }))
-                        }
-                        onPointerDown={(e) => e.stopPropagation()}
-                        className="focus-ring cursor-pointer inline-flex items-center justify-center w-5 h-5 rounded hover:ring-1 hover:bg-raised transition-all"
-                        aria-label={collapsed ? t('expand_category', { name: label }) : t('collapse_category', { name: label })}
-                        style={
-                          catColor
-                            ? ({ '--tw-ring-color': catColor } as React.CSSProperties)
-                            : undefined
-                        }
-                      >
-                        <IconChevronDown
-                          className={`w-3 h-3 transition-transform ${collapsed ? '-rotate-90' : ''}`}
-                          style={catColor ? { color: catColor } : undefined}
-                        />
-                      </button>
-                      {label}{' '}
-                      <span className="text-muted/50 normal-case font-normal">
-                        · {ids.length}
-                      </span>
-                      {activeId && isOver && (
-                        <span className="ml-1 text-[10px] font-medium text-accent animate-pulse normal-case">
-                          {t('drop_here_animated')}
-                        </span>
-                      )}
-                    </div>
-                    <AnimatePresence initial={false}>
-                      {!collapsed && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.15 }}
-                        >
-                          <div className={activeId && isOver && !isEmpty ? 'bg-accent/5 rounded-xl ring-1 ring-accent/20 -mx-2 px-2 py-2 transition-colors duration-150' : ''}>
-                            {isEmpty ? (
-                              <div className={activeId ? 'group -mx-2 px-2 py-1' : ''}>
-                                <ZoneDropArea zoneKey={key} variant={viewMode} gridCols={gridCols} />
-                              </div>
-                            ) : (
-                              renderCards(key)
-                            )}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </section>
-                )
-              })
-            ) : (
-              <section>
+            <section>
                 <div className={activeId && overContainer === '__flat__' ? 'bg-accent/5 rounded-xl ring-1 ring-accent/20 -mx-2 px-2 py-2 transition-colors duration-150' : ''}>
                   {renderCards('__flat__')}
                 </div>
               </section>
-            )}
           </div>
 
           <DragOverlay
