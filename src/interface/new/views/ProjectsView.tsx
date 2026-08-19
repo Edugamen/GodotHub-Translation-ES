@@ -892,40 +892,32 @@ function CategorySections({
             <span className="text-xs text-muted/50 tabular-nums">{pinned.length}</span>
             <div className="flex-1 h-px bg-white/6 ml-1" />
           </button>
-          <AnimatePresence initial={false}>
-            {(expanded.__pinned__ ?? true) && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.16, ease: 'easeOut' }}
-                className="overflow-hidden"
-              >
-                <div className="flex flex-col gap-2">
-                  {pinned.map((p) => (
-                    <ProjectCard
-                      key={p.id}
-                      project={p}
-                      installedVersions={installedVersions}
-                      categories={allCategories}
-                      gitStatus={gitStatusMap[p.path] ?? null}
-                      launchWithConsole={launchWithConsole}
-                      onTogglePin={() => onTogglePin(p.id, !p.pinned)}
-                      onVersionChange={(tag) => onUpdateVersion(p.id, tag)}
-                      onRemove={() => onRemove(p.id, false)}
-                      onDelete={() => onDelete(p.id, true)}
-                      onCategoryChange={(cat) => onSetCategory(p.id, cat)}
-                      onTagsSaved={(updated) => onTagsSaved(updated.id, updated.tags)}
-                      onTagClick={onTagClick}
-                      onShowGitSidebar={() => onShowGitSidebar(p)}
-                      selected={selectedIds.has(p.id)}
-                      onToggleSelect={(selecting || selectedIds.size > 0) ? (e) => onToggleSelect(p.id, e) : undefined}
-                    />
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <div className={`grid transition-[grid-template-rows] duration-200 ease-out ${(expanded.__pinned__ ?? true) ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+            <div className="overflow-hidden">
+              <div className="flex flex-col gap-2">
+                {pinned.map((p) => (
+                  <ProjectCard
+                    key={p.id}
+                    project={p}
+                    installedVersions={installedVersions}
+                    categories={allCategories}
+                    gitStatus={gitStatusMap[p.path] ?? null}
+                    launchWithConsole={launchWithConsole}
+                    onTogglePin={() => onTogglePin(p.id, !p.pinned)}
+                    onVersionChange={(tag) => onUpdateVersion(p.id, tag)}
+                    onRemove={() => onRemove(p.id, false)}
+                    onDelete={() => onDelete(p.id, true)}
+                    onCategoryChange={(cat) => onSetCategory(p.id, cat)}
+                    onTagsSaved={(updated) => onTagsSaved(updated.id, updated.tags)}
+                    onTagClick={onTagClick}
+                    onShowGitSidebar={() => onShowGitSidebar(p)}
+                    selected={selectedIds.has(p.id)}
+                    onToggleSelect={(selecting || selectedIds.size > 0) ? (e) => onToggleSelect(p.id, e) : undefined}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
         </section>
       )}
 
@@ -956,40 +948,32 @@ function CategorySections({
               <span className="text-xs text-muted/50 tabular-nums">{items.length}</span>
               <div className="flex-1 h-px bg-white/6 ml-1" />
             </button>
-            <AnimatePresence initial={false}>
-              {(expanded[name] ?? true) && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.16, ease: 'easeOut' }}
-                  className="overflow-hidden"
-                >
-                  <div className="flex flex-col gap-2">
-                    {items.map((p) => (
-                      <ProjectCard
-                        key={p.id}
-                        project={p}
-                        installedVersions={installedVersions}
-                        categories={allCategories}
-                        gitStatus={gitStatusMap[p.path] ?? null}
-                        launchWithConsole={launchWithConsole}
-                        onTogglePin={() => onTogglePin(p.id, !p.pinned)}
-                        onVersionChange={(tag) => onUpdateVersion(p.id, tag)}
-                        onRemove={() => onRemove(p.id, false)}
-                        onDelete={() => onDelete(p.id, true)}
-                        onCategoryChange={(cat) => onSetCategory(p.id, cat)}
-                        onTagsSaved={(updated) => onTagsSaved(updated.id, updated.tags)}
-                        onTagClick={onTagClick}
-                        onShowGitSidebar={() => onShowGitSidebar(p)}
-                        selected={selectedIds.has(p.id)}
-                        onToggleSelect={(selecting || selectedIds.size > 0) ? (e) => onToggleSelect(p.id, e) : undefined}
-                      />
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <div className={`grid transition-[grid-template-rows] duration-200 ease-out ${(expanded[name] ?? true) ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+              <div className="overflow-hidden">
+                <div className="flex flex-col gap-2">
+                  {items.map((p) => (
+                    <ProjectCard
+                      key={p.id}
+                      project={p}
+                      installedVersions={installedVersions}
+                      categories={allCategories}
+                      gitStatus={gitStatusMap[p.path] ?? null}
+                      launchWithConsole={launchWithConsole}
+                      onTogglePin={() => onTogglePin(p.id, !p.pinned)}
+                      onVersionChange={(tag) => onUpdateVersion(p.id, tag)}
+                      onRemove={() => onRemove(p.id, false)}
+                      onDelete={() => onDelete(p.id, true)}
+                      onCategoryChange={(cat) => onSetCategory(p.id, cat)}
+                      onTagsSaved={(updated) => onTagsSaved(updated.id, updated.tags)}
+                      onTagClick={onTagClick}
+                      onShowGitSidebar={() => onShowGitSidebar(p)}
+                      selected={selectedIds.has(p.id)}
+                      onToggleSelect={(selecting || selectedIds.size > 0) ? (e) => onToggleSelect(p.id, e) : undefined}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
           </section>
         )
       })}
