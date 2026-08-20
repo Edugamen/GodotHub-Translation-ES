@@ -17,6 +17,8 @@ pub enum TrackedHandle {
     Child(Child),
     #[cfg(unix)]
     Pid(u32),
+    /// Re-tracked stale session: poll the OS process list for the project path.
+    PollAlive { project_path: String },
 }
 
 pub struct TrackedProcess {
@@ -31,6 +33,10 @@ impl TrackedProcess {
             TrackedHandle::Child(child) => matches!(child.try_wait(), Ok(None)),
             #[cfg(unix)]
             TrackedHandle::Pid(pid) => crate::terminal::process_is_alive(*pid),
+            TrackedHandle::PollAlive { project_path } => {
+                let running = find_running_godot_project_paths();
+                running.iter().any(|p| same_path(p, project_path))
+            }
         }
     }
 }
@@ -110,10 +116,12 @@ fn settle_project_session(
             session_start_ms = Some(marker.unwrap_or_else(|| epoch_ms().saturating_sub(added_ms)));
         }
         None => {
-            if let Some(start) = project.session_started_at_ms.take() {
+            // Stale session on app restart: we don't know when the process
+            // actually exited, so we cannot safely attribute wall-clock time.
+            // Just clear the marker to prevent inflated totals.
+            if project.session_started_at_ms.is_some() {
+                project.session_started_at_ms.take();
                 changed = true;
-                added_ms = epoch_ms().saturating_sub(start);
-                session_start_ms = Some(start);
             }
         }
     }
@@ -129,6 +137,70 @@ fn settle_project_session(
     }
 }
 
+/// Parse `--path <value>` from a command-line string, handling quoted and unquoted values.
+fn parse_path_arg(cmdline: &str) -> Option<String> {
+    let args: Vec<&str> = cmdline.split_whitespace().collect();
+    for (i, arg) in args.iter().enumerate() {
+        if *arg == "--path" {
+            if let Some(next) = args.get(i + 1) {
+                // Strip surrounding quotes if present
+                let p = next.trim_start_matches('"').trim_end_matches('"');
+                if !p.is_empty() {
+                    return Some(p.to_string());
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Scan the OS process list for Godot processes and return the set of
+/// project paths they were launched with (`--path <dir>`).
+fn find_running_godot_project_paths() -> std::collections::HashSet<String> {
+    let mut paths = std::collections::HashSet::new();
+    let output = gather_godot_process_lines();
+    for line in output.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        if let Some(project_path) = parse_path_arg(trimmed) {
+            paths.insert(project_path);
+        }
+    }
+    paths
+}
+
+#[cfg(target_os = "windows")]
+fn gather_godot_process_lines() -> String {
+    use std::process::Command;
+    // wmic is fast and available on all supported Windows versions.
+    Command::new("wmic")
+        .args(["process", "where", "name like 'Godot%'", "get", "commandline"])
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
+        .unwrap_or_default()
+}
+
+#[cfg(unix)]
+fn gather_godot_process_lines() -> String {
+    use std::process::Command;
+    // ps -eo args gives the full command line on Linux and macOS.
+    let raw = Command::new("ps")
+        .args(["-eo", "args"])
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
+        .unwrap_or_default();
+    // Filter to lines that look like a Godot invocation.
+    raw.lines()
+        .filter(|l| {
+            let lower = l.to_lowercase();
+            lower.contains("godot") && lower.contains("--path")
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 pub(crate) fn settle_stale_sessions(app: &AppHandle) {
     static SETTLED: std::sync::OnceLock<()> = std::sync::OnceLock::new();
     SETTLED.get_or_init(|| {
@@ -140,11 +212,59 @@ pub(crate) fn settle_stale_sessions(app: &AppHandle) {
             active.keys().cloned().collect()
         };
         let projects = read_projects(app);
+
+        // Detect Godot processes that survived a previous app crash / close.
+        let os_running = find_running_godot_project_paths();
+
         for p in projects {
             if p.session_started_at_ms.is_some() && !running.contains(&p.id) {
-                settle_project_session(app, &p.id, None);
+                // Check whether the OS still has a Godot process for this project.
+                let still_running = os_running.iter().any(|os_path| same_path(os_path, &p.path));
+                if still_running {
+                    retrack_stale_session(app, &p);
+                } else {
+                    settle_project_session(app, &p.id, None);
+                }
             }
         }
+    });
+}
+
+/// Re-track a stale session whose Godot process is still alive.
+/// Spawns a fresh monitoring thread so the session will be properly settled
+/// when the user eventually closes Godot.
+fn retrack_stale_session(app: &AppHandle, project: &Project) {
+    let Some(state) = app.try_state::<ActiveProcesses>() else {
+        return;
+    };
+
+    // We cannot recover the original OS handle, but we can detect when the
+    // process exits by polling the OS process list for the project path.
+    // The cheapest approach: spawn a monitoring thread that polls
+    // `find_running_godot_project_paths` until the path disappears.
+    let id = project.id.clone();
+    let path = project.path.clone();
+    let app_clone = app.clone();
+
+    // Place a sentinel in ActiveProcesses so that the project shows as running.
+    // We use a dedicated tracker that polls the OS instead of watching a Child.
+    // launched_at must mirror the original SystemTime::now() at launch so that
+    // elapsed time stays consistent with the normal settle path.
+    let tracked = TrackedProcess {
+        handle: TrackedHandle::PollAlive { project_path: path },
+        kill_tree: false,
+        launched_at: std::time::UNIX_EPOCH
+            + std::time::Duration::from_millis(
+                project
+                    .session_started_at_ms
+                    .unwrap_or_else(|| epoch_ms())
+                    .saturating_sub(SESSION_START_DELAY_MS),
+            ),
+    };
+    state.0.lock().unwrap().insert(id.clone(), tracked);
+
+    std::thread::spawn(move || {
+        wait_until_exited(&app_clone, &id);
     });
 }
 
@@ -878,23 +998,26 @@ fn adopt_terminal_pid(app: &AppHandle, id: &str, pid_file: &Path) {
 
 fn wait_until_exited(app: &AppHandle, id: &str) {
     const POLL: std::time::Duration = std::time::Duration::from_millis(500);
+    // Polling the OS process list is heavier; use a longer interval.
+    const POLL_SLOW: std::time::Duration = std::time::Duration::from_secs(5);
 
     loop {
         let Some(state) = app.try_state::<ActiveProcesses>() else {
             return;
         };
 
-        let exited = {
+        let (exited, is_poll) = {
             let mut active = state.0.lock().unwrap();
             let Some(tracked) = active.get_mut(id) else {
                 return;
             };
+            let is_poll = matches!(tracked.handle, TrackedHandle::PollAlive { .. });
             if tracked.is_running() {
-                None
+                (None, is_poll)
             } else {
                 let elapsed = tracked.launched_at.elapsed().ok();
                 active.remove(id);
-                Some(elapsed)
+                (Some(elapsed), is_poll)
             }
         };
 
@@ -904,7 +1027,7 @@ fn wait_until_exited(app: &AppHandle, id: &str) {
             return;
         }
 
-        std::thread::sleep(POLL);
+        std::thread::sleep(if is_poll { POLL_SLOW } else { POLL });
     }
 }
 
@@ -933,6 +1056,11 @@ fn kill_tracked(tracked: &mut TrackedProcess) -> Result<(), String> {
         }
         #[cfg(unix)]
         TrackedHandle::Pid(pid) => crate::terminal::terminate_process(*pid),
+        TrackedHandle::PollAlive { .. } => {
+            // We don't own the OS handle for a re-tracked process.
+            // Nothing to kill here — Godot will exit on its own.
+            Ok(())
+        }
     }
 }
 
@@ -984,10 +1112,12 @@ pub fn stop_project(app: AppHandle, id: String) -> Result<(), String> {
     };
 
     let elapsed = tracked.launched_at.elapsed().ok();
-    kill_tracked(&mut tracked)?;
+    // Settle the session even if kill fails — the process may have already
+    // exited on its own, and we still want to record the tracked time.
+    let kill_result = kill_tracked(&mut tracked);
     settle_project_session(&app, &id, elapsed);
     let _ = app.emit("project:exited", serde_json::json!({ "id": id }));
-    Ok(())
+    kill_result
 }
 
 #[cfg(all(unix, not(target_os = "macos")))]

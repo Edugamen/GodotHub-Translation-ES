@@ -45,6 +45,7 @@ export const api = {
   getTimeInsights: settingsApi.getTimeInsights,
   exportProjectStats: projectsApi.exportProjectStats,
   importProjectStats: projectsApi.importProjectStats,
+  clearTimeStats: projectsApi.clearTimeStats,
   getActivity: (range: 'daily' | 'weekly' | 'monthly' | 'yearly') =>
     invoke<[string, number][]>('get_activity', { range }),
   getProjectActivity: (projectId: string) =>

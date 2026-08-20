@@ -231,6 +231,7 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
   const [confirmingUiSwitch, setConfirmingUiSwitch] = useState<boolean | null>(null)
   const [statsBusy, setStatsBusy] = useState<'export' | 'import' | null>(null)
   const [statsMessage, setStatsMessage] = useState<string | null>(null)
+  const [confirmClearStats, setConfirmClearStats] = useState(false)
   const [settingsBusy, setSettingsBusy] = useState<'export' | 'import' | null>(null)
   const [settingsMessage, setSettingsMessage] = useState<string | null>(null)
   const [wsBackupBusy, setWsBackupBusy] = useState<'export' | 'import' | null>(null)
@@ -315,6 +316,21 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
       const count = await api.importProjectStats(path)
       await refreshProjects()
       setStatsMessage(ts('stats_imported', { count }))
+    } catch (e) {
+      setStatsMessage(String(e))
+    } finally {
+      setStatsBusy(null)
+    }
+  }
+
+  const handleClearStats = async () => {
+    setConfirmClearStats(false)
+    setStatsBusy('import')
+    setStatsMessage(null)
+    try {
+      await api.clearTimeStats()
+      await refreshProjects()
+      setStatsMessage(ts('stats_cleared'))
     } catch (e) {
       setStatsMessage(String(e))
     } finally {
@@ -1383,6 +1399,16 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
             {statsBusy === 'import' ? ts('saving') : ts('import_stats_btn')}
           </button>
           {statsMessage && <span className="text-xs text-muted">{statsMessage}</span>}
+        </div>
+        <div className="mt-2">
+          <button
+            type="button"
+            onClick={() => setConfirmClearStats(true)}
+            disabled={statsBusy !== null}
+            className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-8 px-4 rounded-item bg-danger/10 border border-danger/30 text-danger hover:bg-danger/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {ts('clear_stats_btn')}
+          </button>
         </div>
       </Subsection>
 
@@ -2947,6 +2973,19 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
             variant="default"
             onConfirm={handleRestart}
             onCancel={() => setConfirmingRestart(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {confirmClearStats && (
+          <ConfirmDialog
+            title={ts('clear_stats_confirm_title')}
+            description={ts('clear_stats_confirm_desc')}
+            confirmLabel={ts('clear_stats_confirm_btn')}
+            variant="danger"
+            onConfirm={handleClearStats}
+            onCancel={() => setConfirmClearStats(false)}
           />
         )}
       </AnimatePresence>

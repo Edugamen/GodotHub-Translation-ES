@@ -66,6 +66,7 @@ export const projectsApi = {
     invoke<void>('export_project_stats', { path }),
   importProjectStats: (path: string) =>
     invoke<number>('import_project_stats', { path }),
+  clearTimeStats: () => invoke<void>('clear_time_stats'),
   readImageFile: (path: string) =>
     invoke<string | null>('read_image_file', { path }),
   getIcon: (path: string) => {

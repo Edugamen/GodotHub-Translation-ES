@@ -232,6 +232,7 @@ pub fn run() {
             time_stats::get_activity,
             time_stats::get_project_activity,
             time_stats::get_time_insights,
+            time_stats::clear_time_stats,
             categories::list_categories,
             categories::create_category,
             categories::update_category,
