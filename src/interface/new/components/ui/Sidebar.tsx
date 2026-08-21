@@ -2,13 +2,14 @@ import { motion } from 'framer-motion'
 import { useRef, useState } from 'react'
 import type { ComponentType } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconChevronsLeft, IconHouse, IconSearch, IconX } from '../../lib/icons'
+import { IconArrowUp, IconChevronsLeft, IconHouse, IconSearch, IconX } from '../../lib/icons'
 import type { IconProps } from '../../lib/icons'
 import { Tooltip } from '../reusables/Tooltip'
 import { WorkspaceSwitcher } from './WorkspaceSwitcher'
 import { useSettings } from '../../../../hooks/useSettings'
 import { useUpdatesBadge } from '../../../../hooks/useUpdatesBadge'
 import { useChangelogBadge } from '../../../../hooks/useChangelogBadge'
+import { useUpdateAvailable } from '../../../../hooks/useUpdateAvailable'
 
 export interface SidebarTab {
   id: string
@@ -31,6 +32,7 @@ export function Sidebar({
   connected = false,
   paletteKey = 'p',
   onOpenCommandPalette,
+  onOpenUpdatesModal,
 }: {
   tabs: SidebarTab[]
   activeTab: string
@@ -38,12 +40,14 @@ export function Sidebar({
   connected?: boolean
   paletteKey?: string
   onOpenCommandPalette?: () => void
+  onOpenUpdatesModal?: () => void
 }) {
   const { t } = useTranslation('nav')
   const { t: tc } = useTranslation('common')
   const { settings } = useSettings()
   const { hasUnseen } = useUpdatesBadge()
   const { hasNewEntry: hasNewChangelogEntry, markSeen: markChangelogSeen } = useChangelogBadge()
+  const { updateAvailable, previewUpdate } = useUpdateAvailable()
   const [width, setWidth] = useState(() => {
     try {
       return Math.min(
@@ -333,6 +337,35 @@ export function Sidebar({
                   </button>
                 </Tooltip>
               </div>
+            )}
+            {(updateAvailable || previewUpdate) && onOpenUpdatesModal && !collapsed && (
+              <button
+                type="button"
+                onClick={onOpenUpdatesModal}
+                className="focus-ring cursor-pointer w-full flex items-center gap-2 px-3 py-2 rounded-item bg-accent/10 border border-accent/30 text-xs font-medium text-accent-bright hover:bg-accent/20 transition-colors"
+              >
+                <span className="relative flex w-2 h-2">
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-accent-bright opacity-75 animate-ping" />
+                  <span className="relative inline-flex rounded-full w-2 h-2 bg-accent-bright" />
+                </span>
+                Update available
+              </button>
+            )}
+            {(updateAvailable || previewUpdate) && onOpenUpdatesModal && collapsed && (
+              <Tooltip content="Update available" side="right">
+                <button
+                  type="button"
+                  onClick={onOpenUpdatesModal}
+                  className="focus-ring cursor-pointer w-11 h-11 shrink-0 flex items-center justify-center rounded-item relative text-muted hover:text-ink hover:bg-raised/60 transition-colors"
+                  aria-label="Update available"
+                >
+                  <IconArrowUp className="w-4 h-4" />
+                  <span className="absolute top-2 right-2 flex w-2 h-2" aria-hidden="true">
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-accent-bright opacity-75 animate-ping" />
+                    <span className="relative inline-flex rounded-full w-2 h-2 bg-accent-bright shadow-[0_0_6px_2px] shadow-accent/50" />
+                  </span>
+                </button>
+              </Tooltip>
             )}
             {footerTabs.slice(0, -2).map((tab) =>
               renderTabButton(

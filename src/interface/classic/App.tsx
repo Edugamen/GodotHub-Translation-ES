@@ -38,7 +38,6 @@ import { useWorkspaces } from '../../hooks/useWorkspaces'
 import { useProjectsContext } from '../../hooks/projectsContext'
 import { useDiscordRpc } from '../../hooks/useDiscordRpc'
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts'
-import { check } from '@tauri-apps/plugin-updater'
 import { relaunch } from '@tauri-apps/plugin-process'
 import { BugReportModal } from './components/modals/BugReportModal'
 import { CheckForUpdatesModal } from './components/modals/CheckForUpdatesModal'
@@ -304,20 +303,6 @@ function AppContent() {
       unlistenPromise.then((fn) => fn())
     }
   }, [refreshProjects])
-
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      try {
-        const update = await check()
-        if (update && !cancelled) {
-          setUpdateModalMode('background')
-          setUpdatesModalOpen(true)
-        }
-      } catch {}
-    })()
-    return () => { cancelled = true }
-  }, [])
 
   useEffect(() => {
     if (!errorNotification) return
