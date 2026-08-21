@@ -5,6 +5,8 @@ import { openUrl } from '@tauri-apps/plugin-opener'
 import { LANGUAGES } from '../../../i18n/languages'
 import { useSettings } from '../../../hooks/useSettings'
 import { useAppVersion } from '../../../hooks/useAppVersion'
+import { useContributors } from '../../../hooks/useContributors'
+import { ContributorPRsModal } from '../../../components/ContributorPRsModal'
 import { useWorkspaces } from '../../../hooks/useWorkspaces'
 import { useProjectsContext } from '../../../hooks/projectsContext'
 import { useCategoriesContext } from '../../../hooks/categoriesContext'
@@ -64,7 +66,7 @@ const SAVE_DEBOUNCE_MS = 350
 const DEFAULT_BG_DARK = DEFAULT_BG
 
 type SettingsTab =
-  'storage' | 'behavior' | 'display' | 'appearance' | 'accessibility' | 'advanced'
+  'storage' | 'behavior' | 'display' | 'appearance' | 'accessibility' | 'advanced' | 'credits'
 
 const TABS: { id: SettingsTab }[] = [
   { id: 'storage' },
@@ -73,6 +75,7 @@ const TABS: { id: SettingsTab }[] = [
   { id: 'appearance' },
   { id: 'accessibility' },
   { id: 'advanced' },
+  { id: 'credits' },
 ]
 
 function SectionCard({
@@ -270,6 +273,8 @@ export function SettingsView({
   const { t, i18n } = useTranslation('settings')
   const { settings, update, resetToDefaults, loaded } = useSettings()
   const appVersion = useAppVersion()
+  const { contributors } = useContributors()
+  const [selectedContributor, setSelectedContributor] = useState<{ login: string; avatar_url: string } | null>(null)
   const { projects, refresh: refreshProjects } = useProjectsContext()
   const { refresh: refreshCategories } = useCategoriesContext()
   const { activeId, refresh: refreshWorkspaces } = useWorkspaces()
@@ -1548,11 +1553,8 @@ export function SettingsView({
             >
               <label className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
-                  <span className="text-xs font-medium text-muted flex items-center gap-2">
+                  <span className="text-xs font-medium text-muted">
                     {t('screen_reader_label')}
-                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber/15 text-amber border border-amber/30">
-                      {t('git_beta_badge', { ns: 'common' })}
-                    </span>
                   </span>
                   <p className="text-[11px] text-muted mt-1 leading-relaxed">
                     {t('screen_reader_desc')}
@@ -1672,11 +1674,8 @@ export function SettingsView({
               <div className="flex flex-col gap-7">
                 <label className="flex items-center justify-between gap-4">
                   <div className="min-w-0">
-                    <span className="text-xs font-medium text-muted flex items-center gap-2">
+                    <span className="text-xs font-medium text-muted">
                       {t('new_ui_label')}
-                      <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber/15 text-amber border border-amber/30">
-                        {t('git_beta_badge', { ns: 'common' })}
-                      </span>
                     </span>
                     <p className="text-[11px] text-muted mt-1 leading-relaxed">
                       {t('new_ui_desc')}
@@ -2771,10 +2770,86 @@ export function SettingsView({
                 <IconBug className="w-4 h-4" />
                 {t('report_bug')}
               </motion.button>
-            </div>
-          </motion.div>
+            </div>          </motion.div>
         )}
       </AnimatePresence>
+
+      {tab === 'credits' && (
+        <motion.div key="credits" {...tabEntrance} className="flex flex-col gap-6">
+          <section className="flex flex-col gap-5 rounded-xl border border-line bg-surface/60 p-6">
+            <div>
+              <h3 className="font-display font-semibold text-lg">{t('credits_title')}</h3>
+              <p className="text-xs text-muted mt-1">{t('credits_desc')}</p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => openUrl('https://github.com/RykoTheDev')}
+              className="focus-ring cursor-pointer flex items-center gap-4 px-5 py-4 rounded-xl border border-line bg-raised/40 hover:bg-raised transition-colors text-left w-full"
+            >
+              <img
+                src="https://github.com/RykoTheDev.png?size=80"
+                alt="RykoTheDev"
+                className="w-11 h-11 rounded-full ring-2 ring-accent/20"
+                onError={(e) => {
+                  const img = e.currentTarget
+                  img.style.display = 'none'
+                  const fallback = img.nextElementSibling as HTMLElement
+                  if (fallback) fallback.style.display = 'flex'
+                }}
+              />
+              <span className="w-11 h-11 rounded-full bg-accent/15 border border-accent-dim/30 items-center justify-center text-sm font-bold text-accent hidden">
+                R
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-ink">RykoTheDev</p>
+                <p className="text-[11px] text-muted">{t('credits_developer')}</p>
+              </div>
+            </button>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1 px-4 py-3 rounded-xl border border-line bg-raised/30">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted/50">{t('credits_license')}</span>
+                <span className="text-sm font-medium text-ink">MIT</span>
+              </div>
+              <div className="flex flex-col gap-1 px-4 py-3 rounded-xl border border-line bg-raised/30">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted/50">{t('credits_built_with')}</span>
+                <span className="text-sm font-medium text-ink">Tauri + React + TypeScript</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-medium text-muted">{t('credits_contributors')}</span>
+              <div className="flex flex-wrap gap-2">
+                {contributors.filter((c) => c.login !== 'RykoTheDev').map((c) => (
+                  <button
+                    key={c.login}
+                    type="button"
+                    onClick={() => setSelectedContributor({ login: c.login, avatar_url: c.avatar_url })}
+                    className="focus-ring cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-line bg-raised/60 hover:bg-raised transition-colors"
+                  >
+                    <img
+                      src={c.avatar_url}
+                      alt={c.login}
+                      className="w-5 h-5 rounded-full"
+                      onError={(e) => {
+                        const img = e.currentTarget
+                        img.style.display = 'none'
+                        const fallback = img.nextElementSibling as HTMLElement
+                        if (fallback) fallback.style.display = 'flex'
+                      }}
+                    />
+                    <span className="w-5 h-5 rounded-full bg-accent/15 border border-accent-dim/30 items-center justify-center text-[9px] font-bold text-accent hidden">
+                      {c.login[0].toUpperCase()}
+                    </span>
+                    <span className="text-xs font-medium text-ink">{c.login}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </section>
+        </motion.div>
+      )}
 
       <AnimatePresence>
         {confirmingReset && (
@@ -2826,6 +2901,14 @@ export function SettingsView({
           />
         )}
       </AnimatePresence>
+
+      {selectedContributor && (
+        <ContributorPRsModal
+          login={selectedContributor.login}
+          avatarUrl={selectedContributor.avatar_url}
+          onClose={() => setSelectedContributor(null)}
+        />
+      )}
     </div>
   )
 }

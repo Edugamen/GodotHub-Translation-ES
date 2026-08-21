@@ -127,8 +127,10 @@ pub async fn gist_sync_push(app: AppHandle) -> Result<GistSyncResult, String> {
 
     let (id, url) = match read_sync_state(&app) {
         Some(state) => {
-            let url = update_gist(&client, &token, &state.gist_id, &content).await?;
-            (state.gist_id.clone(), url)
+            match update_gist(&client, &token, &state.gist_id, &content).await {
+                Ok(url) => (state.gist_id.clone(), url),
+                Err(_) => create_gist(&client, &token, &content).await?,
+            }
         }
         None => create_gist(&client, &token, &content).await?,
     };

@@ -57,7 +57,6 @@ import {
 } from '../../lib/uiTransition'
 import { TitleBar } from './components/titlebar/Titlebar'
 import { SplashScreen, type SplashPhase } from './components/reusables/SplashScreen'
-import { OnboardingTips } from './components/reusables/OnboardingTips'
 import { ViewErrorBoundary } from './components/reusables/ViewErrorBoundary'
 import { ScrollToTopButton } from './components/ui/ScrollToTopButton'
 import { GitSidebar } from './components/git/GitSidebar'
@@ -123,13 +122,6 @@ function AppContent() {
   const [updateModalMode, setUpdateModalMode] = useState<
     'background' | 'manual' | 'preview'
   >('manual')
-  const [showTips, setShowTips] = useState(() => {
-    try {
-      return localStorage.getItem('godothub_tips_shown') !== '1'
-    } catch {
-      return false
-    }
-  })
   const scannedWorkspaceRef = useRef<string | null>(null)
   const [errorNotification, setErrorNotification] = useState<string | null>(null)
   const [successNotification, setSuccessNotification] = useState<{
@@ -577,19 +569,6 @@ function AppContent() {
           )}
         </AnimatePresence>
       </div>
-
-      <AnimatePresence>
-        {showTips && (
-          <OnboardingTips
-            onDismiss={() => {
-              setShowTips(false)
-              try {
-                localStorage.setItem('godothub_tips_shown', '1')
-              } catch {}
-            }}
-          />
-        )}
-      </AnimatePresence>
 
       <AnimatePresence>
         {commandPaletteOpen && (

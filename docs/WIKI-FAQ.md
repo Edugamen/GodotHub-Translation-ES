@@ -85,7 +85,7 @@ Use **Settings → Advanced → Report a Bug** to file an issue directly from th
 
 ### The new UI feels broken or unresponsive
 
-The new UI is an experimental beta. Some areas are still unstable and may be unresponsive. You can switch back to the classic UI anytime from **Settings → Appearance → Interface**. If you find a reproducible problem, please report it.
+Altough new UI is now stable, Some areas might still contain bugs. If you find a reproducible problem, please report it.
 
 ### How do I change the command palette shortcut?
 

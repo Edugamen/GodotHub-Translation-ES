@@ -339,8 +339,8 @@
   "search_placeholder": "Search settings…",
   "setting_new_ui": "New UI",
   "new_ui_label": "New UI",
-  "new_ui_desc": "Enables the experimental new interface. Some areas are still unstable and may be unresponsive.",
-  "new_ui_tooltip": "Beta feature; this UI is unstable and may be unresponsive in some areas.",
+  "new_ui_desc": "Enables the new interface.",
+  "new_ui_tooltip": "New UI is now stable and fully supported.",
   "interface_label": "Interface",
   "classic_ui_label": "Classic UI",
   "switch_to_classic_ui": "Switch to Classic UI",
@@ -372,5 +372,12 @@
   "dashboard_section_recent": "Recently opened",
   "dashboard_section_pinned": "Pinned projects",
   "dashboard_section_engines": "Installed engines",
-  "dashboard_section_running": "Running now"
+  "dashboard_section_running": "Running now",
+  "credits": "Credits",
+  "credits_title": "Credits",
+  "credits_desc": "GodotHub is open source and built by the community.",
+  "credits_developer": "Created by",
+  "credits_license": "License",
+  "credits_built_with": "Built with",
+  "credits_contributors": "Contributors"
 }

@@ -311,7 +311,7 @@ Deep configuration options for every aspect of the app.
 
 ## 🤖 AI Disclosure
 
-Some parts of this codebase have been restructured and small bugs fixed with the assistance of DeepSeek AI. All changes are reviewed and tested by me before being merged. Whole Code is written by a freshly baked Human from scratch.
+Some parts of this codebase have been restructured and small bugs fixed with the assistance of [DeepSeek AI](https://chat.deepseek.com/). All changes are reviewed and tested by me before being merged. Whole Code is written by a freshly baked Human from scratch.
 
 For those who don't know how to read commits, Copilot is **not** used here. I Accidentally had it fix the PR where it literally only removed a Space and now its in Collaborators list. I've since disabled it, and it has no authority over this repository, including reviews.
 As for Codebuff AI, I didnt even have its subscription, Was testing it before realizing that and this thing somehow sneaked in with the commit message..... =_=
@@ -465,7 +465,7 @@ godothub/
 │   │   │   │   └── …               # AssetLibraryBrowser, AssetStoreBrowser, Sidebar, etc.
 │   │   │   ├── lib/                # Classic-only helpers (Icons, workspaceIcons)
 │   │   │   └── views/              # Main application views
-│   │   └── new/                    # Experimental New UI (isolated, beta)
+│   │   └── new/                    # Experimental New UI (isolated)
 │   │       ├── App.tsx             # New UI shell (self-contained)
 │   │       ├── index.ts            # Public exports
 │   │       ├── style.css           # New UI design tokens (scoped)

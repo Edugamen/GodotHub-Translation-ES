@@ -41,7 +41,7 @@ import { TagManagerModal } from '../components/modals/TagManagerModal'
 import { Dropdown } from '../components/ui/Dropdown'
 import { api } from '../../../lib/api'
 import { consumePendingAction } from '../../../lib/pendingAction'
-import { isReducedMotion } from '../../../lib/appearance'
+import { isReducedMotion, applyNewUi } from '../../../lib/appearance'
 import {
   IconFolderPlus,
   IconGitBranch,
@@ -69,7 +69,7 @@ import { useGodotVersionsContext } from '../../../hooks/godotVersionsContext'
 const UNCATEGORIZED = '__uncategorized__'
 const SORT_BY_KEY = 'godothub_projects_sort_by'
 const VIEW_MODE_KEY = 'godothub_projects_view_mode'
-const UI_REWRITE_NOTICE_DISMISSED_KEY = 'ui_rewrite_notice_dismissed'
+const UI_NOTICE_KEY = 'ui_rewrite_notice_v2_dismissed'
 
 type ViewMode = 'list' | 'grid'
 
@@ -127,9 +127,10 @@ export function ProjectsView({
   onShowGitSidebar?: (project: Project, gitStatus: GitStatus | null) => void
 }) {
   const { t } = useTranslation('common')
+
   const [noticeDismissed, setNoticeDismissed] = useState(() => {
     try {
-      return localStorage.getItem(UI_REWRITE_NOTICE_DISMISSED_KEY) === '1'
+      return localStorage.getItem(UI_NOTICE_KEY) === '1'
     } catch {
       return false
     }
@@ -138,9 +139,15 @@ export function ProjectsView({
   const dismissNotice = () => {
     setNoticeDismissed(true)
     try {
-      localStorage.setItem(UI_REWRITE_NOTICE_DISMISSED_KEY, '1')
+      localStorage.setItem(UI_NOTICE_KEY, '1')
     } catch {}
   }
+
+  useEffect(() => {
+    const handler = () => setNoticeDismissed(false)
+    window.addEventListener('app:show-ui-notice', handler)
+    return () => window.removeEventListener('app:show-ui-notice', handler)
+  }, [])
 
   const {
     projects,
@@ -161,7 +168,7 @@ export function ProjectsView({
     reorder: reorderCategories,
   } = useCategoriesContext()
   const { installed } = useGodotVersionsContext()
-  const { settings } = useSettings()
+  const { settings, update: updateSettings } = useSettings()
   const { registerTask, updateTask, unregisterTask } = useTaskTray()
   const categoriesEnabled = settings.categories_enabled
   const [modalOpen, setModalOpen] = useState(false)
@@ -896,6 +903,15 @@ export function ProjectsView({
                   <p className="mt-1 text-sm leading-relaxed text-muted max-w-3xl">
                     {t('ui_rewrite_body')}
                   </p>
+                  <button
+                    onClick={() => {
+                      applyNewUi(true)
+                      updateSettings({ ...settings, new_ui: true })
+                    }}
+                    className="focus-ring cursor-pointer mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent hover:bg-accent-bright text-sm font-medium text-white transition-colors"
+                  >
+                    {t('ui_rewrite_switch')}
+                  </button>
                 </div>
               </div>
               <button

@@ -17,6 +17,8 @@ import { useProjectsContext } from '../../../hooks/projectsContext'
 import { useCategoriesContext } from '../../../hooks/categoriesContext'
 import { useWorkspaces } from '../../../hooks/useWorkspaces'
 import { useAppVersion } from '../../../hooks/useAppVersion'
+import { useContributors } from '../../../hooks/useContributors'
+import { ContributorPRsModal } from '../../../components/ContributorPRsModal'
 import { LANGUAGES } from '../../../i18n/languages'
 import { api } from '../../../lib/api'
 import {
@@ -86,6 +88,7 @@ type SettingsCat =
   | 'integrations'
   | 'accessibility'
   | 'advanced'
+  | 'credits'
 
 interface CatDef {
   id: SettingsCat
@@ -100,6 +103,7 @@ const CATEGORIES: CatDef[] = [
   { id: 'integrations', icon: IconPlug },
   { id: 'accessibility', icon: IconUniversalAccess },
   { id: 'advanced', icon: IconFlask },
+  { id: 'credits', icon: IconHeart },
 ]
 
 const DEFAULT_RADIUS = defaultCornerRadius
@@ -223,6 +227,8 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
   const { t: ts, i18n } = useTranslation('settings')
   const { settings, update, resetToDefaults } = useSettings()
   const appVersion = useAppVersion()
+  const { contributors } = useContributors()
+  const [selectedContributor, setSelectedContributor] = useState<{ login: string; avatar_url: string } | null>(null)
   const { projects, refresh: refreshProjects } = useProjectsContext()
   const { refresh: refreshCategories } = useCategoriesContext()
   const { refresh: refreshWorkspaces } = useWorkspaces()
@@ -626,9 +632,6 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
             <span className="flex items-center gap-2 w-full">
               <span className="text-xs font-medium text-ink">
                 {ts('new_ui_label')}
-              </span>
-              <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-tag bg-amber/15 text-amber border border-amber/30">
-                {ts('git_beta_badge', { ns: 'common' })}
               </span>
               {settings.new_ui && (
                 <IconCheck className="w-3.5 h-3.5 text-accent-bright ml-auto" />
@@ -1749,9 +1752,6 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
           <span className="inline-flex items-center gap-2">
             <IconGitBranch className="w-3.5 h-3.5 text-muted" />
             Git
-            <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-tag bg-amber/10 text-amber border border-amber/20">
-              Beta
-            </span>
           </span>
         }
         description={ts('github_token_desc')}
@@ -2399,14 +2399,7 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
 
       <Subsection
         id="accessibility-screen-reader"
-        title={
-          <span className="inline-flex items-center gap-2">
-            {ts('screen_reader_label')}
-            <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-tag bg-amber/15 text-amber border border-amber/30">
-              {ts('git_beta_badge', { ns: 'common' })}
-            </span>
-          </span>
-        }
+        title={ts('screen_reader_label')}
         description={ts('screen_reader_desc')}
         searchText={`${ts('screen_reader_label')} ${ts('screen_reader_desc')} ${ts('screen_reader_beta_desc')} ${ts('accessibility')} ${ts('accessibility_desc')}`}
         query={searchQuery}
@@ -2734,6 +2727,83 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
     </div>
   )
 
+  const renderCredits = () => (
+    <div className="flex flex-col gap-3">
+      <section className="flex flex-col gap-5 rounded-item bg-overlay px-5 py-5">
+        <div>
+          <h3 className="font-display font-semibold text-sm">{ts('credits_title')}</h3>
+          <p className="text-[11px] text-muted mt-1">{ts('credits_desc')}</p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => openUrl('https://github.com/RykoTheDev')}
+          className="focus-ring cursor-pointer flex items-center gap-4 px-5 py-4 rounded-item border border-outline/50 bg-raised/40 hover:bg-raised transition-colors text-left w-full"
+        >
+          <img
+            src="https://github.com/RykoTheDev.png?size=80"
+            alt="RykoTheDev"
+            className="w-11 h-11 rounded-full ring-2 ring-accent/20"
+            onError={(e) => {
+              const img = e.currentTarget
+              img.style.display = 'none'
+              const fallback = img.nextElementSibling as HTMLElement
+              if (fallback) fallback.style.display = 'flex'
+            }}
+          />
+          <span className="w-11 h-11 rounded-full bg-accent/15 border border-accent-dim/30 items-center justify-center text-sm font-bold text-accent hidden">
+            R
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-ink">RykoTheDev</p>
+            <p className="text-[11px] text-muted">{ts('credits_developer')}</p>
+          </div>
+        </button>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1 px-4 py-3 rounded-item border border-outline/50 bg-raised/30">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted/50">{ts('credits_license')}</span>
+            <span className="text-sm font-medium text-ink">MIT</span>
+          </div>
+          <div className="flex flex-col gap-1 px-4 py-3 rounded-item border border-outline/50 bg-raised/30">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted/50">{ts('credits_built_with')}</span>
+            <span className="text-sm font-medium text-ink">Tauri + React + TypeScript</span>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted/50">{ts('credits_contributors')}</span>
+          <div className="flex flex-wrap gap-2">
+            {contributors.filter((c) => c.login !== 'RykoTheDev').map((c) => (
+              <button
+                key={c.login}
+                type="button"
+                onClick={() => setSelectedContributor({ login: c.login, avatar_url: c.avatar_url })}
+                className="focus-ring cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-outline/50 bg-raised/60 hover:bg-raised transition-colors"
+              >
+                <img
+                  src={c.avatar_url}
+                  alt={c.login}
+                  className="w-5 h-5 rounded-full"
+                  onError={(e) => {
+                    const img = e.currentTarget
+                    img.style.display = 'none'
+                    const fallback = img.nextElementSibling as HTMLElement
+                    if (fallback) fallback.style.display = 'flex'
+                  }}
+                />
+                <span className="w-5 h-5 rounded-full bg-accent/15 border border-accent-dim/30 items-center justify-center text-[9px] font-bold text-accent hidden">
+                  {c.login[0].toUpperCase()}
+                </span>
+                <span className="text-xs font-medium text-ink">{c.login}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+    </div>
+  )
+
   const renderContent = () => {
     switch (cat) {
       case 'appearance':
@@ -2750,6 +2820,8 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
         return renderAccessibility()
       case 'advanced':
         return renderAdvanced()
+      case 'credits':
+        return renderCredits()
     }
   }
 
@@ -3024,6 +3096,14 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
           />
         )}
       </AnimatePresence>
+
+      {selectedContributor && (
+        <ContributorPRsModal
+          login={selectedContributor.login}
+          avatarUrl={selectedContributor.avatar_url}
+          onClose={() => setSelectedContributor(null)}
+        />
+      )}
     </div>
   )
 }

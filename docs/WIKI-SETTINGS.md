@@ -10,10 +10,6 @@ In the new UI, Settings has a search box at the top, so you can type a setting n
 
 Changes here apply instantly across the whole app.
 
-### Interface
-
-- **New UI / Classic UI**: switch between the experimental new interface and the classic interface. The new UI is a beta feature; some areas may be unstable. You can switch back anytime.
-
 ### Card layout
 
 - **Card layout**: show the sidebar, views, and titlebar as separate floating rounded cards. Turn it off for a connected layout where everything merges into one surface, like the classic UI.

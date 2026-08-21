@@ -13,7 +13,6 @@ import { api } from '../../../../lib/api'
 import { DiffViewer } from './DiffViewer'
 import { GitResultDialog, parseGitError } from './GitResultDialog'
 import { MergeConflictDialog } from './MergeConflictDialog'
-import { Tooltip } from '../reusables/Tooltip'
 import { useProjectResolutionEpoch } from '../../../../hooks/useProjectResolutionEpoch'
 import {
   IconX,
@@ -563,14 +562,7 @@ export function GitSidebar({ project, gitStatus, onClose, onRefresh }: Props) {
           <div className="flex items-center gap-2">
             <IconGitBranch className="w-4 h-4 text-accent-bright shrink-0" />
             <h3 className="font-display font-semibold truncate">{displayName ?? project.name}</h3>
-            <Tooltip content={t('git_beta_tooltip', { ns: 'common' })} side="bottom">
-              <button
-                onClick={() => window.dispatchEvent(new CustomEvent('app:switch-tab', { detail: 4 }))}
-                className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber/15 text-amber border border-amber/30 hover:bg-amber/25 hover:border-amber/50 cursor-pointer shrink-0 transition-colors"
-              >
-                {t('git_beta_badge', { ns: 'common' })}
-              </button>
-            </Tooltip>
+
           </div>
           {isRepo && currentBranch && (
             <p className="text-[11px] font-mono text-muted mt-0.5 truncate">
