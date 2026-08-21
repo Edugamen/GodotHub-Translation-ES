@@ -28,6 +28,7 @@ import { NewsView } from './views/NewsView'
 import { AssetStoreView } from './views/AssetStoreView'
 import { DashboardView } from './views/DashboardView'
 import { useSettings } from '../../hooks/useSettings'
+import { useUpdateAvailable } from '../../hooks/useUpdateAvailable'
 import { useTauriEvent } from '../../lib/useTauriEvent'
 import { ChangelogBadgeProvider } from '../../hooks/useChangelogBadge'
 import { ScreenReaderAnnouncer } from '../../lib/screenReader'
@@ -106,6 +107,7 @@ export function App() {
   const settingsRef = useRef(settings)
   settingsRef.current = settings
   const paletteKey = settings.command_palette_keybind || 'p'
+  const { setPreviewUpdate } = useUpdateAvailable()
 
   const openProject = useCallback(
     async (projectId: string, withConsole?: boolean) => {
@@ -229,6 +231,18 @@ export function App() {
     paletteKey,
   )
 
+  // Dev preview: Ctrl+Shift+U toggles the update pill
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'U') {
+        e.preventDefault()
+        setPreviewUpdate((prev) => !prev)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [setPreviewUpdate])
+
   useEffect(() => {
     const handleShowGitSidebar = (e: Event) => {
       const detail = (e as CustomEvent).detail as {
@@ -312,6 +326,10 @@ export function App() {
           connected={!cardLayout}
           paletteKey={paletteKey}
           onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+          onOpenUpdatesModal={() => {
+            setUpdatesModalMode('manual')
+            setUpdatesModalOpen(true)
+          }}
         />
 
         <AnimatePresence mode="wait" initial={false}>
