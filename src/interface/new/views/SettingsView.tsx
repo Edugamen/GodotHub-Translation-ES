@@ -103,7 +103,6 @@ const CATEGORIES: CatDef[] = [
   { id: 'integrations', icon: IconPlug },
   { id: 'accessibility', icon: IconUniversalAccess },
   { id: 'advanced', icon: IconFlask },
-  { id: 'credits', icon: IconHeart },
 ]
 
 const DEFAULT_RADIUS = defaultCornerRadius
@@ -2825,7 +2824,7 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
     }
   }
 
-  const activeDef = CATEGORIES.find((c) => c.id === cat)!
+  const activeDef = CATEGORIES.find((c) => c.id === cat)
   const railRefs = useRef<(HTMLButtonElement | null)[]>([])
 
   const handleCatChange = (next: SettingsCat) => {
@@ -2901,9 +2900,13 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
           })}
           {appVersion && (
             <div className="mt-auto pt-6 pl-1">
-              <span className="text-[10px] font-mono text-muted/50 select-none">
+              <button
+                type="button"
+                onClick={() => handleCatChange('credits' as SettingsCat)}
+                className="focus-ring cursor-pointer inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-outline/50 bg-raised/60 hover:bg-raised text-[10px] font-mono text-muted/60 hover:text-muted transition-colors"
+              >
                 {ts('app_version_label', { version: appVersion })}
-              </span>
+              </button>
             </div>
           )}
         </nav>
@@ -2921,9 +2924,11 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
           >
             <div className="min-h-full px-5 pb-4">
               <div className="sticky top-0 z-10 -mx-5 px-5 pt-4 pb-3 bg-raised border-b border-line/60 mb-3 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-tile bg-accent/10 border border-accent-dim/30 flex items-center justify-center shrink-0">
-                  <activeDef.icon className="w-4.5 h-4.5 text-accent-bright" />
-                </div>
+                {activeDef && (
+                  <div className="w-9 h-9 rounded-tile bg-accent/10 border border-accent-dim/30 flex items-center justify-center shrink-0">
+                    <activeDef.icon className="w-4.5 h-4.5 text-accent-bright" />
+                  </div>
+                )}
                 <div className="min-w-0">
                   <h2 className="font-display text-lg font-semibold text-ink leading-tight">
                     {ts(cat)}
