@@ -50,7 +50,6 @@ export function CloneRepoModal({
     settings.open_after_import,
   )
 
-  // Repo browser state
   const [gitAuth, setGitAuth] = useState<GitAuthState | null>(null)
   const [activeTab, setActiveTab] = useState<Tab>('browse')
   const [repos, setRepos] = useState<UserRepoInfo[]>([])
@@ -77,10 +76,8 @@ export function CloneRepoModal({
 
   const repoName = useMemo(() => repoBaseName(url), [url])
 
-  // Determine initial tab based on connected accounts
   useEffect(() => {
     if (connectedProvider && activeTab === 'browse') {
-      // Already on browse, keep it
     } else if (!connectedProvider) {
       setActiveTab('url')
     }
@@ -94,12 +91,10 @@ export function CloneRepoModal({
     }
   }, [activeTab])
 
-  // Fetch git auth state
   useEffect(() => {
     api.gitAuthGetState().then(setGitAuth).catch(() => {})
   }, [])
 
-  // Fetch repos when browse tab is selected and provider is connected
   const fetchRepos = useCallback(async (pageNum: number, append: boolean) => {
     if (!connectedProvider) return
     if (append) {
@@ -269,7 +264,6 @@ export function CloneRepoModal({
           </div>
         </div>
 
-        {/* Tab bar for connected accounts */}
         {connectedProvider && (
           <div className="flex items-center gap-2 px-6 pt-1">
             <button
@@ -291,7 +285,6 @@ export function CloneRepoModal({
 
         <div className="gap-6 p-6 flex-1 overflow-y-auto">
           <div className="md:col-span-3 flex flex-col gap-4">
-            {/* Browse repos tab */}
             {activeTab === 'browse' && connectedProvider && (
               <div className="flex flex-col gap-3">
                 <div className="flex items-center gap-2 px-1">
@@ -402,7 +395,6 @@ export function CloneRepoModal({
                     })
                   )}
 
-                  {/* Load more button */}
                   {!reposLoading && repos.length > 0 && filteredRepos.length > 0 && (
                     <div className="border-t border-line">
                       {reposLoadingMore ? (
@@ -429,7 +421,6 @@ export function CloneRepoModal({
               </div>
             )}
 
-            {/* URL tab (or fallback when no account) */}
             {(activeTab === 'url' || !connectedProvider) && (
               <>
                 {!connectedProvider && (

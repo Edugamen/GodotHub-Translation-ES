@@ -896,6 +896,7 @@ export function GitSidebar({
   })
   const unstagedFiles = changedFiles.filter((f) => {
     const s = f.status
+    if (s === '??') return true
     return s.length > 1 && s[1] !== ' ' && s[1] !== '?'
   })
 

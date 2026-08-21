@@ -856,12 +856,19 @@ fn parse_changed_files(stdout: &str) -> Vec<GitChangedFile> {
         .filter(|l| !l.trim().is_empty())
         .filter_map(|line| {
             let status = line.get(..2)?.to_string();
-            let file_path = line.get(2..)?.trim_start().to_string();
-            if status.trim().is_empty() && file_path.is_empty() {
-                None
-            } else {
-                Some(GitChangedFile { path: file_path, status })
+            let raw_path = line.get(2..)?.trim_start().to_string();
+            if status.trim().is_empty() && raw_path.is_empty() {
+                return None;
             }
+            // Git --porcelain output quotes filenames containing special characters
+            // (spaces, quotes, etc.). Strip the surrounding quotes so downstream
+            // commands receive the actual filesystem path.
+            let file_path = if raw_path.starts_with('"') && raw_path.ends_with('"') && raw_path.len() >= 2 {
+                raw_path[1..raw_path.len() - 1].to_string()
+            } else {
+                raw_path
+            };
+            Some(GitChangedFile { path: file_path, status })
         })
         .collect()
 }

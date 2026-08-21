@@ -99,12 +99,10 @@ pub fn get_activity(app: AppHandle, range: String) -> Vec<(String, u64)> {
                     if start.date_naive() != today {
                         continue;
                     }
-                    // Position in seconds from midnight.
                     let start_secs =
                         start.hour() as u64 * 3600 + start.minute() as u64 * 60 + start.second() as u64;
                     let end_secs = start_secs + s.seconds;
 
-                    // Distribute across every hour bucket the session touches.
                     for h in 0..24u64 {
                         let h_start = h * 3600;
                         let h_end = h_start + 3600;
@@ -316,10 +314,8 @@ pub fn breakdown(
 /// Delete all time-tracking data and reset per-project counters.
 #[tauri::command]
 pub fn clear_time_stats(app: AppHandle) -> Result<(), String> {
-    // Wipe the time_tracking.json store
     write_stats(&app, &TimeStatsStore::default());
 
-    // Reset per-project totals and clear any active session marker
     let mut projects = crate::projects::read_projects(&app);
     let mut changed = false;
     for p in projects.iter_mut() {
