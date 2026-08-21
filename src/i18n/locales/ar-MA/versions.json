@@ -35,7 +35,13 @@
   "mb": "MB",
   "queued": "مُنتظر…",
   "resume_download": "استئنف التنزيل",
-  "pause_download": "أوقف مؤقتا التنزيل",
+  "pause_download": "أوقف التنزيل مؤقتا",
   "cancel_download": "ألغي التنزيل",
-  "installed_label": "مثبت"
+  "installed_label": "مثبت",
+  "original_name": "الأصلي",
+  "source": "المصدر",
+  "source_github": "GitHub",
+  "source_archive": "Godot أرشيف",
+  "open_source_page": "افتح {{source}}",
+  "switch_to_archive": "بدل لأرشيف Godot"
 }
