@@ -21,6 +21,7 @@ import {
   IconPin,
   IconPlay,
   IconPlus,
+  IconTags,
   IconTrash,
   IconX,
 } from '../lib/icons'
@@ -46,6 +47,7 @@ import { ViewHeader } from '../components/reusables/ViewHeader'
 import { CreateProjectModal } from '../components/modals/CreateProjectModal'
 import { CloneRepoModal } from '../components/modals/CloneRepoModal'
 import { ConfirmDialog } from '../components/modals/ConfirmDialog'
+import { CategoryManagerModal } from '../components/modals/CategoryManagerModal'
 
 export function ProjectsView({
   onOpenSettings,
@@ -66,11 +68,12 @@ export function ProjectsView({
     updateTags,
     setCategory,
   } = useProjectsContext()
-  const { categories } = useCategoriesContext()
+  const { categories, create: createCategory, update: updateCategory, remove: removeCategory, reorder: reorderCategories } = useCategoriesContext()
   const { installed } = useGodotVersionsContext()
   const { settings } = useSettings()
   const [createProjectOpen, setCreateProjectOpen] = useState(false)
   const [cloneRepoOpen, setCloneRepoOpen] = useState(false)
+  const [categoryManagerOpen, setCategoryManagerOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
   useEffect(() => {
@@ -122,9 +125,9 @@ export function ProjectsView({
   const [sortBy, setSortBy] = useState<ProjectSortOption>(() => {
     try {
       const raw = localStorage.getItem('godothub_projects_sort_by')
-      if (raw && raw !== 'categories') return raw as ProjectSortOption
+      if (raw) return raw as ProjectSortOption
     } catch {}
-    return 'recent'
+    return settings.categories_enabled ? 'categories' : 'recent'
   })
   const [sortNow, setSortNow] = useState(() => Date.now())
   useEffect(() => {
@@ -426,6 +429,18 @@ export function ProjectsView({
                   .then(() => refresh().catch(() => {}))
               }
             />
+            {settings.categories_enabled && (
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.94 }}
+                onClick={() => setCategoryManagerOpen(true)}
+                aria-label={tc('manage_categories')}
+                className="focus-ring cursor-pointer inline-flex items-center justify-center shadow-md shadow-black/10 border border-outline/50 w-10 h-10 shrink-0 rounded-item bg-overlay text-muted hover:text-ink hover:bg-raised transition-colors"
+              >
+                <IconTags className="w-4 h-4" />
+              </motion.button>
+            )}
           </>
         }
       >
@@ -625,6 +640,8 @@ export function ProjectsView({
           totalCount={projects.length}
           animationThreshold={settings.animation_threshold}
           hasActiveFilters={hasActiveFilters}
+          categories={settings.categories_enabled ? categories : []}
+          categoriesEnabled={settings.categories_enabled && sortBy === 'categories'}
           renderCard={(p) => (
             <ProjectCard
               project={p}
@@ -636,7 +653,7 @@ export function ProjectsView({
               onVersionChange={(tag) => updateVersion(p.id, tag)}
               onRemove={() => remove(p.id, false)}
               onDelete={() => remove(p.id, true)}
-              onCategoryChange={settings.categories_enabled ? (cat) => setCategory(p.id, cat) : undefined}
+              onCategoryChange={settings.categories_enabled && sortBy !== 'categories' ? (cat) => setCategory(p.id, cat) : undefined}
               onTagsSaved={(updated) => updateTags(updated.id, updated.tags)}
               onTagClick={(tag) => setTagFilter((cur) => (cur === tag ? null : tag))}
               onShowGitSidebar={() =>
@@ -679,6 +696,19 @@ export function ProjectsView({
               setCloneRepoOpen(false)
               refresh()
             }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {categoryManagerOpen && (
+          <CategoryManagerModal
+            categories={categories}
+            onClose={() => setCategoryManagerOpen(false)}
+            onCreate={createCategory}
+            onUpdate={updateCategory}
+            onDelete={removeCategory}
+            onReorder={reorderCategories}
           />
         )}
       </AnimatePresence>
