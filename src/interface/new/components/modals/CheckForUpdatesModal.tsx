@@ -27,7 +27,7 @@ interface Props {
   mode?: 'manual' | 'preview'
 }
 
-const PREVIEW_VERSION = '1.3.7'
+const PREVIEW_VERSION = '1.3.8'
 
 const PREVIEW_NOTES = `## What's new in v1.3.7 - The Preview Update
 
