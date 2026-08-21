@@ -3,7 +3,6 @@ import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { IconMore, IconTerminal } from '../../lib/icons'
 import { Dropdown, type NewDropdownItem } from '../ui/Dropdown'
-import { Tooltip } from '../reusables/Tooltip'
 
 const SPRING = { type: 'spring', stiffness: 500, damping: 30 } as const
 
@@ -52,8 +51,7 @@ export function OpenButton({
       </motion.button>
 
       {consoleSupported && (
-        <Tooltip content={t('open_with_console')} side="top">
-          <motion.button
+        <motion.button
             key={consoleEnabled ? 'console-on' : 'console-off'}
             initial={{ scale: 0.9, opacity: 0.6 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -63,6 +61,7 @@ export function OpenButton({
             type="button"
             onClick={() => setConsoleEnabled((v) => !v)}
             aria-label={t('open_with_console')}
+            title={t('open_with_console')}
             aria-pressed={consoleEnabled}
             className={`focus-ring cursor-pointer p-2 h-12 rounded-[4px] font-semibold text-[17px] shadow-md shadow-black/10 border transition-colors duration-200 ${
               consoleEnabled
@@ -74,7 +73,6 @@ export function OpenButton({
               className={`w-4 h-4 ${consoleEnabled ? 'text-mint' : ''}`}
             />
           </motion.button>
-        </Tooltip>
       )}
 
       <Dropdown

@@ -10,7 +10,6 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { useTaskTray, type Task } from '../../../../hooks/useTaskTray'
 import { api } from '../../../../lib/api'
-import { Tooltip } from '../reusables/Tooltip'
 import {
   IconBell,
   IconCheck,
@@ -147,74 +146,69 @@ function TaskItem({ task }: { task: Task }) {
               <span className="flex items-center gap-0.5">
                 {isQueuedGodotDownload && (
                   <>
-                    <Tooltip content={t('download_queue_move_up')} side="top">
-                      <button
+                    <button
                         type="button"
                         onClick={() =>
                           api.reorderDownloadQueue(downloadKey, -1).catch(() => {})
                         }
                         aria-label={t('download_queue_move_up')}
+                        title={t('download_queue_move_up')}
                         className="focus-ring cursor-pointer w-5 h-5 rounded-btn flex items-center justify-center text-muted/50 hover:text-ink hover:bg-raised transition-colors"
                       >
                         <IconChevronUp className="w-3 h-3" />
                       </button>
-                    </Tooltip>
-                    <Tooltip content={t('download_queue_move_down')} side="top">
-                      <button
+                    <button
                         type="button"
                         onClick={() =>
                           api.reorderDownloadQueue(downloadKey, 1).catch(() => {})
                         }
                         aria-label={t('download_queue_move_down')}
+                        title={t('download_queue_move_down')}
                         className="focus-ring cursor-pointer w-5 h-5 rounded-btn flex items-center justify-center text-muted/50 hover:text-ink hover:bg-raised transition-colors"
                       >
                         <IconChevronDown className="w-3 h-3" />
                       </button>
-                    </Tooltip>
                   </>
                 )}
                 {task.status === 'running' && (
-                  <Tooltip content={t('pause_download')} side="top">
                     <button
                       type="button"
                       onClick={() =>
                         api.pauseDownload(downloadKey).catch(() => {})
                       }
                       aria-label={t('pause_download')}
+                      title={t('pause_download')}
                       className="focus-ring cursor-pointer w-5 h-5 rounded-btn flex items-center justify-center text-muted/50 hover:text-ink hover:bg-raised transition-colors"
                     >
                       <IconPause className="w-3 h-3" />
                     </button>
-                  </Tooltip>
                 )}
                 {(task.status === 'paused' || task.status === 'queued') && (
                   <>
                     {task.status === 'paused' && (
-                      <Tooltip content={t('resume_download')} side="top">
                         <button
                           type="button"
                           onClick={() =>
                             api.resumeDownload(downloadKey).catch(() => {})
                           }
                           aria-label={t('resume_download')}
+                          title={t('resume_download')}
                           className="focus-ring cursor-pointer w-5 h-5 rounded-btn flex items-center justify-center text-muted/50 hover:text-mint hover:bg-mint/10 transition-colors"
                         >
                           <IconPlay className="w-3 h-3" />
                         </button>
-                      </Tooltip>
                     )}
-                    <Tooltip content={t('cancel_download')} side="top">
-                      <button
+                    <button
                         type="button"
                         onClick={() =>
                           api.cancelDownload(downloadKey).catch(() => {})
                         }
                         aria-label={t('cancel_download')}
+                        title={t('cancel_download')}
                         className="focus-ring cursor-pointer w-5 h-5 rounded-btn flex items-center justify-center text-muted/50 hover:text-danger hover:bg-danger/10 transition-colors"
                       >
                         <IconX className="w-3 h-3" />
                       </button>
-                    </Tooltip>
                   </>
                 )}
               </span>
@@ -324,16 +318,12 @@ export function TaskTray() {
 
   return (
     <div ref={ref} className="relative mt-1 flex items-stretch shrink-0">
-      <Tooltip
-        content={tooltipContent}
-        delay={200}
-        className="flex items-stretch"
-      >
         <motion.button
           type="button"
           onMouseDown={noDrag}
           onClick={() => setOpen((o) => !o)}
           aria-label={t('task_tray_aria')}
+          title={tooltipContent}
           aria-haspopup="menu"
           aria-expanded={open}
           whileHover={{ scale: 1.08 }}
@@ -356,7 +346,6 @@ export function TaskTray() {
             )}
           </span>
         </motion.button>
-      </Tooltip>
 
       <AnimatePresence>
         {open && (

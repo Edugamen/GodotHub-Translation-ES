@@ -10,7 +10,6 @@ import { useTranslation } from 'react-i18next'
 import { api } from '../../../../lib/api'
 import { useTauriEvent } from '../../../../lib/useTauriEvent'
 import { formatDuration } from '../../lib/duration'
-import { Tooltip } from '../reusables/Tooltip'
 import { IconPlay, IconTerminal, IconX } from '../../lib/icons'
 
 const TIMER_START_DELAY_MS = 3000
@@ -140,11 +139,11 @@ export function RunningProjectsChip() {
             onMouseDown={noDrag}
             className="relative"
           >
-            <Tooltip content={t('running')} side="top">
-              <motion.button
+            <motion.button
                 type="button"
                 onClick={() => setOpen((o) => !o)}
                 aria-label={t('running')}
+                title={t('running')}
                 aria-haspopup="menu"
                 aria-expanded={open}
                 whileHover={{ scale: 1.04 }}
@@ -161,7 +160,6 @@ export function RunningProjectsChip() {
                   {running.length}
                 </span>
               </motion.button>
-            </Tooltip>
 
             <AnimatePresence>
               {open && (
@@ -212,17 +210,16 @@ export function RunningProjectsChip() {
                               {formatDuration(now - p.startedAt)}
                             </p>
                           </div>
-                          <Tooltip content={t('stop')} side="top">
                             <button
                               type="button"
                               role="menuitem"
                               onClick={() => stop(p.id)}
                               aria-label={`${t('stop')} ${p.name}`}
+                              title={t('stop')}
                               className="focus-ring cursor-pointer w-6 h-6 rounded-btn inline-flex items-center justify-center text-muted/50 hover:text-danger hover:bg-danger/10 transition-colors shrink-0"
                             >
                               <IconX className="w-3.5 h-3.5" />
                             </button>
-                          </Tooltip>
                         </motion.div>
                       ))}
                     </AnimatePresence>

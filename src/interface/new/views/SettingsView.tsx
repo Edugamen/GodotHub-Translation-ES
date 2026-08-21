@@ -39,7 +39,6 @@ import {
 import { ColorSwatchPicker } from '../components/ui/ColorSwatchPicker'
 import { OverlayScrollArea } from '../components/reusables/OverlayScrollArea'
 import { DirList } from '../components/reusables/DirList'
-import { Tooltip } from '../components/reusables/Tooltip'
 import { LanguageFlag } from '../components/reusables/LanguageFlag'
 import { KeyRecorder } from '../components/ui/KeyRecorder'
 import { matchesSearch, useSectionSearch } from '../hooks/useSectionSearch'
@@ -1898,10 +1897,10 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
                       {pat.username}
                     </span>
                   </div>
-                  <Tooltip content={ts('git_pat_remove')} side="top">
                     <button
                       type="button"
                       aria-label={ts('git_pat_remove')}
+                      title={ts('git_pat_remove')}
                       onClick={async () => {
                         await api.gitAuthRemovePat(pat.host)
                         await refreshGitAuth()
@@ -1910,7 +1909,6 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
                     >
                       <IconTrash className="w-3.5 h-3.5" />
                     </button>
-                  </Tooltip>
                 </div>
               ))}
             </div>

@@ -5,7 +5,7 @@ import { api } from '../../../../lib/api'
 import { effectiveTotalMs } from '../../../../lib/projectSort'
 import { formatDuration } from '../../lib/duration'
 import { ModalShell } from './ModalShell'
-import { Tooltip } from '../reusables/Tooltip'
+
 import { IconStopwatch, IconClock, IconHistory } from '../../lib/icons'
 
 interface Props {
@@ -158,16 +158,11 @@ export function TimeTrackerModal({ project, onClose }: Props) {
                 return (
                   <div key={key} className="flex-1 flex flex-col items-center gap-1 h-full min-w-0">
                     <div className="flex-1 w-full flex items-end rounded-md overflow-hidden bg-raised">
-                      <Tooltip
-                        content={formatDuration(seconds * 1000)}
-                        side="top"
-                        className="w-full h-full flex items-end"
-                      >
                         <div
-                          className="w-full rounded-t bg-accent/50 hover:bg-accent-bright transition-colors"
+                          title={formatDuration(seconds * 1000)}
+                          className="w-full rounded-t bg-accent/50 hover:bg-accent-bright transition-colors w-full h-full flex items-end"
                           style={{ height: `${pct}%` }}
                         />
-                      </Tooltip>
                     </div>
                     <span className="text-[9px] text-muted/60 shrink-0">
                       {dayLabel(key)}

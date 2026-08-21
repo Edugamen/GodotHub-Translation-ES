@@ -33,7 +33,7 @@ import {
   IconTrash,
   IconX,
 } from '../../lib/icons'
-import { Tooltip } from '../reusables/Tooltip'
+
 import { GitAuthModal } from '../modals/GitAuthModal'
 import { DiffViewerModal } from '../modals/DiffViewerModal'
 import { CommitDetailsModal } from '../modals/CommitDetailsModal'
@@ -76,9 +76,9 @@ function TruncatedPath({ path, deleted = false }: { path: string; deleted?: bool
   )
 
   return truncated ? (
-    <Tooltip content={path} side="top" className="flex-1 min-w-0">
+    <span title={path} className="flex-1 min-w-0">
       {span}
-    </Tooltip>
+    </span>
   ) : (
     <span className="flex-1 min-w-0">{span}</span>
   )
@@ -175,40 +175,37 @@ function ChangedFileRow({
         className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-base/80 rounded-md px-0.5 py-0.5"
       >
         {onStage && (
-          <Tooltip content={stageLabel} side="top">
-            <button
+          <button
               type="button"
               onClick={onStage}
               aria-label={stageLabel}
+              title={stageLabel}
               className="focus-ring cursor-pointer p-1 rounded text-muted/60 hover:text-mint hover:bg-raised transition-colors"
             >
               <IconPlus className="w-3 h-3" />
             </button>
-          </Tooltip>
         )}
         {onUnstage && (
-          <Tooltip content={unstageLabel} side="top">
-            <button
+          <button
               type="button"
               onClick={onUnstage}
               aria-label={unstageLabel}
+              title={unstageLabel}
               className="focus-ring cursor-pointer p-1 rounded text-muted/60 hover:text-amber hover:bg-raised transition-colors"
             >
               <IconChevronUp className="w-3 h-3" />
             </button>
-          </Tooltip>
         )}
         {onDiscard && (
-          <Tooltip content={discardLabel} side="top">
-            <button
+          <button
               type="button"
               onClick={onDiscard}
               aria-label={discardLabel}
+              title={discardLabel}
               className="focus-ring cursor-pointer p-1 rounded text-muted/60 hover:text-danger hover:bg-raised transition-colors"
             >
               <IconTrash className="w-3 h-3" />
             </button>
-          </Tooltip>
         )}
       </div>
     </div>
@@ -1139,12 +1136,6 @@ export function GitSidebar({
               const isActive = remotePhase?.action === key
               const state = isActive ? remotePhase.phase : 'idle'
               return (
-                <Tooltip
-                  key={key}
-                  content={isActive ? t(`${key}ing`) : t(key)}
-                  side="top"
-                  className="flex-1 min-w-0"
-                >
                   <motion.button
                     type="button"
                     onClick={() => void handleRemoteAction(key)}
@@ -1155,7 +1146,8 @@ export function GitSidebar({
                     }}
                     disabled={!!remotePhase}
                     aria-label={t(key)}
-                    className={[
+                    title={isActive ? t(`${key}ing`) : t(key)}
+                    className={["flex-1 min-w-0",
                       'relative w-full h-8 inline-flex items-center justify-center rounded-item border border-outline/50 shadow-md shadow-black/10 select-none focus-ring transition-colors duration-300',
                       state === 'running'
                         ? 'bg-accent text-overlay'
@@ -1192,7 +1184,6 @@ export function GitSidebar({
                       </motion.span>
                     </AnimatePresence>
                   </motion.button>
-                </Tooltip>
               )
             })}
           </motion.div>
@@ -1312,12 +1303,12 @@ export function GitSidebar({
                                 )}
                               </button>
                               {isCurrent && !b.has_upstream && (
-                                <Tooltip content={t('publish_branch')} side="top">
                                   <button
                                     type="button"
                                     onClick={() => void handlePublishBranch(b.name)}
                                     disabled={publishingBranch}
                                     aria-label={t('publish_branch')}
+                                    title={t('publish_branch')}
                                     className="cursor-pointer shrink-0 p-1 mr-1 rounded text-muted/50 hover:text-accent hover:bg-raised transition-colors disabled:opacity-40"
                                   >
                                     <IconArrowUp
@@ -1326,15 +1317,14 @@ export function GitSidebar({
                                       }`}
                                     />
                                   </button>
-                                </Tooltip>
                               )}
                               {!isCurrent && (
-                                <Tooltip content={t('delete_branch')} side="top">
                                   <button
                                     type="button"
                                     onClick={() => void handleDeleteBranch(b.name)}
                                     disabled={!!deletingBranch}
                                     aria-label={t('delete_branch')}
+                                    title={t('delete_branch')}
                                     className={`cursor-pointer shrink-0 p-1 mr-1 rounded transition-colors disabled:opacity-40 ${
                                       b.has_upstream
                                         ? 'text-muted/50 hover:text-danger hover:bg-raised opacity-0 group-hover:opacity-100'
@@ -1349,7 +1339,6 @@ export function GitSidebar({
                                       }`}
                                     />
                                   </button>
-                                </Tooltip>
                               )}
                             </div>
                           )
@@ -1398,25 +1387,24 @@ export function GitSidebar({
                   )}
                 </AnimatePresence>
               </div>
-              <Tooltip content={syncing ? t('syncing') : t('sync')} side="top">
                 <button
                   type="button"
                   onClick={() => void handleSync()}
                   disabled={syncing}
                   aria-label={t('sync')}
+                  title={syncing ? t('syncing') : t('sync')}
                   className="focus-ring cursor-pointer h-full inline-flex items-center justify-center px-3.5 rounded-item border border-outline/50 bg-raised/60 text-muted transition-colors hover:text-accent hover:bg-raised disabled:opacity-50 disabled:cursor-wait"
                 >
                   <IconRefresh className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
                 </button>
-              </Tooltip>
             </div>
 
             <div className="flex flex-col overflow-hidden rounded-item border border-outline/50 bg-base/40">
               {!remotesLoading && remotes.length > 0 && (
-                <Tooltip content={remotes[0].web_url} side="top">
                   <button
                     type="button"
                     onClick={() => void openUrl(remotes[0].web_url).catch(() => {})}
+                    title={remotes[0].web_url}
                     className="focus-ring cursor-pointer w-full flex items-center gap-1.5 px-2.5 py-2 text-left min-w-0 transition-colors hover:bg-raised/60"
                   >
                     <ProviderBadge webUrl={remotes[0].web_url} />
@@ -1425,7 +1413,6 @@ export function GitSidebar({
                     </span>
                     <IconExternalLink className="w-3 h-3 text-muted/40 shrink-0" />
                   </button>
-                </Tooltip>
               )}
               <textarea
                 value={commitMessage}
@@ -1453,10 +1440,10 @@ export function GitSidebar({
                     <span className="text-[9px] font-semibold uppercase tracking-wider text-muted/50 px-1">
                       {r.name}
                     </span>
-                    <Tooltip content={r.web_url} side="top">
                       <button
                         type="button"
                         onClick={() => void openUrl(r.web_url).catch(() => {})}
+                        title={r.web_url}
                         className="focus-ring cursor-pointer w-full flex items-center gap-1.5 px-2.5 py-2 rounded-item border border-line/60 bg-base/40 hover:bg-raised hover:border-accent/40 transition-colors text-left min-w-0"
                       >
                         <IconGitBranch className="w-3 h-3 text-accent shrink-0" />
@@ -1465,26 +1452,21 @@ export function GitSidebar({
                         </span>
                         <IconExternalLink className="w-3 h-3 text-muted/50 shrink-0" />
                       </button>
-                    </Tooltip>
                   </div>
                 ))}
               </div>
             )}
 
-            <Tooltip
-              content={commitMessage.trim() ? t('commit') : tc('git_commit_placeholder')}
-              side="top"
-            >
               <button
                 type="button"
                 onClick={() => void handleCommit()}
                 disabled={!commitMessage.trim() || committing}
+                title={commitMessage.trim() ? t('commit') : tc('git_commit_placeholder')}
                 className="focus-ring cursor-pointer w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-item bg-accent hover:bg-accent-bright disabled:opacity-40 disabled:cursor-not-allowed text-xs font-medium text-white transition-colors"
               >
                 <IconCheck className="w-3.5 h-3.5" />
                 {committing ? t('committing') : t('commit')}
               </button>
-            </Tooltip>
           </motion.div>
 
           {stashes.length > 0 && (
@@ -1527,12 +1509,12 @@ export function GitSidebar({
                       onClick={(e) => e.stopPropagation()}
                       className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-base/80 rounded-md px-0.5 py-0.5"
                     >
-                      <Tooltip content={t('apply_stash')} side="top">
                         <button
                           type="button"
                           onClick={() => void handleStashApply(s.index)}
                           disabled={!!stashBusy}
                           aria-label={t('apply_stash')}
+                          title={t('apply_stash')}
                           className="focus-ring cursor-pointer p-1 rounded text-muted/60 hover:text-mint hover:bg-raised transition-colors disabled:opacity-40 disabled:cursor-wait"
                         >
                           <IconPlay
@@ -1543,13 +1525,12 @@ export function GitSidebar({
                             }`}
                           />
                         </button>
-                      </Tooltip>
-                      <Tooltip content={t('pop_stash')} side="top">
                         <button
                           type="button"
                           onClick={() => void handleStashPop(s.index)}
                           disabled={!!stashBusy}
                           aria-label={t('pop_stash')}
+                          title={t('pop_stash')}
                           className="focus-ring cursor-pointer p-1 rounded text-muted/60 hover:text-amber hover:bg-raised transition-colors disabled:opacity-40 disabled:cursor-wait"
                         >
                           <IconChevronUp
@@ -1560,13 +1541,12 @@ export function GitSidebar({
                             }`}
                           />
                         </button>
-                      </Tooltip>
-                      <Tooltip content={t('drop_stash')} side="top">
                         <button
                           type="button"
                           onClick={() => void handleStashDrop(s.index)}
                           disabled={!!stashBusy}
                           aria-label={t('drop_stash')}
+                          title={t('drop_stash')}
                           className="focus-ring cursor-pointer p-1 rounded text-muted/60 hover:text-danger hover:bg-raised transition-colors disabled:opacity-40 disabled:cursor-wait"
                         >
                           <IconTrash
@@ -1577,7 +1557,6 @@ export function GitSidebar({
                             }`}
                           />
                         </button>
-                      </Tooltip>
                     </div>
                   </div>
                 ))}

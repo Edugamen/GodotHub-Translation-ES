@@ -17,7 +17,7 @@ import { useProjectResolutionEpoch } from '../../../../hooks/useProjectResolutio
 import { ConfirmDialog } from '../modals/ConfirmDialog'
 import { TagManagerModal } from '../modals/TagManagerModal'
 import { Dropdown } from '../ui/Dropdown'
-import { Tooltip } from '../reusables/Tooltip'
+
 import { TimeTrackerModal } from '../modals/TimeTrackerModal'
 import { SaveAsTemplateModal } from '../modals/SaveAsTemplateModal'
 import { OpenButton } from '../reusables/OpenButton'
@@ -316,21 +316,19 @@ export function ProjectCard({
             {displayName}
           </h3>
           {gitStatus?.is_repo && (
-            <Tooltip
-              content={
-                gitStatus.has_uncommitted
-                  ? t('project_git_dirty_tooltip', {
-                      branch: gitStatus.branch ?? 'HEAD',
-                    })
-                  : t('project_git_clean_tooltip', {
-                      branch: gitStatus.branch ?? 'HEAD',
-                    })
-              }
-            >
               <button
                 type="button"
                 onClick={onShowGitSidebar}
                 aria-label={t('git_sidebar')}
+                title={
+                  gitStatus.has_uncommitted
+                    ? t('project_git_dirty_tooltip', {
+                        branch: gitStatus.branch ?? 'HEAD',
+                      })
+                    : t('project_git_clean_tooltip', {
+                        branch: gitStatus.branch ?? 'HEAD',
+                      })
+                }
                 className={`shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-item transition-colors cursor-pointer ${
                   gitStatus.has_uncommitted
                     ? 'bg-amber/10 text-amber'
@@ -339,20 +337,14 @@ export function ProjectCard({
               >
                 <IconGitBranch className="w-3 h-3 shrink-0" />
               </button>
-            </Tooltip>
           )}
           {lastOpenedLabel && (
-            <Tooltip
-              content={t('project_last_opened_tooltip', {
+              <span title={t('project_last_opened_tooltip', {
                 label: lastOpenedFull ?? lastOpenedLabel,
-              })}
-              side="top"
-            >
-              <span className="inline-flex items-center gap-1 pl-1.5 pr-1 py-0.5 rounded-tag font-mono text-[10px] font-medium tracking-tight shrink-0 text-muted">
+              })} className="inline-flex items-center gap-1 pl-1.5 pr-1 py-0.5 rounded-tag font-mono text-[10px] font-medium tracking-tight shrink-0 text-muted">
                 <IconClock className="w-2.5 h-2.5 text-muted/60 shrink-0" />
                 {lastOpenedLabel}
               </span>
-            </Tooltip>
           )}
           {addingTag ? (
             <span
@@ -363,11 +355,11 @@ export function ProjectCard({
               }`}
             >
               {tagError ? (
-                <Tooltip content={tagError} side="top" className="w-16">
                   <input
                     ref={addInputRef}
                     type="text"
                     value={newTagValue}
+                    title={tagError}
                     onChange={(e) => {
                       setNewTagValue(e.target.value)
                       if (tagError) setTagError(null)
@@ -400,7 +392,6 @@ export function ProjectCard({
                     aria-invalid={tagError ? true : undefined}
                     autoFocus
                   />
-                </Tooltip>
               ) : (
                 <input
                   ref={addInputRef}
@@ -451,7 +442,6 @@ export function ProjectCard({
               transition={springTransition}
               className="overflow-hidden inline-flex items-center shrink-0"
             >
-              <Tooltip content={t('add_tag_aria')} side="top">
                 <button
                   type="button"
                   onClick={() => {
@@ -460,11 +450,11 @@ export function ProjectCard({
                     setTagError(null)
                   }}
                   aria-label={t('add_tag_aria')}
+                  title={t('add_tag_aria')}
                   className="focus-ring cursor-pointer inline-flex items-center px-2 py-0.5 rounded-tag text-[10px] font-mono font-medium tracking-tight whitespace-nowrap text-muted hover:text-accent-bright hover:bg-raised transition-colors shrink-0 border border-dashed border-outline/50"
                 >
                   {t('add_tag_aria')}
                 </button>
-              </Tooltip>
             </motion.span>
           )}
           {savingTags && (
@@ -498,11 +488,11 @@ export function ProjectCard({
                       />
                       {isEditing ? (
                         tagError ? (
-                          <Tooltip content={tagError} side="top" className="w-16">
                             <input
                               ref={editInputRef}
                               type="text"
                               value={editTagValue}
+                              title={tagError}
                               onChange={(e) => {
                                 setEditTagValue(e.target.value)
                                 if (tagError) setTagError(null)
@@ -526,7 +516,6 @@ export function ProjectCard({
                               aria-invalid={tagError ? true : undefined}
                               autoFocus
                             />
-                          </Tooltip>
                         ) : (
                           <input
                             ref={editInputRef}
@@ -558,17 +547,15 @@ export function ProjectCard({
                         )
                       ) : (
                         <>
-                          <Tooltip content={t('filter_by_tag')} side="top">
-                            <button
+                          <button
                               type="button"
                               onClick={() => onTagClick?.(tag)}
+                              title={t('filter_by_tag')}
                               className="cursor-pointer hover:brightness-125 transition-[filter] duration-100"
                             >
                               {tag}
                             </button>
-                          </Tooltip>
-                          <Tooltip content={t('tag_rename_aria')} side="top">
-                            <button
+                          <button
                               type="button"
                               onClick={() => {
                                 setEditingTagIndex(index)
@@ -576,62 +563,58 @@ export function ProjectCard({
                                 setTagError(null)
                               }}
                               aria-label={t('tag_rename_aria')}
+                              title={t('tag_rename_aria')}
                               className="focus-ring cursor-pointer opacity-0 group-hover/tag:opacity-100 scale-75 group-hover/tag:scale-100 w-0 group-hover/tag:w-3 h-3 overflow-hidden rounded-full flex items-center justify-center transition-all duration-150 hover:text-ink shrink-0"
                             >
                               <IconPencil className="w-2.5 h-2.5 shrink-0" />
                             </button>
-                          </Tooltip>
-                          <Tooltip content={t('tag_remove_aria', { tag })} side="top">
-                            <button
+                          <button
                               type="button"
                               onClick={() => handleRemoveTag(index)}
                               aria-label={t('tag_remove_aria', { tag })}
+                              title={t('tag_remove_aria', { tag })}
                               className="focus-ring cursor-pointer opacity-0 group-hover/tag:opacity-100 scale-75 group-hover/tag:scale-100 w-0 group-hover/tag:w-3 h-3 overflow-hidden rounded-full flex items-center justify-center transition-all duration-150 hover:text-danger shrink-0"
                             >
                               <IconX className="w-2.5 h-2.5 shrink-0" />
                             </button>
-                          </Tooltip>
                         </>
                       )}
                     </span>
                   )
                 })}
               {!tagsExpanded && project.tags.length > 2 && (
-                <Tooltip content={t('show_more_tags')} side="top">
-                  <button
+                <button
                     type="button"
                     onClick={() => setTagsExpanded(true)}
                     aria-label={t('show_more_tags')}
+                    title={t('show_more_tags')}
                     className="focus-ring cursor-pointer inline-flex items-center px-2 py-0.5 rounded-tag text-[10px] font-mono font-medium tracking-tight text-muted hover:text-ink hover:bg-raised transition-colors shrink-0 border border-dashed border-outline/50"
                   >
                     +{project.tags.length - 2}
                   </button>
-                </Tooltip>
               )}
               {tagsExpanded && project.tags.length > 2 && (
-                <Tooltip content={t('show_fewer_tags')} side="top">
-                  <button
+                <button
                     type="button"
                     onClick={() => setTagsExpanded(false)}
                     aria-label={t('show_fewer_tags')}
+                    title={t('show_fewer_tags')}
                     className="focus-ring cursor-pointer inline-flex items-center px-2 py-0.5 rounded-tag text-[10px] font-mono font-medium tracking-tight text-muted hover:text-ink hover:bg-raised transition-colors shrink-0 border border-dashed border-outline/50"
                   >
                     -{project.tags.length - 2}
                   </button>
-                </Tooltip>
               )}
             </div>
           )}
 
-        <Tooltip content={project.path} side="top" className="w-fit max-w-full">
           <button
             type="button"
             onClick={openFolder}
-            className="block w-fit max-w-full bg-black/15 px-3 py-1 rounded-tag text-[11px] font-mono text-muted truncate hover:text-accent-bright cursor-pointer transition-colors"
+            title={project.path}
+            className="block w-fit max-w-full bg-black/15 px-3 py-1 rounded-tag text-[11px] font-mono text-muted truncate hover:text-accent-bright cursor-pointer transition-colors w-fit max-w-full"
           >
             {project.path}
           </button>
-        </Tooltip>
 
         <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
           <Dropdown
@@ -681,20 +664,17 @@ export function ProjectCard({
             transition={springTransition}
             className="overflow-hidden inline-flex items-center shrink-0"
           >
-            <Tooltip
-              content={
-                project.pinned
-                  ? t('project_unpin_aria')
-                  : t('project_pin_aria')
-              }
-              side="top"
-            >
               <button
                 type="button"
                 onClick={onTogglePin}
                 onFocus={() => setPinFocused(true)}
                 onBlur={() => setPinFocused(false)}
                 aria-label={
+                  project.pinned
+                    ? t('project_unpin_aria')
+                    : t('project_pin_aria')
+                }
+                title={
                   project.pinned
                     ? t('project_unpin_aria')
                     : t('project_pin_aria')
@@ -710,25 +690,20 @@ export function ProjectCard({
                   fill={project.pinned ? 'currentColor' : 'none'}
                 />
               </button>
-            </Tooltip>
           </motion.span>
           {allMs > 0 && (
-            <Tooltip
-              content={t('project_total_time_tooltip', {
-                label: formatDuration(allMs),
-              })}
-              side="top"
-            >
               <button
                 type="button"
                 onClick={() => setTimeTrackerOpen(true)}
                 aria-label={t('time_tracked_title')}
+                title={t('project_total_time_tooltip', {
+                  label: formatDuration(allMs),
+                })}
                 className="focus-ring border border-outline/50 cursor-pointer inline-flex items-center gap-1.5 rounded-btn px-3 py-3 bg-black/10 font-mono text-[10px] text-muted hover:text-ink hover:bg-raised transition-colors shrink-0"
               >
                 <IconStopwatch className="w-3 h-3 text-muted/60 shrink-0" />
                 {formatDuration(allMs)}
               </button>
-            </Tooltip>
           )}
           {categories.length > 0 && onCategoryChange && (
             <Dropdown

@@ -10,7 +10,6 @@ import {
 } from '../../../../i18n/languages'
 import { IconLanguage, IconCheck } from '../../lib/icons'
 import { useSettings } from '../../../../hooks/useSettings'
-import { Tooltip } from '../reusables/Tooltip'
 import { LanguageFlag } from '../reusables/LanguageFlag'
 
 const STATUS_BADGE_CLASS: Record<LanguageStatus, string> = {
@@ -102,16 +101,12 @@ export function LanguageMenu() {
   return (
     <>
       <div ref={ref} className="flex items-stretch shrink-0">
-        <Tooltip
-          content={ts('language_label')}
-          side="bottom"
-          className="flex items-stretch"
-        >
-          <motion.button
+        <motion.button
             type="button"
             onClick={() => setOpen((o) => !o)}
             onMouseDown={noDrag}
             aria-label={ts('language_label')}
+            title={ts('language_label')}
             aria-expanded={open}
             aria-haspopup="menu"
             whileHover={{ scale: 1.08 }}
@@ -121,7 +116,6 @@ export function LanguageMenu() {
           >
             <IconLanguage className="w-4 h-4" />
           </motion.button>
-        </Tooltip>
       </div>
 
       {createPortal(

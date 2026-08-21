@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import type { Project } from '../../../../types'
 import { api } from '../../../../lib/api'
 import { ModalShell } from './ModalShell'
-import { Tooltip } from '../reusables/Tooltip'
+
 import { IconX, IconPlus, IconCheck, IconPencil, IconTags } from '../../lib/icons'
 
 interface Props {
@@ -264,15 +264,14 @@ export function TagManagerModal({ project, onClose, onSaved }: Props) {
                       autoFocus
                     />
                   ) : (
-                    <Tooltip content={t('tag_rename_hint')} side="top" className="flex-1 min-w-0">
-                      <span
-                        className="block text-sm font-medium font-mono cursor-pointer py-1 truncate"
+                    <span
+                        title={t('tag_rename_hint')}
+                        className="block text-sm font-medium font-mono cursor-pointer py-1 truncate flex-1 min-w-0"
                         style={{ color }}
                         onClick={() => startEdit(index)}
                       >
                         {tag}
                       </span>
-                    </Tooltip>
                   )}
 
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

@@ -4,7 +4,6 @@ import type { ComponentType } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IconArrowUp, IconChevronsLeft, IconHouse, IconSearch, IconX } from '../../lib/icons'
 import type { IconProps } from '../../lib/icons'
-import { Tooltip } from '../reusables/Tooltip'
 import { WorkspaceSwitcher } from './WorkspaceSwitcher'
 import { useSettings } from '../../../../hooks/useSettings'
 import { useUpdatesBadge } from '../../../../hooks/useUpdatesBadge'
@@ -195,9 +194,9 @@ export function Sidebar({
       </button>
     )
     return collapsedView ? (
-      <Tooltip key={tab.id} content={tab.label} side="right">
+      <span key={tab.id} title={tab.label} className="contents">
         {btn}
-      </Tooltip>
+      </span>
     ) : (
       btn
     )
@@ -253,27 +252,25 @@ export function Sidebar({
         }`}
       >
         {!collapsed && (
-          <Tooltip content={t('dashboard')} side="right">
-            <button
+          <button
               type="button"
               onClick={() => onTabChange('dashboard')}
+              title={t('dashboard')}
               className="focus-ring cursor-pointer font-display pl-2 font-black text-2xl tracking-tight text-ink/50 hover:text-ink min-w-0 truncate text-left transition-colors"
             >
               GodotHub
             </button>
-          </Tooltip>
         )}
         {collapsed ? (
-          <Tooltip content={t('dashboard')} side="right">
-            <button
+          <button
               type="button"
               onClick={() => onTabChange('dashboard')}
               aria-label={t('dashboard')}
+              title={t('dashboard')}
               className="focus-ring cursor-pointer w-6 h-6 shrink-0 flex items-center justify-center rounded-item text-muted hover:text-ink hover:bg-raised/60 transition-colors"
             >
               <IconHouse className="w-4 h-4" />
             </button>
-          </Tooltip>
         ) : (
           collapseBtn
         )}
@@ -318,7 +315,6 @@ export function Sidebar({
                     {tc('quick_commands')}
                   </span>
                 </button>
-                <Tooltip content={tc('close')} side="top" className="absolute -top-1.5 -right-1.5">
                   <button
                     type="button"
                     onClick={() => {
@@ -331,11 +327,11 @@ export function Sidebar({
                       setPaletteHintDismissed(true)
                     }}
                     aria-label={tc('close')}
-                    className="focus-ring cursor-pointer w-4 h-4 rounded-full bg-raised border border-outline/60 text-muted/60 hover:text-ink hover:border-outline flex items-center justify-center transition-colors"
+                    title={tc('close')}
+                    className="focus-ring cursor-pointer w-4 h-4 rounded-full bg-raised border border-outline/60 text-muted/60 hover:text-ink hover:border-outline flex items-center justify-center transition-colors absolute -top-1.5 -right-1.5"
                   >
                     <IconX className="w-2.5 h-2.5" />
                   </button>
-                </Tooltip>
               </div>
             )}
             {(updateAvailable || previewUpdate) && onOpenUpdatesModal && !collapsed && (
@@ -352,12 +348,12 @@ export function Sidebar({
               </button>
             )}
             {(updateAvailable || previewUpdate) && onOpenUpdatesModal && collapsed && (
-              <Tooltip content="Update available" side="right">
                 <button
                   type="button"
                   onClick={onOpenUpdatesModal}
                   className="focus-ring cursor-pointer w-11 h-11 shrink-0 flex items-center justify-center rounded-item relative text-muted hover:text-ink hover:bg-raised/60 transition-colors"
                   aria-label="Update available"
+                  title="Update available"
                 >
                   <IconArrowUp className="w-4 h-4" />
                   <span className="absolute top-2 right-2 flex w-2 h-2" aria-hidden="true">
@@ -365,7 +361,6 @@ export function Sidebar({
                     <span className="relative inline-flex rounded-full w-2 h-2 bg-accent-bright shadow-[0_0_6px_2px] shadow-accent/50" />
                   </span>
                 </button>
-              </Tooltip>
             )}
             {footerTabs.slice(0, -2).map((tab) =>
               renderTabButton(
@@ -400,9 +395,9 @@ export function Sidebar({
       )}
       </motion.div>
       {collapsed && (
-        <Tooltip content={t('expand_sidebar')} side="right">
+        <span title={t('expand_sidebar')} className="contents">
           {collapseBtn}
-        </Tooltip>
+        </span>
       )}
       {!collapsed && (
       <div
