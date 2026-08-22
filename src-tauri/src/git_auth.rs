@@ -6,7 +6,7 @@ use tauri::{AppHandle, Manager};
 const GITHUB_DEV_CLIENT_ID: &str = "Ov23liu8vbSyRFgs0Ka0";
 const GITLAB_DEV_CLIENT_ID: &str = "e80ad1fc408f647d60484286a65ae370bb7b06fdfd7fc5dc36478542f76529ee";
 
-const GITHUB_SCOPES: &str = "repo read:user";
+const GITHUB_SCOPES: &str = "repo read:user gist";
 const GITLAB_SCOPES: &str = "read_repository write_repository read_user";
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

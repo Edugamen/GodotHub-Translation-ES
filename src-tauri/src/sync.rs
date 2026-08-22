@@ -46,6 +46,33 @@ fn client() -> Result<reqwest::Client, String> {
         .map_err(|e| e.to_string())
 }
 
+fn gist_error_message(status: reqwest::StatusCode, context: &str) -> String {
+    match status.as_u16() {
+        401 => format!(
+            "{context}: GitHub token is invalid or expired. \
+             Go to Settings → Integrations and re-sign in with GitHub."
+        ),
+        403 => format!(
+            "{context}: Forbidden (HTTP 403). Your token may be rate-limited or \
+             missing the required \"gist\" scope. Go to Settings → Integrations, \
+             disconnect GitHub, and re-sign in."
+        ),
+        404 => format!(
+            "{context}: Gist not found (HTTP 404). It may have been deleted on GitHub, \
+             or your token lacks the \"gist\" scope. Re-authorize in Settings → \
+             Integrations, then push a new backup."
+        ),
+        422 => format!(
+            "{context}: GitHub rejected the request (HTTP 422). \
+             The workspace data may be too large for a single gist."
+        ),
+        500..=599 => format!(
+            "{context}: GitHub server error (HTTP {}). Try again later.", status
+        ),
+        _ => format!("{context}: GitHub API returned HTTP {status}"),
+    }
+}
+
 #[derive(Serialize)]
 pub struct GistSyncResult {
     pub gist_url: String,
@@ -86,8 +113,9 @@ async fn create_gist(
         .send()
         .await
         .map_err(|e| e.to_string())?;
-    if !resp.status().is_success() {
-        return Err(format!("GitHub API returned HTTP {}", resp.status()));
+    let status = resp.status();
+    if !status.is_success() {
+        return Err(gist_error_message(status, "Failed to create gist"));
     }
     let g: GistResponse = resp.json().await.map_err(|e| e.to_string())?;
     Ok((g.id, g.html_url))
@@ -110,8 +138,9 @@ async fn update_gist(
         .send()
         .await
         .map_err(|e| e.to_string())?;
-    if !resp.status().is_success() {
-        return Err(format!("GitHub API returned HTTP {}", resp.status()));
+    let status = resp.status();
+    if !status.is_success() {
+        return Err(gist_error_message(status, "Failed to update gist"));
     }
     let g: GistResponse = resp.json().await.map_err(|e| e.to_string())?;
     Ok(g.html_url)
@@ -129,7 +158,10 @@ pub async fn gist_sync_push(app: AppHandle) -> Result<GistSyncResult, String> {
         Some(state) => {
             match update_gist(&client, &token, &state.gist_id, &content).await {
                 Ok(url) => (state.gist_id.clone(), url),
-                Err(_) => create_gist(&client, &token, &content).await?,
+                Err(update_err) => {
+                    eprintln!("Gist update failed ({update_err}), creating a new one...");
+                    create_gist(&client, &token, &content).await?
+                }
             }
         }
         None => create_gist(&client, &token, &content).await?,
@@ -163,8 +195,9 @@ pub async fn gist_sync_pull(app: AppHandle) -> Result<crate::models::AppSettings
         .send()
         .await
         .map_err(|e| e.to_string())?;
-    if !resp.status().is_success() {
-        return Err(format!("GitHub API returned HTTP {}", resp.status()));
+    let status = resp.status();
+    if !status.is_success() {
+        return Err(gist_error_message(status, "Failed to pull gist"));
     }
     let detail: GistDetail = resp.json().await.map_err(|e| e.to_string())?;
     let file = detail
