@@ -23,6 +23,23 @@ export const settingsApi = {
       'gist_sync_push',
     ),
   gistSyncPull: () => invoke<AppSettings>('gist_sync_pull'),
+  gistSyncGetInfo: () =>
+    invoke<{ gist_url: string; gist_id: string; pushed_at: string } | null>(
+      'gist_sync_get_info',
+    ),
+  gistSyncPullByUrl: (gistUrl: string) =>
+    invoke<AppSettings>('gist_sync_pull_by_url', { gistUrl }),
+  gistSyncSaveGistUrl: (gistUrl: string) =>
+    invoke<void>('gist_sync_save_gist_url', { gistUrl }),
+  gistSyncFetchBackup: () =>
+    invoke<{
+      workspace_count: number
+      workspace_names: string[]
+      project_count: number
+      category_count: number
+      template_count: number
+      has_time_stats: boolean
+    }>('gist_sync_fetch_backup'),
   getTimeInsights: () =>
     invoke<TimeInsights>('get_time_insights'),
   resetData: () => invoke<void>('reset_app_data'),

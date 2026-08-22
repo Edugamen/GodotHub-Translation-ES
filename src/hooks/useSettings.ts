@@ -100,6 +100,7 @@ const DEFAULTS: AppSettings = {
   dashboard_section_spans: [],
   dashboard_tall_sections: [],
   dashboard_custom_presets: [],
+  auto_backup_interval_minutes: 0,
 }
 
 interface SettingsContextValue {

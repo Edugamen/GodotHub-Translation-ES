@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -25,6 +25,8 @@ import { Slider } from '../components/ui/Slider'
 import { OverlayScrollArea } from '../components/reusables/OverlayScrollArea'
 import { LanguageFlag } from '../components/reusables/LanguageFlag'
 import { ThemePresetsModal } from '../components/modals/ThemePresetsModal'
+import { RestoreProgressModal } from '../components/modals/RestoreProgressModal'
+import { GitAuthModal } from '../components/modals/GitAuthModal'
 import {
   IconCheck,
   IconCopy,
@@ -405,6 +407,8 @@ export function OnboardingView({
                               })}
                             </div>
                           </div>
+
+                          <OnboardingCloudBackup />
 
                           <div className="grid grid-cols-3 gap-3">
                             <div className="flex flex-col gap-2 p-4 rounded-item bg-overlay border border-outline/50">
@@ -1081,6 +1085,124 @@ export function OnboardingView({
               setPresetModal(null)
             }}
             onClose={() => setPresetModal(null)}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+function OnboardingCloudBackup() {
+  const { t } = useTranslation('onboarding')
+  const { t: ts } = useTranslation('settings')
+  const [gitUser, setGitUser] = useState<string | null>(null)
+  const [gistUrl, setGistUrl] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+  const [showRestoreModal, setShowRestoreModal] = useState(false)
+  const [showGitAuth, setShowGitAuth] = useState(false)
+  const [savedGistUrl, setSavedGistUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    api.gitAuthGetState().then((s) => {
+      if (s.github) setGitUser(s.github.username)
+    })
+    api.gistSyncGetInfo().then((info) => {
+      if (info) setSavedGistUrl(info.gist_url)
+    })
+  }, [])
+
+  const handleConnected = (username: string) => {
+    setGitUser(username)
+    setShowGitAuth(false)
+  }
+
+  const handlePull = async () => {
+    if (!gistUrl.trim()) return
+    setBusy(true)
+    setMsg(null)
+    try {
+      await api.gistSyncSaveGistUrl(gistUrl.trim())
+      setShowRestoreModal(true)
+    } catch (e) {
+      setMsg(String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+        {t('onboard_cloud_heading')}
+      </span>
+      <div className="rounded-item bg-overlay border border-outline/50 p-4 flex flex-col gap-3">
+        <p className="text-[11px] text-muted leading-relaxed">
+          {t('onboard_cloud_desc')}
+        </p>
+        {!gitUser ? (
+          <button
+            type="button"
+            onClick={() => setShowGitAuth(true)}
+            className="focus-ring cursor-pointer self-start inline-flex items-center gap-2 px-4 py-2 rounded-btn bg-overlay border border-outline/50 hover:border-accent-dim hover:bg-raised text-xs font-medium transition-colors"
+          >
+            {t('onboard_cloud_sign_in')}
+          </button>
+        ) : (
+          <div className="flex flex-col gap-2.5">
+            <p className="text-xs text-green flex items-center gap-1.5">
+              <IconCheck className="w-3.5 h-3.5" />
+              {t('onboard_cloud_connected', { username: gitUser })}
+            </p>
+            {savedGistUrl && (
+              <button
+                type="button"
+                onClick={() => setShowRestoreModal(true)}
+                disabled={busy}
+                className="focus-ring cursor-pointer self-start inline-flex items-center gap-2 px-4 py-2 rounded-btn bg-accent hover:bg-accent-bright text-xs font-medium text-white transition-colors disabled:opacity-50"
+              >
+                {ts('sync_pull_btn')}
+              </button>
+            )}
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={gistUrl}
+                onChange={(e) => setGistUrl(e.target.value)}
+                placeholder={ts('sync_manual_placeholder')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handlePull()
+                }}
+                className="focus-ring flex-1 bg-base border border-outline/50 rounded-btn px-3 py-2 text-xs focus:border-accent-dim transition-colors"
+              />
+              <button
+                type="button"
+                onClick={handlePull}
+                disabled={busy || !gistUrl.trim()}
+                className="focus-ring cursor-pointer px-4 py-2 rounded-btn border border-outline/50 hover:border-accent-dim hover:bg-raised text-xs font-medium transition-colors disabled:opacity-50"
+              >
+                {busy ? ts('saving') : ts('sync_manual_pull_btn')}
+              </button>
+            </div>
+          </div>
+        )}
+        {msg && (
+          <p className="text-[11px] text-muted">{msg}</p>
+        )}
+      </div>
+
+      <AnimatePresence>
+        {showRestoreModal && (
+          <RestoreProgressModal onClose={() => setShowRestoreModal(false)} />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showGitAuth && (
+          <GitAuthModal
+            provider="github"
+            onClose={() => setShowGitAuth(false)}
+            onConnected={handleConnected}
           />
         )}
       </AnimatePresence>
