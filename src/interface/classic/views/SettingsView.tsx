@@ -21,7 +21,7 @@ import { ColorSwatchPicker } from '../components/ui/ColorSwatchPicker'
 import { ConfirmDialog } from '../components/modals/ConfirmDialog'
 import { RestoreProgressModal } from '../components/modals/RestoreProgressModal'
 import type { GitAuthState } from '../../../types'
-import { IconSun, IconMoon, IconMonitor, IconHeart, IconBug, IconCheck, IconChevronDown } from '../lib/Icons'
+import { IconSun, IconMoon, IconMonitor, IconHeart, IconBug, IconCheck } from '../lib/Icons'
 import { viewTransition } from '../../../lib/motion'
 import { api } from '../../../lib/api'
 import {
@@ -451,13 +451,13 @@ export function SettingsView({
   const [lastPushedAt, setLastPushedAt] = useState<string | null>(null)
 
   const autoBackupOptions = [
-    { value: 0, label: t('sync_auto_backup_off') },
-    { value: 15, label: t('sync_auto_backup_15m') },
-    { value: 30, label: t('sync_auto_backup_30m') },
-    { value: 60, label: t('sync_auto_backup_1h') },
-    { value: 360, label: t('sync_auto_backup_6h') },
-    { value: 720, label: t('sync_auto_backup_12h') },
-    { value: 1440, label: t('sync_auto_backup_24h') },
+    { value: '0', label: t('sync_auto_backup_off') },
+    { value: '15', label: t('sync_auto_backup_15m') },
+    { value: '30', label: t('sync_auto_backup_30m') },
+    { value: '60', label: t('sync_auto_backup_1h') },
+    { value: '360', label: t('sync_auto_backup_6h') },
+    { value: '720', label: t('sync_auto_backup_12h') },
+    { value: '1440', label: t('sync_auto_backup_24h') },
   ]
 
   // Load stored gist info on mount so the URL survives app data deletion.
@@ -2217,123 +2217,7 @@ export function SettingsView({
         {tab === 'advanced' && (
           <motion.div key="advanced" {...tabEntrance} className="flex flex-col gap-6">
             <div data-section-id="advanced-github-token">
-              <div className="min-w-0">
-                <h3 className="font-display font-semibold">{t('sync_title')}</h3>
-                <p className="text-xs text-muted mt-1.5 leading-relaxed">
-                  {t('sync_desc')}
-                </p>
-                {syncMessage && (
-                  <p className="text-xs text-muted block mt-1.5 wrap-break-word">
-                    {syncMessage}
-                  </p>
-                )}
-                {syncUrl && (
-                  <button
-                    type="button"
-                    onClick={() => openUrl(syncUrl)}
-                    className="focus-ring cursor-pointer mt-1.5 inline-flex items-center gap-1.5 text-xs text-accent-bright hover:underline"
-                  >
-                    {t('sync_open_gist')}
-                  </button>
-                )}
-                {lastPushedAt && (
-                  <p className="text-[11px] text-muted mt-1">
-                    {t('sync_last_pushed', { time: lastPushedAt })}
-                  </p>
-                )}
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <motion.button
-                  whileHover={{ y: -1 }}
-                  whileTap={{ scale: 0.96 }}
-                  onClick={handleSyncPush}
-                  disabled={syncBusy !== null}
-                  className="focus-ring cursor-pointer shrink-0 px-4 py-2.5 rounded-lg border border-line text-muted hover:text-ink hover:bg-raised text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {syncBusy === 'push' ? t('saving') : t('sync_push_btn')}
-                </motion.button>
-                <motion.button
-                  whileHover={{ y: -1 }}
-                  whileTap={{ scale: 0.96 }}
-                  onClick={handleSyncPull}
-                  disabled={syncBusy !== null}
-                  className="focus-ring cursor-pointer shrink-0 px-4 py-2.5 rounded-lg bg-accent hover:bg-accent-bright text-sm font-medium text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {syncBusy === 'pull' ? t('saving') : t('sync_pull_btn')}
-                </motion.button>
-              </div>
-            </div>
-            <div className="border-t border-line pt-4 mt-4">
-              <p className="text-xs text-muted mb-2">
-                {t('sync_manual_hint')}
-              </p>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={manualGistUrl}
-                  onChange={(e) => setManualGistUrl(e.target.value)}
-                  placeholder={t('sync_manual_placeholder')}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleManualPull()
-                  }}
-                  className="focus-ring flex-1 bg-base border border-line rounded-lg px-3 py-2 text-xs focus:border-accent-dim transition-colors"
-                />
-                <motion.button
-                  whileHover={{ y: -1 }}
-                  whileTap={{ scale: 0.96 }}
-                  onClick={handleManualPull}
-                  disabled={manualPullBusy || !manualGistUrl.trim()}
-                  className="focus-ring cursor-pointer shrink-0 px-4 py-2 rounded-lg border border-line text-muted hover:text-ink hover:bg-raised text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {manualPullBusy ? t('saving') : t('sync_manual_pull_btn')}
-                </motion.button>
-              </div>
-            </div>
-            <div className="border-t border-line pt-4 mt-4">
-              <div className="flex items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="text-xs font-medium">
-                    {t('sync_auto_backup_label')}
-                  </p>
-                  <p className="text-xs text-muted mt-1 leading-relaxed">
-                    {t('sync_auto_backup_desc')}
-                  </p>
-                  {lastAutoBackup && (
-                    <p className="text-[11px] text-muted mt-1">
-                      {t('sync_auto_backup_last', { time: lastAutoBackup })}
-                    </p>
-                  )}
-                </div>
-                <Dropdown
-                  align="right"
-                  compact
-                  trigger={({ open, toggle }) => (
-                    <motion.button
-                      whileHover={{ y: -1 }}
-                      whileTap={{ scale: 0.96 }}
-                      type="button"
-                      onClick={toggle}
-                      className="focus-ring cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg border border-line bg-base hover:border-accent-dim text-xs font-medium transition-colors"
-                    >
-                      {autoBackupOptions.find(
-                        (o) => o.value === current.auto_backup_interval_minutes,
-                      )?.label ?? t('sync_auto_backup_off')}
-                      <IconChevronDown
-                        className={`w-3 h-3 text-muted transition-transform ${open ? 'rotate-180' : ''}`}
-                      />
-                    </motion.button>
-                  )}
-                  items={autoBackupOptions.map((o) => ({
-                    key: String(o.value),
-                    label: o.label,
-                    active: current.auto_backup_interval_minutes === o.value,
-                    onClick: () => setField('auto_backup_interval_minutes', o.value),
-                  }))}
-                />
-              </div>
-            </div>
-
-            <SectionCard
+              <SectionCard
               title={t('github_token_title')}
               description={t('github_token_desc')}
             >
@@ -2493,30 +2377,10 @@ export function SettingsView({
                   )}
                 </div>
                 <Dropdown
-                  align="right"
-                  compact
-                  trigger={({ open, toggle }) => (
-                    <motion.button
-                      whileHover={{ y: -1 }}
-                      whileTap={{ scale: 0.96 }}
-                      type="button"
-                      onClick={toggle}
-                      className="focus-ring cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg border border-line bg-base hover:border-accent-dim text-xs font-medium transition-colors"
-                    >
-                      {autoBackupOptions.find(
-                        (o) => o.value === current.auto_backup_interval_minutes,
-                      )?.label ?? t('sync_auto_backup_off')}
-                      <IconChevronDown
-                        className={`w-3 h-3 text-muted transition-transform ${open ? 'rotate-180' : ''}`}
-                      />
-                    </motion.button>
-                  )}
-                  items={autoBackupOptions.map((o) => ({
-                    key: String(o.value),
-                    label: o.label,
-                    active: current.auto_backup_interval_minutes === o.value,
-                    onClick: () => setField('auto_backup_interval_minutes', o.value),
-                  }))}
+                  value={String(current.auto_backup_interval_minutes)}
+                  options={autoBackupOptions}
+                  onChange={(v) => setField('auto_backup_interval_minutes', Number(v))}
+                  className="w-40"
                 />
               </div>
             </div>
