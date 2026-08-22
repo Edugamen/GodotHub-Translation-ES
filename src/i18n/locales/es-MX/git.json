@@ -149,5 +149,6 @@
   "unstage_file": "Unstage file",
   "open_commit_on_github": "Open commit on GitHub",
   "open_commit_details": "View commit details",
-  "auth_connected_accounts": "Connected accounts"
+  "auth_connected_accounts": "Connected accounts",
+  "auth_connect_hint": "Connect to your desired git host to begin, or use SSH without connecting anything."
 }

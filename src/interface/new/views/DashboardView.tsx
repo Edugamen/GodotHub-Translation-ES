@@ -113,7 +113,6 @@ function Section({
             type="button"
             onClick={onTitleClick}
             aria-label={titleHint}
-            title={titleHint}
             className="focus-ring group/title flex items-center gap-1.5 cursor-pointer rounded-btn -mx-1 px-1 py-0.5 transition-colors hover:text-ink"
           >
             <h2 className="text-xs font-semibold uppercase tracking-wider text-muted group-hover/title:text-ink transition-colors">
@@ -177,7 +176,6 @@ function TileEditControls({
           onClick={() => onMove(-1)}
           disabled={index === 0}
           aria-label={tc('dashboard_tile_move_up')}
-          title={tc('dashboard_tile_move_up')}
           className={`${btnClass} disabled:opacity-30 disabled:cursor-not-allowed`}
         >
           <IconChevronUp className="w-3 h-3" />
@@ -187,7 +185,6 @@ function TileEditControls({
           onClick={() => onMove(1)}
           disabled={index === total - 1}
           aria-label={tc('dashboard_tile_move_down')}
-          title={tc('dashboard_tile_move_down')}
           className={`${btnClass} disabled:opacity-30 disabled:cursor-not-allowed`}
         >
           <IconChevronDown className="w-3 h-3" />
@@ -197,7 +194,6 @@ function TileEditControls({
             type="button"
             onClick={onToggleSpan}
             aria-label={tc(spanning ? 'dashboard_tile_span_off' : 'dashboard_tile_span')}
-            title={tc(spanning ? 'dashboard_tile_span_off' : 'dashboard_tile_span')}
             aria-pressed={spanning}
             className={spanning ? activeBtnClass : btnClass}
           >
@@ -209,7 +205,6 @@ function TileEditControls({
             type="button"
             onClick={onToggleTall}
             aria-label={tc(tall ? 'dashboard_tile_tall_off' : 'dashboard_tile_tall')}
-            title={tc(tall ? 'dashboard_tile_tall_off' : 'dashboard_tile_tall')}
             aria-pressed={tall}
             className={tall ? activeBtnClass : btnClass}
           >
@@ -220,7 +215,6 @@ function TileEditControls({
           type="button"
           onClick={onRemove}
           aria-label={tc('dashboard_tile_remove')}
-          title={tc('dashboard_tile_remove')}
           className="focus-ring cursor-pointer p-1 rounded-btn text-muted/50 hover:text-danger hover:bg-danger/10 transition-colors"
         >
           <IconX className="w-3 h-3" />
@@ -518,7 +512,7 @@ function ActivityChart({
   tall?: boolean
   active?: boolean
 }) {
-  const { t: tc } = useTranslation('common')
+  const { t: tc } = useTranslation('dashboard')
   const { settings } = useSettings()
   const [data, setData] = useState<[string, number][]>([])
   const [loading, setLoading] = useState(true)
@@ -1052,7 +1046,6 @@ function RunningNow({
                   type="button"
                   onClick={() => onStop(p.id)}
                   aria-label={`${tc('stop')} ${p.name}`}
-                  title={tc('stop')}
                   className="focus-ring cursor-pointer w-6 h-6 rounded-btn inline-flex items-center justify-center text-muted/50 hover:text-danger hover:bg-danger/10 transition-colors shrink-0"
                 >
                   <IconX className="w-3.5 h-3.5" />
@@ -1476,7 +1469,6 @@ export function DashboardView({
                         type="button"
                         whileTap={{ scale: 0.92 }}
                         onClick={() => openEngine(v.tag)}
-                        title={tc('version_open_btn')}
                         className="focus-ring cursor-pointer p-1.5 rounded-btn text-muted/60 hover:text-ink hover:bg-raised transition-colors"
                       >
                         <IconTerminal className="w-3.5 h-3.5" />
@@ -1527,7 +1519,6 @@ export function DashboardView({
                     whileTap={{ scale: 0.92 }}
                     onClick={commitName}
                     aria-label={tc('dashboard_rename_save')}
-                    title={tc('dashboard_rename_save')}
                     className="focus-ring cursor-pointer p-1.5 rounded-btn text-accent hover:bg-accent/10 transition-colors"
                   >
                     <IconCheck className="w-4 h-4" />
@@ -1537,7 +1528,6 @@ export function DashboardView({
                     whileTap={{ scale: 0.92 }}
                     onClick={cancelNameEdit}
                     aria-label={tc('cancel')}
-                    title={tc('cancel')}
                     className="focus-ring cursor-pointer p-1.5 rounded-btn text-muted/60 hover:text-ink hover:bg-raised transition-colors"
                   >
                     <IconX className="w-4 h-4" />
@@ -1562,7 +1552,6 @@ export function DashboardView({
                     type="button"
                     onClick={startEditingName}
                     aria-label={tc('dashboard_rename_aria')}
-                    title={tc('dashboard_rename_hint')}
                     className="focus-ring cursor-pointer p-1.5 rounded-btn text-muted/40 hover:text-ink hover:bg-raised shrink-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150"
                   >
                     <IconPencil className="w-3.5 h-3.5" />
@@ -1574,7 +1563,6 @@ export function DashboardView({
                         update({ ...settings, dashboard_custom_name: null })
                       }
                       aria-label={tc('dashboard_rename_reset')}
-                      title={tc('dashboard_rename_reset')}
                       className="focus-ring cursor-pointer p-1.5 rounded-btn text-muted/40 hover:text-danger hover:bg-danger/10 shrink-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150"
                     >
                       <IconX className="w-3.5 h-3.5" />
@@ -1605,7 +1593,6 @@ export function DashboardView({
                 whileTap={{ scale: 0.94 }}
                 onClick={() => setEditingTiles((v) => !v)}
                 aria-label={tc(editingTiles ? 'dashboard_done_customizing' : 'dashboard_customize')}
-                title={editingTiles ? tc('dashboard_done_customizing') : tc('dashboard_customize')}
                 className={`focus-ring cursor-pointer flex items-center gap-1.5 h-11 px-5 rounded-item text-sm font-semibold border transition-colors ${
                   editingTiles
                     ? 'bg-accent text-ink border-outline/50'
@@ -1653,7 +1640,6 @@ export function DashboardView({
                             update({ ...settings, ...next })
                           }}
                           aria-pressed={active}
-                          title={tc(preset.descriptionKey)}
                           className={`focus-ring cursor-pointer flex items-center gap-1.5 px-3 h-8 rounded-btn text-xs font-semibold border transition-colors ${
                             active
                               ? 'bg-accent text-ink border-outline/50'
@@ -1712,7 +1698,6 @@ export function DashboardView({
                               type="button"
                               onClick={() => removePreset(preset.id)}
                               aria-label={tc('dashboard_preset_delete')}
-                              title={tc('dashboard_preset_delete')}
                               className="focus-ring cursor-pointer p-1.5 rounded-btn text-muted/50 hover:text-danger hover:bg-danger/10 transition-colors"
                             >
                               <IconX className="w-3 h-3" />

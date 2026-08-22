@@ -37,7 +37,7 @@
 </p>
 
 > [!WARNING]
-> This app has only been tested on **Windows**, **Arch Linux (Hyprland) / Fedora 44**, and the **newest macOS version** (thanks to a contributor). I can't guarantee how it behaves on other Linux distros, and I don't have a Mac to test on personally. Found a bug? [Open an issue](https://github.com/RykoTheDev/godothub/issues), or reach out if you'd like to help with cross-platform testing.
+> This app has only been tested on **Windows**, **Arch Linux (Hyprland) / Fedora 43 (Gnome)**, and the **newest macOS version** (thanks to a contributor). I can't guarantee how it behaves on other Linux distros, and I don't have a Mac to test on personally. Found a bug? [Open an issue](https://github.com/RykoTheDev/godothub/issues), or reach out if you'd like to help with cross-platform testing.
 >
 > On Linux, AppImage doesn't work for most distros right now. It's an upstream `linuxdeploy` issue that affects nearly all Tauri apps, so it's not something I can fix on my end. I'll update as soon as a fix lands upstream.
 

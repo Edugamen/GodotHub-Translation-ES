@@ -143,7 +143,6 @@ export function RunningProjectsChip() {
                 type="button"
                 onClick={() => setOpen((o) => !o)}
                 aria-label={t('running')}
-                title={t('running')}
                 aria-haspopup="menu"
                 aria-expanded={open}
                 whileHover={{ scale: 1.04 }}
@@ -215,7 +214,6 @@ export function RunningProjectsChip() {
                               role="menuitem"
                               onClick={() => stop(p.id)}
                               aria-label={`${t('stop')} ${p.name}`}
-                              title={t('stop')}
                               className="focus-ring cursor-pointer w-6 h-6 rounded-btn inline-flex items-center justify-center text-muted/50 hover:text-danger hover:bg-danger/10 transition-colors shrink-0"
                             >
                               <IconX className="w-3.5 h-3.5" />

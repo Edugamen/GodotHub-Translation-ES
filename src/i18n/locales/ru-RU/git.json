@@ -144,5 +144,6 @@
   "auth_connected_accounts": "Connected accounts",
   "auth_not_signed_in": "Not signed in",
   "auth_sign_in": "Sign in",
-  "auth_disconnect": "Disconnect"
+  "auth_disconnect": "Disconnect",
+  "auth_connect_hint": "Connect to your desired git host to begin, or use SSH without connecting anything."
 }

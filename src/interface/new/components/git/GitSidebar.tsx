@@ -39,6 +39,7 @@ import { DiffViewerModal } from '../modals/DiffViewerModal'
 import { CommitDetailsModal } from '../modals/CommitDetailsModal'
 import { ConfirmDialog } from '../modals/ConfirmDialog'
 import { CommitGraph } from './CommitGraph'
+import { Tooltip } from '../reusables/Tooltip'
 
 interface Props {
   project: Project
@@ -75,8 +76,7 @@ function TruncatedPath({ path, deleted = false }: { path: string; deleted?: bool
     </span>
   )
 
-  return truncated ? (
-    <span title={path} className="flex-1 min-w-0">
+  return truncated ? (              <span className="flex-1 min-w-0">
       {span}
     </span>
   ) : (
@@ -175,37 +175,40 @@ function ChangedFileRow({
         className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-base/80 rounded-md px-0.5 py-0.5"
       >
         {onStage && (
+          <Tooltip content={stageLabel}>
           <button
               type="button"
               onClick={onStage}
               aria-label={stageLabel}
-              title={stageLabel}
               className="focus-ring cursor-pointer p-1 rounded text-muted/60 hover:text-mint hover:bg-raised transition-colors"
             >
               <IconPlus className="w-3 h-3" />
             </button>
+          </Tooltip>
         )}
         {onUnstage && (
+          <Tooltip content={unstageLabel}>
           <button
               type="button"
               onClick={onUnstage}
               aria-label={unstageLabel}
-              title={unstageLabel}
               className="focus-ring cursor-pointer p-1 rounded text-muted/60 hover:text-amber hover:bg-raised transition-colors"
             >
               <IconChevronUp className="w-3 h-3" />
             </button>
+          </Tooltip>
         )}
         {onDiscard && (
+          <Tooltip content={discardLabel}>
           <button
               type="button"
               onClick={onDiscard}
               aria-label={discardLabel}
-              title={discardLabel}
               className="focus-ring cursor-pointer p-1 rounded text-muted/60 hover:text-danger hover:bg-raised transition-colors"
             >
               <IconTrash className="w-3 h-3" />
             </button>
+          </Tooltip>
         )}
       </div>
     </div>
@@ -215,20 +218,37 @@ function ChangedFileRow({
 function Section({
   title,
   count,
+  storageKey,
   onContextMenu,
   children,
 }: {
   title: string
   count?: number
+  storageKey?: string
   onContextMenu?: (e: React.MouseEvent) => void
   children: ReactNode
 }) {
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(() => {
+    if (!storageKey) return true
+    try {
+      return localStorage.getItem(storageKey) !== '0'
+    } catch {
+      return true
+    }
+  })
+  const toggle = () => setOpen((v) => {
+    if (storageKey) {
+      try {
+        localStorage.setItem(storageKey, v ? '0' : '1')
+      } catch {}
+    }
+    return !v
+  })
   return (
     <div className="flex flex-col gap-1.5">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggle}
         onContextMenu={onContextMenu}
         aria-expanded={open}
         className="focus-ring cursor-pointer w-full flex items-center gap-1.5 px-1 py-1 rounded-item text-left hover:bg-raised/60 transition-colors group"
@@ -944,92 +964,61 @@ export function GitSidebar({
             <Section
               title={t('auth_connected_accounts')}
               count={connectedCount}
+              storageKey="git-sidebar-connected-accounts"
             >
+            {connectedCount === 0 ? (
+              <div className="px-2.5 py-3">
+                <p className="text-[11px] text-muted/60 leading-relaxed">
+                  {t('auth_connect_hint')}
+                </p>
+              </div>
+            ) : (
+            <>
+            {gitAuth?.github && (
             <div className="flex items-center justify-between gap-2 px-2.5 py-2 rounded-item border border-line/60 bg-base/40">
               <div className="flex items-center gap-2 min-w-0">
-                <span
-                  className={`w-7 h-7 rounded-item flex items-center justify-center shrink-0 border ${
-                    gitAuth?.github
-                      ? 'bg-mint/10 border-mint/30 text-mint'
-                      : 'bg-raised border-outline/50 text-muted/50'
-                  }`}
-                >
+                <span className="w-7 h-7 rounded-item flex items-center justify-center shrink-0 border bg-mint/10 border-mint/30 text-mint">
                   <IconGitBranch className="w-3.5 h-3.5" />
                 </span>
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-ink">GitHub</p>
-                  {gitAuth?.github ? (
-                    <p className="text-[10px] font-mono text-muted truncate">
-                      @{gitAuth.github.username}
-                    </p>
-                  ) : (
-                    <p className="text-[10px] text-muted/50">
-                      {t('auth_not_signed_in')}
-                    </p>
-                  )}
+                  <p className="text-[10px] font-mono text-muted truncate">
+                    @{gitAuth.github.username}
+                  </p>
                 </div>
               </div>
-              {gitAuth?.github ? (
-                <button
-                  type="button"
-                  onClick={() => handleDisconnect('github')}
-                  className="focus-ring cursor-pointer inline-flex items-center gap-1 px-2 py-1 rounded-tag text-[10px] font-medium text-muted hover:text-danger hover:bg-danger/10 transition-colors shrink-0"
-                >
-                  {t('auth_disconnect')}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setGitAuthFlow('github')}
-                  className="focus-ring cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 rounded-tag text-[10px] font-medium text-white bg-accent hover:bg-accent-bright transition-colors shrink-0"
-                >
-                  {t('auth_sign_in')}
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => handleDisconnect('github')}
+                className="focus-ring cursor-pointer inline-flex items-center gap-1 px-2 py-1 rounded-tag text-[10px] font-medium text-muted hover:text-danger hover:bg-danger/10 transition-colors shrink-0"
+              >
+                {t('auth_disconnect')}
+              </button>
             </div>
+            )}
 
+            {gitAuth?.gitlab && (
             <div className="flex items-center justify-between gap-2 px-2.5 py-2 rounded-item border border-line/60 bg-base/40">
               <div className="flex items-center gap-2 min-w-0">
-                <span
-                  className={`w-7 h-7 rounded-item flex items-center justify-center shrink-0 border ${
-                    gitAuth?.gitlab
-                      ? 'bg-mint/10 border-mint/30 text-mint'
-                      : 'bg-raised border-outline/50 text-muted/50'
-                  }`}
-                >
+                <span className="w-7 h-7 rounded-item flex items-center justify-center shrink-0 border bg-mint/10 border-mint/30 text-mint">
                   <IconGitBranch className="w-3.5 h-3.5" />
                 </span>
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-ink">GitLab</p>
-                  {gitAuth?.gitlab ? (
-                    <p className="text-[10px] font-mono text-muted truncate">
-                      @{gitAuth.gitlab.username}
-                    </p>
-                  ) : (
-                    <p className="text-[10px] text-muted/50">
-                      {t('auth_not_signed_in')}
-                    </p>
-                  )}
+                  <p className="text-[10px] font-mono text-muted truncate">
+                    @{gitAuth.gitlab.username}
+                  </p>
                 </div>
               </div>
-              {gitAuth?.gitlab ? (
-                <button
-                  type="button"
-                  onClick={() => handleDisconnect('gitlab')}
-                  className="focus-ring cursor-pointer inline-flex items-center gap-1 px-2 py-1 rounded-tag text-[10px] font-medium text-muted hover:text-danger hover:bg-danger/10 transition-colors shrink-0"
-                >
-                  {t('auth_disconnect')}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setGitAuthFlow('gitlab')}
-                  className="focus-ring cursor-pointer inline-flex items-center gap-1 px-2.5 py-1 rounded-tag text-[10px] font-medium text-white bg-accent hover:bg-accent-bright transition-colors shrink-0"
-                >
-                  {t('auth_sign_in')}
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => handleDisconnect('gitlab')}
+                className="focus-ring cursor-pointer inline-flex items-center gap-1 px-2 py-1 rounded-tag text-[10px] font-medium text-muted hover:text-danger hover:bg-danger/10 transition-colors shrink-0"
+              >
+                {t('auth_disconnect')}
+              </button>
             </div>
+            )}
 
             {(gitAuth?.pats ?? []).length > 0 && (
               <div className="flex flex-col gap-1 px-1 pt-1">
@@ -1048,6 +1037,8 @@ export function GitSidebar({
                   </div>
                 ))}
               </div>
+            )}
+            </>
             )}
             </Section>
           </motion.div>
@@ -1136,6 +1127,7 @@ export function GitSidebar({
               const isActive = remotePhase?.action === key
               const state = isActive ? remotePhase.phase : 'idle'
               return (
+                  <Tooltip content={isActive ? t(`${key}ing`) : t(key)} className="flex-1 min-w-0">
                   <motion.button
                     type="button"
                     onClick={() => void handleRemoteAction(key)}
@@ -1146,8 +1138,7 @@ export function GitSidebar({
                     }}
                     disabled={!!remotePhase}
                     aria-label={t(key)}
-                    title={isActive ? t(`${key}ing`) : t(key)}
-                    className={["flex-1 min-w-0",
+                    className={["w-full",
                       'relative w-full h-8 inline-flex items-center justify-center rounded-item border border-outline/50 shadow-md shadow-black/10 select-none focus-ring transition-colors duration-300',
                       state === 'running'
                         ? 'bg-accent text-overlay'
@@ -1184,6 +1175,7 @@ export function GitSidebar({
                       </motion.span>
                     </AnimatePresence>
                   </motion.button>
+                  </Tooltip>
               )
             })}
           </motion.div>
@@ -1303,12 +1295,12 @@ export function GitSidebar({
                                 )}
                               </button>
                               {isCurrent && !b.has_upstream && (
+                                  <Tooltip content={t('publish_branch')}>
                                   <button
                                     type="button"
                                     onClick={() => void handlePublishBranch(b.name)}
                                     disabled={publishingBranch}
                                     aria-label={t('publish_branch')}
-                                    title={t('publish_branch')}
                                     className="cursor-pointer shrink-0 p-1 mr-1 rounded text-muted/50 hover:text-accent hover:bg-raised transition-colors disabled:opacity-40"
                                   >
                                     <IconArrowUp
@@ -1317,14 +1309,15 @@ export function GitSidebar({
                                       }`}
                                     />
                                   </button>
+                                  </Tooltip>
                               )}
                               {!isCurrent && (
+                                  <Tooltip content={t('delete_branch')}>
                                   <button
                                     type="button"
                                     onClick={() => void handleDeleteBranch(b.name)}
                                     disabled={!!deletingBranch}
                                     aria-label={t('delete_branch')}
-                                    title={t('delete_branch')}
                                     className={`cursor-pointer shrink-0 p-1 mr-1 rounded transition-colors disabled:opacity-40 ${
                                       b.has_upstream
                                         ? 'text-muted/50 hover:text-danger hover:bg-raised opacity-0 group-hover:opacity-100'
@@ -1339,6 +1332,7 @@ export function GitSidebar({
                                       }`}
                                     />
                                   </button>
+                                  </Tooltip>
                               )}
                             </div>
                           )
@@ -1387,16 +1381,17 @@ export function GitSidebar({
                   )}
                 </AnimatePresence>
               </div>
+                <Tooltip content={syncing ? t('syncing') : t('sync')}>
                 <button
                   type="button"
                   onClick={() => void handleSync()}
                   disabled={syncing}
                   aria-label={t('sync')}
-                  title={syncing ? t('syncing') : t('sync')}
                   className="focus-ring cursor-pointer h-full inline-flex items-center justify-center px-3.5 rounded-item border border-outline/50 bg-raised/60 text-muted transition-colors hover:text-accent hover:bg-raised disabled:opacity-50 disabled:cursor-wait"
                 >
                   <IconRefresh className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
                 </button>
+                </Tooltip>
             </div>
 
             <div className="flex flex-col overflow-hidden rounded-item border border-outline/50 bg-base/40">
@@ -1457,16 +1452,17 @@ export function GitSidebar({
               </div>
             )}
 
+              <Tooltip content={commitMessage.trim() ? t('commit') : tc('git_commit_placeholder')} side="top">
               <button
                 type="button"
                 onClick={() => void handleCommit()}
                 disabled={!commitMessage.trim() || committing}
-                title={commitMessage.trim() ? t('commit') : tc('git_commit_placeholder')}
                 className="focus-ring cursor-pointer w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-item bg-accent hover:bg-accent-bright disabled:opacity-40 disabled:cursor-not-allowed text-xs font-medium text-white transition-colors"
               >
                 <IconCheck className="w-3.5 h-3.5" />
                 {committing ? t('committing') : t('commit')}
               </button>
+              </Tooltip>
           </motion.div>
 
           {stashes.length > 0 && (
@@ -1509,12 +1505,12 @@ export function GitSidebar({
                       onClick={(e) => e.stopPropagation()}
                       className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-base/80 rounded-md px-0.5 py-0.5"
                     >
+                        <Tooltip content={t('apply_stash')}>
                         <button
                           type="button"
                           onClick={() => void handleStashApply(s.index)}
                           disabled={!!stashBusy}
                           aria-label={t('apply_stash')}
-                          title={t('apply_stash')}
                           className="focus-ring cursor-pointer p-1 rounded text-muted/60 hover:text-mint hover:bg-raised transition-colors disabled:opacity-40 disabled:cursor-wait"
                         >
                           <IconPlay
@@ -1525,12 +1521,13 @@ export function GitSidebar({
                             }`}
                           />
                         </button>
+                        </Tooltip>
+                        <Tooltip content={t('pop_stash')}>
                         <button
                           type="button"
                           onClick={() => void handleStashPop(s.index)}
                           disabled={!!stashBusy}
                           aria-label={t('pop_stash')}
-                          title={t('pop_stash')}
                           className="focus-ring cursor-pointer p-1 rounded text-muted/60 hover:text-amber hover:bg-raised transition-colors disabled:opacity-40 disabled:cursor-wait"
                         >
                           <IconChevronUp
@@ -1541,12 +1538,13 @@ export function GitSidebar({
                             }`}
                           />
                         </button>
+                        </Tooltip>
+                        <Tooltip content={t('drop_stash')}>
                         <button
                           type="button"
                           onClick={() => void handleStashDrop(s.index)}
                           disabled={!!stashBusy}
                           aria-label={t('drop_stash')}
-                          title={t('drop_stash')}
                           className="focus-ring cursor-pointer p-1 rounded text-muted/60 hover:text-danger hover:bg-raised transition-colors disabled:opacity-40 disabled:cursor-wait"
                         >
                           <IconTrash
@@ -1557,6 +1555,7 @@ export function GitSidebar({
                             }`}
                           />
                         </button>
+                        </Tooltip>
                     </div>
                   </div>
                 ))}

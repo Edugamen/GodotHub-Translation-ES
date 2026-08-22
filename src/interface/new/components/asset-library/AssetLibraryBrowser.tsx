@@ -455,7 +455,6 @@ export function AssetLibraryBrowser({
                     onClick={() => navigate(page - 1)}
                     disabled={page <= 0 || paging}
                     aria-label={t('asset_prev_page')}
-                    title={t('asset_prev_page')}
                     className="focus-ring cursor-pointer flex items-center justify-center w-9 h-9 rounded-item bg-overlay border border-outline/50 text-muted hover:text-ink hover:bg-raised transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                   >
                     <IconChevronLeft className="w-4 h-4" />
@@ -497,7 +496,6 @@ export function AssetLibraryBrowser({
                     onClick={() => navigate(page + 1)}
                     disabled={page + 1 >= pages || paging}
                     aria-label={t('asset_next_page')}
-                    title={t('asset_next_page')}
                     className="focus-ring cursor-pointer flex items-center justify-center w-9 h-9 rounded-item bg-overlay border border-outline/50 text-muted hover:text-ink hover:bg-raised transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                   >
                     <IconChevronRight className="w-4 h-4" />
@@ -513,7 +511,6 @@ export function AssetLibraryBrowser({
                     onClick={() => navigate(page - 1)}
                     disabled={!canPrev || paging}
                     aria-label={t('asset_prev_page')}
-                    title={t('asset_prev_page')}
                     className="focus-ring cursor-pointer flex items-center justify-center w-9 h-9 rounded-item bg-overlay border border-outline/50 text-muted hover:text-ink hover:bg-raised transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                   >
                     <IconChevronLeft className="w-4 h-4" />
@@ -524,7 +521,6 @@ export function AssetLibraryBrowser({
                     onClick={() => navigate(page + 1)}
                     disabled={!canNext || paging}
                     aria-label={t('asset_next_page')}
-                    title={t('asset_next_page')}
                     className="focus-ring cursor-pointer flex items-center justify-center w-9 h-9 rounded-item bg-overlay border border-outline/50 text-muted hover:text-ink hover:bg-raised transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                   >
                     <IconChevronRight className="w-4 h-4" />

@@ -176,7 +176,6 @@ function CardContent({
           <button
               onClick={copyCommand}
               aria-label={copied ? t('updates_copied') : t('updates_copy')}
-              title={copied ? t('updates_copied') : t('updates_copy')}
               className="focus-ring cursor-pointer shrink-0 p-1.5 rounded-btn text-muted/60 hover:text-ink hover:bg-raised transition-colors"
             >
               {copied ? (

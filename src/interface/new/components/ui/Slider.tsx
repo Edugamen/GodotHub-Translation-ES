@@ -61,7 +61,6 @@ export function Slider({
                       }}
                       disabled={disabled}
                       aria-label={t('reset_to_default')}
-                      title={t('reset_to_default')}
                       className="focus-ring cursor-pointer w-full h-full flex items-center justify-center rounded-full bg-raised border border-outline/50 text-muted transition-colors duration-150 hover:text-accent-bright hover:border-accent-dim/70 hover:bg-overlay disabled:cursor-not-allowed disabled:opacity-50 absolute inset-0"
                     >
                       <IconRefresh className="w-3 h-3" />
