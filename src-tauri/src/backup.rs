@@ -35,6 +35,30 @@ pub(crate) struct WorkspaceBackup {
     time_stats: crate::time_stats::TimeStatsStore,
 }
 
+impl WorkspaceBackup {
+    pub fn workspace_name(&self) -> String {
+        self.workspace.name.clone()
+    }
+    pub fn project_count(&self) -> usize {
+        self.projects.len()
+    }
+    pub fn category_count(&self) -> usize {
+        self.categories.len()
+    }
+    pub fn template_count(&self) -> usize {
+        self.templates.len()
+    }
+    pub fn has_time_stats(&self) -> bool {
+        !self.time_stats.projects.is_empty()
+    }
+    pub fn version_scan_dirs(&self) -> &Vec<String> {
+        &self.settings.version_scan_dirs
+    }
+    pub fn project_scan_dirs(&self) -> &Vec<String> {
+        &self.settings.project_scan_dirs
+    }
+}
+
 fn templates_root_for(dir: &Path) -> PathBuf {
     dir.join("templates")
 }
@@ -134,7 +158,8 @@ fn apply_workspace_backup_in(
     let current_settings = crate::settings::read_settings_from(dir);
     let mut settings = backup.settings;
     settings.dismissed_project_paths = current_settings.dismissed_project_paths;
-    settings.setup_complete = current_settings.setup_complete;
+    // Mark setup as complete so onboarding is skipped after restore.
+    settings.setup_complete = true;
     crate::settings::write_settings_to(dir, &settings).map_err(|e| e.to_string())?;
 
     let projects: Vec<Project> = backup
@@ -161,29 +186,6 @@ fn apply_workspace_backup_in(
 
     crate::time_stats::write_stats_to(dir, &backup.time_stats);
 
-    Ok(settings)
-}
-
-pub(crate) fn apply_workspace_backup(
-    app: &AppHandle,
-    backup: WorkspaceBackup,
-) -> Result<AppSettings, String> {
-    let active_id = crate::workspace::active_workspace_id(app);
-    let dir = crate::workspace::workspace_dir(app, &active_id);
-    let name = backup.workspace.name.clone();
-    let icon = backup.workspace.icon.clone();
-    let color = backup.workspace.color.clone();
-    let settings = apply_workspace_backup_in(&dir, backup)?;
-
-    let _ = crate::workspace::update_workspace(
-        app.clone(),
-        active_id,
-        Some(name),
-        Some(icon),
-        Some(color),
-    );
-
-    let _ = crate::watcher::restart_watchers(app.clone());
     Ok(settings)
 }
 
@@ -220,40 +222,38 @@ pub fn import_workspace_backup(app: AppHandle, path: String) -> Result<AppSettin
 pub struct AppBackup {
     exported_at: String,
     #[serde(default)]
-    workspaces: Vec<WorkspaceBackup>,
+    pub(crate) workspaces: Vec<WorkspaceBackup>,
 }
 
-#[tauri::command]
-pub fn export_app_backup(app: AppHandle, path: String) -> Result<(), String> {
-    let state = crate::workspace::read_state(&app);
+pub(crate) fn build_app_backup(app: &AppHandle) -> Result<AppBackup, String> {
+    let state = crate::workspace::read_state(app);
     let mut workspaces = Vec::new();
     for ws in &state.workspaces {
-        let dir = crate::workspace::workspace_dir(&app, &ws.id);
+        let dir = crate::workspace::workspace_dir(app, &ws.id);
         workspaces.push(build_workspace_backup_in(&dir, ws));
     }
-    let backup = AppBackup {
+    Ok(AppBackup {
         exported_at: chrono::Utc::now().to_rfc3339(),
         workspaces,
-    };
-    persist::write_json(Path::new(&path), &backup).map_err(|e| e.to_string())
+    })
 }
 
-#[tauri::command]
-pub fn import_app_backup(app: AppHandle, path: String) -> Result<AppSettings, String> {
-    let backup: Option<AppBackup> = persist::read_json_opt(Path::new(&path));
-    let Some(backup) = backup else {
-        return Err("Couldn't read the app backup file".into());
-    };
+pub(crate) fn apply_app_backup(
+    app: &AppHandle,
+    backup: AppBackup,
+) -> Result<AppSettings, String> {
     if backup.workspaces.is_empty() {
         return Err("The backup doesn't contain any workspaces".into());
     }
 
     let mut last_settings: Option<AppSettings> = None;
+    let mut restored_ids: std::collections::HashSet<String> = std::collections::HashSet::new();
+
     for wb in backup.workspaces {
         let wname = wb.workspace.name.clone();
         let wicon = wb.workspace.icon.clone();
         let wcolor = wb.workspace.color.clone();
-        let state = crate::workspace::read_state(&app);
+        let state = crate::workspace::read_state(app);
         let existing = state
             .workspaces
             .iter()
@@ -261,7 +261,8 @@ pub fn import_app_backup(app: AppHandle, path: String) -> Result<AppSettings, St
             .cloned();
         match existing {
             Some(ws) => {
-                let dir = crate::workspace::workspace_dir(&app, &ws.id);
+                restored_ids.insert(ws.id.clone());
+                let dir = crate::workspace::workspace_dir(app, &ws.id);
                 last_settings = Some(apply_workspace_backup_in(&dir, wb)?);
                 let _ = crate::workspace::update_workspace(
                     app.clone(),
@@ -273,14 +274,56 @@ pub fn import_app_backup(app: AppHandle, path: String) -> Result<AppSettings, St
             }
             None => {
                 let ws = crate::workspace::create_workspace_silent(
-                    &app, wname, wicon, wcolor,
+                    app, wname, wicon, wcolor,
                 )?;
-                let dir = crate::workspace::workspace_dir(&app, &ws.id);
+                restored_ids.insert(ws.id.clone());
+                let dir = crate::workspace::workspace_dir(app, &ws.id);
                 last_settings = Some(apply_workspace_backup_in(&dir, wb)?);
             }
         }
     }
 
+    // Remove workspaces that weren't in the backup (e.g. the auto-created "Default").
+    {
+        let mut state = crate::workspace::read_state(app);
+        let to_remove: Vec<String> = state
+            .workspaces
+            .iter()
+            .filter(|w| !restored_ids.contains(&w.id))
+            .map(|w| w.id.clone())
+            .collect();
+        if !to_remove.is_empty() {
+            for id in &to_remove {
+                if let Some(idx) = state.workspaces.iter().position(|w| &w.id == id) {
+                    state.workspaces.remove(idx);
+                    let _ = std::fs::remove_dir_all(crate::workspace::workspace_dir(app, id));
+                }
+            }
+            // Ensure active_id points to a valid workspace.
+            if state.workspaces.is_empty() {
+                // This shouldn't happen since we just restored workspaces, but be safe.
+            } else if !state.workspaces.iter().any(|w| w.id == state.active_id) {
+                state.active_id = state.workspaces[0].id.clone();
+            }
+            let _ = crate::workspace::write_state(app, &state);
+        }
+    }
+
     let _ = crate::watcher::restart_watchers(app.clone());
-    Ok(last_settings.unwrap_or_else(|| crate::settings::read_settings(&app)))
+    Ok(last_settings.unwrap_or_else(|| crate::settings::read_settings(app)))
+}
+
+#[tauri::command]
+pub fn export_app_backup(app: AppHandle, path: String) -> Result<(), String> {
+    let backup = build_app_backup(&app)?;
+    persist::write_json(Path::new(&path), &backup).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn import_app_backup(app: AppHandle, path: String) -> Result<AppSettings, String> {
+    let backup: Option<AppBackup> = persist::read_json_opt(Path::new(&path));
+    let Some(backup) = backup else {
+        return Err("Couldn't read the app backup file".into());
+    };
+    apply_app_backup(&app, backup)
 }

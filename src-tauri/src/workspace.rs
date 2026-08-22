@@ -34,7 +34,7 @@ pub fn workspace_dir(app: &AppHandle, id: &str) -> PathBuf {
     dir
 }
 
-fn write_state(app: &AppHandle, state: &WorkspacesState) -> Result<(), String> {
+pub(crate) fn write_state(app: &AppHandle, state: &WorkspacesState) -> Result<(), String> {
     persist::write_json(&workspaces_file(app), state).map_err(|e| e.to_string())
 }
 

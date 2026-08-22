@@ -275,6 +275,8 @@ pub struct AppSettings {
     pub dashboard_tall_sections: Vec<String>,
     #[serde(default)]
     pub dashboard_custom_presets: Vec<DashboardCustomPreset>,
+    #[serde(default)]
+    pub auto_backup_interval_minutes: u32,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -557,6 +559,7 @@ tooltip_delay: default_tooltip_delay(),
             dashboard_section_spans: vec![],
             dashboard_tall_sections: vec![],
             dashboard_custom_presets: vec![],
+            auto_backup_interval_minutes: 0,
         }
     }
 }

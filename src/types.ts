@@ -420,6 +420,7 @@ export interface AppSettings {
   dashboard_section_spans: string[]
   dashboard_tall_sections: string[]
   dashboard_custom_presets: DashboardCustomPreset[]
+  auto_backup_interval_minutes: number
 }
 
 export interface DashboardCustomPreset {

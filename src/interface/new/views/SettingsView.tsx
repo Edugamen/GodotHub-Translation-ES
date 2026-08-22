@@ -49,6 +49,7 @@ import { ConfirmDialog } from '../components/modals/ConfirmDialog'
 import { CheckForUpdatesModal } from '../components/modals/CheckForUpdatesModal'
 import { BugReportModal } from '../components/modals/BugReportModal'
 import { ThemePresetsModal } from '../components/modals/ThemePresetsModal'
+import { RestoreProgressModal } from '../components/modals/RestoreProgressModal'
 import { defaultCornerRadius, isMac, isWindows } from '../../../lib/platform'
 import { relaunch } from '@tauri-apps/plugin-process'
 import { flushPendingSave } from '../../../lib/pendingSave'
@@ -247,6 +248,9 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
   const [syncBusy, setSyncBusy] = useState<'push' | 'pull' | null>(null)
   const [syncMessage, setSyncMessage] = useState<string | null>(null)
   const [syncUrl, setSyncUrl] = useState<string | null>(null)
+  const [manualGistUrl, setManualGistUrl] = useState('')
+  const [manualPullBusy, setManualPullBusy] = useState(false)
+  const [showRestoreModal, setShowRestoreModal] = useState(false)
   const [cssDraft, setCssDraft] = useState(settings.custom_css)
   const [cssStatus, setCssStatus] = useState<'idle' | 'applied'>('idle')
   const [scanMessage, setScanMessage] = useState<string | null>(null)
@@ -289,6 +293,57 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
   useEffect(() => {
     setCssDraft(settings.custom_css)
   }, [settings.custom_css])
+
+  const [lastPushedAt, setLastPushedAt] = useState<string | null>(null)
+
+  const autoBackupOptions = [
+    { value: 0, label: ts('sync_auto_backup_off') },
+    { value: 15, label: ts('sync_auto_backup_15m') },
+    { value: 30, label: ts('sync_auto_backup_30m') },
+    { value: 60, label: ts('sync_auto_backup_1h') },
+    { value: 360, label: ts('sync_auto_backup_6h') },
+    { value: 720, label: ts('sync_auto_backup_12h') },
+    { value: 1440, label: ts('sync_auto_backup_24h') },
+  ]
+
+  // Load stored gist info on mount so the URL survives app data deletion.
+  useEffect(() => {
+    api.gistSyncGetInfo().then((info) => {
+      if (info) {
+        setSyncUrl(info.gist_url)
+        if (info.pushed_at) {
+          try {
+            setLastPushedAt(new Date(info.pushed_at).toLocaleString())
+          } catch {}
+        }
+      }
+    })
+  }, [])
+
+  const [lastAutoBackup, setLastAutoBackup] = useState<string | null>(null)
+  const autoBackupRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Auto-backup timer: push to gist at the configured interval.
+  useEffect(() => {
+    if (autoBackupRef.current) {
+      clearInterval(autoBackupRef.current)
+      autoBackupRef.current = null
+    }
+    const minutes = settings.auto_backup_interval_minutes
+    if (minutes <= 0) return
+    autoBackupRef.current = setInterval(async () => {
+      try {
+        const res = await api.gistSyncPush()
+        setSyncUrl(res.gist_url)
+        setLastAutoBackup(new Date().toLocaleTimeString())
+      } catch (e) {
+        console.error('[auto-backup] failed:', e)
+      }
+    }, minutes * 60 * 1000)
+    return () => {
+      if (autoBackupRef.current) clearInterval(autoBackupRef.current)
+    }
+  }, [settings.auto_backup_interval_minutes])
 
   const handleApplyCss = () => {
     update({ ...settings, custom_css: cssDraft })
@@ -449,6 +504,7 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
     try {
       const res = await api.gistSyncPush()
       setSyncUrl(res.gist_url)
+      setLastPushedAt(new Date(res.pushed_at).toLocaleString())
       setSyncMessage(ts('sync_push_done'))
     } catch (e) {
       setSyncMessage(String(e))
@@ -457,20 +513,22 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
     }
   }
 
-  const handleSyncPull = async () => {
-    setSyncBusy('pull')
-    setSyncMessage(null)
+  const handleSyncPull = () => {
+    setShowRestoreModal(true)
+  }
+
+  const handleManualPull = async () => {
+    if (!manualGistUrl.trim()) return
+    setManualPullBusy(true)
     try {
-      const imported = await api.gistSyncPull()
-      await update(imported)
-      await refreshProjects()
-      await refreshCategories()
-      window.dispatchEvent(new Event('app:refresh-templates'))
-      setSyncMessage(ts('sync_pull_done'))
+      await api.gistSyncSaveGistUrl(manualGistUrl.trim())
+      const info = await api.gistSyncGetInfo()
+      if (info) setSyncUrl(info.gist_url)
+      setShowRestoreModal(true)
     } catch (e) {
       setSyncMessage(String(e))
     } finally {
-      setSyncBusy(null)
+      setManualPullBusy(false)
     }
   }
 
@@ -2026,6 +2084,145 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
         </div>
       </Subsection>
 
+      {gitAuth?.github && (
+      <Subsection
+        id="integrations-sync"
+        title={
+          <span className="inline-flex items-center gap-2">
+            <IconCloudArrowDown className="w-3.5 h-3.5 text-muted" />
+            {ts('sync_title')}
+          </span>
+        }
+        description={ts('sync_desc')}
+        searchText={`${ts('sync_title')} ${ts('sync_desc')} ${ts('sync_push_btn')} ${ts('sync_pull_btn')}`}
+        query={searchQuery}
+        onMatch={reportMatch}
+      >
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-xs text-muted leading-relaxed">
+                {ts('sync_desc')}
+              </p>
+              {syncMessage && (
+                <p className="text-xs text-muted mt-1.5 wrap-break-word">
+                  {syncMessage}
+                </p>
+              )}
+              {syncUrl && (
+                <button
+                  type="button"
+                  onClick={() => openUrl(syncUrl)}
+                  className="focus-ring cursor-pointer mt-1.5 inline-flex items-center gap-1.5 text-xs text-accent-bright hover:underline"
+                >
+                  <IconExternalLink className="w-3 h-3" />
+                  {ts('sync_open_gist')}
+                </button>
+              )}
+              {lastPushedAt && (
+                <p className="text-[11px] text-muted mt-1">
+                  {ts('sync_last_pushed', { time: lastPushedAt })}
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleSyncPush}
+                disabled={syncBusy !== null}
+                className="focus-ring cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-item border border-outline/50 hover:border-accent-dim hover:bg-raised text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <IconCloudArrowDown className="w-4 h-4" />
+                {syncBusy === 'push'
+                  ? ts('saving')
+                  : ts('sync_push_btn')}
+              </button>
+              <button
+                type="button"
+                onClick={handleSyncPull}
+                disabled={syncBusy !== null}
+                className="focus-ring cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-item bg-accent hover:bg-accent-bright text-sm font-medium text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {syncBusy === 'pull'
+                  ? ts('saving')
+                  : ts('sync_pull_btn')}
+              </button>
+            </div>
+          </div>
+          <div className="border-t border-outline/30 pt-3">
+            <p className="text-xs text-muted mb-2">
+              {ts('sync_manual_hint')}
+            </p>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={manualGistUrl}
+                onChange={(e) => setManualGistUrl(e.target.value)}
+                placeholder={ts('sync_manual_placeholder')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleManualPull()
+                }}
+                className="focus-ring flex-1 bg-base border border-outline/50 rounded-btn px-3 py-2 text-xs focus:border-accent-dim transition-colors"
+              />
+              <button
+                type="button"
+                onClick={handleManualPull}
+                disabled={manualPullBusy || !manualGistUrl.trim()}
+                className="focus-ring cursor-pointer px-4 py-2 rounded-item border border-outline/50 hover:border-accent-dim hover:bg-raised text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {manualPullBusy ? ts('saving') : ts('sync_manual_pull_btn')}
+              </button>
+            </div>
+          </div>
+          <div className="border-t border-outline/30 pt-3">
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-ink">
+                  {ts('sync_auto_backup_label')}
+                </p>
+                <p className="text-xs text-muted mt-0.5">
+                  {ts('sync_auto_backup_desc')}
+                </p>
+                {lastAutoBackup && (
+                  <p className="text-[11px] text-muted mt-1">
+                    {ts('sync_auto_backup_last', { time: lastAutoBackup })}
+                  </p>
+                )}
+              </div>
+              <Dropdown
+                align="right"
+                compact
+                trigger={({ open, toggle }) => (
+                  <button
+                    type="button"
+                    onClick={toggle}
+                    className="focus-ring cursor-pointer flex items-center gap-2 px-3 py-2 rounded-btn border border-outline/50 bg-base hover:border-accent-dim text-xs font-medium transition-colors"
+                  >
+                    {autoBackupOptions.find(
+                      (o) => o.value === settings.auto_backup_interval_minutes,
+                    )?.label ?? ts('sync_auto_backup_off')}
+                    <IconChevronDown
+                      className={`w-3 h-3 text-muted transition-transform ${open ? 'rotate-180' : ''}`}
+                    />
+                  </button>
+                )}
+                items={autoBackupOptions.map((o) => ({
+                  key: String(o.value),
+                  label: o.label,
+                  active: settings.auto_backup_interval_minutes === o.value,
+                  onClick: () =>
+                    update({
+                      ...settings,
+                      auto_backup_interval_minutes: o.value,
+                    }),
+                }))}
+              />
+            </div>
+          </div>
+        </div>
+      </Subsection>
+      )}
+
       <Subsection
         id="integrations-discord"
         title={ts('discord_rpc_label')}
@@ -2272,68 +2469,6 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
                 })}
               </div>
             )}
-          </div>
-        </div>
-      </Subsection>
-
-      <Subsection
-        id="integrations-sync"
-        title={
-          <span className="inline-flex items-center gap-2">
-            <IconCloudArrowDown className="w-3.5 h-3.5 text-muted" />
-            {ts('sync_title')}
-          </span>
-        }
-        description={ts('sync_desc')}
-        searchText={`${ts('sync_title')} ${ts('sync_desc')} ${ts('sync_push_btn')} ${ts('sync_pull_btn')}`}
-        query={searchQuery}
-        onMatch={reportMatch}
-      >
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-4">
-            <div className="min-w-0">
-              <p className="text-xs text-muted leading-relaxed">
-                {ts('sync_desc')}
-              </p>
-              {syncMessage && (
-                <p className="text-xs text-muted mt-1.5 wrap-break-word">
-                  {syncMessage}
-                </p>
-              )}
-              {syncUrl && (
-                <button
-                  type="button"
-                  onClick={() => openUrl(syncUrl)}
-                  className="focus-ring cursor-pointer mt-1.5 inline-flex items-center gap-1.5 text-xs text-accent-bright hover:underline"
-                >
-                  <IconExternalLink className="w-3 h-3" />
-                  {ts('sync_open_gist')}
-                </button>
-              )}
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={handleSyncPush}
-                disabled={syncBusy !== null}
-                className="focus-ring cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-item border border-outline/50 hover:border-accent-dim hover:bg-raised text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <IconCloudArrowDown className="w-4 h-4" />
-                {syncBusy === 'push'
-                  ? ts('saving')
-                  : ts('sync_push_btn')}
-              </button>
-              <button
-                type="button"
-                onClick={handleSyncPull}
-                disabled={syncBusy !== null}
-                className="focus-ring cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-item bg-accent hover:bg-accent-bright text-sm font-medium text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {syncBusy === 'pull'
-                  ? ts('saving')
-                  : ts('sync_pull_btn')}
-              </button>
-            </div>
           </div>
         </div>
       </Subsection>
@@ -3107,6 +3242,12 @@ export function SettingsView({ connected = false }: { connected?: boolean }) {
           onClose={() => setSelectedContributor(null)}
         />
       )}
+
+      <AnimatePresence>
+        {showRestoreModal && (
+          <RestoreProgressModal onClose={() => setShowRestoreModal(false)} />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

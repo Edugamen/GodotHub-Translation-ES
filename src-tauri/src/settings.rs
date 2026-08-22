@@ -86,7 +86,7 @@ pub fn import_settings(app: AppHandle, path: String) -> Result<AppSettings, Stri
     let current = read_settings(&app);
     let mut merged = data.settings;
     merged.dismissed_project_paths = current.dismissed_project_paths;
-    merged.setup_complete = current.setup_complete;
+    merged.setup_complete = true;
     write_settings(&app, &merged).map_err(|e| e.to_string())?;
 
     if let Some(store) = data.time_stats {
