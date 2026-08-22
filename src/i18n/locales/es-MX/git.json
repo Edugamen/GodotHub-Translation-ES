@@ -1,11 +1,4 @@
 {
-  "modified": "Modificado",
-  "added": "Añadido",
-  "deleted": "Eliminado",
-  "renamed": "Renombrado",
-  "copied": "Copiado",
-  "untracked": "Sin seguimiento",
-  "unmerged": "Sin fusionar",
   "undo": "Deshacer",
   "redo": "Rehacer",
   "close_sidebar": "Cerrar barra lateral",
@@ -78,8 +71,6 @@
   "merge_abort_title": "¿Abortar la fusión?",
   "merge_abort_desc": "Esto cancelará la fusión en progreso y restaurará el directorio de trabajo al estado anterior al pull. Cualquier resolución de conflictos se perderá.",
   "merge_abort_confirm": "Abortar fusión",
-  "changes_saved_to": "Los cambios se guardaron en {{label}}",
-  "n_files_staged": "{{count}} archivo(s) preparados.",
   "merge_in_progress": "Fusión en progreso",
   "resolve": "Resuelto",
   "loading_branches": "Cargando ramas…",
@@ -98,11 +89,7 @@
   "loading_diff": "Cargando diff…",
   "diff_error": "No se pudo cargar el diff.",
   "stage_all": "Preparar todo",
-  "staging": "Preparando…",
-  "auth_title": "Autenticación",
   "auth_not_signed_in": "No has iniciado sesión",
   "auth_sign_in": "Iniciar sesión",
-  "auth_disconnect": "Desconectar",
-  "auth_connected_as": "Conectado como @{{username}}",
-  "auth_manage_settings": "Administrar en Configuración"
+  "auth_disconnect": "Desconectar"
 }

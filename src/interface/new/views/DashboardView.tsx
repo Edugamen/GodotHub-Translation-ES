@@ -1074,7 +1074,7 @@ export function DashboardView({
   connected?: boolean
   active?: boolean
 }) {
-  const { t: tc } = useTranslation('common')
+  const { t: tc } = useTranslation('dashboard')
   const { settings, update } = useSettings()
   const { projects } = useProjectsContext()
   const { installed } = useGodotVersionsContext()
@@ -1171,7 +1171,7 @@ export function DashboardView({
   }, [])
 
   const displayName = (settings.dashboard_custom_name || osName || '').slice(0, 40)
-  const greeting = tc(`dashboard_greeting_${greetingKey(greetingHour)}`)
+  const greeting = tc(`greeting_${greetingKey(greetingHour)}`)
 
   const isEnabled = (id: string) =>
     settings.dashboard_sections.length === 0 ||
@@ -1549,8 +1549,7 @@ export function DashboardView({
                   <>
                     {greeting}
                     {', '}
-                    <span className="text-accent-bright">{displayName}</span>
-                  </>
+                    <span className="text-accent-bright">{displayName}</span>                    </>
                 ) : (
                   greeting
                 )}
@@ -1564,7 +1563,7 @@ export function DashboardView({
                     onClick={startEditingName}
                     aria-label={tc('dashboard_rename_aria')}
                     title={tc('dashboard_rename_hint')}
-                    className="focus-ring cursor-pointer p-1.5 rounded-btn text-muted/40 hover:text-ink hover:bg-raised transition-colors shrink-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150"
+                    className="focus-ring cursor-pointer p-1.5 rounded-btn text-muted/40 hover:text-ink hover:bg-raised shrink-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150"
                   >
                     <IconPencil className="w-3.5 h-3.5" />
                   </button>
@@ -1576,7 +1575,7 @@ export function DashboardView({
                       }
                       aria-label={tc('dashboard_rename_reset')}
                       title={tc('dashboard_rename_reset')}
-                      className="focus-ring cursor-pointer p-1.5 rounded-btn text-muted/40 hover:text-danger hover:bg-danger/10 transition-colors shrink-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150"
+                      className="focus-ring cursor-pointer p-1.5 rounded-btn text-muted/40 hover:text-danger hover:bg-danger/10 shrink-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150"
                     >
                       <IconX className="w-3.5 h-3.5" />
                     </button>

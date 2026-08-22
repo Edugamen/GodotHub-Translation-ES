@@ -16,7 +16,6 @@
   "fetch_error": "لم يكن بالمستطاع جلب الإصدارات المتاحة.",
   "importing_version": "استوراد إصدار…",
   "scanning_versions": "جاري تفقد الإصدارات…",
-  "importing_progress": "استوراد {{current}}/{{total}}…",
   "importing": "استوراد…",
   "import": "استورد",
   "scanning": "جاري المسح…",

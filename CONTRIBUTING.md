@@ -252,6 +252,10 @@ but do mention which platform you *did* test on in the PR.
 
 ## 🌍 Localization (in depth)
 
+> **Translators:** For a quick-reference guide covering adding a new language,
+> adding keys, validation scripts, and best practices, see
+> [CONTRIBUTING-I18N.md](CONTRIBUTING-I18N.md).
+
 Localization uses **i18next** + **react-i18next** with JSON resource files.
 English is the source of truth; every other language falls back to English for
 missing keys.

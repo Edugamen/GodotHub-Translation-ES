@@ -1,6 +1,5 @@
 {
   "welcome": "Bienvenido",
-  "godot_versions": "Versiones de Godot",
   "categories": "Categorias",
   "customize": "Personalizar",
   "finish": "Terminado",
@@ -16,7 +15,5 @@
   "onboard_empty_versions": "Carpeta sin añadirse aun, Las nuevas descargas de Godot iran a la carpeta AppData a menos que configures una a continuacion.",
   "onboard_no_template_folder": "No hay ninguna carpeta configurada, siempre puedes configurar esto más tarde en Configuracion o guardar las Plantillas manualmente.",
   "onboard_categories_desc": "Nada de aqui es requerido, Proyectos sin categoria simplemente se mostrara como Sin Categorizado.",
-  "language_title": "Escoge un lenguaje",
-  "language_desc": "Escoje un lenguaje lo que mas guste para GodotHub. Tu puedes cambiarlo mas adelante en Configuracion.",
   "language_heading": "Lenguajes"
 }

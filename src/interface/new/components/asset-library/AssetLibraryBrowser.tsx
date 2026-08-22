@@ -302,14 +302,14 @@ export function AssetLibraryBrowser({
               className={dropBtnClass}
             >
               <span className="text-[16px] font-medium text-ink">
-                {t(`asset_sort_${sort}`)}
+                {t(`asset_store_${sort}`)}
               </span>
               <IconChevronDown className="w-3 h-3 text-muted" />
             </motion.button>
           )}
           items={ASSET_SORT_KEYS.map((k) => ({
             key: k,
-            label: t(`asset_sort_${k}`),
+            label: t(`asset_store_${k}`),
             active: sort === k,
             onClick: () => setSort(k),
           }))}
