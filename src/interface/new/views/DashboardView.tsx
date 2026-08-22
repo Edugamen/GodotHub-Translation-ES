@@ -21,7 +21,6 @@ import {
 import { formatDuration } from '../lib/duration'
 import { AnimatedNumber } from '../components/reusables/AnimatedNumber'
 import { OverlayScrollArea } from '../components/reusables/OverlayScrollArea'
-import { Tooltip } from '../components/reusables/Tooltip'
 import {
   IconArrowUpDown,
   IconCheck,
@@ -173,70 +172,59 @@ function TileEditControls({
     'focus-ring cursor-pointer p-1 rounded-btn text-accent-bright bg-accent/10 hover:bg-accent/20 transition-colors'
   return (
     <div className="flex items-center gap-0.5 shrink-0">
-      <Tooltip content={tc('dashboard_tile_move_up')} side="bottom">
-        <button
+      <button
           type="button"
           onClick={() => onMove(-1)}
           disabled={index === 0}
           aria-label={tc('dashboard_tile_move_up')}
+          title={tc('dashboard_tile_move_up')}
           className={`${btnClass} disabled:opacity-30 disabled:cursor-not-allowed`}
         >
           <IconChevronUp className="w-3 h-3" />
         </button>
-      </Tooltip>
-      <Tooltip content={tc('dashboard_tile_move_down')} side="bottom">
-        <button
+      <button
           type="button"
           onClick={() => onMove(1)}
           disabled={index === total - 1}
           aria-label={tc('dashboard_tile_move_down')}
+          title={tc('dashboard_tile_move_down')}
           className={`${btnClass} disabled:opacity-30 disabled:cursor-not-allowed`}
         >
           <IconChevronDown className="w-3 h-3" />
         </button>
-      </Tooltip>
       {canSpan && (
-        <Tooltip
-          content={tc(spanning ? 'dashboard_tile_span_off' : 'dashboard_tile_span')}
-          side="bottom"
-        >
-          <button
+        <button
             type="button"
             onClick={onToggleSpan}
             aria-label={tc(spanning ? 'dashboard_tile_span_off' : 'dashboard_tile_span')}
+            title={tc(spanning ? 'dashboard_tile_span_off' : 'dashboard_tile_span')}
             aria-pressed={spanning}
             className={spanning ? activeBtnClass : btnClass}
           >
             <IconLayoutGrid className="w-3 h-3" />
           </button>
-        </Tooltip>
       )}
       {canTall && (
-        <Tooltip
-          content={tc(tall ? 'dashboard_tile_tall_off' : 'dashboard_tile_tall')}
-          side="bottom"
-        >
-          <button
+        <button
             type="button"
             onClick={onToggleTall}
             aria-label={tc(tall ? 'dashboard_tile_tall_off' : 'dashboard_tile_tall')}
+            title={tc(tall ? 'dashboard_tile_tall_off' : 'dashboard_tile_tall')}
             aria-pressed={tall}
             className={tall ? activeBtnClass : btnClass}
           >
             <IconArrowUpDown className="w-3 h-3" />
           </button>
-        </Tooltip>
       )}
-      <Tooltip content={tc('dashboard_tile_remove')} side="bottom">
-        <button
+      <button
           type="button"
           onClick={onRemove}
           aria-label={tc('dashboard_tile_remove')}
+          title={tc('dashboard_tile_remove')}
           className="focus-ring cursor-pointer p-1 rounded-btn text-muted/50 hover:text-danger hover:bg-danger/10 transition-colors"
         >
           <IconX className="w-3 h-3" />
         </button>
-      </Tooltip>
     </div>
   )
 }
@@ -582,15 +570,14 @@ function ActivityChart({
         return (
           <div key={key} className="flex-1 flex flex-col items-center gap-1 h-full min-w-0">
             <div className="flex-1 w-full flex items-end rounded-md overflow-hidden bg-raised">
-              <Tooltip content={formatDuration(seconds * 1000)} side="top" className="w-full h-full flex items-end">
-                <div
+              <div
                   className="w-full rounded-t bg-accent/50 hover:bg-accent-bright transition-colors"
                   style={{ height: `${pct}%` }}
+                  title={formatDuration(seconds * 1000)}
                   aria-label={tc('dashboard_weekly_aria', {
                     label: formatDuration(seconds * 1000),
                   })}
                 />
-              </Tooltip>
             </div>
             <span className="text-[9px] text-muted/60 shrink-0">{label}</span>
           </div>
@@ -1061,16 +1048,15 @@ function RunningNow({
                   {formatDuration(now - p.startedAt)}
                 </span>
               </span>
-              <Tooltip content={tc('stop')} side="top">
                 <button
                   type="button"
                   onClick={() => onStop(p.id)}
                   aria-label={`${tc('stop')} ${p.name}`}
+                  title={tc('stop')}
                   className="focus-ring cursor-pointer w-6 h-6 rounded-btn inline-flex items-center justify-center text-muted/50 hover:text-danger hover:bg-danger/10 transition-colors shrink-0"
                 >
                   <IconX className="w-3.5 h-3.5" />
                 </button>
-              </Tooltip>
             </div>
           ))}
         </div>
@@ -1088,7 +1074,7 @@ export function DashboardView({
   connected?: boolean
   active?: boolean
 }) {
-  const { t: tc } = useTranslation('common')
+  const { t: tc } = useTranslation('dashboard')
   const { settings, update } = useSettings()
   const { projects } = useProjectsContext()
   const { installed } = useGodotVersionsContext()
@@ -1185,7 +1171,7 @@ export function DashboardView({
   }, [])
 
   const displayName = (settings.dashboard_custom_name || osName || '').slice(0, 40)
-  const greeting = tc(`dashboard_greeting_${greetingKey(greetingHour)}`)
+  const greeting = tc(`greeting_${greetingKey(greetingHour)}`)
 
   const isEnabled = (id: string) =>
     settings.dashboard_sections.length === 0 ||
@@ -1486,16 +1472,15 @@ export function DashboardView({
                         {v.executable_path}
                       </span>
                     </span>
-                    <Tooltip content={tc('version_open_btn')} side="top">
                       <motion.button
                         type="button"
                         whileTap={{ scale: 0.92 }}
                         onClick={() => openEngine(v.tag)}
+                        title={tc('version_open_btn')}
                         className="focus-ring cursor-pointer p-1.5 rounded-btn text-muted/60 hover:text-ink hover:bg-raised transition-colors"
                       >
                         <IconTerminal className="w-3.5 h-3.5" />
                       </motion.button>
-                    </Tooltip>
                   </div>
                 ))}
               </div>
@@ -1537,28 +1522,26 @@ export function DashboardView({
                   placeholder={tc('dashboard_name_placeholder')}
                   className="focus-ring w-64 bg-base border border-accent rounded-btn px-3 py-2 text-xl font-medium text-ink outline-none"
                 />
-                <Tooltip content={tc('dashboard_rename_save')} side="bottom">
                   <motion.button
                     type="button"
                     whileTap={{ scale: 0.92 }}
                     onClick={commitName}
                     aria-label={tc('dashboard_rename_save')}
+                    title={tc('dashboard_rename_save')}
                     className="focus-ring cursor-pointer p-1.5 rounded-btn text-accent hover:bg-accent/10 transition-colors"
                   >
                     <IconCheck className="w-4 h-4" />
                   </motion.button>
-                </Tooltip>
-                <Tooltip content={tc('cancel')} side="bottom">
                   <motion.button
                     type="button"
                     whileTap={{ scale: 0.92 }}
                     onClick={cancelNameEdit}
                     aria-label={tc('cancel')}
+                    title={tc('cancel')}
                     className="focus-ring cursor-pointer p-1.5 rounded-btn text-muted/60 hover:text-ink hover:bg-raised transition-colors"
                   >
                     <IconX className="w-4 h-4" />
                   </motion.button>
-                </Tooltip>
               </div>
             ) : (
               <h1 className="font-display text-5xl font-bold leading-13 text-ink min-w-0">
@@ -1566,8 +1549,7 @@ export function DashboardView({
                   <>
                     {greeting}
                     {', '}
-                    <span className="text-accent-bright">{displayName}</span>
-                  </>
+                    <span className="text-accent-bright">{displayName}</span>                    </>
                 ) : (
                   greeting
                 )}
@@ -1576,37 +1558,27 @@ export function DashboardView({
 
             {!editingName && (
               <>
-                <Tooltip
-                  content={tc('dashboard_rename_hint')}
-                  side="bottom"
-                  className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150"
-                >
                   <button
                     type="button"
                     onClick={startEditingName}
                     aria-label={tc('dashboard_rename_aria')}
-                    className="focus-ring cursor-pointer p-1.5 rounded-btn text-muted/40 hover:text-ink hover:bg-raised transition-colors shrink-0"
+                    title={tc('dashboard_rename_hint')}
+                    className="focus-ring cursor-pointer p-1.5 rounded-btn text-muted/40 hover:text-ink hover:bg-raised shrink-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150"
                   >
                     <IconPencil className="w-3.5 h-3.5" />
                   </button>
-                </Tooltip>
                 {settings.dashboard_custom_name && (
-                  <Tooltip
-                    content={tc('dashboard_rename_reset')}
-                    side="bottom"
-                    className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150"
-                  >
                     <button
                       type="button"
                       onClick={() =>
                         update({ ...settings, dashboard_custom_name: null })
                       }
                       aria-label={tc('dashboard_rename_reset')}
-                      className="focus-ring cursor-pointer p-1.5 rounded-btn text-muted/40 hover:text-danger hover:bg-danger/10 transition-colors shrink-0"
+                      title={tc('dashboard_rename_reset')}
+                      className="focus-ring cursor-pointer p-1.5 rounded-btn text-muted/40 hover:text-danger hover:bg-danger/10 shrink-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150"
                     >
                       <IconX className="w-3.5 h-3.5" />
                     </button>
-                  </Tooltip>
                 )}
               </>
             )}
@@ -1628,15 +1600,12 @@ export function DashboardView({
             ) : (
               <span />
             )}
-            <Tooltip
-              content={editingTiles ? tc('dashboard_done_customizing') : tc('dashboard_customize')}
-              side="left"
-            >
               <motion.button
                 type="button"
                 whileTap={{ scale: 0.94 }}
                 onClick={() => setEditingTiles((v) => !v)}
                 aria-label={tc(editingTiles ? 'dashboard_done_customizing' : 'dashboard_customize')}
+                title={editingTiles ? tc('dashboard_done_customizing') : tc('dashboard_customize')}
                 className={`focus-ring cursor-pointer flex items-center gap-1.5 h-11 px-5 rounded-item text-sm font-semibold border transition-colors ${
                   editingTiles
                     ? 'bg-accent text-ink border-outline/50'
@@ -1646,7 +1615,6 @@ export function DashboardView({
                 <IconGear className="w-4 h-4" />
                 {tc(editingTiles ? 'dashboard_done_customizing' : 'dashboard_customize')}
               </motion.button>
-            </Tooltip>
           </div>
 
           {isEnabled('stats') && (
@@ -1677,18 +1645,15 @@ export function DashboardView({
                       settings.dashboard_tall_sections,
                     )
                     return (
-                      <Tooltip
-                        key={preset.id}
-                        content={tc(preset.descriptionKey)}
-                        side="bottom"
-                      >
                         <button
+                          key={preset.id}
                           type="button"
                           onClick={() => {
                             const next = presetToSettings(preset)
                             update({ ...settings, ...next })
                           }}
                           aria-pressed={active}
+                          title={tc(preset.descriptionKey)}
                           className={`focus-ring cursor-pointer flex items-center gap-1.5 px-3 h-8 rounded-btn text-xs font-semibold border transition-colors ${
                             active
                               ? 'bg-accent text-ink border-outline/50'
@@ -1698,7 +1663,6 @@ export function DashboardView({
                           {active && <IconCheck className="w-3 h-3" />}
                           {tc(preset.labelKey)}
                         </button>
-                      </Tooltip>
                     )
                   })}
                 </div>
@@ -1744,16 +1708,15 @@ export function DashboardView({
                             {active && <IconCheck className="w-3 h-3" />}
                             {preset.name}
                           </button>
-                          <Tooltip content={tc('dashboard_preset_delete')} side="bottom">
                             <button
                               type="button"
                               onClick={() => removePreset(preset.id)}
                               aria-label={tc('dashboard_preset_delete')}
+                              title={tc('dashboard_preset_delete')}
                               className="focus-ring cursor-pointer p-1.5 rounded-btn text-muted/50 hover:text-danger hover:bg-danger/10 transition-colors"
                             >
                               <IconX className="w-3 h-3" />
                             </button>
-                          </Tooltip>
                         </span>
                       )
                     })}

@@ -1,6 +1,5 @@
 {
   "welcome": "Welcome",
-  "godot_versions": "Godot Versions",
   "categories": "Categories",
   "customize": "Customize",
   "finish": "Finish",
@@ -16,7 +15,5 @@
   "onboard_empty_versions": "No folders added yet, new Godot downloads will go to the app data folder unless you set one below.",
   "onboard_no_template_folder": "No folder set, you can always configure this later in Settings, or save templates manually.",
   "onboard_categories_desc": "Nothing here is required, projects with no category simply show up as Uncategorized.",
-  "language_title": "Choose your language",
-  "language_desc": "Select the language you'd like GodotHub to use. You can change this later in Settings.",
   "language_heading": "Language"
 }

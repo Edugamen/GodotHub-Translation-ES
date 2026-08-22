@@ -9,6 +9,7 @@ import arMAGit from './locales/ar-MA/git.json'
 import arMAChangelog from './locales/ar-MA/changelog.json'
 import arMAOnboarding from './locales/ar-MA/onboarding.json'
 import arMAVersions from './locales/ar-MA/versions.json'
+import arMADashboard from './locales/ar-MA/dashboard.json'
 
 import enUSNav from './locales/en-US/nav.json'
 import enUSCommon from './locales/en-US/common.json'
@@ -17,6 +18,7 @@ import enUSGit from './locales/en-US/git.json'
 import enUSChangelog from './locales/en-US/changelog.json'
 import enUSOnboarding from './locales/en-US/onboarding.json'
 import enUSVersions from './locales/en-US/versions.json'
+import enUSDashboard from './locales/en-US/dashboard.json'
 
 import esMXNav from "./locales/es-MX/nav.json"
 import esMXCommon from './locales/es-MX/common.json'
@@ -25,6 +27,7 @@ import esMXGit from './locales/es-MX/git.json'
 import esMXChangelog from './locales/es-MX/changelog.json'
 import esMXOnboarding from './locales/es-MX/onboarding.json'
 import esMXVersions from './locales/es-MX/versions.json'
+import esMXDashboard from './locales/es-MX/dashboard.json'
 
 
 import zhCNNav from './locales/zh-CN/nav.json'
@@ -34,6 +37,7 @@ import zhCNGit from './locales/zh-CN/git.json'
 import zhCNChangelog from './locales/zh-CN/changelog.json'
 import zhCNOnboarding from './locales/zh-CN/onboarding.json'
 import zhCNVersions from './locales/zh-CN/versions.json'
+import zhCNDashboard from './locales/zh-CN/dashboard.json'
 
 import ruRUNav from './locales/ru-RU/nav.json'
 import ruRuCommon from './locales/ru-RU/common.json'
@@ -42,6 +46,7 @@ import ruRUGit from './locales/ru-RU/git.json'
 import ruRUChangelog from './locales/ru-RU/changelog.json'
 import ruRUOnboarding from './locales/ru-RU/onboarding.json'
 import ruRUVersions from './locales/ru-RU/versions.json'
+import ruRUDashboard from './locales/ru-RU/dashboard.json'
 
 
 
@@ -53,6 +58,7 @@ const arMAResources = {
   changelog: arMAChangelog,
   onboarding: arMAOnboarding,
   versions: arMAVersions,
+  dashboard: arMADashboard,
 }
 
 const esMXResources = {
@@ -62,7 +68,8 @@ const esMXResources = {
   git: esMXGit,
   changelog: esMXChangelog,
   onboarding: esMXOnboarding,
-  versions: esMXVersions
+  versions: esMXVersions,
+  dashboard: esMXDashboard,
 }
 
 const zhCNResources = {
@@ -73,6 +80,7 @@ const zhCNResources = {
   changelog: zhCNChangelog,
   onboarding: zhCNOnboarding,
   versions: zhCNVersions,
+  dashboard: zhCNDashboard,
 }
 
 const resources = {
@@ -84,6 +92,7 @@ const resources = {
     changelog: enUSChangelog,
     onboarding: enUSOnboarding,
     versions: enUSVersions,
+    dashboard: enUSDashboard,
   },
 
   'es-MX': esMXResources,
@@ -100,6 +109,7 @@ const resources = {
     changelog: ruRUChangelog,
     onboarding: ruRUOnboarding,
     versions: ruRUVersions,
+    dashboard: ruRUDashboard,
   },
 
   'ar-MA': arMAResources,

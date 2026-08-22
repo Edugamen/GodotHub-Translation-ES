@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { ModalShell } from './ModalShell'
 import { Dropdown } from '../ui/Dropdown'
-import { Tooltip } from '../reusables/Tooltip'
+
 import { api } from '../../../../lib/api'
 import {
   IconCheck,
@@ -242,20 +242,19 @@ export function ReleaseNotesDraftModal({ onClose, onUseDraft }: Props) {
               ]}
             />
           </div>
-          <Tooltip content={t('changelog_draft_generate')} side="top">
             <motion.button
               type="button"
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.94 }}
               onClick={generate}
               disabled={loading || !from || !to}
+              title={t('changelog_draft_generate')}
               className="focus-ring cursor-pointer h-9 w-9 rounded-item bg-accent hover:bg-accent-bright disabled:opacity-40 text-white flex items-center justify-center transition-colors"
             >
               <IconRefresh
                 className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`}
               />
             </motion.button>
-          </Tooltip>
         </div>
 
         {draft && (

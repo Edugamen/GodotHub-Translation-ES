@@ -17,7 +17,6 @@ import { useProjectsContext } from '../../../hooks/projectsContext'
 import { useTaskTray } from '../../../hooks/useTaskTray'
 import { ViewHeader } from '../components/reusables/ViewHeader'
 import { SearchBar } from '../components/ui/SearchBar'
-import { Tooltip } from '../components/reusables/Tooltip'
 import { OverlayScrollArea } from '../components/reusables/OverlayScrollArea'
 import { ScanButton } from '../components/reusables/ScanButton'
 import { ConfirmDialog } from '../components/modals/ConfirmDialog'
@@ -226,7 +225,6 @@ export function TemplatesView({
         actions={
           <>
             {settings.template_scan_dir && (
-              <Tooltip content={tc('template_open_folder')} side="bottom">
                 <motion.button
                   type="button"
                   whileHover={{ scale: 1.04 }}
@@ -235,11 +233,11 @@ export function TemplatesView({
                   onClick={() =>
                     api.openProjectFolder(settings.template_scan_dir!)
                   }
+                  title={tc('template_open_folder')}
                   className="focus-ring cursor-pointer flex items-center justify-center px-6 h-10 rounded-item bg-overlay shadow-md shadow-black/10 border border-outline/50 hover:bg-raised text-muted hover:text-ink font-semibold text-[17px] transition-colors"
                 >
                   {tc('template_open_folder_btn')}
                 </motion.button>
-              </Tooltip>
             )}
             <ScanButton
               onOpenSettings={onOpenSettings}

@@ -31,7 +31,6 @@
   "download_version_already_exists": "Версия уже существует",
   "download_version_already_exists_desc": "Версия, которую вы пытаетесь скачать, уже существует в списке версий. Вы можете открыть её или удалить, чтобы скачать заново.",
   "scanning_versions": "Сканирование версий…",
-  "importing_progress": "Импорт {{current}}/{{total}}…",
   "importing": "Импорт…",
   "import": "Импорт",
   "scanning": "Сканирование…",

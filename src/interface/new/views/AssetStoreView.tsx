@@ -180,14 +180,14 @@ export function AssetStoreView({ connected = false }: { connected?: boolean }) {
               className={dropBtnClass}
             >
               <span className="text-[16px] font-medium text-ink">
-                {tc(`asset_sort_${sort}`)}
+                {source === 'store' ? tc(`asset_store_${sort}`) : tc(`asset_sort_${sort}`)}
               </span>
               <IconChevronDown className="w-3 h-3 text-muted" />
             </motion.button>
           )}
           items={(source === 'store' ? STORE_SORT_KEYS : sortKeysForSource(source)).map((k) => ({
             key: k,
-            label: tc(`asset_sort_${k}`),
+            label: source === 'store' ? tc(`asset_store_${k}`) : tc(`asset_sort_${k}`),
             active: sort === k,
             onClick: () => setSort(k),
           }))}

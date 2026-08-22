@@ -11,7 +11,7 @@ import {
   type GraphRow,
 } from '../../../../lib/gitGraph'
 import type { GitLogEntry } from '../../../../types'
-import { Tooltip } from '../reusables/Tooltip'
+
 
 interface Props {
   commits: GitLogEntry[]
@@ -101,11 +101,6 @@ export function CommitGraph({ commits, remoteUrl, onOpenDetails }: Props) {
           return (
             <div key={c.hash} className="flex items-center gap-1.5">
               <RowGraph row={row} />
-              <Tooltip
-                content={onOpenDetails ? t('open_commit_details') : t('open_commit_on_github')}
-                side="top"
-                className={onOpenDetails || url ? 'cursor-pointer' : ''}
-              >
                 <div
                   onClick={() => {
                     if (onOpenDetails) {
@@ -114,6 +109,7 @@ export function CommitGraph({ commits, remoteUrl, onOpenDetails }: Props) {
                       void openUrl(url).catch(() => {})
                     }
                   }}
+                  title={onOpenDetails ? t('open_commit_details') : t('open_commit_on_github')}
                   className={`flex items-center gap-2 pr-2 rounded-md transition-colors ${
                     onOpenDetails || url
                       ? 'cursor-pointer hover:bg-raised/60'
@@ -135,7 +131,6 @@ export function CommitGraph({ commits, remoteUrl, onOpenDetails }: Props) {
                     )}
                   </div>
                 </div>
-              </Tooltip>
             </div>
           )
         })}

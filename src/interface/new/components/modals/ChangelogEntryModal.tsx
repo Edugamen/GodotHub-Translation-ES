@@ -8,7 +8,7 @@ import {
   IconPlus,
   IconX,
 } from '../../lib/icons'
-import { Tooltip } from '../reusables/Tooltip'
+
 import type { ChangelogEntry, ChangelogNote } from '../../../../types'
 
 interface Props {
@@ -164,10 +164,11 @@ export function ChangelogEntryModal({ entry, initial, onClose, onSave }: Props) 
               <div key={i} className="flex items-center gap-2">
                 <div className="flex rounded-btn border border-outline/50 overflow-hidden shrink-0">
                   {CATEGORIES.map((c) => (
-                    <Tooltip key={c.value} content={t(c.label)} side="top">
                       <button
+                        key={c.value}
                         type="button"
                         onClick={() => setNote(i, { category: c.value })}
+                        title={t(c.label)}
                         className={`focus-ring cursor-pointer px-2 py-1.5 text-[10px] font-medium transition-colors ${
                           note.category === c.value
                             ? c.activeClass
@@ -179,7 +180,6 @@ export function ChangelogEntryModal({ entry, initial, onClose, onSave }: Props) 
                         />
                         {t(c.label)}
                       </button>
-                    </Tooltip>
                   ))}
                 </div>
                 <input

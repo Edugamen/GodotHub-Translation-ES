@@ -11,7 +11,6 @@ import { useSettings } from '../../../../hooks/useSettings'
 import { RunningProjectsChip } from '../titlebar/RunningProjectsChip'
 import { TaskTray } from '../titlebar/TaskTray'
 import { LanguageMenu } from '../titlebar/LanguageMenu'
-import { Tooltip } from '../reusables/Tooltip'
 import { IconHeart, IconStar, IconBug } from '../../lib/icons'
 
 export function Titlebar({ minimal = false }: { minimal?: boolean }) {
@@ -82,7 +81,6 @@ export function Titlebar({ minimal = false }: { minimal?: boolean }) {
 
       <div className="ml-auto flex items-center gap-1.5 self-stretch ">
         {!minimal && settings.show_support_button && (
-          <Tooltip content={t('support_dev')} side="bottom">
             <motion.button
               type="button"
               whileHover={{ scale: 1.04 }}
@@ -93,16 +91,15 @@ export function Titlebar({ minimal = false }: { minimal?: boolean }) {
                 openUrl('https://www.patreon.com/cw/TheRyko/membership')
               }
               aria-label={t('support_dev')}
+              title={t('support_dev')}
               className="focus-ring cursor-pointer inline-flex items-center gap-1.5 h-6.5 px-3 rounded-item bg-danger/10 text-danger hover:bg-danger/20 transition-colors text-xs font-semibold"
             >
               <IconHeart className="w-3.5 h-3.5" />
               {t('support')}
             </motion.button>
-          </Tooltip>
         )}
 
         {!minimal && settings.show_star_button && (
-          <Tooltip content={t('star_on_github')} side="bottom">
             <motion.button
               type="button"
               whileHover={{ scale: 1.08 }}
@@ -111,15 +108,14 @@ export function Titlebar({ minimal = false }: { minimal?: boolean }) {
               onMouseDown={noDrag}
               onClick={() => openUrl('https://github.com/RykoTheDev/GodotHub')}
               aria-label={t('star_on_github')}
+              title={t('star_on_github')}
               className="focus-ring cursor-pointer w-8 h-8 flex items-center justify-center rounded-item text-muted hover:text-amber hover:bg-amber/10 transition-colors"
             >
               <IconStar className="w-3.5 h-3.5" />
             </motion.button>
-          </Tooltip>
         )}
 
         {!minimal && (
-          <Tooltip content={t('report_a_bug')} side="bottom">
             <motion.button
               type="button"
               whileHover={{ scale: 1.08 }}
@@ -130,11 +126,11 @@ export function Titlebar({ minimal = false }: { minimal?: boolean }) {
                 window.dispatchEvent(new Event('app:report-bug'))
               }
               aria-label={t('report_a_bug')}
+              title={t('report_a_bug')}
               className="focus-ring cursor-pointer w-6 h-6 flex items-center justify-center rounded-item text-muted hover:text-danger hover:bg-danger/10 transition-colors"
             >
               <IconBug className="w-3.5 h-3.5" />
             </motion.button>
-          </Tooltip>
         )}
 
         <div className="w-px h-5 bg-line/40 mx-1 shrink-0" />
@@ -145,16 +141,12 @@ export function Titlebar({ minimal = false }: { minimal?: boolean }) {
           <>
             <div className="w-px h-5 bg-line/40 mx-1 shrink-0" />
             <div className="flex self-stretch">
-              <Tooltip
-                className="self-stretch flex"
-                content={t('minimize')}
-                side="bottom"
-              >
                 <button
                   type="button"
                   onMouseDown={noDrag}
                   onClick={() => safe((w) => w.minimize())}
                   aria-label={t('minimize')}
+                  title={t('minimize')}
                   className="focus-ring cursor-pointer group/win w-9 h-full flex items-center justify-center"
                 >
                   <motion.span
@@ -164,18 +156,13 @@ export function Titlebar({ minimal = false }: { minimal?: boolean }) {
                     className={`${windowDot} -mr-3 bg-mint`}
                   />
                 </button>
-              </Tooltip>
 
-              <Tooltip
-                className="self-stretch flex"
-                content={isMaximized ? t('restore') : t('maximize')}
-                side="bottom"
-              >
                 <button
                   type="button"
                   onMouseDown={noDrag}
                   onClick={() => safe((w) => w.toggleMaximize())}
                   aria-label={isMaximized ? t('restore') : t('maximize')}
+                  title={isMaximized ? t('restore') : t('maximize')}
                   className="focus-ring cursor-pointer group/win w-9 h-full flex items-center justify-center"
                 >
                   <motion.span
@@ -185,18 +172,13 @@ export function Titlebar({ minimal = false }: { minimal?: boolean }) {
                     className={`${windowDot} bg-amber`}
                   />
                 </button>
-              </Tooltip>
 
-              <Tooltip
-                className="self-stretch flex"
-                content={t('close')}
-                side="bottom"
-              >
                 <button
                   type="button"
                   onMouseDown={noDrag}
                   onClick={() => safe((w) => w.close())}
                   aria-label={t('close')}
+                  title={t('close')}
                   className="focus-ring cursor-pointer group/win w-9 h-full flex items-center justify-center"
                 >
                   <motion.span
@@ -206,7 +188,6 @@ export function Titlebar({ minimal = false }: { minimal?: boolean }) {
                     className={`${windowDot} mr-3 bg-danger`}
                   />
                 </button>
-              </Tooltip>
             </div>
           </>
         )}

@@ -16,7 +16,6 @@ import {
   type AssetSortKey,
 } from '../../../../lib/assetSort'
 import { Dropdown } from '../ui/Dropdown'
-import { Tooltip } from '../reusables/Tooltip'
 import { AssetCard } from './AssetCard'
 import {
   IconCheck,
@@ -303,14 +302,14 @@ export function AssetLibraryBrowser({
               className={dropBtnClass}
             >
               <span className="text-[16px] font-medium text-ink">
-                {t(`asset_sort_${sort}`)}
+                {t(`asset_store_${sort}`)}
               </span>
               <IconChevronDown className="w-3 h-3 text-muted" />
             </motion.button>
           )}
           items={ASSET_SORT_KEYS.map((k) => ({
             key: k,
-            label: t(`asset_sort_${k}`),
+            label: t(`asset_store_${k}`),
             active: sort === k,
             onClick: () => setSort(k),
           }))}
@@ -450,18 +449,17 @@ export function AssetLibraryBrowser({
           {version === '' ? (
             (page > 0 || page + 1 < pages) && (
               <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                <Tooltip content={t('asset_prev_page')} side="top">
-                  <motion.button
+                <motion.button
                     type="button"
                     whileTap={{ scale: 0.94 }}
                     onClick={() => navigate(page - 1)}
                     disabled={page <= 0 || paging}
                     aria-label={t('asset_prev_page')}
+                    title={t('asset_prev_page')}
                     className="focus-ring cursor-pointer flex items-center justify-center w-9 h-9 rounded-item bg-overlay border border-outline/50 text-muted hover:text-ink hover:bg-raised transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                   >
                     <IconChevronLeft className="w-4 h-4" />
                   </motion.button>
-                </Tooltip>
                 {pageItems().map((item, i) =>
                   item === 'ellipsis' ? (
                     <span
@@ -493,47 +491,44 @@ export function AssetLibraryBrowser({
                     </motion.button>
                   ),
                 )}
-                <Tooltip content={t('asset_next_page')} side="top">
-                  <motion.button
+                <motion.button
                     type="button"
                     whileTap={{ scale: 0.94 }}
                     onClick={() => navigate(page + 1)}
                     disabled={page + 1 >= pages || paging}
                     aria-label={t('asset_next_page')}
+                    title={t('asset_next_page')}
                     className="focus-ring cursor-pointer flex items-center justify-center w-9 h-9 rounded-item bg-overlay border border-outline/50 text-muted hover:text-ink hover:bg-raised transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                   >
                     <IconChevronRight className="w-4 h-4" />
                   </motion.button>
-                </Tooltip>
               </div>
             )
           ) : (
             (canPrev || canNext) && (
               <div className="flex items-center justify-center gap-1.5">
-                <Tooltip content={t('asset_prev_page')} side="top">
-                  <motion.button
+                <motion.button
                     type="button"
                     whileTap={{ scale: 0.94 }}
                     onClick={() => navigate(page - 1)}
                     disabled={!canPrev || paging}
                     aria-label={t('asset_prev_page')}
+                    title={t('asset_prev_page')}
                     className="focus-ring cursor-pointer flex items-center justify-center w-9 h-9 rounded-item bg-overlay border border-outline/50 text-muted hover:text-ink hover:bg-raised transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                   >
                     <IconChevronLeft className="w-4 h-4" />
                   </motion.button>
-                </Tooltip>
-                <Tooltip content={t('asset_next_page')} side="top">
-                  <motion.button
+                <motion.button
                     type="button"
                     whileTap={{ scale: 0.94 }}
                     onClick={() => navigate(page + 1)}
                     disabled={!canNext || paging}
                     aria-label={t('asset_next_page')}
+                    title={t('asset_next_page')}
                     className="focus-ring cursor-pointer flex items-center justify-center w-9 h-9 rounded-item bg-overlay border border-outline/50 text-muted hover:text-ink hover:bg-raised transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                   >
                     <IconChevronRight className="w-4 h-4" />
                   </motion.button>
-                </Tooltip>
               </div>
             )
           )}

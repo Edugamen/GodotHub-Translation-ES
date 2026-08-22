@@ -16,7 +16,6 @@
   "fetch_error": "Couldn't fetch available versions.",
   "importing_version": "Importing version…",
   "scanning_versions": "Scanning for versions…",
-  "importing_progress": "Importing {{current}}/{{total}}…",
   "importing": "Importing…",
   "import": "Import",
   "scanning": "Scanning…",
