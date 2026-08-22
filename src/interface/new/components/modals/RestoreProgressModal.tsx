@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import {
@@ -35,7 +35,7 @@ export function RestoreProgressModal({ onClose }: Props) {
   const [error, setError] = useState<string | null>(null)
 
   // Fetch on mount
-  useState(() => {
+  useEffect(() => {
     api
       .gistSyncFetchBackup()
       .then((data) => {
@@ -46,7 +46,7 @@ export function RestoreProgressModal({ onClose }: Props) {
         setError(String(e))
         setPhase('error')
       })
-  })
+  }, [])
 
   const handleApplyAndRestart = async () => {
     setPhase('applying')

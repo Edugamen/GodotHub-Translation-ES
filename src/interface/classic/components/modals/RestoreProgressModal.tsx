@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { IconCloudArrowDown, IconCheck, IconAlertTriangle, IconRefresh } from '../../lib/Icons'
-import { api } from '../../../lib/api'
+import { api } from '../../../../lib/api'
 
 interface RestorePreview {
   workspace_count: number

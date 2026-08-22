@@ -39,6 +39,8 @@ export const settingsApi = {
       category_count: number
       template_count: number
       has_time_stats: boolean
+      version_scan_dirs: string[]
+      project_scan_dirs: string[]
     }>('gist_sync_fetch_backup'),
   getTimeInsights: () =>
     invoke<TimeInsights>('get_time_insights'),
