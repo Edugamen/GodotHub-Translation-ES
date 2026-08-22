@@ -9,6 +9,7 @@ import { useSettings } from '../../../../hooks/useSettings'
 import { useUpdatesBadge } from '../../../../hooks/useUpdatesBadge'
 import { useChangelogBadge } from '../../../../hooks/useChangelogBadge'
 import { useUpdateAvailable } from '../../../../hooks/useUpdateAvailable'
+import { Tooltip } from '../reusables/Tooltip'
 
 export interface SidebarTab {
   id: string
@@ -194,8 +195,10 @@ export function Sidebar({
       </button>
     )
     return collapsedView ? (
-      <span key={tab.id} title={tab.label} className="contents">
-        {btn}
+      <span key={tab.id} className="contents">
+        <Tooltip content={tab.label} side="right">
+          {btn}
+        </Tooltip>
       </span>
     ) : (
       btn
@@ -251,26 +254,27 @@ export function Sidebar({
           collapsed ? 'justify-center px-0' : 'px-3'
         }`}
       >
-        {!collapsed && (
-          <button
-              type="button"
-              onClick={() => onTabChange('dashboard')}
-              title={t('dashboard')}
-              className="focus-ring cursor-pointer font-display pl-2 font-black text-2xl tracking-tight text-ink/50 hover:text-ink min-w-0 truncate text-left transition-colors"
-            >
-              GodotHub
-            </button>
+        {!collapsed && (              <Tooltip content={t('dashboard')}>
+              <button
+                type="button"
+                onClick={() => onTabChange('dashboard')}
+                className="focus-ring cursor-pointer font-display pl-2 font-black text-2xl tracking-tight text-ink/50 hover:text-ink min-w-0 truncate text-left transition-colors"
+              >
+                GodotHub
+              </button>
+              </Tooltip>
         )}
         {collapsed ? (
+          <Tooltip content={t('dashboard')}>
           <button
               type="button"
               onClick={() => onTabChange('dashboard')}
               aria-label={t('dashboard')}
-              title={t('dashboard')}
               className="focus-ring cursor-pointer w-6 h-6 shrink-0 flex items-center justify-center rounded-item text-muted hover:text-ink hover:bg-raised/60 transition-colors"
             >
               <IconHouse className="w-4 h-4" />
             </button>
+            </Tooltip>
         ) : (
           collapseBtn
         )}
@@ -327,7 +331,6 @@ export function Sidebar({
                       setPaletteHintDismissed(true)
                     }}
                     aria-label={tc('close')}
-                    title={tc('close')}
                     className="focus-ring cursor-pointer w-4 h-4 rounded-full bg-raised border border-outline/60 text-muted/60 hover:text-ink hover:border-outline flex items-center justify-center transition-colors absolute -top-1.5 -right-1.5"
                   >
                     <IconX className="w-2.5 h-2.5" />
@@ -348,12 +351,12 @@ export function Sidebar({
               </button>
             )}
             {(updateAvailable || previewUpdate) && onOpenUpdatesModal && collapsed && (
+                <Tooltip content="Update available">
                 <button
                   type="button"
                   onClick={onOpenUpdatesModal}
                   className="focus-ring cursor-pointer w-11 h-11 shrink-0 flex items-center justify-center rounded-item relative text-muted hover:text-ink hover:bg-raised/60 transition-colors"
                   aria-label="Update available"
-                  title="Update available"
                 >
                   <IconArrowUp className="w-4 h-4" />
                   <span className="absolute top-2 right-2 flex w-2 h-2" aria-hidden="true">
@@ -361,6 +364,7 @@ export function Sidebar({
                     <span className="relative inline-flex rounded-full w-2 h-2 bg-accent-bright shadow-[0_0_6px_2px] shadow-accent/50" />
                   </span>
                 </button>
+                </Tooltip>
             )}
             {footerTabs.slice(0, -2).map((tab) =>
               renderTabButton(

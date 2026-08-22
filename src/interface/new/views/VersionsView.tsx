@@ -631,7 +631,6 @@ export function VersionsView({
                                               whileTap={{ scale: 0.9 }}
                                               onClick={() => resume(progressKey)}
                                               aria-label={tv('resume_download')}
-                                              title={tv('resume_download')}
                                               className="focus-ring cursor-pointer p-2 rounded-btn border border-outline/50 text-muted hover:text-mint hover:border-mint/40 transition-colors"
                                             >
                                               <IconPlay className="w-4 h-4" />
@@ -642,7 +641,6 @@ export function VersionsView({
                                               whileTap={{ scale: 0.9 }}
                                               onClick={() => pause(progressKey)}
                                               aria-label={tv('pause_download')}
-                                              title={tv('pause_download')}
                                               className="focus-ring cursor-pointer p-2 rounded-btn border border-outline/50 text-muted hover:text-ink hover:border-accent-dim transition-colors"
                                             >
                                               <IconPause className="w-4 h-4" />
@@ -653,7 +651,6 @@ export function VersionsView({
                                             whileTap={{ scale: 0.9 }}
                                             onClick={() => cancel(progressKey)}
                                             aria-label={tv('cancel_download')}
-                                            title={tv('cancel_download')}
                                             className="focus-ring cursor-pointer p-2 rounded-btn border border-outline/50 text-muted hover:text-danger hover:border-danger/40 transition-colors"
                                           >
                                             <IconX className="w-4 h-4" />
@@ -672,12 +669,6 @@ export function VersionsView({
                                             onClick={() =>
                                               openUrl(sourcePageUrl(source, tag))
                                             }
-                                            title={tv('open_source_page', {
-                                              source:
-                                                source === 'archive'
-                                                  ? tv('source_archive')
-                                                  : tv('source_github'),
-                                            })}
                                             className="focus-ring cursor-pointer flex items-center gap-1.5 h-9 px-3.5 rounded-item border border-outline/50 text-muted hover:text-ink hover:border-accent-dim hover:bg-raised text-sm font-medium transition-colors"
                                           >
                                             <IconExternalLink className="w-3.5 h-3.5" />

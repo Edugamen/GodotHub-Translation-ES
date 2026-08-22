@@ -68,7 +68,7 @@ const DEFAULTS: AppSettings = {
   external_editor_path: null,
   github_token: null,
   discord_app_id: null,
-  discord_rpc_enabled: false,
+  discord_rpc_enabled: true,
   discord_rpc_show_projects: true,
   discord_rpc_excluded_projects: [],
   discord_rpc_project_presences: [],

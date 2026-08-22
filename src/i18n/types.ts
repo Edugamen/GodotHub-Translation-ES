@@ -944,7 +944,8 @@ export type gitKeys =
   | 'auth_connected_accounts'
   | 'auth_not_signed_in'
   | 'auth_sign_in'
-  | 'auth_disconnect';
+  | 'auth_disconnect'
+  | 'auth_connect_hint';
 
 /** Keys from nav.json */
 export type navKeys = 
@@ -2284,6 +2285,7 @@ export type TranslationKey =
   | 'git:auth_not_signed_in'
   | 'git:auth_sign_in'
   | 'git:auth_disconnect'
+  | 'git:auth_connect_hint'
   | 'nav:dashboard'
   | 'nav:projects'
   | 'nav:versions'

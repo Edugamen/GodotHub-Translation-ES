@@ -102,7 +102,6 @@ export function InstalledVersionCard({
                     whileTap={{ scale: 0.92 }}
                     onClick={startEditing}
                     aria-label={tc('version_rename_aria')}
-                    title={tc('version_rename_tooltip')}
                     className="focus-ring cursor-pointer p-1 rounded-btn text-muted/60 hover:text-ink hover:bg-raised transition-colors shrink-0"
                   >
                     <IconPencil className="w-3.5 h-3.5" />

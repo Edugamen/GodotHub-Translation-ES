@@ -210,7 +210,6 @@ export function GitAuthModal({
                       type="button"
                       onClick={copyCode}
                       aria-label={ts('git_auth_copy_code')}
-                      title={ts('git_auth_copy_code')}
                       className="focus-ring cursor-pointer p-2.5 rounded-btn border border-outline/50 text-muted hover:text-ink hover:border-accent-dim transition-colors shrink-0"
                     >
                       {copied ? (

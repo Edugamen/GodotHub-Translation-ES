@@ -109,7 +109,6 @@ export function CommitGraph({ commits, remoteUrl, onOpenDetails }: Props) {
                       void openUrl(url).catch(() => {})
                     }
                   }}
-                  title={onOpenDetails ? t('open_commit_details') : t('open_commit_on_github')}
                   className={`flex items-center gap-2 pr-2 rounded-md transition-colors ${
                     onOpenDetails || url
                       ? 'cursor-pointer hover:bg-raised/60'

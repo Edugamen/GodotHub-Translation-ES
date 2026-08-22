@@ -61,7 +61,6 @@ export function OpenButton({
             type="button"
             onClick={() => setConsoleEnabled((v) => !v)}
             aria-label={t('open_with_console')}
-            title={t('open_with_console')}
             aria-pressed={consoleEnabled}
             className={`focus-ring cursor-pointer p-2 h-12 rounded-[4px] font-semibold text-[17px] shadow-md shadow-black/10 border transition-colors duration-200 ${
               consoleEnabled

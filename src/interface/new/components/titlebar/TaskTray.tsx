@@ -29,6 +29,7 @@ import {
   IconStore,
   IconX,
 } from '../../lib/icons'
+import { Tooltip } from '../reusables/Tooltip'
 
 function TaskIcon({ task }: { task: Task }) {
   const iconClass = 'w-4 h-4 shrink-0'
@@ -152,7 +153,6 @@ function TaskItem({ task }: { task: Task }) {
                           api.reorderDownloadQueue(downloadKey, -1).catch(() => {})
                         }
                         aria-label={t('download_queue_move_up')}
-                        title={t('download_queue_move_up')}
                         className="focus-ring cursor-pointer w-5 h-5 rounded-btn flex items-center justify-center text-muted/50 hover:text-ink hover:bg-raised transition-colors"
                       >
                         <IconChevronUp className="w-3 h-3" />
@@ -163,7 +163,6 @@ function TaskItem({ task }: { task: Task }) {
                           api.reorderDownloadQueue(downloadKey, 1).catch(() => {})
                         }
                         aria-label={t('download_queue_move_down')}
-                        title={t('download_queue_move_down')}
                         className="focus-ring cursor-pointer w-5 h-5 rounded-btn flex items-center justify-center text-muted/50 hover:text-ink hover:bg-raised transition-colors"
                       >
                         <IconChevronDown className="w-3 h-3" />
@@ -177,7 +176,6 @@ function TaskItem({ task }: { task: Task }) {
                         api.pauseDownload(downloadKey).catch(() => {})
                       }
                       aria-label={t('pause_download')}
-                      title={t('pause_download')}
                       className="focus-ring cursor-pointer w-5 h-5 rounded-btn flex items-center justify-center text-muted/50 hover:text-ink hover:bg-raised transition-colors"
                     >
                       <IconPause className="w-3 h-3" />
@@ -192,7 +190,6 @@ function TaskItem({ task }: { task: Task }) {
                             api.resumeDownload(downloadKey).catch(() => {})
                           }
                           aria-label={t('resume_download')}
-                          title={t('resume_download')}
                           className="focus-ring cursor-pointer w-5 h-5 rounded-btn flex items-center justify-center text-muted/50 hover:text-mint hover:bg-mint/10 transition-colors"
                         >
                           <IconPlay className="w-3 h-3" />
@@ -204,7 +201,6 @@ function TaskItem({ task }: { task: Task }) {
                           api.cancelDownload(downloadKey).catch(() => {})
                         }
                         aria-label={t('cancel_download')}
-                        title={t('cancel_download')}
                         className="focus-ring cursor-pointer w-5 h-5 rounded-btn flex items-center justify-center text-muted/50 hover:text-danger hover:bg-danger/10 transition-colors"
                       >
                         <IconX className="w-3 h-3" />
@@ -298,32 +294,16 @@ export function TaskTray() {
     [tasks],
   )
 
-  const tooltipContent = useMemo(() => {
-    if (activeCount === 0) return t('task_tray_empty')
-    const labels = tasks
-      .filter((t) => t.status === 'queued' || t.status === 'running')
-      .slice(0, 3)
-      .map((t) => t.label)
-    if (labels.length === 0)
-      return activeCount === 1
-        ? t('task_tray_active_tasks', { count: 1 })
-        : t('task_tray_active_tasks_plural', { count: activeCount })
-    const preview = labels.join(', ')
-    const remaining = activeCount - labels.length
-    if (remaining > 0) return t('task_tray_more', { preview, remaining })
-    return preview
-  }, [t, tasks, activeCount])
-
   const noDrag = (e: React.MouseEvent) => e.stopPropagation()
 
   return (
     <div ref={ref} className="relative mt-1 flex items-stretch shrink-0">
+        <Tooltip content={t('task_tray_aria')}>
         <motion.button
           type="button"
           onMouseDown={noDrag}
           onClick={() => setOpen((o) => !o)}
           aria-label={t('task_tray_aria')}
-          title={tooltipContent}
           aria-haspopup="menu"
           aria-expanded={open}
           whileHover={{ scale: 1.08 }}
@@ -346,6 +326,7 @@ export function TaskTray() {
             )}
           </span>
         </motion.button>
+        </Tooltip>
 
       <AnimatePresence>
         {open && (

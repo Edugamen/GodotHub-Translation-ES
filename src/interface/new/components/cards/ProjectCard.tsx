@@ -4,9 +4,7 @@ import { useTranslation } from 'react-i18next'
 import type { Category, GitStatus, InstalledGodotVersion, Project } from '../../../../types'
 import { api, getCachedProjectIcon, getCachedProjectName } from '../../../../lib/api'
 import {
-  formatDate,
   formatLastOpened,
-  formatTime,
 } from '../../../../lib/lastOpened'
 import { formatDuration } from '../../lib/duration'
 import { effectiveTotalMs } from '../../../../lib/projectSort'
@@ -153,14 +151,7 @@ export function ProjectCard({
     settings.last_opened_time_format,
     settings.last_opened_date_format,
   )
-  const lastOpenedFull =
-    lastOpenedLabel && project.last_opened
-      ? (() => {
-          const d = new Date(project.last_opened)
-          if (isNaN(d.getTime())) return null
-          return `${formatDate(d, settings.last_opened_date_format)} · ${formatTime(d, settings.last_opened_time_format)}`
-        })()
-      : null
+
 
   const sessionStart = project.session_started_at_ms
   const [now, setNow] = useState(() => Date.now())
@@ -320,15 +311,6 @@ export function ProjectCard({
                 type="button"
                 onClick={onShowGitSidebar}
                 aria-label={t('git_sidebar')}
-                title={
-                  gitStatus.has_uncommitted
-                    ? t('project_git_dirty_tooltip', {
-                        branch: gitStatus.branch ?? 'HEAD',
-                      })
-                    : t('project_git_clean_tooltip', {
-                        branch: gitStatus.branch ?? 'HEAD',
-                      })
-                }
                 className={`shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-item transition-colors cursor-pointer ${
                   gitStatus.has_uncommitted
                     ? 'bg-amber/10 text-amber'
@@ -339,9 +321,7 @@ export function ProjectCard({
               </button>
           )}
           {lastOpenedLabel && (
-              <span title={t('project_last_opened_tooltip', {
-                label: lastOpenedFull ?? lastOpenedLabel,
-              })} className="inline-flex items-center gap-1 pl-1.5 pr-1 py-0.5 rounded-tag font-mono text-[10px] font-medium tracking-tight shrink-0 text-muted">
+              <span className="inline-flex items-center gap-1 pl-1.5 pr-1 py-0.5 rounded-tag font-mono text-[10px] font-medium tracking-tight shrink-0 text-muted">
                 <IconClock className="w-2.5 h-2.5 text-muted/60 shrink-0" />
                 {lastOpenedLabel}
               </span>
@@ -450,7 +430,6 @@ export function ProjectCard({
                     setTagError(null)
                   }}
                   aria-label={t('add_tag_aria')}
-                  title={t('add_tag_aria')}
                   className="focus-ring cursor-pointer inline-flex items-center px-2 py-0.5 rounded-tag text-[10px] font-mono font-medium tracking-tight whitespace-nowrap text-muted hover:text-accent-bright hover:bg-raised transition-colors shrink-0 border border-dashed border-outline/50"
                 >
                   {t('add_tag_aria')}
@@ -550,7 +529,6 @@ export function ProjectCard({
                           <button
                               type="button"
                               onClick={() => onTagClick?.(tag)}
-                              title={t('filter_by_tag')}
                               className="cursor-pointer hover:brightness-125 transition-[filter] duration-100"
                             >
                               {tag}
@@ -563,7 +541,6 @@ export function ProjectCard({
                                 setTagError(null)
                               }}
                               aria-label={t('tag_rename_aria')}
-                              title={t('tag_rename_aria')}
                               className="focus-ring cursor-pointer opacity-0 group-hover/tag:opacity-100 scale-75 group-hover/tag:scale-100 w-0 group-hover/tag:w-3 h-3 overflow-hidden rounded-full flex items-center justify-center transition-all duration-150 hover:text-ink shrink-0"
                             >
                               <IconPencil className="w-2.5 h-2.5 shrink-0" />
@@ -572,7 +549,6 @@ export function ProjectCard({
                               type="button"
                               onClick={() => handleRemoveTag(index)}
                               aria-label={t('tag_remove_aria', { tag })}
-                              title={t('tag_remove_aria', { tag })}
                               className="focus-ring cursor-pointer opacity-0 group-hover/tag:opacity-100 scale-75 group-hover/tag:scale-100 w-0 group-hover/tag:w-3 h-3 overflow-hidden rounded-full flex items-center justify-center transition-all duration-150 hover:text-danger shrink-0"
                             >
                               <IconX className="w-2.5 h-2.5 shrink-0" />
@@ -587,7 +563,6 @@ export function ProjectCard({
                     type="button"
                     onClick={() => setTagsExpanded(true)}
                     aria-label={t('show_more_tags')}
-                    title={t('show_more_tags')}
                     className="focus-ring cursor-pointer inline-flex items-center px-2 py-0.5 rounded-tag text-[10px] font-mono font-medium tracking-tight text-muted hover:text-ink hover:bg-raised transition-colors shrink-0 border border-dashed border-outline/50"
                   >
                     +{project.tags.length - 2}
@@ -598,7 +573,6 @@ export function ProjectCard({
                     type="button"
                     onClick={() => setTagsExpanded(false)}
                     aria-label={t('show_fewer_tags')}
-                    title={t('show_fewer_tags')}
                     className="focus-ring cursor-pointer inline-flex items-center px-2 py-0.5 rounded-tag text-[10px] font-mono font-medium tracking-tight text-muted hover:text-ink hover:bg-raised transition-colors shrink-0 border border-dashed border-outline/50"
                   >
                     -{project.tags.length - 2}
@@ -610,7 +584,6 @@ export function ProjectCard({
           <button
             type="button"
             onClick={openFolder}
-            title={project.path}
             className="block w-fit max-w-full bg-black/15 px-3 py-1 rounded-tag text-[11px] font-mono text-muted truncate hover:text-accent-bright cursor-pointer transition-colors w-fit max-w-full"
           >
             {project.path}
@@ -674,11 +647,6 @@ export function ProjectCard({
                     ? t('project_unpin_aria')
                     : t('project_pin_aria')
                 }
-                title={
-                  project.pinned
-                    ? t('project_unpin_aria')
-                    : t('project_pin_aria')
-                }
                 className={`focus-ring icon-wiggle cursor-pointer p-1 rounded-item transition-colors ${
                   project.pinned
                     ? 'text-accent-bright opacity-100'
@@ -696,9 +664,6 @@ export function ProjectCard({
                 type="button"
                 onClick={() => setTimeTrackerOpen(true)}
                 aria-label={t('time_tracked_title')}
-                title={t('project_total_time_tooltip', {
-                  label: formatDuration(allMs),
-                })}
                 className="focus-ring border border-outline/50 cursor-pointer inline-flex items-center gap-1.5 rounded-btn px-3 py-3 bg-black/10 font-mono text-[10px] text-muted hover:text-ink hover:bg-raised transition-colors shrink-0"
               >
                 <IconStopwatch className="w-3 h-3 text-muted/60 shrink-0" />
