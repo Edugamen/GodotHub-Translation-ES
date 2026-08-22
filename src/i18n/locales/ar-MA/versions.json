@@ -42,5 +42,7 @@
   "source_github": "GitHub",
   "source_archive": "Godot أرشيف",
   "open_source_page": "افتح {{source}}",
-  "switch_to_archive": "بدل لأرشيف Godot"
+  "switch_to_archive": "بدل لأرشيف Godot",
+  "console_label": "Console",
+  "no_available_versions_match": "No available versions match"
 }

@@ -6,5 +6,8 @@
   "asset_store": "متجر الأصول",
   "news": "الأخبار",
   "settings": "الإعدادات",
-  "changelog": "سجل التغييرات"
+  "changelog": "سجل التغييرات",
+  "collapse_sidebar": "Collapse",
+  "expand_sidebar": "Expand",
+  "updates": "Updates from Dev"
 }

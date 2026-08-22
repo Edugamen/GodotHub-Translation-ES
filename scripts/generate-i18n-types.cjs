@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Generates TypeScript types from en-US locale files
-// Run: npm run i18n:types
+// Run: bun run i18n:types
 
 const fs = require('fs');
 const path = require('path');
@@ -37,7 +37,7 @@ for (const f of nsFiles) {
 
 // Generate type definitions
 let output = `// AUTO-GENERATED from en-US locale files
-// Do not edit manually. Run: npm run i18n:types
+// Do not edit manually. Run: bun run i18n:types
 
 `;
 

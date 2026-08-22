@@ -3,14 +3,15 @@
 // Checks all locales against en-US and shows a beautiful summary.
 //
 // Usage:
-//   npm run i18n:check                   # Check all locales
-//   npm run i18n:check -- zh-CN          # Check only zh-CN
-//   npm run i18n:check -- zh-CN ru-RU    # Check multiple locales
-//   npm run i18n:check -- --json         # Machine-readable JSON
-//   npm run i18n:check -- --md           # Markdown for PR comments
-//   npm run i18n:check -- --md zh-CN     # Markdown for one locale
-//   npm run i18n:check -- --missing      # Show only missing keys
-//   npm run i18n:check -- --list         # List available locales
+//   bun run i18n:check                   # Check all locales
+//   bun run i18n:check -- zh-CN          # Check only zh-CN
+//   bun run i18n:check -- zh-CN ru-RU    # Check multiple locales
+//   bun run i18n:check -- --json         # Machine-readable JSON
+//   bun run i18n:check -- --md           # Markdown for PR comments
+//   bun run i18n:check -- --md zh-CN     # Markdown for one locale
+//   bun run i18n:check -- --missing      # Show only missing keys
+//   bun run i18n:check -- --list         # List available locales
+//   bun run i18n:check -- --check-values # Also detect untranslated (same as English)
 // ─────────────────────────────────────────────────────────────────────
 
 const fs = require('fs');
@@ -40,6 +41,7 @@ const jsonMode = rawArgs.includes('--json');
 const mdMode = rawArgs.includes('--md');
 const missingOnly = rawArgs.includes('--missing');
 const listMode = rawArgs.includes('--list');
+const checkValues = rawArgs.includes('--check-values');
 const useColor = !jsonMode && !mdMode && process.stdout.isTTY;
 
 // Filter out flags, remaining args are locale names
@@ -80,6 +82,27 @@ function parseKeys(filePath) {
         const full = prefix ? `${prefix}.${k}` : k;
         if (typeof v === 'object' && v !== null) walk(v, full);
         else keys.add(full);
+      }
+    }
+    walk(data, '');
+    return keys;
+  } catch {
+    return null;
+  }
+}
+
+function parseKeysWithValues(filePath) {
+  if (!fs.existsSync(filePath)) return null;
+  const stat = fs.statSync(filePath);
+  if (stat.size === 0) return null;
+  try {
+    const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    const keys = {};
+    function walk(obj, prefix) {
+      for (const [k, v] of Object.entries(obj)) {
+        const full = prefix ? `${prefix}.${k}` : k;
+        if (typeof v === 'object' && v !== null) walk(v, full);
+        else keys[full] = v;
       }
     }
     walk(data, '');
@@ -130,29 +153,41 @@ if (localeFilter.length > 0) {
 const results = {};
 let overallMissing = 0;
 let overallTotal = 0;
+let overallUntranslated = 0;
 
 for (const locale of locales) {
   const localeDir = path.join(LOCALES_DIR, locale);
-  results[locale] = { namespaces: {}, totalKeys: 0, missingKeys: 0, extraKeys: 0 };
+  results[locale] = { namespaces: {}, totalKeys: 0, missingKeys: 0, extraKeys: 0, untranslatedKeys: 0 };
 
   for (const ns of namespaces) {
     const enKeys = parseKeys(path.join(enDir, `${ns}.json`));
     const localeKeys = parseKeys(path.join(localeDir, `${ns}.json`));
+    const localeData = checkValues ? parseKeysWithValues(path.join(localeDir, `${ns}.json`)) : null;
+    const enData = checkValues ? parseKeysWithValues(path.join(enDir, `${ns}.json`)) : null;
 
     if (!enKeys) continue;
 
     const enCount = enKeys.size;
     const missing = localeKeys ? [...enKeys].filter(k => !localeKeys.has(k)) : [...enKeys];
     const extra = localeKeys ? [...localeKeys].filter(k => !enKeys.has(k)) : [];
-    const translated = enCount - missing.length;
+    
+    // Find keys with identical English values (untranslated)
+    let untranslated = [];
+    if (checkValues && localeData && enData) {
+      untranslated = [...enKeys].filter(k => localeData[k] && enData[k] && localeData[k] === enData[k]);
+    }
+    
+    const translated = enCount - missing.length - untranslated.length;
     const pct = enCount > 0 ? (translated / enCount) * 100 : 100;
 
-    results[locale].namespaces[ns] = { enCount, translated, missing, extra, pct };
+    results[locale].namespaces[ns] = { enCount, translated, missing, extra, untranslated, pct };
     results[locale].totalKeys += enCount;
     results[locale].missingKeys += missing.length;
     results[locale].extraKeys += extra.length;
+    results[locale].untranslatedKeys += untranslated.length;
     overallMissing += missing.length;
     overallTotal += enCount;
+    overallUntranslated += untranslated.length;
   }
 }
 
@@ -165,8 +200,8 @@ if (jsonMode) {
 // ── Markdown output ─────────────────────────────────────────────────
 if (mdMode) {
   const title = localeFilter.length > 0
-    ? `## 🌐 Translation Status — ${localeFilter.join(', ')}\n`
-    : '## 🌐 Translation Status\n';
+    ? `## 🌐 Key Sync Status — ${localeFilter.join(', ')}\n`
+    : '## 🌐 Key Sync Status\n';
   
   console.log(title);
   
@@ -200,7 +235,7 @@ if (mdMode) {
   }
   
   if (locales.length > 1) {
-    console.log(`\n**Total:** ${overallTotal - overallMissing}/${overallTotal} keys translated (${((overallTotal - overallMissing) / overallTotal * 100).toFixed(1)}%)`);
+    console.log(`\n**Total:** ${overallTotal - overallMissing}/${overallTotal} keys present (${((overallTotal - overallMissing) / overallTotal * 100).toFixed(1)}%)`);
   }
   
   process.exit(overallMissing > 0 ? 1 : 0);
@@ -215,13 +250,15 @@ if (isSingle) {
   const r = results[singleLocale];
   const pct = r.totalKeys > 0 ? ((r.totalKeys - r.missingKeys) / r.totalKeys * 100) : 100;
   const icon = pct >= 100 ? '✅' : pct >= 80 ? '🟡' : '🔴';
+  const cvTag = checkValues ? ' (checking values)' : '';
   
   console.log(color(`  ╭─────────────────────────────────────────────╮`, c.cyan));
-  console.log(color(`  │   🌐  ${singleLocale}  ${icon}  ${pct.toFixed(0)}% complete           │`, c.cyan, c.bold));
+  console.log(color(`  │   🌐  ${singleLocale}  ${icon}  ${pct.toFixed(0)}% keys present${cvTag}   │`, c.cyan, c.bold));
   console.log(color(`  ╰─────────────────────────────────────────────╯`, c.cyan));
 } else {
+  const cvTag = checkValues ? ' (checking values)' : '';
   console.log(color('  ╭─────────────────────────────────────────────╮', c.cyan));
-  console.log(color('  │         🌐  Translation Status               │', c.cyan, c.bold));
+  console.log(color(`  │         🌐  Key Sync Status${cvTag}             │`, c.cyan, c.bold));
   console.log(color('  ╰─────────────────────────────────────────────╯', c.cyan));
 }
 console.log('');
@@ -244,7 +281,12 @@ for (const locale of locales) {
 
 console.log('');
 console.log(color('  ────────────────────────────────────────────────', c.dim));
-console.log(`  ${color('Total:', c.bold)} ${color(`${overallTotal - overallMissing}`, c.green)}/${overallTotal} keys translated`);
+console.log(`  ${color('Total:', c.bold)} ${color(`${overallTotal - overallMissing}`, c.green)}/${overallTotal} keys present`);
+if (overallUntranslated > 0 && !checkValues) {
+  console.log(`  ${color('⚠️  Note:', c.yellow)} ${color(`${overallUntranslated}`, c.yellow)} keys may still have English values — run with ${color('--check-values', c.bold)} to verify`);
+} else if (overallUntranslated > 0) {
+  console.log(`  ${color('⚠️  Note:', c.yellow)} ${color(`${overallUntranslated}`, c.yellow)} keys still have identical English values (not translated)`);
+}
 console.log('');
 
 // ── Detail per locale ───────────────────────────────────────────────
@@ -280,6 +322,13 @@ for (const locale of locales) {
       }
     }
 
+    if (data.untranslated && data.untranslated.length > 0) {
+      console.log(`      ${color('≈ Untranslated:', c.yellow)} ${data.untranslated.slice(0, 8).map(k => color(k, c.gray)).join(', ')}`);
+      if (data.untranslated.length > 8) {
+        console.log(`        ${color(`... and ${data.untranslated.length - 8} more`, c.dim)}`);
+      }
+    }
+
     if (data.extra.length > 0 && !missingOnly) {
       console.log(`      ${color('↑ Extra:', c.yellow)} ${data.extra.slice(0, 5).map(k => color(k, c.gray)).join(', ')}`);
       if (data.extra.length > 5) {
@@ -296,21 +345,24 @@ if (overallMissing > 0) {
   if (isSingle) {
     console.log(`     ${color('1.', c.cyan)} Add missing keys from ${color('en-US/', c.bold)} to ${color(singleLocale + '/', c.bold)}`);
     console.log(`     ${color('2.', c.cyan)} Translate the values (keep keys identical)`);
-    console.log(`     ${color('3.', c.cyan)} Run ${color(`npm run i18n:check -- ${singleLocale}`, c.bold)} again`);
+    console.log(`     ${color('3.', c.cyan)} Run ${color(`bun run i18n:check -- ${singleLocale}`, c.bold)} again`);
   } else {
     console.log(`     ${color('1.', c.cyan)} Copy missing keys from ${color('en-US/', c.bold)} to each locale`);
     console.log(`     ${color('2.', c.cyan)} Translate the values (keep keys identical)`);
-    console.log(`     ${color('3.', c.cyan)} Run ${color('npm run i18n:check', c.bold)} again to verify`);
+    console.log(`     ${color('3.', c.cyan)} Run ${color('bun run i18n:check', c.bold)} again to verify`);
   }
   console.log('');
 } else {
-  console.log(color('  🎉 All checked locales are fully translated!', c.green, c.bold));
+  console.log(color('  🎉 All checked locales have all keys present!', c.green, c.bold));
+if (!checkValues) {
+  console.log(color('  💡 Run with --check-values to verify translations are not just English', c.dim));
+}
   console.log('');
 }
 
 // ── Help hint ───────────────────────────────────────────────────────
 if (allLocales.length > 1 && locales.length === allLocales.length) {
-  console.log(color('  💬 Tip: Filter by locale with npm run i18n:check -- zh-CN', c.dim));
+  console.log(color('  💬 Tip: Filter by locale with bun run i18n:check -- zh-CN', c.dim));
   console.log('');
 }
 

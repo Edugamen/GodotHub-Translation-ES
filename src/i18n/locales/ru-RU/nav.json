@@ -7,5 +7,7 @@
   "news": "Новости",
   "settings": "Настройки",
   "changelog": "Журнал изменений",
-  "updates": "Обновления от разработчика"
+  "updates": "Обновления от разработчика",
+  "collapse_sidebar": "Collapse",
+  "expand_sidebar": "Expand"
 }

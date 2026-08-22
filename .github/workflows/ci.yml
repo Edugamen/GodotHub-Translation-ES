@@ -64,6 +64,9 @@ jobs:
       - name: TypeScript typecheck
         run: bun run tsc --noEmit
 
+      - name: i18n validation
+        run: bun run i18n:check -- --check-values
+
       - name: ESLint (New UI isolation)
         run: bun run lint
 
