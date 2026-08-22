@@ -51,5 +51,13 @@
   "resume_download": "Возобновить загрузку",
   "pause_download": "Приостановить загрузку",
   "cancel_download": "Отменить загрузку",
-  "installed_label": "Установлено"
+  "installed_label": "Установлено",
+  "console_label": "Console",
+  "no_available_versions_match": "No available versions match",
+  "original_name": "Original",
+  "source": "Source",
+  "source_github": "GitHub",
+  "source_archive": "Godot Archive",
+  "open_source_page": "Open on {{source}}",
+  "switch_to_archive": "Switch to Godot Archive"
 }

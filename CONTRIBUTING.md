@@ -19,7 +19,7 @@ finding something to work on, code conventions, and in depth, how
 - [Project Structure](#-project-structure)
 - [Development Workflow](#-development-workflow)
 - [Code Conventions](#-code-conventions)
-- [Localization (in depth)](#-localization-in-depth)
+- [Localization](#-localization)
 - [Testing & CI](#-testing--ci)
 - [Release Process](#-release-process)
 - [Getting Help](#-getting-help)
@@ -42,7 +42,7 @@ You don't have to write code to help:
 |---|---|
 | **Report a bug** | Open an issue with steps to reproduce, expected vs. actual behavior, and your OS + app version. |
 | **Request a feature** | Open an issue describing *what* you want and *why*. Screenshots/mockups help a lot. |
-| **Translate** | Add or improve a language in `src/i18n/`. No Rust or TypeScript needed. See the [Localization section](#-localization-in-depth). |
+| **Translate** | Add or improve a language in `src/i18n/`. No Rust or TypeScript needed. See the [Localization section](#-localization). |
 | **Test** | The app is only heavily tested on Windows, Arch Linux (Hyprland), and recent macOS. Try a nightly/dev build on your setup and report what breaks. |
 | **Write docs** | Improve the README, this file, or add FAQ content. |
 | **Fix a bug / build a feature** | The classic path, see below. |
@@ -250,39 +250,59 @@ but do mention which platform you *did* test on in the PR.
 
 ---
 
-## 🌍 Localization (in depth)
-
-> **Translators:** For a quick-reference guide covering adding a new language,
-> adding keys, validation scripts, and best practices, see
-> [CONTRIBUTING-I18N.md](CONTRIBUTING-I18N.md).
+## 🌍 Localization
 
 Localization uses **i18next** + **react-i18next** with JSON resource files.
 English is the source of truth; every other language falls back to English for
 missing keys.
 
+### Current Status
+
+| Locale | Language | Status |
+|--------|----------|--------|
+| `en-US` | English | ✅ Complete |
+| `es-MX` | Español | 🚧 Incomplete |
+| `zh-CN` | 简体中文 | 🧪 Beta |
+| `ru-RU` | Русский | 🚧 Incomplete |
+| `ar-MA` | العربية | 🚧 Incomplete |
+
+**Total keys:** ~1,321 across 8 namespaces
+
 ### How it's organized
 
 ```
 src/i18n/
-├── index.ts            # i18n setup: registers all locales & namespaces
-├── languages.ts        # The language list shown in the UI + status badges
+├── index.ts              # i18n setup: registers all locales & namespaces
+├── languages.ts          # Language options & status badges
+├── types.ts              # Auto-generated TypeScript types
 └── locales/
-    ├── en-US/          # English, ALWAYS complete, the fallback
-    │   ├── nav.json        #   Sidebar navigation labels
-    │   ├── common.json     #   Shared strings (buttons, dialogs, modals)
-    │   ├── settings.json   #   Settings view strings
-    │   ├── git.json        #   Git sidebar & dialogs
-    │   ├── changelog.json  #   Changelog view
-    │   ├── onboarding.json #   Onboarding flow
-    │   └── versions.json   #   Versions view
+    ├── en-US/            # Source of truth (ALWAYS complete, the fallback)
+    │   ├── common.json       #   Shared strings (buttons, dialogs, modals)
+    │   ├── settings.json     #   Settings view strings
+    │   ├── git.json          #   Git sidebar & dialogs
+    │   ├── versions.json     #   Versions view
+    │   ├── onboarding.json   #   Onboarding flow
+    │   ├── nav.json          #   Sidebar navigation labels
+    │   ├── changelog.json    #   Changelog view
+    │   └── dashboard.json    #   Dashboard greetings
+    ├── es-MX/
     ├── zh-CN/
     ├── ru-RU/
     └── ar-MA/
 ```
 
-There are **7 namespaces** per language, each a JSON file: `nav`, `common`,
-`settings`, `git`, `changelog`, `onboarding`, `versions`. Components pick a
-namespace with `useTranslation('git')` or `useTranslation('common')`, etc.
+### Namespace Reference
+
+| Namespace | Description | Keys |
+|-----------|-------------|------|
+| `common` | General UI strings, buttons, messages | ~773 |
+| `settings` | Settings page labels & descriptions | ~314 |
+| `git` | Git integration strings | ~146 |
+| `versions` | Godot version management | ~46 |
+| `onboarding` | First-run setup wizard | ~17 |
+| `nav` | Navigation sidebar | ~11 |
+| `changelog` | Changelog management | ~9 |
+| `dashboard` | Dashboard greetings | ~5 |
 
 ### How strings are used in code
 
@@ -304,6 +324,32 @@ const { t: tc } = useTranslation('common')   // different namespace alias
 Interpolation placeholders are written `{{name}}` in the JSON and passed as an
 object to `t()`.
 
+### Interpolation & Pluralization
+
+#### Interpolation
+Use `{{variable}}` for dynamic values:
+```json
+{
+  "project_count": "{{count}} projects",
+  "welcome_user": "Welcome, {{name}}!"
+}
+```
+
+#### Pluralization
+i18next supports `_one` and `_other` suffixes:
+```json
+{
+  "file_count_one": "{{count}} file",
+  "file_count_other": "{{count}} files"
+}
+```
+
+Usage in code:
+```typescript
+t('file_count', { count: 5 })  // "5 files"
+t('file_count', { count: 1 })  // "1 file"
+```
+
 ### Adding a new string (English only!)
 
 1. Open the right namespace file under `src/i18n/locales/en-US/`
@@ -324,19 +370,32 @@ translator covers it.
 
 Say you want to add **Japanese** (`ja-JP`):
 
-1. **Create the locale folder** with all 7 namespace files, copied from English
+**Option A: Use the interactive wizard (recommended)**
+```bash
+bun run i18n:add ja-JP "日本語"
+```
+This automatically:
+- Creates the locale folder with all namespace files
+- Registers imports in `index.ts`
+- Adds the language to `languages.ts`
+
+**Option B: Manual setup**
+1. **Create the locale folder** with all 8 namespace files, copied from English
    so the key structure is identical:
    ```bash
    mkdir src/i18n/locales/ja-JP
    cp src/i18n/locales/en-US/*.json src/i18n/locales/ja-JP/
    ```
-2. **Translate** the values (not the keys!) in each file. Untranslated strings
-   can be left in English, they fall back, but try to cover the common
-   namespaces first (`common`, `nav`, `settings`).
-3. **Register the resources** in `src/i18n/index.ts`:
+2. **Register the resources** in `src/i18n/index.ts`:
    ```ts
    import jaJPNav from './locales/ja-JP/nav.json'
-   // …one import per namespace…
+   import jaJPCommon from './locales/ja-JP/common.json'
+   import jaJPSettings from './locales/ja-JP/settings.json'
+   import jaJPGit from './locales/ja-JP/git.json'
+   import jaJPChangelog from './locales/ja-JP/changelog.json'
+   import jaJPOnboarding from './locales/ja-JP/onboarding.json'
+   import jaJPVersions from './locales/ja-JP/versions.json'
+   import jaJPDashboard from './locales/ja-JP/dashboard.json'
 
    const jaJPResources = {
      nav: jaJPNav,
@@ -346,41 +405,36 @@ Say you want to add **Japanese** (`ja-JP`):
      changelog: jaJPChangelog,
      onboarding: jaJPOnboarding,
      versions: jaJPVersions,
+     dashboard: jaJPDashboard,
    }
 
    const resources = {
      'en-US': { … },
      'ja-JP': jaJPResources,
-     // …
+     ja: jaJPResources,  // optional shorthand
    }
    ```
-   If your language has a short code that should also match (like `zh` for
-   `zh-CN`), add an alias: `ja: jaJPResources,`.
-4. **Add it to the language picker** in `src/i18n/languages.ts`:
+3. **Add it to the language picker** in `src/i18n/languages.ts`:
    ```ts
-   export const LANGUAGES: LanguageOption[] = [
-     { value: 'en-US', label: 'English', country: 'US', status: 'complete' },
-     { value: 'ja-JP', label: '日本語', country: 'JP', status: 'incomplete' },
-     // …
-   ]
+   { value: 'ja-JP', label: '日本語', country: 'JP', status: 'incomplete' },
    ```
-   The `value` must match the key in `resources` exactly, and `country` is the
-   ISO 3166-1 alpha-2 code (upper-case) used for the flag icon shown before
-   the label in every language picker. If the flag doesn't render, add a
-   mapping in `src/interface/new/components/reusables/LanguageFlag.tsx`. The
-   language picker (both classic and new UI) reads this array, so adding the
-   entry here makes the language appear everywhere automatically.
+
+**Then for both options:**
+4. **Translate** the values (not the keys!) in each file. Untranslated strings
+   can be left in English, they fall back, but try to cover the common
+   namespaces first (`common`, `nav`, `settings`).
 5. **Set a status badge.** `status` is one of:
    - `complete`, every key translated and verified.
    - `beta`, mostly translated; minor gaps or needs a native-speaker review.
    - `incomplete`, new or partially translated; falls back to English in places.
-
-   The badge text comes from `language_complete` / `language_beta` /
-   `language_incomplete` in the `settings` namespace. Update the
-   **Languages table in the README** to match.
-6. **Run the checks** and open a PR. Native speakers are strongly preferred,
-   if you're not fluent, get a review from a fluent speaker before marking a
-   language `complete` or `beta`.
+6. **Verify** and open a PR:
+   ```bash
+   bun run i18n:check -- ja-JP   # Check your locale
+   bun run i18n:types            # Regenerate TypeScript types
+   bun run lint && bunx tsc --noEmit
+   ```
+   Native speakers are strongly preferred, get a review before marking
+   `complete` or `beta`.
 
 ### Updating an existing translation
 
@@ -390,6 +444,45 @@ Say you want to add **Japanese** (`ja-JP`):
 - Translation status lives in `languages.ts`, if you complete a language,
   flip its status there and in the README table.
 
+### Sync Missing Keys
+
+If en-US has new keys your locale is missing, sync them:
+```bash
+bun run i18n:sync              # Dry run (shows what would change)
+bun run i18n:sync -- --apply   # Add missing keys (copies English values)
+bun run i18n:sync -- --apply --empty  # Add missing keys (empty for translation)
+bun run i18n:sync -- zh-CN     # Sync only one locale
+bun run i18n:sync -- --remove-extras  # Also remove stale keys
+```
+
+By default, `--apply` copies the English text as a placeholder.
+Use `--empty` if you want empty strings instead (for translators to fill in).
+
+### i18n helper scripts
+
+| Command | Purpose |
+|---|---|
+| `bun run i18n:add` | Interactive wizard to add a new language |
+| `bun run i18n:check` | Check all locales against en-US |
+| `bun run i18n:check -- zh-CN` | Check a single locale |
+| `bun run i18n:check -- --check-values` | Detect untranslated keys (same as English) |
+| `bun run i18n:sync` | Show missing keys (dry run) |
+| `bun run i18n:sync -- --apply` | Add missing keys (copies English values) |
+| `bun run i18n:sync -- --apply --empty` | Add missing keys (empty for translation) |
+| `bun run i18n:types` | Regenerate TypeScript types |
+| `bun run validate` | Run all checks (typecheck + i18n) |
+
+### Automatic validation
+
+**Pre-commit hook** runs `i18n:check -- --check-values` automatically when you commit changes to `src/i18n/locales/`. This checks for:
+- Missing keys (in en-US but not in your locale)
+- Extra keys (in your locale but not in en-US)
+- Untranslated keys (same value as English)
+
+If any issues are found, the commit is blocked with instructions to fix it. Skip with `git commit --no-verify` (not recommended).
+
+**CI** (`.github/workflows/ci.yml`) runs `i18n:check -- --check-values` on every PR to `main`. PRs with missing, extra, or untranslated keys will fail the check.
+
 ### Locale file checklist
 
 - Keys are always `snake_case`, quoted, with commas after every entry except
@@ -397,6 +490,39 @@ Say you want to add **Japanese** (`ja-JP`):
 - Values keep `{{placeholder}}` interpolation tokens intact.
 - Never reorder or rename keys in non-English files without updating the
   English source first.
+
+### Best Practices
+
+#### Do's ✅
+- **Keep keys identical** across all locales — only change values
+- **Use interpolation** for dynamic content: `{{name}}`, `{{count}}`
+- **Test your translations** in the app if possible
+- **Maintain the same tone** as the English version
+- **Use proper formatting** for dates/numbers per locale
+- **Keep translations concise** — UI space is limited
+
+#### Don'ts ❌
+- **Don't translate keys** — only translate values
+- **Don't add HTML** in translations (use interpolation instead)
+- **Don't change interpolation variables** — keep `{{name}}` as-is
+- **Don't translate technical terms** that should stay in English (e.g., "Git", "Godot")
+- **Don't remove keys** that exist in en-US
+
+#### Translation Tips
+- **UI labels:** Keep short and clear
+- **Error messages:** Be helpful and specific
+- **Tooltips:** Explain what the feature does
+- **Placeholders:** Use natural phrasing for your language
+- **Formal vs informal:** Match the existing tone (GodotHub uses informal)
+
+### Handling RTL (Right-to-Left) Languages
+
+For languages like Arabic, Urdu, etc.:
+
+1. The UI already supports RTL layout via CSS
+2. No special code changes needed
+3. Test that the interface mirrors correctly
+4. Pay attention to mixed LTR/RTL content (e.g., "Git branch main")
 
 ---
 

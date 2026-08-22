@@ -38,5 +38,11 @@
   "resume_download": "恢复下载",
   "pause_download": "暂停下载",
   "cancel_download": "取消下载",
-  "installed_label": "已安装"
+  "installed_label": "已安装",
+  "original_name": "Original",
+  "source": "Source",
+  "source_github": "GitHub",
+  "source_archive": "Godot Archive",
+  "open_source_page": "Open on {{source}}",
+  "switch_to_archive": "Switch to Godot Archive"
 }

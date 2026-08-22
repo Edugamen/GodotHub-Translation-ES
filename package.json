@@ -10,8 +10,11 @@
     "tauri": "tauri",
     "tauri:build": "tauri build && bash src-tauri/scripts/patch-appimage-wayland.sh",
     "lint": "eslint",
-    "i18n:check": "node scripts/check-translations.cjs",
-    "i18n:types": "node scripts/generate-i18n-types.cjs"
+    "i18n:check": "node scripts/check-keys.cjs",
+    "i18n:types": "node scripts/generate-i18n-types.cjs",
+    "i18n:add": "node scripts/i18n-add.cjs",
+    "i18n:sync": "node scripts/i18n-sync.cjs",
+    "validate": "tsc --noEmit && bun run i18n:check -- --check-values"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

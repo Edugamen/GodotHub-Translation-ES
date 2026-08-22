@@ -1,5 +1,5 @@
 // AUTO-GENERATED from en-US locale files
-// Do not edit manually. Run: npm run i18n:types
+// Do not edit manually. Run: bun run i18n:types
 
 /** Keys from changelog.json */
 export type changelogKeys = 
