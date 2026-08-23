@@ -696,5 +696,6 @@
   "project_already_open_title": "プロジェクトはすでに開いています",
   "project_already_open_desc": "{{name}} はすでに実行中です。もう一度開くと、エディタが 2 つ目のインスタンスとして起動します。それでも開きますか？",
   "project_open_anyway": "それでも開く",
-  "git_sidebar": "Git サイドバー"
+  "git_sidebar": "Git サイドバー",
+  "project_drag_reorder_aria": "再注文へのドラッグ"
 }
