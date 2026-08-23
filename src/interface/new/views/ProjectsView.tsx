@@ -1,4 +1,4 @@
-import {
+import React, {
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -8,6 +8,8 @@ import {
 } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
+import { useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { AnimatedNumber } from '../components/reusables/AnimatedNumber'
 import { useProjectsContext } from '../../../hooks/projectsContext'
 import { useGodotVersionsContext } from '../../../hooks/godotVersionsContext'
@@ -30,7 +32,7 @@ import { Dropdown } from '../components/ui/Dropdown'
 import { ImportButton } from '../components/reusables/ImportButton'
 import { OverlayScrollArea } from '../components/reusables/OverlayScrollArea'
 import { ProjectCard } from '../components/cards/ProjectCard'
-import { ProjectCardList } from '../components/cards/ProjectCardList'
+import { ProjectCardList, useDragOverId } from '../components/cards/ProjectCardList'
 import { useSettings } from '../../../hooks/useSettings'
 import { useScrollCompensation } from '../hooks/useScrollCompensation'
 import { api } from '../../../lib/api'
@@ -47,6 +49,61 @@ import { CreateProjectModal } from '../components/modals/CreateProjectModal'
 import { CloneRepoModal } from '../components/modals/CloneRepoModal'
 import { ConfirmDialog } from '../components/modals/ConfirmDialog'
 import { CategoryManagerModal } from '../components/modals/CategoryManagerModal'
+
+function SortableProjectCard({
+  project,
+  disabled,
+  onDragStart,
+  onDragEnd,
+  ...cardProps
+}: {
+  project: import('../../../types').Project
+  disabled: boolean
+  onDragStart?: () => void
+  onDragEnd?: () => void
+} & Omit<
+  React.ComponentProps<typeof ProjectCard>,
+  'project' | 'setNodeRef' | 'style' | 'dragHandleProps' | 'isDragging' | 'isOverTarget'
+>) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: project.id,
+    disabled,
+  })
+
+  const overId = useDragOverId()
+  const isOverTarget = !isDragging && overId === project.id
+
+  useEffect(() => {
+    if (isDragging) onDragStart?.()
+    else onDragEnd?.()
+  }, [isDragging, onDragStart, onDragEnd])
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition: (transition as string) || 'transform 200ms ease',
+    // While dragging, reduce opacity so the DragOverlay is the focal point
+    opacity: isDragging ? 0.35 : undefined,
+  }
+
+  return (
+    <ProjectCard
+      project={project}
+      setNodeRef={setNodeRef}
+      style={style}
+      isDragging={isDragging}
+      isOverTarget={isOverTarget}
+      dragHandleProps={{ ...attributes, ...listeners }}
+      {...cardProps}
+    />
+  )
+}
 
 export function ProjectsView({
   onOpenSettings,
@@ -66,6 +123,7 @@ export function ProjectsView({
     setPinned,
     updateTags,
     setCategory,
+    reorder,
   } = useProjectsContext()
   const { categories, create: createCategory, update: updateCategory, remove: removeCategory, reorder: reorderCategories } = useCategoriesContext()
   const { installed } = useGodotVersionsContext()
@@ -268,6 +326,36 @@ export function ProjectsView({
 
   const hasActiveFilters =
     query.trim() !== '' || tagFilter !== null || categoryFilter !== null
+
+  // Drag-and-drop state
+  const [dragOverlayProject, setDragOverlayProject] = useState<import('../../../types').Project | null>(null)
+  // Disable drag when searching, filtering, or using non-manual sort
+  const dragDisabled =
+    hasActiveFilters ||
+    sortBy === 'time_desc'
+
+  const handleReorder = useCallback(
+    async (
+      orderedIds: string[],
+      pinChanges?: import('../components/cards/ProjectCardList').PinChange[],
+      categoryChanges?: import('../components/cards/ProjectCardList').CategoryChange[],
+    ) => {
+      // Apply pin changes (cross-zone drag)
+      if (pinChanges && pinChanges.length > 0) {
+        for (const change of pinChanges) {
+          await setPinned(change.id, change.pinned)
+        }
+      }
+      // Apply category changes (cross-category drag)
+      if (categoryChanges && categoryChanges.length > 0) {
+        for (const change of categoryChanges) {
+          await setCategory(change.id, change.category)
+        }
+      }
+      await reorder(orderedIds)
+    },
+    [reorder, setPinned, setCategory],
+  )
 
   const lastClickedIndexRef = useRef<number | null>(null)
 
@@ -640,9 +728,13 @@ export function ProjectsView({
           hasActiveFilters={hasActiveFilters}
           categories={settings.categories_enabled ? categories : []}
           categoriesEnabled={settings.categories_enabled && sortBy === 'categories'}
+          dragDisabled={dragDisabled}
+          onReorder={handleReorder}
+          dragOverlayProject={dragOverlayProject}
           renderCard={(p) => (
-            <ProjectCard
+            <SortableProjectCard
               project={p}
+              disabled={dragDisabled}
               installedVersions={installed}
               categories={settings.categories_enabled ? categories : []}
               gitStatus={gitStatusMap[p.path] ?? null}
@@ -667,6 +759,8 @@ export function ProjectsView({
               activeTag={tagFilter}
               selected={selectedIds.has(p.id)}
               onToggleSelect={(selecting || selectedIds.size > 0) ? (e) => toggleSelect(p.id, e) : undefined}
+              onDragStart={() => setDragOverlayProject(p)}
+              onDragEnd={() => setDragOverlayProject(null)}
             />
           )}
         />
