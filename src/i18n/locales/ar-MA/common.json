@@ -771,5 +771,6 @@
   "preview_update_modal": "Preview Update Modal",
   "clone_repo_open_after": "Open it right after importing",
   "command_palette_title": "Command Palette",
-  "command_palette_desc": "Jump to anything; commands, projects, engines, settings"
+  "command_palette_desc": "Jump to anything; commands, projects, engines, settings",
+  "project_drag_reorder_aria": "Drag to reorder"
 }

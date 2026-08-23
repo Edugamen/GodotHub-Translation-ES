@@ -2,6 +2,26 @@ import { useEffect, useMemo, useState, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Masonry from 'react-masonry-css'
 import { motion, AnimatePresence } from 'framer-motion'
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  type DragStartEvent,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  useSortable,
+  rectSortingStrategy,
+  verticalListSortingStrategy,
+  arrayMove,
+  sortableKeyboardCoordinates,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { useProjectsContext } from '../../../hooks/projectsContext'
 import { useCategoriesContext } from '../../../hooks/categoriesContext'
 import { useSettings } from '../../../hooks/useSettings'
@@ -33,6 +53,7 @@ import {
   IconArrowUpDown,
   IconLayoutGrid,
   IconLayoutList,
+  IconGrip,
 } from '../lib/Icons'
 import {
   comparatorFor,
@@ -49,7 +70,49 @@ const UI_NOTICE_KEY = 'ui_rewrite_notice_v2_dismissed'
 
 type ViewMode = 'list' | 'grid'
 
+function SortableProjectCard({
+  id,
+  disabled,
+  children,
+}: {
+  id: string
+  disabled?: boolean
+  children: React.ReactNode
+}) {
+  const {
+    setNodeRef,
+    setActivatorNodeRef,
+    attributes,
+    listeners,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id, disabled })
 
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  }
+
+  return (
+    <div ref={setNodeRef} style={style} className="group/drag relative">
+      {!disabled && (
+        <button
+          ref={setActivatorNodeRef}
+          {...attributes}
+          {...listeners}
+          aria-label="Drag to reorder"
+          className="focus-ring absolute top-2.5 right-2.5 z-20 w-6 h-6 rounded-md flex items-center justify-center bg-black/40 text-white/80 opacity-0 group-hover/drag:opacity-100 cursor-grab active:cursor-grabbing touch-none transition-opacity"
+        >
+          <IconGrip className="w-3.5 h-3.5" />
+        </button>
+      )}
+      {children}
+    </div>
+  )
+}
 
 export function ProjectsView({
   onShowGitSidebar,
@@ -87,6 +150,7 @@ export function ProjectsView({
     updateVersion,
     setPinned,
     setCategory,
+    reorder,
   } = useProjectsContext()
   const {
     categories,
@@ -382,7 +446,33 @@ export function ProjectsView({
     [projects],
   )
 
+  const isManualOrder = sortBy === 'categories' && !isSearching
+  const [activeDragId, setActiveDragId] = useState<string | null>(null)
 
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  const handleDragStart = useCallback((e: DragStartEvent) => {
+    setActiveDragId(e.active.id as string)
+  }, [])
+
+  const handleDragEnd = useCallback(
+    async (e: DragEndEvent) => {
+      const { active, over } = e
+      setActiveDragId(null)
+      if (!over || active.id === over.id) return
+      const oldIndex = flatList.findIndex((p) => p.id === active.id)
+      const newIndex = flatList.findIndex((p) => p.id === over.id)
+      if (oldIndex === -1 || newIndex === -1) return
+      const newOrder = arrayMove(flatList, oldIndex, newIndex).map((p) => p.id)
+      await reorder(newOrder)
+    },
+    [flatList, reorder],
+  )
+
+  const draggedProject = activeDragId ? projectsById.get(activeDragId) ?? null : null
 
   useEffect(() => {
     try {
@@ -599,35 +689,91 @@ export function ProjectsView({
     />
   )
 
-  const renderGridSection = (entries: Project[]) => (
-    <Masonry
-      breakpointCols={gridCols}
-      className="masonry"
-      columnClassName="masonry-column"
-    >
-      {entries.map((entry) => (
-        <div key={entry.id} id={`project-${entry.id}`} className="rounded-xl">
-          {renderCard(entry)}
-        </div>
-      ))}
-    </Masonry>
-  )
-
-  const renderListSection = (entries: Project[]) => (
-    <div className="flex flex-col gap-3 min-h-[8px] project-list-cv">
-      <AnimatePresence initial={false}>
+  const renderGridSection = (entries: Project[]) => {
+    const grid = (
+      <Masonry
+        breakpointCols={gridCols}
+        className="masonry"
+        columnClassName="masonry-column"
+      >
         {entries.map((entry) => (
-          <motion.div
-            key={entry.id}
-            id={`project-${entry.id}`}
-            transition={{ duration: 0.18 }}
-          >
-            {renderCard(entry)}
-          </motion.div>
+          <SortableProjectCard key={entry.id} id={entry.id} disabled={!isManualOrder}>
+            <div id={`project-${entry.id}`} className="rounded-xl">
+              {renderCard(entry)}
+            </div>
+          </SortableProjectCard>
         ))}
-      </AnimatePresence>
-    </div>
-  )
+      </Masonry>
+    )
+
+    if (!isManualOrder) return grid
+
+    return (
+      <DndContext
+        sensors={dndSensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={entries.map((e) => e.id)} strategy={rectSortingStrategy}>
+          {grid}
+        </SortableContext>
+        <DragOverlay dropAnimation={{ duration: 200, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
+          {draggedProject ? (
+            <div className="rounded-xl shadow-2xl shadow-black/40 rotate-1 scale-[1.03]">
+              {renderCard(draggedProject)}
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
+    )
+  }
+
+  const renderListSection = (entries: Project[]) => {
+    const list = isManualOrder ? (
+      <div className="flex flex-col gap-3 min-h-[8px] project-list-cv">
+        {entries.map((entry) => (
+          <SortableProjectCard key={entry.id} id={entry.id}>
+            <div id={`project-${entry.id}`}>{renderCard(entry)}</div>
+          </SortableProjectCard>
+        ))}
+      </div>
+    ) : (
+      <div className="flex flex-col gap-3 min-h-[8px] project-list-cv">
+        <AnimatePresence initial={false}>
+          {entries.map((entry) => (
+            <motion.div
+              key={entry.id}
+              id={`project-${entry.id}`}
+              transition={{ duration: 0.18 }}
+            >
+              {renderCard(entry)}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+    )
+
+    if (!isManualOrder) return list
+
+    return (
+      <DndContext
+        sensors={dndSensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
+          {list}
+        </SortableContext>
+        <DragOverlay dropAnimation={{ duration: 200, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
+          {draggedProject ? (
+            <div className="shadow-2xl shadow-black/40 scale-[1.01]">{renderCard(draggedProject)}</div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
+    )
+  }
 
   return (
     <div ref={contentRef} className="p-10 pt-6 max-w-8xl mx-auto">

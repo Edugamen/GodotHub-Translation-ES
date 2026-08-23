@@ -520,6 +520,7 @@
   "bulk_delete_confirm": "Move to Trash",
   "project_pin_aria": "Pin project",
   "project_unpin_aria": "Unpin project",
+  "project_drag_reorder_aria": "Drag to reorder",
   "project_last_opened_tooltip": "Last opened {{label}}",
   "project_total_time_tooltip": "Opened for {{label}} in total",
   "time_today": "Today",

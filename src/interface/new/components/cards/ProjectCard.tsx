@@ -14,6 +14,7 @@ import { useSettings } from '../../../../hooks/useSettings'
 import { useProjectResolutionEpoch } from '../../../../hooks/useProjectResolutionEpoch'
 import { ConfirmDialog } from '../modals/ConfirmDialog'
 import { TagManagerModal } from '../modals/TagManagerModal'
+import { LaunchArgsModal } from '../modals/LaunchArgsModal'
 import { Dropdown } from '../ui/Dropdown'
 
 import { TimeTrackerModal } from '../modals/TimeTrackerModal'
@@ -49,6 +50,7 @@ interface ProjectCardProps {
   onCategoryChange?: (category: string) => void
   onTagsSaved?: (project: Project) => void
   onTagClick?: (tag: string) => void
+  onLaunchArgsChange?: (args: string) => void
   onShowGitSidebar?: () => void
   activeTag?: string | null
   selected?: boolean
@@ -79,6 +81,7 @@ export function ProjectCard({
   onCategoryChange,
   onTagsSaved,
   onTagClick,
+  onLaunchArgsChange,
   onShowGitSidebar,
   activeTag,
   selected = false,
@@ -100,6 +103,7 @@ export function ProjectCard({
   const [tagManagerOpen, setTagManagerOpen] = useState(false)
   const [timeTrackerOpen, setTimeTrackerOpen] = useState(false)
   const [templateSaveOpen, setTemplateSaveOpen] = useState(false)
+  const [showLaunchArgs, setShowLaunchArgs] = useState(false)
   const [editingTagIndex, setEditingTagIndex] = useState<number | null>(null)
   const [editTagValue, setEditTagValue] = useState('')
   const [addingTag, setAddingTag] = useState(false)
@@ -585,7 +589,7 @@ export function ProjectCard({
           <button
             type="button"
             onClick={openFolder}
-            className="block w-fit max-w-full bg-black/15 px-3 py-1 rounded-tag text-[11px] font-mono text-muted truncate hover:text-accent-bright cursor-pointer transition-colors w-fit max-w-full"
+            className="block bg-black/15 px-3 py-1 rounded-tag text-[11px] font-mono text-muted truncate hover:text-accent-bright cursor-pointer transition-colors w-fit max-w-full"
           >
             {project.path}
           </button>
@@ -756,6 +760,12 @@ export function ProjectCard({
             onClick: openInIde,
           },
           {
+            key: 'launch-arguments',
+            label: t('launch_arguments'),
+            icon: IconCode,
+            onClick: () => setShowLaunchArgs(true),
+          },
+          {
             key: 'manage-tags',
             label: t('manage_tags'),
             icon: IconTags,
@@ -879,6 +889,20 @@ export function ProjectCard({
           <TimeTrackerModal
             project={project}
             onClose={() => setTimeTrackerOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showLaunchArgs && (
+          <LaunchArgsModal
+            projectName={displayName}
+            currentArgs={project.launch_arguments}
+            onSave={(args) => {
+              onLaunchArgsChange?.(args)
+              setShowLaunchArgs(false)
+            }}
+            onClose={() => setShowLaunchArgs(false)}
           />
         )}
       </AnimatePresence>

@@ -359,6 +359,11 @@ export function ProjectsView({
     clearSelection()
   }, [selectedIds, remove, clearSelection])
 
+  const handleLaunchArgsChange = useCallback(async (id: string, args: string) => {
+    await api.updateProject(id, { launch_arguments: args })
+    await refresh()
+  }, [refresh])
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && selectedIds.size > 0) clearSelection()
@@ -654,6 +659,7 @@ export function ProjectsView({
               onCategoryChange={settings.categories_enabled && sortBy !== 'categories' ? (cat) => setCategory(p.id, cat) : undefined}
               onTagsSaved={(updated) => updateTags(updated.id, updated.tags)}
               onTagClick={(tag) => setTagFilter((cur) => (cur === tag ? null : tag))}
+              onLaunchArgsChange={(args) => handleLaunchArgsChange(p.id, args)}
               onShowGitSidebar={() =>
                 window.dispatchEvent(
                   new CustomEvent('app:show-git-sidebar', {
