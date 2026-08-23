@@ -24,6 +24,7 @@ import { ColorSwatchPicker } from '../components/ui/ColorSwatchPicker'
 import { Slider } from '../components/ui/Slider'
 import { OverlayScrollArea } from '../components/reusables/OverlayScrollArea'
 import { LanguageFlag } from '../components/reusables/LanguageFlag'
+import { Dropdown } from '../components/ui/Dropdown'
 import { ThemePresetsModal } from '../components/modals/ThemePresetsModal'
 import { RestoreProgressModal } from '../components/modals/RestoreProgressModal'
 import { GitAuthModal } from '../components/modals/GitAuthModal'
@@ -43,6 +44,7 @@ import {
   IconRefresh,
   IconRocket,
   IconSun,
+  IconChevronDown,
   IconChevronLeft,
   IconChevronRight,
   IconHouse,
@@ -186,7 +188,6 @@ function InterfacePicker({
   onChooseClassic?: () => void
 }) {
   const { t: ts } = useTranslation('settings')
-  const { t: tc } = useTranslation('common')
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
       <div className="flex flex-col items-start gap-1.5 rounded-btn border border-accent bg-accent/10 p-3.5 text-left">
@@ -194,9 +195,6 @@ function InterfacePicker({
           <IconRocket className="w-3.5 h-3.5 text-accent-bright" />
           <span className="text-xs font-medium text-ink">
             {ts('new_ui_label')}
-          </span>
-          <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-tag bg-amber/15 text-amber border border-amber/30">
-            {tc('git_beta_badge')}
           </span>
           <IconCheck className="w-3.5 h-3.5 text-accent-bright ml-auto" />
         </span>
@@ -376,36 +374,38 @@ export function OnboardingView({
                             <span className="text-xs font-semibold uppercase tracking-wide text-muted">
                               {t('language_heading')}
                             </span>
-                            <div className="inline-flex self-start rounded-btn border border-outline/50 bg-overlay p-1 gap-1">
-                              {LANGUAGES.map(({ value, label, country }) => {
-                                const active =
-                                  i18n.language === value ||
-                                  i18n.language.startsWith(
-                                    value.split('-')[0],
-                                  )
+                            <Dropdown
+                              align="left"
+                              trigger={({ open, toggle }) => {
+                                const current = LANGUAGES.find(
+                                  (l) =>
+                                    i18n.language === l.value ||
+                                    i18n.language.startsWith(l.value.split('-')[0]),
+                                )
                                 return (
                                   <button
-                                    key={value}
                                     type="button"
-                                    onClick={() => {
-                                      i18n.changeLanguage(value)
-                                      setDraft((prev) => ({
-                                        ...prev,
-                                        language: value,
-                                      }))
-                                    }}
-                                    className={`focus-ring cursor-pointer inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-btn text-sm font-medium transition-colors ${
-                                      active
-                                        ? 'bg-accent text-white'
-                                        : 'text-muted hover:text-ink hover:bg-raised'
-                                    }`}
+                                    aria-expanded={open}
+                                    onClick={toggle}
+                                    className="focus-ring cursor-pointer inline-flex items-center gap-2 px-3.5 py-2 rounded-btn border border-outline/50 bg-overlay text-sm font-medium text-ink hover:border-accent-dim transition-colors"
                                   >
-                                    <LanguageFlag country={country} />
-                                    {label}
+                                    {current && <LanguageFlag country={current.country} />}
+                                    {current?.label ?? i18n.language}
+                                    <IconChevronDown className={`w-3 h-3 text-muted transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
                                   </button>
                                 )
-                              })}
-                            </div>
+                              }}
+                              items={LANGUAGES.map(({ value, label, country }) => ({
+                                key: value,
+                                label,
+                                leading: <LanguageFlag country={country} className="w-5 h-3.5" />,
+                                active: i18n.language === value || i18n.language.startsWith(value.split('-')[0]),
+                                onClick: () => {
+                                  i18n.changeLanguage(value)
+                                  setDraft((prev) => ({ ...prev, language: value }))
+                                },
+                              }))}
+                            />
                           </div>
 
                           <OnboardingCloudBackup />

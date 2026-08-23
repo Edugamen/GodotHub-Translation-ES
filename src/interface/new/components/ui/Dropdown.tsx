@@ -18,6 +18,7 @@ export interface NewDropdownItem {
   key: string
   label: string
   icon?: ComponentType<IconProps>
+  leading?: ReactNode
   onClick?: () => void
   disabled?: boolean
   danger?: boolean
@@ -275,6 +276,9 @@ export function Dropdown({
                           : 'text-muted hover:bg-raised hover:text-ink'
                     }`}
                   >
+                    {item.leading && (
+                      <span className="shrink-0">{item.leading}</span>
+                    )}
                     {item.icon && (
                       <span
                         className={`${
