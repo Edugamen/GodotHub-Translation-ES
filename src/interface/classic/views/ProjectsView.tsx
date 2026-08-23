@@ -7,21 +7,17 @@ import {
   DragOverlay,
   PointerSensor,
   KeyboardSensor,
-  pointerWithin,
-  closestCorners,
-  rectIntersection,
   useSensor,
   useSensors,
-  type CollisionDetection,
+  closestCenter,
   type DragStartEvent,
-  type DragOverEvent,
   type DragEndEvent,
 } from '@dnd-kit/core'
 import {
   SortableContext,
   useSortable,
-  verticalListSortingStrategy,
   rectSortingStrategy,
+  verticalListSortingStrategy,
   arrayMove,
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable'
@@ -57,6 +53,7 @@ import {
   IconArrowUpDown,
   IconLayoutGrid,
   IconLayoutList,
+  IconGrip,
 } from '../lib/Icons'
 import {
   comparatorFor,
@@ -73,53 +70,49 @@ const UI_NOTICE_KEY = 'ui_rewrite_notice_v2_dismissed'
 
 type ViewMode = 'list' | 'grid'
 
-type ZoneKind = 'category' | 'pinned' | 'flat'
-
-const kindOfZone = (zoneKey: string): ZoneKind =>
-  zoneKey === '__pinned__'
-    ? 'pinned'
-    : zoneKey === '__flat__'
-      ? 'flat'
-      : 'category'
-
 function SortableProjectCard({
-  project,
+  id,
   disabled,
-  ...cardProps
+  children,
 }: {
-  project: Project
-  disabled: boolean
-} & Omit<
-  React.ComponentProps<typeof ProjectCard>,
-  'project' | 'setNodeRef' | 'style' | 'dragHandleProps' | 'isDragging'
->) {
+  id: string
+  disabled?: boolean
+  children: React.ReactNode
+}) {
   const {
+    setNodeRef,
+    setActivatorNodeRef,
     attributes,
     listeners,
-    setNodeRef,
     transform,
     transition,
     isDragging,
-  } = useSortable({
-    id: project.id,
-    disabled,
-  })
+  } = useSortable({ id, disabled })
+
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 10 : undefined,
   }
+
   return (
-      <ProjectCard
-        project={project}
-        setNodeRef={setNodeRef}
-        style={style}
-        isDragging={isDragging}
-        dragHandleProps={{ ...attributes, ...listeners }}
-        {...cardProps}
-      />
+    <div ref={setNodeRef} style={style} className="group/drag relative">
+      {!disabled && (
+        <button
+          ref={setActivatorNodeRef}
+          {...attributes}
+          {...listeners}
+          aria-label="Drag to reorder"
+          className="focus-ring absolute top-2.5 right-2.5 z-20 w-6 h-6 rounded-md flex items-center justify-center bg-black/40 text-white/80 opacity-0 group-hover/drag:opacity-100 cursor-grab active:cursor-grabbing touch-none transition-opacity"
+        >
+          <IconGrip className="w-3.5 h-3.5" />
+        </button>
+      )}
+      {children}
+    </div>
   )
 }
-
 
 export function ProjectsView({
   onShowGitSidebar,
@@ -157,7 +150,6 @@ export function ProjectsView({
     updateVersion,
     setPinned,
     setCategory,
-    moveProject,
     reorder,
   } = useProjectsContext()
   const {
@@ -174,8 +166,6 @@ export function ProjectsView({
   const [modalOpen, setModalOpen] = useState(false)
   const [categoryModalOpen, setCategoryModalOpen] = useState(false)
   const [cloneRepoOpen, setCloneRepoOpen] = useState(false)
-  const [activeId, setActiveId] = useState<string | null>(null)
-  const [overContainer, setOverContainer] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [sortBy, setSortBy] = useState<ProjectSortOption>(
     () => {
@@ -405,10 +395,6 @@ export function ProjectsView({
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (activeId) {
-          setActiveId(null)
-          setOverContainer(null)
-        }
         if (selectedIdsRef.current.size > 0) {
           handleClearSelection()
         }
@@ -416,10 +402,9 @@ export function ProjectsView({
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [activeId, handleClearSelection])
+  }, [handleClearSelection])
 
   const isSearching = query.trim().length > 0
-  const dragDisabled = isSearching
 
   const availableCategories = useMemo(
     () => [...categories.map((c) => c.name), UNCATEGORIZED],
@@ -461,29 +446,33 @@ export function ProjectsView({
     [projects],
   )
 
-  const sourceContainers = useMemo(() => {
-    return {
-      __pinned__: pinned.map((p) => p.id),
-      __flat__: flatList.map((p) => p.id),
-    }
-  }, [pinned, flatList])
+  const isManualOrder = sortBy === 'categories' && !isSearching
+  const [activeDragId, setActiveDragId] = useState<string | null>(null)
 
-  const [containers, setContainers] = useState<Record<string, string[]>>(
-    () => sourceContainers,
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
-  useEffect(() => {
-    if (!activeId) setContainers(sourceContainers)
-  }, [sourceContainers])
 
-  useMemo(() => {
-    const ids: string[] = []
-    for (const list of Object.values(containers)) {
-      ids.push(...list)
-    }
-    allVisibleIdsRef.current = ids
-  }, [containers])
+  const handleDragStart = useCallback((e: DragStartEvent) => {
+    setActiveDragId(e.active.id as string)
+  }, [])
 
+  const handleDragEnd = useCallback(
+    async (e: DragEndEvent) => {
+      const { active, over } = e
+      setActiveDragId(null)
+      if (!over || active.id === over.id) return
+      const oldIndex = flatList.findIndex((p) => p.id === active.id)
+      const newIndex = flatList.findIndex((p) => p.id === over.id)
+      if (oldIndex === -1 || newIndex === -1) return
+      const newOrder = arrayMove(flatList, oldIndex, newIndex).map((p) => p.id)
+      await reorder(newOrder)
+    },
+    [flatList, reorder],
+  )
 
+  const draggedProject = activeDragId ? projectsById.get(activeDragId) ?? null : null
 
   useEffect(() => {
     try {
@@ -496,112 +485,6 @@ export function ProjectsView({
       localStorage.setItem(VIEW_MODE_KEY, viewMode)
     } catch {}
   }, [viewMode])
-
-  const draggedProject = activeId ? (projectsById.get(activeId) ?? null) : null
-  const canDropInZone = (kind: ZoneKind) =>
-    draggedProject
-      ? kind === 'pinned'
-        ? draggedProject.pinned
-        : !draggedProject.pinned
-      : false
-
-  const findContainer = (id: string): string | undefined =>
-    id in containers
-      ? id
-      : Object.keys(containers).find((key) => containers[key].includes(id))
-
-  const customCollisionDetection: CollisionDetection = useCallback((args) => {
-    const pointerCollisions = pointerWithin(args)
-    if (pointerCollisions.length > 0) return pointerCollisions
-    if (viewMode === 'grid') {
-      const rectCollisions = rectIntersection(args)
-      if (rectCollisions.length > 0) return rectCollisions
-    }
-    return closestCorners(args)
-  }, [viewMode])
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  )
-
-  const handleDragStart = (e: DragStartEvent) => {
-    setActiveId(e.active.id as string)
-    const container = findContainer(e.active.id as string)
-    setOverContainer(container ?? null)
-  }
-
-  const handleDragOver = (e: DragOverEvent) => {
-    const { active, over } = e
-    if (!over) {
-      setOverContainer(null)
-      return
-    }
-    const activeContainer = findContainer(active.id as string)
-    const overContainer = findContainer(over.id as string)
-    setOverContainer(overContainer ?? null)
-    if (
-      !activeContainer ||
-      !overContainer ||
-      activeContainer === overContainer ||
-      !canDropInZone(kindOfZone(overContainer))
-    )
-      return
-    setContainers((prev) => {
-      const activeItems = prev[activeContainer]
-      const overItems = prev[overContainer]
-      const activeIndex = activeItems.indexOf(active.id as string)
-      if (activeIndex === -1) return prev
-      const overIndex = overItems.indexOf(over.id as string)
-      const newIndex = overIndex >= 0 ? overIndex : overItems.length
-      return {
-        ...prev,
-        [activeContainer]: activeItems.filter((id) => id !== active.id),
-        [overContainer]: [
-          ...overItems.slice(0, newIndex),
-          active.id as string,
-          ...overItems.slice(newIndex),
-        ],
-      }
-    })
-  }
-
-  const handleDragEnd = async (e: DragEndEvent) => {
-    const { active, over } = e
-    setActiveId(null)
-    setOverContainer(null)
-    if (!over) return
-    const id = active.id as string
-    const activeContainer = findContainer(id)
-    const overContainer = findContainer(over.id as string)
-    if (!activeContainer || !overContainer || activeContainer !== overContainer)
-      return
-
-    let finalItems = containers[activeContainer]
-    const oldIndex = finalItems.indexOf(id)
-    const newIndex = finalItems.indexOf(over.id as string)
-    if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-      finalItems = arrayMove(finalItems, oldIndex, newIndex)
-      setContainers((prev) => ({ ...prev, [activeContainer]: finalItems }))
-    }
-
-    const kind = kindOfZone(activeContainer)
-    if (kind === 'category') {
-      const dragged = projectsById.get(id)
-      const draggedZoneKey = dragged?.category ?? UNCATEGORIZED
-      if (draggedZoneKey !== activeContainer) {
-        await moveProject(
-          id,
-          activeContainer === UNCATEGORIZED ? '' : activeContainer,
-          finalItems,
-        )
-        return
-      }
-    }
-    await reorder(finalItems)
-  }
 
   const projectsRef = useRef(projects)
   projectsRef.current = projects
@@ -779,103 +662,116 @@ export function ProjectsView({
   const hasAnyProjects = projects.length > 0
   const hasVisibleProjects = filteredProjects.length > 0
 
-  const renderGridSection = (ids: string[], zoneKey: string) => (
-    <div className={activeId && overContainer === zoneKey ? 'bg-accent/5 rounded-xl ring-1 ring-accent/20 -mx-2 px-2 transition-colors duration-150' : ''}>
-      <SortableContext items={ids} strategy={rectSortingStrategy}>
-        <Masonry
-          breakpointCols={gridCols}
-          className="masonry"
-          columnClassName="masonry-column"
-        >
-          {ids.map((id) => {
-            const entry = projectsById.get(id)
-            if (!entry) return null
-            return (
-              <div key={id} id={`project-${entry.id}`} className="rounded-xl">
-                <SortableProjectCard
-                  project={entry}
-                  variant="grid"
-                  disabled={dragDisabled}
-                  installedVersions={installed}
-                  categories={categories}
-                  categoriesEnabled={categoriesEnabled}
-                  launchWithConsole={settings.launch_with_console}
-                  onRemove={() => remove(entry.id, false)}
-                  onDelete={() => remove(entry.id, true)}
-                  onVersionChange={(tag) => updateVersion(entry.id, tag)}
-                  onCategoryChange={(category) => setCategory(entry.id, category)}
-                  onTogglePin={() => setPinned(entry.id, !entry.pinned)}
-                  onLaunchArgsChange={(args) => handleLaunchArgsChange(entry.id, args)}
-                  gitStatus={gitStatusMap[entry.path] ?? null}
-                  onGitAction={(action) => handleGitAction(entry.id, action)}
-                  onOpenProperties={() => setPropertiesProject(entry)}
-                  onManageTags={() => setTagManagerProject(entry)}
-                  onTagsSaved={() => refresh()}
-                  onShowGitSidebar={() => onShowGitSidebar?.(entry, gitStatusMap[entry.path] ?? null)}
-                  draggable={!dragDisabled}
-                  selected={selectedIds.has(entry.id)}
-                  onToggleSelect={() => toggleSelect(entry.id)}
-                  lastOpenedTimeFormat={settings.last_opened_time_format}
-                  lastOpenedDateFormat={settings.last_opened_date_format}
-                />
-              </div>
-            )
-          })}
-        </Masonry>
-      </SortableContext>
-    </div>
+  const renderCard = (entry: Project) => (
+    <ProjectCard
+      project={entry}
+      variant={viewMode}
+      installedVersions={installed}
+      categories={categories}
+      categoriesEnabled={categoriesEnabled}
+      launchWithConsole={settings.launch_with_console}
+      onRemove={() => remove(entry.id, false)}
+      onDelete={() => remove(entry.id, true)}
+      onVersionChange={(tag) => updateVersion(entry.id, tag)}
+      onCategoryChange={(category) => setCategory(entry.id, category)}
+      onTogglePin={() => setPinned(entry.id, !entry.pinned)}
+      onLaunchArgsChange={(args) => handleLaunchArgsChange(entry.id, args)}
+      gitStatus={gitStatusMap[entry.path] ?? null}
+      onGitAction={(action) => handleGitAction(entry.id, action)}
+      onOpenProperties={() => setPropertiesProject(entry)}
+      onManageTags={() => setTagManagerProject(entry)}
+      onTagsSaved={() => refresh()}
+      onShowGitSidebar={() => onShowGitSidebar?.(entry, gitStatusMap[entry.path] ?? null)}
+      selected={selectedIds.has(entry.id)}
+      onToggleSelect={() => toggleSelect(entry.id)}
+      lastOpenedTimeFormat={settings.last_opened_time_format}
+      lastOpenedDateFormat={settings.last_opened_date_format}
+    />
   )
 
-  const renderCards = (zoneKey: string) => {
-    const ids = containers[zoneKey] ?? []
-    if (viewMode === 'grid') {
-      return renderGridSection(ids, zoneKey)
-    }
+  const renderGridSection = (entries: Project[]) => {
+    const grid = (
+      <Masonry
+        breakpointCols={gridCols}
+        className="masonry"
+        columnClassName="masonry-column"
+      >
+        {entries.map((entry) => (
+          <SortableProjectCard key={entry.id} id={entry.id} disabled={!isManualOrder}>
+            <div id={`project-${entry.id}`} className="rounded-xl">
+              {renderCard(entry)}
+            </div>
+          </SortableProjectCard>
+        ))}
+      </Masonry>
+    )
+
+    if (!isManualOrder) return grid
+
     return (
-      <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-        <div className={`flex flex-col gap-3 min-h-[8px] ${activeId ? '' : 'project-list-cv'}`}>
-          <AnimatePresence initial={false}>
-            {ids.map((id) => {
-              const entry = projectsById.get(id)
-              if (!entry) return null
-              return (
-                <motion.div
-                  layout={activeId ? 'position' : false}
-                  key={id}
-                  id={`project-${entry.id}`}
-                  transition={{ duration: 0.18 }}
-                >
-                  <SortableProjectCard
-                    project={entry}
-                    disabled={dragDisabled}
-                    installedVersions={installed}
-                    categories={categories}
-                    categoriesEnabled={categoriesEnabled}
-                    launchWithConsole={settings.launch_with_console}
-                    onRemove={() => remove(entry.id, false)}
-                    onDelete={() => remove(entry.id, true)}
-                    onVersionChange={(tag) => updateVersion(entry.id, tag)}
-                    onCategoryChange={(category) => setCategory(entry.id, category)}
-                    onTogglePin={() => setPinned(entry.id, !entry.pinned)}
-                    onLaunchArgsChange={(args) => handleLaunchArgsChange(entry.id, args)}
-                    gitStatus={gitStatusMap[entry.path] ?? null}
-                    onGitAction={(action) => handleGitAction(entry.id, action)}
-                    onOpenProperties={() => setPropertiesProject(entry)}
-                    onManageTags={() => setTagManagerProject(entry)}
-                    onTagsSaved={() => refresh()}
-                    onShowGitSidebar={() => onShowGitSidebar?.(entry, gitStatusMap[entry.path] ?? null)}
-                    draggable={!dragDisabled}
-                    selected={selectedIds.has(entry.id)}
-                    onToggleSelect={() => toggleSelect(entry.id)}
-                    lastOpenedTimeFormat={settings.last_opened_time_format}
-                    lastOpenedDateFormat={settings.last_opened_date_format}
-                  />
-                </motion.div>
-              )
-            })}
-          </AnimatePresence>
-        </div>
-      </SortableContext>
+      <DndContext
+        sensors={dndSensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={entries.map((e) => e.id)} strategy={rectSortingStrategy}>
+          {grid}
+        </SortableContext>
+        <DragOverlay dropAnimation={{ duration: 200, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
+          {draggedProject ? (
+            <div className="rounded-xl shadow-2xl shadow-black/40 rotate-1 scale-[1.03]">
+              {renderCard(draggedProject)}
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
+    )
+  }
+
+  const renderListSection = (entries: Project[]) => {
+    const list = isManualOrder ? (
+      <div className="flex flex-col gap-3 min-h-[8px] project-list-cv">
+        {entries.map((entry) => (
+          <SortableProjectCard key={entry.id} id={entry.id}>
+            <div id={`project-${entry.id}`}>{renderCard(entry)}</div>
+          </SortableProjectCard>
+        ))}
+      </div>
+    ) : (
+      <div className="flex flex-col gap-3 min-h-[8px] project-list-cv">
+        <AnimatePresence initial={false}>
+          {entries.map((entry) => (
+            <motion.div
+              key={entry.id}
+              id={`project-${entry.id}`}
+              transition={{ duration: 0.18 }}
+            >
+              {renderCard(entry)}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+    )
+
+    if (!isManualOrder) return list
+
+    return (
+      <DndContext
+        sensors={dndSensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
+          {list}
+        </SortableContext>
+        <DragOverlay dropAnimation={{ duration: 200, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
+          {draggedProject ? (
+            <div className="shadow-2xl shadow-black/40 scale-[1.01]">{renderCard(draggedProject)}</div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
     )
   }
 
@@ -1155,131 +1051,34 @@ export function ProjectsView({
           exit={{ opacity: 0, scale: 0.97 }}
           transition={{ duration: 0.18, ease: 'easeOut' }}
         >
-        <DndContext
-          sensors={sensors}
-          collisionDetection={customCollisionDetection}
-          onDragStart={(e) => {
-            handleDragStart(e)
-            handleClearSelection()
-          }}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
-          onDragCancel={() => {
-            setActiveId(null)
-            setOverContainer(null)
-            setContainers(sourceContainers)
-          }}
-        >
           <div className="flex flex-col gap-8">
-            {(containers.__pinned__?.length ?? 0) > 0 && (() => {
-              const pinnedIds = containers.__pinned__!
-              const isOverPinned = overContainer === '__pinned__'
-              return (
-                <section className={activeId ? (isOverPinned ? 'relative' : 'opacity-60') : ''}>
-                  <div className="flex items-center gap-2 mb-4">
-                    <IconPin
-                      className="w-3.5 h-3.5 text-accent-bright"
-                      fill="currentColor"
-                    />
-                    <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">
-                      {t('pinned_section')}
-                    </h3>
-                    {activeId && isOverPinned && (
-                      <span className="ml-1 text-[10px] font-medium text-accent animate-pulse">
-                        {t('drop_here_animated')}
-                      </span>
-                    )}
-                  </div>
-                  {viewMode === 'grid' ? (
-                    renderGridSection(pinnedIds, '__pinned__')
-                  ) : (
-                    <SortableContext items={pinnedIds} strategy={verticalListSortingStrategy}>
-                    <div className={`flex flex-col gap-3 min-h-[8px] rounded-xl transition-colors duration-150 ${activeId ? '' : 'project-list-cv'} ${activeId && isOverPinned ? 'bg-accent/5 ring-1 ring-accent/20 -mx-2 px-2 py-2' : ''}`}>
-                      <AnimatePresence initial={false}>
-                        {pinnedIds.map((id) => {
-                          const entry = projectsById.get(id)
-                          if (!entry) return null
-                          return (
-                            <motion.div
-                              layout={activeId ? 'position' : false}
-                              key={id}
-                              transition={{ duration: 0.18 }}
-                            >
-                              <SortableProjectCard
-                                project={entry}
-                                disabled={dragDisabled}
-                                installedVersions={installed}
-                                categories={categories}
-                                categoriesEnabled={categoriesEnabled}
-                                launchWithConsole={settings.launch_with_console}
-                                onRemove={() => remove(entry.id, false)}
-                                onDelete={() => remove(entry.id, true)}
-                                onVersionChange={(tag) => updateVersion(entry.id, tag)}
-                                onCategoryChange={(category) => setCategory(entry.id, category)}
-                                onTogglePin={() => setPinned(entry.id, !entry.pinned)}
-                                onLaunchArgsChange={(args) => handleLaunchArgsChange(entry.id, args)}
-                                gitStatus={gitStatusMap[entry.path] ?? null}
-                                onGitAction={(action) => handleGitAction(entry.id, action)}
-                                onOpenProperties={() => setPropertiesProject(entry)}
-                                onManageTags={() => setTagManagerProject(entry)}
-                                onShowGitSidebar={() => onShowGitSidebar?.(entry, gitStatusMap[entry.path] ?? null)}
-                                draggable={!dragDisabled}
-                                selected={selectedIds.has(entry.id)}
-                                onToggleSelect={() => toggleSelect(entry.id)}
-                                lastOpenedTimeFormat={settings.last_opened_time_format}
-                                lastOpenedDateFormat={settings.last_opened_date_format}
-                              />
-                            </motion.div>
-                          )
-                        })}
-                      </AnimatePresence>
-                    </div>
-                    </SortableContext>
-                  )}
-                </section>
-              )
-            })()}
+            {pinned.length > 0 && (
+              <section>
+                <div className="flex items-center gap-2 mb-4">
+                  <IconPin
+                    className="w-3.5 h-3.5 text-accent-bright"
+                    fill="currentColor"
+                  />
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">
+                    {t('pinned_section')}
+                  </h3>
+                </div>
+                {viewMode === 'grid' ? (
+                  renderGridSection(pinned)
+                ) : (
+                  renderListSection(pinned)
+                )}
+              </section>
+            )}
 
             <section>
-                <div className={activeId && overContainer === '__flat__' ? 'bg-accent/5 rounded-xl ring-1 ring-accent/20 -mx-2 px-2 py-2 transition-colors duration-150' : ''}>
-                  {renderCards('__flat__')}
-                </div>
-              </section>
+              {viewMode === 'grid' ? (
+                renderGridSection(flatList)
+              ) : (
+                renderListSection(flatList)
+              )}
+            </section>
           </div>
-
-          <DragOverlay
-            dropAnimation={{
-              duration: isReducedMotion() ? 0 : 300,
-              easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
-            }}
-            style={{
-              cursor: 'grabbing',
-              filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.4))',
-            }}
-          >
-            {draggedProject ? (
-              <ProjectCard
-                project={draggedProject}
-                variant={viewMode}
-                installedVersions={installed}
-                categories={categories}
-                categoriesEnabled={categoriesEnabled}
-                launchWithConsole={settings.launch_with_console}
-                onRemove={() => {}}
-                onDelete={() => {}}
-                onVersionChange={() => {}}
-                onCategoryChange={() => {}}
-                onTogglePin={() => {}}
-                onLaunchArgsChange={() => {}}
-                onGitAction={() => {}}
-                onOpenProperties={() => {}}
-                onShowGitSidebar={() => {}}
-                draggable
-                lastOpenedTimeFormat={settings.last_opened_time_format}
-                lastOpenedDateFormat={settings.last_opened_date_format}
-              />
-            ) : null}
-          </DragOverlay>          </DndContext>
         </motion.div>
       </AnimatePresence>
       )}

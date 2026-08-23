@@ -321,7 +321,6 @@
   "no_scan_folders_yet": "此工作区尚未设置扫描文件夹。添加一个即可找到你的项目。",
   "add_scan_folder": "添加扫描文件夹",
   "pinned_section": "已置顶",
-  "drop_here_animated": "拖放到此处",
   "n_selected": "已选 {{count}} 项",
   "set_version": "设置版本…",
   "set_category": "设置分类…",
@@ -780,5 +779,6 @@
   "dashboard_preset_name_placeholder": "Preset name",
   "dashboard_preset_delete": "Delete preset",
   "dashboard_custom_presets": "Your presets",
-  "dashboard_hidden_tiles": "Hidden tiles"
+  "dashboard_hidden_tiles": "Hidden tiles",
+  "project_drag_reorder_aria": "Drag to reorder"
 }

@@ -315,7 +315,6 @@
   "no_scan_folders_yet": "В этом рабочем пространстве пока нет папок для сканирования. Добавьте одну, чтобы найти свои проекты.",
   "add_scan_folder": "Добавить папку для сканирования",
   "pinned_section": "Закреплённые",
-  "drop_here_animated": "Отпустите здесь",
   "n_selected": "Выбрано {{count}}",
   "set_version": "Указать версию…",
   "set_category": "Указать категорию…",
@@ -780,5 +779,6 @@
   "dashboard_preset_name_placeholder": "Preset name",
   "dashboard_preset_delete": "Delete preset",
   "dashboard_custom_presets": "Your presets",
-  "dashboard_hidden_tiles": "Hidden tiles"
+  "dashboard_hidden_tiles": "Hidden tiles",
+  "project_drag_reorder_aria": "Drag to reorder"
 }

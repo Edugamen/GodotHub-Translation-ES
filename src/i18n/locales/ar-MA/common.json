@@ -338,7 +338,6 @@
   "no_scan_folders_yet": "بيئة العمل هذه ليس لديها أي مجلدات مسح بعد. أضف واحدا للعثور على مشاريعك.",
   "add_scan_folder": "أضف مجلد مسح",
   "pinned_section": "مثبت",
-  "drop_here_animated": "أفلت هنا",
   "n_selected": "{{count}} مختارة",
   "set_version": "عيين إصدارا…",
   "set_category": "عيين تصنيفا…",
@@ -772,5 +771,6 @@
   "preview_update_modal": "Preview Update Modal",
   "clone_repo_open_after": "Open it right after importing",
   "command_palette_title": "Command Palette",
-  "command_palette_desc": "Jump to anything; commands, projects, engines, settings"
+  "command_palette_desc": "Jump to anything; commands, projects, engines, settings",
+  "project_drag_reorder_aria": "Drag to reorder"
 }
