@@ -1,8 +1,27 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion, type Transition } from 'framer-motion'
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  type DragStartEvent,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+  sortableKeyboardCoordinates,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { AnimatedNumber } from '../reusables/AnimatedNumber'
 import { useTranslation } from 'react-i18next'
-import { IconChevronDown, IconNode, IconPin } from '../../lib/icons'
+import { IconChevronDown, IconGrip, IconNode, IconPin } from '../../lib/icons'
 import { isReducedMotion } from '../../../../lib/appearance'
 import type { Category, Project } from '../../../../types'
 
@@ -27,6 +46,62 @@ interface ProjectCardListProps {
   animationThreshold?: number
   categories?: Category[]
   categoriesEnabled?: boolean
+  onReorder?: (orderedIds: string[]) => Promise<void>
+  onMoveProject?: (id: string, category: string, destOrderedIds: string[]) => Promise<void>
+}
+
+function SortableProjectCard({
+  id,
+  disabled,
+  children,
+}: {
+  id: string
+  disabled?: boolean
+  children: React.ReactNode
+}) {
+  const {
+    setNodeRef,
+    setActivatorNodeRef,
+    attributes,
+    listeners,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id, disabled })
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.35 : 1,
+    zIndex: isDragging ? 50 : undefined,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`group/drag relative transition-[box-shadow,border-color] duration-200 rounded-item ${
+        isDragging ? 'shadow-lg shadow-accent/8 ring-1 ring-accent/20' : ''
+      }`}
+    >
+      {!disabled && (
+        <button
+          ref={setActivatorNodeRef}
+          {...attributes}
+          {...listeners}
+          aria-label="Drag to reorder"
+          className={`focus-ring absolute top-1/2 -translate-y-1/2 left-3 z-20 w-5 h-10 rounded-full border flex items-center justify-center cursor-grab active:cursor-grabbing touch-none transition-all duration-200 ${
+            isDragging
+              ? 'bg-accent border-accent text-white scale-110 shadow-md shadow-accent/30 opacity-100'
+              : 'bg-raised border-line shadow-md shadow-base text-muted/50 opacity-0 group-hover/drag:opacity-100 hover:border-accent-dim hover:text-accent hover:scale-110'
+          }`}
+        >
+          <IconGrip className="w-2 h-2" />
+        </button>
+      )}
+      {children}
+    </div>
+  )
 }
 
 function CategorySection({
@@ -92,6 +167,8 @@ export function ProjectCardList({
   animationThreshold = DEFAULT_ANIMATION_THRESHOLD,
   categories = [],
   categoriesEnabled = false,
+  onReorder,
+  onMoveProject,
 }: ProjectCardListProps) {
   const { t } = useTranslation('common')
 
@@ -146,6 +223,78 @@ export function ProjectCardList({
     return groups
   }, [categoriesEnabled, categories, unpinnedProjects])
 
+  // --- Drag and Drop ---
+  const isDndEnabled = categoriesEnabled && Boolean(onReorder)
+
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  const [activeDragId, setActiveDragId] = useState<string | null>(null)
+
+  const projectsById = useMemo(
+    () => new Map(projects.map((p) => [p.id, p])),
+    [projects],
+  )
+
+  // Flat list of all unpinned project IDs in display order (for SortableContext)
+  const sortableIds = useMemo(
+    () => unpinnedProjects.map((p) => p.id),
+    [unpinnedProjects],
+  )
+
+  const handleDragStart = useCallback((e: DragStartEvent) => {
+    setActiveDragId(e.active.id as string)
+  }, [])
+
+  const handleDragEnd = useCallback(
+    async (e: DragEndEvent) => {
+      const { active, over } = e
+      setActiveDragId(null)
+      if (!over || active.id === over.id) return
+
+      const draggedId = active.id as string
+      const targetId = over.id as string
+
+      const draggedProject = projectsById.get(draggedId)
+      const targetProject = projectsById.get(targetId)
+      if (!draggedProject || !targetProject) return
+
+      const draggedCat = draggedProject.category || UNCATEGORIZED
+      const targetCat = targetProject.category || UNCATEGORIZED
+
+      if (!onReorder) return
+
+      if (draggedCat !== targetCat && onMoveProject) {
+        // Cross-category move: insert dragged project into target category
+        const destProjects = unpinnedProjects.filter(
+          (p) => (p.category || UNCATEGORIZED) === targetCat,
+        )
+        const destTargetIdx = destProjects.findIndex((p) => p.id === targetId)
+        const insertIdx = destTargetIdx >= 0 ? destTargetIdx : destProjects.length
+        const newDest = [...destProjects]
+        newDest.splice(insertIdx, 0, draggedProject)
+        await onMoveProject(draggedId, targetCat === UNCATEGORIZED ? '' : targetCat, newDest.map((p) => p.id))
+      } else if (draggedCat === targetCat) {
+        // Within-category reorder
+        const catProjects = unpinnedProjects.filter(
+          (p) => (p.category || UNCATEGORIZED) === draggedCat,
+        )
+        const oldIdx = catProjects.findIndex((p) => p.id === draggedId)
+        const newIdx = catProjects.findIndex((p) => p.id === targetId)
+        if (oldIdx !== -1 && newIdx !== -1) {
+          const reordered = arrayMove(catProjects, oldIdx, newIdx)
+          await onReorder(reordered.map((p) => p.id))
+        }
+      }
+    },
+    [projectsById, unpinnedProjects, onReorder, onMoveProject],
+  )
+
+  const draggedProject = activeDragId ? projectsById.get(activeDragId) ?? null : null
+  // --- End Drag and Drop ---
+
   const pinnedHeader = (
     <div className="mt-1 mb-0.5 flex items-center gap-2 px-1 rounded-item">
       <IconPin className="w-3 h-3 text-accent-bright" fill="currentColor" />
@@ -185,6 +334,15 @@ export function ProjectCardList({
     </div>
   )
 
+  const cardForDnd = (p: Project) => {
+    const card = renderCard(p)
+    return (
+      <SortableProjectCard key={p.id} id={p.id}>
+        <div className="pl-5">{card}</div>
+      </SortableProjectCard>
+    )
+  }
+
   const listChildren: ReactNode[] = projects.length === 0
     ? [emptyState]
     : showPinnedSection
@@ -202,12 +360,51 @@ export function ProjectCardList({
             style={{ backgroundColor: 'var(--color-outline)' }}
           />,
           ...(categoryGroups
-            ? renderCategoryGroups(categoryGroups, categories, cardFor)
-            : unpinnedProjects.map((p) => cardFor(p))),
+            ? renderCategoryGroups(categoryGroups, categories, isDndEnabled ? cardForDnd : cardFor)
+            : unpinnedProjects.map((p) => isDndEnabled ? cardForDnd(p) : cardFor(p))),
         ]
       : categoryGroups
-        ? renderCategoryGroups(categoryGroups, categories, cardFor)
-        : projects.map((p) => cardFor(p))
+        ? renderCategoryGroups(categoryGroups, categories, isDndEnabled ? cardForDnd : cardFor)
+        : projects.map((p) => isDndEnabled ? cardForDnd(p) : cardFor(p))
+
+  if (isDndEnabled) {
+    return (
+      <div className="flex-1 min-h-0 relative flex flex-col gap-2">
+        <DndContext
+          sensors={dndSensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={sortableIds}
+            strategy={verticalListSortingStrategy}
+          >
+            {animateList ? (
+              <AnimatePresence initial={false}>{listChildren}</AnimatePresence>
+            ) : (
+              listChildren
+            )}
+          </SortableContext>
+          <DragOverlay
+            dropAnimation={{
+              duration: 280,
+              easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+            }}
+          >
+            {draggedProject ? (
+              <div className="rounded-item shadow-2xl shadow-black/30 scale-[1.015] ring-1 ring-accent/20 bg-overlay/95 backdrop-blur-sm">
+                {renderCard(draggedProject)}
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
+        {projects.length > 0 && (
+          <div className="shrink-0 h-4" aria-hidden="true" />
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="flex-1 min-h-0 relative flex flex-col gap-2">

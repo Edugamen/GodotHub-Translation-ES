@@ -66,6 +66,8 @@ export function ProjectsView({
     setPinned,
     updateTags,
     setCategory,
+    reorder,
+    moveProject,
   } = useProjectsContext()
   const { categories, create: createCategory, update: updateCategory, remove: removeCategory, reorder: reorderCategories } = useCategoriesContext()
   const { installed } = useGodotVersionsContext()
@@ -645,6 +647,8 @@ export function ProjectsView({
           hasActiveFilters={hasActiveFilters}
           categories={settings.categories_enabled ? categories : []}
           categoriesEnabled={settings.categories_enabled && sortBy === 'categories'}
+          onReorder={settings.categories_enabled && sortBy === 'categories' && !hasActiveFilters ? reorder : undefined}
+          onMoveProject={settings.categories_enabled && sortBy === 'categories' && !hasActiveFilters ? moveProject : undefined}
           renderCard={(p) => (
             <ProjectCard
               project={p}
