@@ -924,6 +924,14 @@
       {
         "category": "improve",
         "text": "Tooltip component Revamped"
+      },
+      {
+        "category": "add",
+        "text": "Japanese Localization PR by shiena"
+      },
+      {
+        "category": "improve",
+        "text": "Updates on Arabic Localization PR by Spy-B"
       }
     ],
     "known_issues": [],

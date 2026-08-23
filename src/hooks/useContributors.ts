@@ -46,14 +46,8 @@ export function useContributors(): {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const cached = readCache()
-    if (cached) {
-      setContributors(cached)
-      setLoading(false)
-      return
-    }
-
     let cancelled = false
+
     fetch(
       `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contributors?per_page=100`,
     )
