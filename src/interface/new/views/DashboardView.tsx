@@ -164,7 +164,7 @@ function TileEditControls({
   onMove: (dir: -1 | 1) => void
   onRemove: () => void
 }) {
-  const { t: tc } = useTranslation('common')
+  const { t: tc } = useTranslation('dashboard')
   const btnClass =
     'focus-ring cursor-pointer p-1 rounded-btn text-muted/50 hover:text-ink hover:bg-raised transition-colors'
   const activeBtnClass =
@@ -224,7 +224,7 @@ function TileEditControls({
 }
 
 function ProjectRow({ project }: { project: Project }) {
-  const { t: tc } = useTranslation('common')
+  const { t: tc } = useTranslation('dashboard')
   const openedAt = formatLastOpened(project.last_opened)
 
   return (
@@ -254,7 +254,7 @@ function ProjectRow({ project }: { project: Project }) {
 }
 
 function QuickActions() {
-  const { t: tc } = useTranslation('common')
+  const { t: tc } = useTranslation('dashboard')
   const actions = [
     {
       key: 'new',
@@ -312,7 +312,7 @@ function StatsRow({
   engines: number
   totalMs: number
 }) {
-  const { t: tc } = useTranslation('common')
+  const { t: tc } = useTranslation('dashboard')
   const stats: Array<{
     key: string
     label: string
@@ -588,7 +588,7 @@ function weekdayName(weekday: number): string {
 }
 
 function InsightsTile({ active = true }: { active?: boolean }) {
-  const { t: tc } = useTranslation('common')
+  const { t: tc } = useTranslation('dashboard')
   const [insights, setInsights] = useState<TimeInsights | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -717,7 +717,7 @@ function TopProjectsByTime({
   tall?: boolean
   spanning?: boolean
 }) {
-  const { t: tc } = useTranslation('common')
+  const { t: tc } = useTranslation('dashboard')
   const top = useMemo(
     () =>
       [...projects]
@@ -770,7 +770,7 @@ function TopProjectsByTime({
 }
 
 function GitOverview({ tall = false, active = true }: { tall?: boolean; active?: boolean }) {
-  const { t: tc } = useTranslation('common')
+  const { t: tc } = useTranslation('dashboard')
   const { projects } = useProjectsContext()
   const [statusMap, setStatusMap] = useState<Record<string, GitStatus>>({})
   const [loading, setLoading] = useState(true)
@@ -872,7 +872,7 @@ function GitOverview({ tall = false, active = true }: { tall?: boolean; active?:
 }
 
 function StorageUsage({ tall = false, active = true }: { tall?: boolean; active?: boolean }) {
-  const { t: tc } = useTranslation('common')
+  const { t: tc } = useTranslation('dashboard')
   const { projects } = useProjectsContext()
   const [sizes, setSizes] = useState<Record<string, number>>({})
   const [measuring, setMeasuring] = useState(true)
@@ -968,7 +968,7 @@ interface RunningProject {
 }
 
 function Clock({ active = true }: { active?: boolean }) {
-  const { t: tc } = useTranslation('common')
+  const { t: tc } = useTranslation('dashboard')
   const { settings } = useSettings()
   const [now, setNow] = useState(() => new Date())
 
@@ -1007,7 +1007,7 @@ function RunningNow({
   editControls?: React.ReactNode
   active?: boolean
 }) {
-  const { t: tc } = useTranslation('common')
+  const { t: tc } = useTranslation(['dashboard'])
   const [now, setNow] = useState(() => Date.now())
 
   useEffect(() => {
@@ -1067,7 +1067,7 @@ export function DashboardView({
   connected?: boolean
   active?: boolean
 }) {
-  const { t: tc } = useTranslation('dashboard')
+  const { t: tc } = useTranslation(['dashboard'])
   const { settings, update } = useSettings()
   const { projects } = useProjectsContext()
   const { installed } = useGodotVersionsContext()
