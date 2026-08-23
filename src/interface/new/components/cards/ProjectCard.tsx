@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, type Transition } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import type { Category, GitStatus, InstalledGodotVersion, Project } from '../../../../types'
@@ -36,16 +36,7 @@ import {
   IconX,
 } from '../../lib/icons'
 
-export interface ProjectCardDragProps {
-  setNodeRef?: (node: HTMLElement | null) => void
-  style?: CSSProperties
-  dragHandleProps?: Record<string, unknown>
-  isDragging?: boolean
-  /** Whether this card is the current drop target during a drag */
-  isOverTarget?: boolean
-}
-
-interface ProjectCardProps extends ProjectCardDragProps {
+interface ProjectCardProps {
   project: Project
   installedVersions: InstalledGodotVersion[]
   categories?: Category[]
@@ -92,11 +83,6 @@ export function ProjectCard({
   activeTag,
   selected = false,
   onToggleSelect,
-  setNodeRef,
-  style,
-  dragHandleProps,
-  isDragging: _isDragging,
-  isOverTarget = false,
 }: ProjectCardProps) {
   const { t } = useTranslation('common')
   const { settings } = useSettings()
@@ -249,22 +235,14 @@ export function ProjectCard({
     saveTags(newTags)
   }
 
-  // Helper: stop pointer events from triggering drag
-  const stopDrag = (e: React.PointerEvent) => e.stopPropagation()
-
   return (
     <div
-      ref={setNodeRef}
-      style={style}
-      {...(dragHandleProps ?? {})}
       onMouseEnter={() => setCardHovered(true)}
       onMouseLeave={() => setCardHovered(false)}
-      className={`group relative flex items-end gap-3.5 p-3.5 rounded-item border transition-all duration-150 cursor-grab active:cursor-grabbing ${
-        isOverTarget
-          ? 'border-accent bg-accent/10'
-          : selected
-            ? 'bg-accent/5 border-accent ring-1 ring-accent/30'
-            : 'bg-overlay border-outline/50 hover:bg-raised hover:border-accent-dim/60'
+      className={`group relative flex items-end gap-3.5 p-3.5 rounded-item border transition-all duration-150 ${
+        selected
+          ? 'bg-accent/5 border-accent ring-1 ring-accent/30'
+          : 'bg-overlay border-outline/50 hover:bg-raised hover:border-accent-dim/60'
       }`}
     >
       {onToggleSelect && (
@@ -275,7 +253,6 @@ export function ProjectCard({
               e.stopPropagation()
               onToggleSelect(e)
             }}
-            onPointerDown={stopDrag}
             aria-label={
               selected ? t('project_deselect_aria') : t('project_select_aria')
             }
@@ -334,8 +311,7 @@ export function ProjectCard({
               <button
                 type="button"
                 onClick={onShowGitSidebar}
-                onPointerDown={stopDrag}
-                aria-label={t('git_sidebar')}
+                    aria-label={t('git_sidebar')}
                 className={`shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-item transition-colors cursor-pointer ${
                   gitStatus.has_uncommitted
                     ? 'bg-amber/10 text-amber'
@@ -365,8 +341,7 @@ export function ProjectCard({
                     type="text"
                     value={newTagValue}
                     title={tagError}
-                    onPointerDown={stopDrag}
-                    onChange={(e) => {
+                            onChange={(e) => {
                       setNewTagValue(e.target.value)
                       if (tagError) setTagError(null)
                     }}
@@ -403,8 +378,7 @@ export function ProjectCard({
                   ref={addInputRef}
                   type="text"
                   value={newTagValue}
-                  onPointerDown={stopDrag}
-                  onChange={(e) => {
+                        onChange={(e) => {
                     setNewTagValue(e.target.value)
                     if (tagError) setTagError(null)
                   }}
@@ -456,8 +430,7 @@ export function ProjectCard({
                     setNewTagValue('')
                     setTagError(null)
                   }}
-                  onPointerDown={stopDrag}
-                  aria-label={t('add_tag_aria')}
+                        aria-label={t('add_tag_aria')}
                   className="focus-ring cursor-pointer inline-flex items-center px-2 py-0.5 rounded-tag text-[10px] font-mono font-medium tracking-tight whitespace-nowrap text-muted hover:text-accent-bright hover:bg-raised transition-colors shrink-0 border border-dashed border-outline/50"
                 >
                   {t('add_tag_aria')}
@@ -500,8 +473,7 @@ export function ProjectCard({
                               type="text"
                               value={editTagValue}
                               title={tagError}
-                              onPointerDown={stopDrag}
-                              onChange={(e) => {
+                                                onChange={(e) => {
                                 setEditTagValue(e.target.value)
                                 if (tagError) setTagError(null)
                               }}
@@ -529,8 +501,7 @@ export function ProjectCard({
                             ref={editInputRef}
                             type="text"
                             value={editTagValue}
-                            onPointerDown={stopDrag}
-                            onChange={(e) => {
+                                            onChange={(e) => {
                               setEditTagValue(e.target.value)
                               if (tagError) setTagError(null)
                             }}
@@ -559,8 +530,7 @@ export function ProjectCard({
                           <button
                               type="button"
                               onClick={() => onTagClick?.(tag)}
-                              onPointerDown={stopDrag}
-                              className="cursor-pointer hover:brightness-125 transition-[filter] duration-100"
+                                                className="cursor-pointer hover:brightness-125 transition-[filter] duration-100"
                             >
                               {tag}
                             </button>
@@ -571,8 +541,7 @@ export function ProjectCard({
                                 setEditTagValue(tag)
                                 setTagError(null)
                               }}
-                              onPointerDown={stopDrag}
-                              aria-label={t('tag_rename_aria')}
+                                                aria-label={t('tag_rename_aria')}
                               className="focus-ring cursor-pointer opacity-0 group-hover/tag:opacity-100 scale-75 group-hover/tag:scale-100 w-0 group-hover/tag:w-3 h-3 overflow-hidden rounded-full flex items-center justify-center transition-all duration-150 hover:text-ink shrink-0"
                             >
                               <IconPencil className="w-2.5 h-2.5 shrink-0" />
@@ -580,8 +549,7 @@ export function ProjectCard({
                           <button
                               type="button"
                               onClick={() => handleRemoveTag(index)}
-                              onPointerDown={stopDrag}
-                              aria-label={t('tag_remove_aria', { tag })}
+                                                aria-label={t('tag_remove_aria', { tag })}
                               className="focus-ring cursor-pointer opacity-0 group-hover/tag:opacity-100 scale-75 group-hover/tag:scale-100 w-0 group-hover/tag:w-3 h-3 overflow-hidden rounded-full flex items-center justify-center transition-all duration-150 hover:text-danger shrink-0"
                             >
                               <IconX className="w-2.5 h-2.5 shrink-0" />
@@ -595,8 +563,7 @@ export function ProjectCard({
                 <button
                     type="button"
                     onClick={() => setTagsExpanded(true)}
-                    onPointerDown={stopDrag}
-                    aria-label={t('show_more_tags')}
+                            aria-label={t('show_more_tags')}
                     className="focus-ring cursor-pointer inline-flex items-center px-2 py-0.5 rounded-tag text-[10px] font-mono font-medium tracking-tight text-muted hover:text-ink hover:bg-raised transition-colors shrink-0 border border-dashed border-outline/50"
                   >
                     +{project.tags.length - 2}
@@ -606,8 +573,7 @@ export function ProjectCard({
                 <button
                     type="button"
                     onClick={() => setTagsExpanded(false)}
-                    onPointerDown={stopDrag}
-                    aria-label={t('show_fewer_tags')}
+                            aria-label={t('show_fewer_tags')}
                     className="focus-ring cursor-pointer inline-flex items-center px-2 py-0.5 rounded-tag text-[10px] font-mono font-medium tracking-tight text-muted hover:text-ink hover:bg-raised transition-colors shrink-0 border border-dashed border-outline/50"
                   >
                     -{project.tags.length - 2}
@@ -619,7 +585,6 @@ export function ProjectCard({
           <button
             type="button"
             onClick={openFolder}
-            onPointerDown={stopDrag}
             className="block w-fit max-w-full bg-black/15 px-3 py-1 rounded-tag text-[11px] font-mono text-muted truncate hover:text-accent-bright cursor-pointer transition-colors w-fit max-w-full"
           >
             {project.path}
@@ -633,8 +598,7 @@ export function ProjectCard({
                 type="button"
                 aria-expanded={open}
                 onClick={toggle}
-                onPointerDown={stopDrag}
-                className="inline-flex items-center gap-1.5 px-3 py-3 rounded-btn bg-raised border border-outline/50 font-mono text-[10px] text-muted hover:text-ink hover:border-accent-dim cursor-pointer transition-colors shrink-0"
+                    className="inline-flex items-center gap-1.5 px-3 py-3 rounded-btn bg-raised border border-outline/50 font-mono text-[10px] text-muted hover:text-ink hover:border-accent-dim cursor-pointer transition-colors shrink-0"
               >
                 <IconNode className="w-2.5 h-2.5" />
                 {boundVersion ? (
@@ -677,8 +641,7 @@ export function ProjectCard({
               <button
                 type="button"
                 onClick={onTogglePin}
-                onPointerDown={stopDrag}
-                onFocus={() => setPinFocused(true)}
+                    onFocus={() => setPinFocused(true)}
                 onBlur={() => setPinFocused(false)}
                 aria-label={
                   project.pinned
@@ -701,8 +664,7 @@ export function ProjectCard({
               <button
                 type="button"
                 onClick={() => setTimeTrackerOpen(true)}
-                onPointerDown={stopDrag}
-                aria-label={t('time_tracked_title')}
+                    aria-label={t('time_tracked_title')}
                 className="focus-ring border border-outline/50 cursor-pointer inline-flex items-center gap-1.5 rounded-btn px-3 py-3 bg-black/10 font-mono text-[10px] text-muted hover:text-ink hover:bg-raised transition-colors shrink-0"
               >
                 <IconStopwatch className="w-3 h-3 text-muted/60 shrink-0" />
@@ -720,8 +682,7 @@ export function ProjectCard({
                     type="button"
                     aria-expanded={open}
                     onClick={toggle}
-                    onPointerDown={stopDrag}
-                    className="focus-ring cursor-pointer inline-flex items-center gap-1.5 px-3 py-3 rounded-btn bg-raised border border-outline/50 font-mono text-[10px] text-muted hover:text-ink hover:border-accent-dim transition-colors shrink-0"
+                            className="focus-ring cursor-pointer inline-flex items-center gap-1.5 px-3 py-3 rounded-btn bg-raised border border-outline/50 font-mono text-[10px] text-muted hover:text-ink hover:border-accent-dim transition-colors shrink-0"
                   >
                     <span
                       className="w-1.5 h-1.5 rounded-full shrink-0 ring-1 ring-black/20"
@@ -772,7 +733,7 @@ export function ProjectCard({
             </div>
           </motion.div>
         )}
-        <div onPointerDown={stopDrag}>
+        <div>
         <OpenButton
           label={versionInstalled ? t('open_project') : t('no_version_selected')}
           disabled={!versionInstalled}

@@ -15,7 +15,7 @@ import {
 import { Tooltip } from '../reusables/Tooltip'
 import { useProjectResolutionEpoch } from '../../../../hooks/useProjectResolutionEpoch'
 
-import { IconGrip, IconMore, IconPin, IconPlay, IconTrash, IconClock, IconExternalLink, IconCode, IconGitBranch, IconX, IconTags, IconCopy, IconHardDrive, IconCheckCircle, IconTerminal } from '../../lib/Icons'
+import { IconMore, IconPin, IconPlay, IconTrash, IconClock, IconExternalLink, IconCode, IconGitBranch, IconX, IconTags, IconCopy, IconHardDrive, IconCheckCircle, IconTerminal } from '../../lib/Icons'
 import {
   formatLastOpened,
   type LastOpenedTimeFormat,
@@ -39,19 +39,11 @@ interface Props {
   onTagsSaved?: () => void
   onGitAction?: (action: 'terminal' | 'pull' | 'push' | 'fetch' | 'log') => void
   onShowGitSidebar?: () => void
-  draggable?: boolean
-  isDragging?: boolean
   selected?: boolean
   onToggleSelect?: () => void
   gitStatus?: GitStatus | null
   lastOpenedTimeFormat?: LastOpenedTimeFormat
   lastOpenedDateFormat?: LastOpenedDateFormat
-  setNodeRef?: (node: HTMLElement | null) => void
-  style?: React.CSSProperties
-  dragHandleProps?: {
-    onKeyDown?: (e: React.KeyboardEvent) => void
-    [key: string]: unknown
-  }
   variant?: 'list' | 'grid'
 }
 
@@ -84,13 +76,8 @@ export const ProjectCard = memo(function ProjectCard({
   onGitAction: _onGitAction,
   onShowGitSidebar,
   gitStatus,
-  draggable,
-  isDragging,
   selected,
   onToggleSelect,
-  setNodeRef,
-  style,
-  dragHandleProps,
   lastOpenedTimeFormat = '12h',
   lastOpenedDateFormat = 'DD-MM-YYYY',
   categoriesEnabled = true,
@@ -280,20 +267,6 @@ export const ProjectCard = memo(function ProjectCard({
   }
 
   const isGrid = variant === 'grid'
-
-  const gridDragHandleProps =
-    isGrid && draggable && dragHandleProps
-      ? (() => {
-          const { onKeyDown, ...rest } = dragHandleProps
-          return {
-            ...rest,
-            onKeyDown: (e: React.KeyboardEvent) => {
-              if (e.target !== e.currentTarget) return
-              onKeyDown?.(e)
-            },
-          }
-        })()
-      : undefined
 
   const versionDropdown = (
     <span className="contents" onPointerDown={(e) => e.stopPropagation()}>
@@ -732,21 +705,14 @@ export const ProjectCard = memo(function ProjectCard({
   return (
     <>
       <div
-        ref={setNodeRef}
-        style={style}
-        {...gridDragHandleProps}
         onContextMenu={(e) => {
           e.preventDefault()
           setContextMenu({ x: e.clientX, y: e.clientY })
         }}
-        className={`group relative border p-3 rounded-xl bg-surface transition-all duration-200 ${isGrid ? 'flex flex-col' : ''} ${isGrid && draggable ? 'cursor-grab active:cursor-grabbing touch-none' : ''} ${
-          isDragging
-            ? 'opacity-40 border-line scale-[1.02] shadow-lg shadow-black/30'
-            : selected
-              ? 'border-accent ring-1 ring-accent/30 bg-accent/5'
-              : draggable
-                ? 'border-line hover:border-accent-dim hover:shadow-sm hover:shadow-black/10'
-                : 'border-line hover:border-accent-dim'
+        className={`group relative border p-3 rounded-xl bg-surface transition-all duration-200 ${isGrid ? 'flex flex-col' : ''} ${
+          selected
+            ? 'border-accent ring-1 ring-accent/30 bg-accent/5'
+            : 'border-line hover:border-accent-dim'
         }`}
       >
 
@@ -827,11 +793,6 @@ export const ProjectCard = memo(function ProjectCard({
             )}
             {isGrid ? (
               <>
-                {draggable && (
-                  <span className="pointer-events-none absolute top-2.5 right-10 z-10 inline-flex p-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                    <IconGrip className="w-3.5 h-3.5 text-muted/40" />
-                  </span>
-                )}
                 <button
                   onClick={onTogglePin}
                   onPointerDown={(e) => e.stopPropagation()}
@@ -877,15 +838,7 @@ export const ProjectCard = memo(function ProjectCard({
               </>
             ) : (
               <>
-                <div className={`flex items-center gap-3.5 min-w-0${onToggleSelect && !draggable ? ' pl-8' : ''}`}>
-                  {draggable && (
-                    <span
-                      {...dragHandleProps}
-                      className="inline-flex touch-none cursor-grab active:cursor-grabbing"
-                    >
-                      <IconGrip className="w-4 h-4 text-muted/30 group-hover:text-muted/70 shrink-0 opacity-0 group-hover:opacity-100 scale-50 group-hover:scale-100 transition-all duration-200 ease-out" />
-                    </span>
-                  )}
+                <div className={`flex items-center gap-3.5 min-w-0${onToggleSelect ? ' pl-8' : ''}`}>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center flex-wrap gap-x-1.5 gap-y-0.5">
                       <span
@@ -924,7 +877,7 @@ export const ProjectCard = memo(function ProjectCard({
                   </div>
                 </div>
                 <div className="flex items-center gap-2.5 flex-wrap justify-between">
-                  <div className="flex items-center gap-2.5 ml-8 flex-wrap min-w-0">
+                  <div className="flex items-center gap-2.5 flex-wrap min-w-0">
                     {metaChips}
                     {versionDropdown}
                   </div>

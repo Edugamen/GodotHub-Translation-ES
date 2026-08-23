@@ -339,7 +339,6 @@
   "no_scan_folders_yet": "This workspace has no scan folders yet. Add one to find your projects.",
   "add_scan_folder": "Add a scan folder",
   "pinned_section": "Pinned",
-  "drop_here_animated": "Drop here",
   "n_selected": "{{count}} selected",
   "set_version": "Set version…",
   "set_category": "Set category…",
