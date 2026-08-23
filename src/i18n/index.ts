@@ -30,6 +30,15 @@ import esMXVersions from './locales/es-MX/versions.json'
 import esMXDashboard from './locales/es-MX/dashboard.json'
 
 
+import jaJPNav from './locales/ja-JP/nav.json'
+import jaJPCommon from './locales/ja-JP/common.json'
+import jaJPSettings from './locales/ja-JP/settings.json'
+import jaJPGit from './locales/ja-JP/git.json'
+import jaJPChangelog from './locales/ja-JP/changelog.json'
+import jaJPOnboarding from './locales/ja-JP/onboarding.json'
+import jaJPVersions from './locales/ja-JP/versions.json'
+import jaJPDashboard from './locales/ja-JP/dashboard.json'
+
 import zhCNNav from './locales/zh-CN/nav.json'
 import zhCNCommon from './locales/zh-CN/common.json'
 import zhCNSettings from './locales/zh-CN/settings.json'
@@ -72,6 +81,17 @@ const esMXResources = {
   dashboard: esMXDashboard,
 }
 
+const jaJPResources = {
+  nav: jaJPNav,
+  common: jaJPCommon,
+  settings: jaJPSettings,
+  git: jaJPGit,
+  changelog: jaJPChangelog,
+  onboarding: jaJPOnboarding,
+  versions: jaJPVersions,
+  dashboard: jaJPDashboard,
+}
+
 const zhCNResources = {
   nav: zhCNNav,
   common: zhCNCommon,
@@ -100,6 +120,9 @@ const resources = {
 
   'zh-CN': zhCNResources,
   zh: zhCNResources,
+
+  'ja-JP': jaJPResources,
+  ja: jaJPResources,
   
   'ru-RU': {
     nav: ruRUNav,
