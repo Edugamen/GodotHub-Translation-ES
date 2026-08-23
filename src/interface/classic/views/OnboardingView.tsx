@@ -217,6 +217,7 @@ export function OnboardingView({ settings, onComplete, onChooseNew }: Props) {
                       {[
                         { value: 'en-US', label: 'English' },
                         { value: 'zh-CN', label: '简体中文' },
+                        { value: 'ja-JP', label: '日本語' },
                         { value: 'ru-RU', label: 'Русский' },
                         { value: 'ar-MA', label: 'العربية' }
                       ].map(({ value, label }) => {
