@@ -216,10 +216,11 @@ export function OnboardingView({ settings, onComplete, onChooseNew }: Props) {
                     <div className="inline-flex self-start rounded-lg border border-line bg-raised p-1 gap-1">
                       {[
                         { value: 'en-US', label: 'English' },
+                        { value: 'es-MX', label: 'Español'},
+                        { value: 'ru-RU', label: 'Русский' },
                         { value: 'zh-CN', label: '简体中文' },
                         { value: 'ja-JP', label: '日本語' },
-                        { value: 'ru-RU', label: 'Русский' },
-                        { value: 'ar-MA', label: 'العربية' }
+                        { value: 'ar-MA', label: 'العربية' },
                       ].map(({ value, label }) => {
                         const active = i18n.language === value || i18n.language.startsWith(value.split('-')[0])
                         return (
