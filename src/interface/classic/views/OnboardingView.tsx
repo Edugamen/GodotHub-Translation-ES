@@ -220,6 +220,7 @@ export function OnboardingView({ settings, onComplete, onChooseNew }: Props) {
                         { value: 'ru-RU', label: 'Русский' },
                         { value: 'zh-CN', label: '简体中文' },
                         { value: 'ja-JP', label: '日本語' },
+                        { value: 'fr-FR', label: 'Français' },
                         { value: 'ar-MA', label: 'العربية' },
                       ].map(({ value, label }) => {
                         const active = i18n.language === value || i18n.language.startsWith(value.split('-')[0])
