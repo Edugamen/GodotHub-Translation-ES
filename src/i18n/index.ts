@@ -29,6 +29,14 @@ import esMXOnboarding from './locales/es-MX/onboarding.json'
 import esMXVersions from './locales/es-MX/versions.json'
 import esMXDashboard from './locales/es-MX/dashboard.json'
 
+import frFRNav from './locales/fr-FR/nav.json'
+import frFRCommon from './locales/fr-FR/common.json'
+import frFRSettings from './locales/fr-FR/settings.json'
+import frFRGit from './locales/fr-FR/git.json'
+import frFRChangelog from './locales/fr-FR/changelog.json'
+import frFROnboarding from './locales/fr-FR/onboarding.json'
+import frFRVersions from './locales/fr-FR/versions.json'
+import frFRDashboard from './locales/fr-FR/dashboard.json'
 
 import jaJPNav from './locales/ja-JP/nav.json'
 import jaJPCommon from './locales/ja-JP/common.json'
@@ -92,6 +100,17 @@ const jaJPResources = {
   dashboard: jaJPDashboard,
 }
 
+const frFRResources = {
+  nav: frFRNav,
+  common: frFRCommon,
+  settings: frFRSettings,
+  git: frFRGit,
+  changelog: frFRChangelog,
+  onboarding: frFROnboarding,
+  versions: frFRVersions,
+  dashboard: frFRDashboard,
+}
+
 const zhCNResources = {
   nav: zhCNNav,
   common: zhCNCommon,
@@ -123,6 +142,9 @@ const resources = {
 
   'ja-JP': jaJPResources,
   ja: jaJPResources,
+  
+  'fr-FR': frFRResources,
+  fr: frFRResources,
   
   'ru-RU': {
     nav: ruRUNav,
